@@ -51,14 +51,22 @@ where
     type Rejection = FormRejection;
 
     async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
+        let is_get_or_head =
+            req.method() == http::Method::GET || req.method() == http::Method::HEAD;
+
         let RawForm(bytes) = req.extract().await?;
 
         let deserializer = serde_html_form::Deserializer::new(form_urlencoded::parse(&bytes));
 
-        let value = serde_path_to_error::deserialize::<_, T>(deserializer)
-            .map_err(FailedToDeserializeForm::from_err)?;
-
-        Ok(Self(value))
+        serde_path_to_error::deserialize::<_, T>(deserializer)
+            .map(Self)
+            .map_err(|err| {
+                if is_get_or_head {
+                    FailedToDeserializeForm::from_err(err).into()
+                } else {
+                    FailedToDeserializeFormBody::from_err(err).into()
+                }
+            })
     }
 }
 
@@ -70,6 +78,14 @@ define_rejection! {
     pub struct FailedToDeserializeForm(Error);
 }
 
+define_rejection! {
+    #[status = UNPROCESSABLE_ENTITY]
+    #[body = "Failed to deserialize form body"]
+    /// Rejection type used if the [`Form`](Form) extractor is unable to
+    /// deserialize the form body into the target type.
+    pub struct FailedToDeserializeFormBody(Error);
+}
+
 composite_rejection! {
     /// Rejection used for [`Form`].
     ///
@@ -77,6 +93,7 @@ composite_rejection! {
     pub enum FormRejection {
         RawFormRejection,
         FailedToDeserializeForm,
+        FailedToDeserializeFormBody,
     }
 }
 
@@ -146,10 +163,10 @@ mod tests {
             .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED.as_ref())
             .body("a=false")
             .await;
-        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(
             res.text().await,
-            "Failed to deserialize form: a: invalid digit found in string"
+            "Failed to deserialize form body: a: invalid digit found in string"
         );
     }
 }
