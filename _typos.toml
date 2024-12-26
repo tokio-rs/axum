@@ -1,5 +1,6 @@
 [files]
 
 [default.extend-identifiers]
+# These have been fixed in the past, but are still present in the changelog.
 DefaultOnFailedUpdgrade = "DefaultOnFailedUpdgrade"
 OnFailedUpdgrade = "OnFailedUpdgrade"
