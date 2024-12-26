@@ -16,4 +16,4 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
-tower = { version = "0.5.1", features = ["util"] }
+tower = { version = "0.5.2", features = ["util"] }
