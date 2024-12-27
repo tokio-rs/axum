@@ -99,6 +99,7 @@ impl<S> fmt::Debug for Router<S> {
 }
 
 pub(crate) const NEST_TAIL_PARAM: &str = "__private__axum_nest_tail_param";
+#[cfg(feature = "matched-path")]
 pub(crate) const NEST_TAIL_PARAM_CAPTURE: &str = "/{*__private__axum_nest_tail_param}";
 pub(crate) const FALLBACK_PARAM: &str = "__private__axum_fallback";
 pub(crate) const FALLBACK_PARAM_PATH: &str = "/{*__private__axum_fallback}";
