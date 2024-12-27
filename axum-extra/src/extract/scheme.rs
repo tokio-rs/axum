@@ -1,10 +1,8 @@
 //! Extractor that parses the scheme of a request.
 //! See [`Scheme`] for more details.
 
-use axum::{
-    extract::FromRequestParts,
-    response::{IntoResponse, Response},
-};
+use axum::extract::FromRequestParts;
+use axum_core::__define_rejection as define_rejection;
 use http::{
     header::{HeaderMap, FORWARDED},
     request::Parts,
@@ -23,15 +21,12 @@ const X_FORWARDED_PROTO_HEADER_KEY: &str = "X-Forwarded-Proto";
 #[derive(Debug, Clone)]
 pub struct Scheme(pub String);
 
-/// Rejection type used if the [`Scheme`] extractor is unable to
-/// resolve a scheme.
-#[derive(Debug)]
-pub struct SchemeMissing;
-
-impl IntoResponse for SchemeMissing {
-    fn into_response(self) -> Response {
-        (http::StatusCode::BAD_REQUEST, "No scheme found in request").into_response()
-    }
+define_rejection! {
+    #[status = BAD_REQUEST]
+    #[body = "No scheme found in request"]
+    /// Rejection type used if the [`Scheme`] extractor is unable to
+    /// resolve a scheme.
+    pub struct SchemeMissing;
 }
 
 impl<S> FromRequestParts<S> for Scheme
