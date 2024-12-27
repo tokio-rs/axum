@@ -50,7 +50,7 @@ macro_rules! __define_rejection {
         impl $name {
             /// Get the response body text used for this rejection.
             pub fn body_text(&self) -> String {
-                $body.into()
+                self.to_string()
             }
 
             /// Get the status code used for this rejection.
@@ -107,7 +107,7 @@ macro_rules! __define_rejection {
 
             /// Get the response body text used for this rejection.
             pub fn body_text(&self) -> String {
-                format!(concat!($body, ": {}"), self.0).into()
+                self.to_string()
             }
 
             /// Get the status code used for this rejection.
@@ -132,7 +132,9 @@ macro_rules! __define_rejection {
 
         impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{}", $body)
+                f.write_str($body)?;
+                f.write_str(": ")?;
+                self.0.fmt(f)
             }
         }
 
