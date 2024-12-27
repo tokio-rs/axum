@@ -7,7 +7,7 @@
 ///
 /// This trait can be derived using `#[derive(FromRef)]`.
 ///
-/// [`State`]: https://docs.rs/axum/0.7/axum/extract/struct.State.html
+/// [`State`]: https://docs.rs/axum/0.8/axum/extract/struct.State.html
 // NOTE: This trait is defined in axum-core, even though it is mainly used with `State` which is
 // defined in axum. That allows crate authors to use it when implementing extractors.
 pub trait FromRef<T> {

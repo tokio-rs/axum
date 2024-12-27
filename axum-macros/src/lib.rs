@@ -369,9 +369,9 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 /// }
 /// ```
 ///
-/// [`FromRequest`]: https://docs.rs/axum/0.7/axum/extract/trait.FromRequest.html
-/// [`axum::response::Response`]: https://docs.rs/axum/0.7/axum/response/type.Response.html
-/// [`axum::extract::rejection::ExtensionRejection`]: https://docs.rs/axum/0.7/axum/extract/rejection/enum.ExtensionRejection.html
+/// [`FromRequest`]: https://docs.rs/axum/0.8/axum/extract/trait.FromRequest.html
+/// [`axum::response::Response`]: https://docs.rs/axum/0.8/axum/response/type.Response.html
+/// [`axum::extract::rejection::ExtensionRejection`]: https://docs.rs/axum/0.8/axum/extract/rejection/enum.ExtensionRejection.html
 #[proc_macro_derive(FromRequest, attributes(from_request))]
 pub fn derive_from_request(item: TokenStream) -> TokenStream {
     expand_with(item, |item| from_request::expand(item, FromRequest))
@@ -420,7 +420,7 @@ pub fn derive_from_request(item: TokenStream) -> TokenStream {
 ///
 /// Use `#[derive(FromRequest)]` for that.
 ///
-/// [`FromRequestParts`]: https://docs.rs/axum/0.7/axum/extract/trait.FromRequestParts.html
+/// [`FromRequestParts`]: https://docs.rs/axum/0.8/axum/extract/trait.FromRequestParts.html
 #[proc_macro_derive(FromRequestParts, attributes(from_request))]
 pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
     expand_with(item, |item| from_request::expand(item, FromRequestParts))
@@ -569,8 +569,8 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// This macro has no effect when compiled with the release profile. (eg. `cargo build --release`)
 ///
 /// [`axum`]: https://docs.rs/axum/0.7
-/// [`Handler`]: https://docs.rs/axum/0.7/axum/handler/trait.Handler.html
-/// [`axum::extract::State`]: https://docs.rs/axum/0.7/axum/extract/struct.State.html
+/// [`Handler`]: https://docs.rs/axum/0.8/axum/handler/trait.Handler.html
+/// [`axum::extract::State`]: https://docs.rs/axum/0.8/axum/extract/struct.State.html
 /// [`debug_handler`]: macro@debug_handler
 #[proc_macro_attribute]
 pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
@@ -626,7 +626,7 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 /// This macro has no effect when compiled with the release profile. (eg. `cargo build --release`)
 ///
 /// [`axum`]: https://docs.rs/axum/latest
-/// [`axum::middleware::from_fn`]: https://docs.rs/axum/0.7/axum/middleware/fn.from_fn.html
+/// [`axum::middleware::from_fn`]: https://docs.rs/axum/0.8/axum/middleware/fn.from_fn.html
 /// [`debug_middleware`]: macro@debug_middleware
 #[proc_macro_attribute]
 pub fn debug_middleware(_attr: TokenStream, input: TokenStream) -> TokenStream {
@@ -709,7 +709,7 @@ pub fn derive_typed_path(input: TokenStream) -> TokenStream {
 /// # let _: axum::Router = app;
 /// ```
 ///
-/// [`FromRef`]: https://docs.rs/axum/0.7/axum/extract/trait.FromRef.html
+/// [`FromRef`]: https://docs.rs/axum/0.8/axum/extract/trait.FromRef.html
 #[proc_macro_derive(FromRef, attributes(from_ref))]
 pub fn derive_from_ref(item: TokenStream) -> TokenStream {
     expand_with(item, from_ref::expand)
