@@ -15,7 +15,6 @@ pub(crate) mod nested_path;
 mod original_uri;
 mod raw_form;
 mod raw_query;
-mod request_parts;
 mod state;
 
 #[doc(inline)]

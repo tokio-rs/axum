@@ -376,6 +376,7 @@ version = "0.5.0-rc.1"
 dependencies = [
  "axum",
  "axum-extra",
+ "axum-macros",
  "bytes",
  "futures-util",
  "http 1.2.0",

@@ -35,8 +35,9 @@ tower-http = { version = "0.6.0", optional = true, features = ["limit"] }
 tracing = { version = "0.1.37", default-features = false, optional = true }
 
 [dev-dependencies]
-axum = { path = "../axum" }
+axum = { path = "../axum", features = ["__private"] }
 axum-extra = { path = "../axum-extra", features = ["typed-header"] }
+axum-macros = { path = "../axum-macros", features = ["__private"] }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 hyper = "1.0.0"
 tokio = { version = "1.25.0", features = ["macros"] }

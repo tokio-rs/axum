@@ -446,8 +446,9 @@ pub mod routing;
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 pub mod serve;
 
-#[cfg(test)]
-mod test_helpers;
+#[cfg(any(test, feature = "__private"))]
+#[allow(missing_docs, missing_debug_implementations, clippy::print_stdout)]
+pub mod test_helpers;
 
 #[doc(no_inline)]
 pub use http;
