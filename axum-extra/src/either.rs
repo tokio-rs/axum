@@ -88,7 +88,7 @@
 //! types, but if you need to preserve the exact type then `Either*` works as well.
 //!
 //! [`BytesRejection`]: axum::extract::rejection::BytesRejection
-//! [`IntoResponse::into_response`]: https://docs.rs/axum/0.5/axum/response/index.html#returning-different-response-types
+//! [`IntoResponse::into_response`]: https://docs.rs/axum/0.8/axum/response/index.html#returning-different-response-types
 
 use std::task::{Context, Poll};
 
