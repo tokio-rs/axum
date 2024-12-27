@@ -4,6 +4,8 @@ use axum::{
     extract::{rejection::BytesRejection, FromRequest, Request},
     response::{IntoResponse, Response},
 };
+use axum_core::__composite_rejection as composite_rejection;
+use axum_core::__define_rejection as define_rejection;
 use bytes::{Bytes, BytesMut};
 use http::StatusCode;
 use prost::Message;
@@ -127,70 +129,23 @@ where
     }
 }
 
-/// Rejection type for [`Protobuf`].
-///
-/// This rejection is used if the request body couldn't be decoded into the target type.
-#[derive(Debug)]
-pub struct ProtobufDecodeError(pub(crate) axum::Error);
-
-impl ProtobufDecodeError {
-    pub(crate) fn from_err<E>(err: E) -> Self
-    where
-        E: Into<axum::BoxError>,
-    {
-        Self(axum::Error::new(err))
-    }
+define_rejection! {
+    #[status = UNPROCESSABLE_ENTITY]
+    #[body = "Failed to decode the body"]
+    /// Rejection type for [`Protobuf`].
+    ///
+    /// This rejection is used if the request body couldn't be decoded into the target type.
+    pub struct ProtobufDecodeError(Error);
 }
 
-impl std::fmt::Display for ProtobufDecodeError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Failed to decode the body: {:?}", self.0)
-    }
-}
-
-impl std::error::Error for ProtobufDecodeError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        Some(&self.0)
-    }
-}
-
-impl IntoResponse for ProtobufDecodeError {
-    fn into_response(self) -> Response {
-        StatusCode::UNPROCESSABLE_ENTITY.into_response()
-    }
-}
-
-/// Rejection used for [`Protobuf`].
-///
-/// Contains one variant for each way the [`Protobuf`] extractor
-/// can fail.
-#[derive(Debug)]
-#[non_exhaustive]
-pub enum ProtobufRejection {
-    #[allow(missing_docs)]
-    ProtobufDecodeError(ProtobufDecodeError),
-    #[allow(missing_docs)]
-    BytesRejection(BytesRejection),
-}
-
-impl From<ProtobufDecodeError> for ProtobufRejection {
-    fn from(inner: ProtobufDecodeError) -> Self {
-        Self::ProtobufDecodeError(inner)
-    }
-}
-
-impl From<BytesRejection> for ProtobufRejection {
-    fn from(inner: BytesRejection) -> Self {
-        Self::BytesRejection(inner)
-    }
-}
-
-impl IntoResponse for ProtobufRejection {
-    fn into_response(self) -> Response {
-        match self {
-            Self::ProtobufDecodeError(inner) => inner.into_response(),
-            Self::BytesRejection(inner) => inner.into_response(),
-        }
+composite_rejection! {
+    /// Rejection used for [`Protobuf`].
+    ///
+    /// Contains one variant for each way the [`Protobuf`] extractor
+    /// can fail.
+    pub enum ProtobufRejection {
+        ProtobufDecodeError,
+        BytesRejection,
     }
 }
 
