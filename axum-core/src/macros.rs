@@ -132,7 +132,7 @@ macro_rules! __define_rejection {
 
         impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{}", $body)
+                write!(f, concat!($body, ": {}"), self.0)
             }
         }
 
