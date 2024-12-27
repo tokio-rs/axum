@@ -38,7 +38,7 @@ macro_rules! __log_rejection {
 macro_rules! __define_rejection {
     (
         #[status = $status:ident]
-        #[body = $body:expr]
+        #[body = $body:literal]
         $(#[$m:meta])*
         pub struct $name:ident;
     ) => {
@@ -89,7 +89,7 @@ macro_rules! __define_rejection {
 
     (
         #[status = $status:ident]
-        #[body = $body:expr]
+        #[body = $body:literal]
         $(#[$m:meta])*
         pub struct $name:ident (Error);
     ) => {
