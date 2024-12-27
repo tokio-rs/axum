@@ -47,6 +47,18 @@ macro_rules! __define_rejection {
         #[non_exhaustive]
         pub struct $name;
 
+        impl $name {
+            /// Get the response body text used for this rejection.
+            pub fn body_text(&self) -> String {
+                $body.into()
+            }
+
+            /// Get the status code used for this rejection.
+            pub fn status(&self) -> http::StatusCode {
+                http::StatusCode::$status
+            }
+        }
+
         impl $crate::response::IntoResponse for $name {
             fn into_response(self) -> $crate::response::Response {
                 let status = self.status();
@@ -57,18 +69,6 @@ macro_rules! __define_rejection {
                     status = status,
                 );
                 (status, $body).into_response()
-            }
-        }
-
-        impl $name {
-            /// Get the response body text used for this rejection.
-            pub fn body_text(&self) -> String {
-                $body.into()
-            }
-
-            /// Get the status code used for this rejection.
-            pub fn status(&self) -> http::StatusCode {
-                http::StatusCode::$status
             }
         }
 
@@ -104,6 +104,16 @@ macro_rules! __define_rejection {
             {
                 Self($crate::Error::new(err))
             }
+
+            /// Get the response body text used for this rejection.
+            pub fn body_text(&self) -> String {
+                format!(concat!($body, ": {}"), self.0).into()
+            }
+
+            /// Get the status code used for this rejection.
+            pub fn status(&self) -> http::StatusCode {
+                http::StatusCode::$status
+            }
         }
 
         impl $crate::response::IntoResponse for $name {
@@ -117,18 +127,6 @@ macro_rules! __define_rejection {
                     status = status,
                 );
                 (status, body_text).into_response()
-            }
-        }
-
-        impl $name {
-            /// Get the response body text used for this rejection.
-            pub fn body_text(&self) -> String {
-                format!(concat!($body, ": {}"), self.0).into()
-            }
-
-            /// Get the status code used for this rejection.
-            pub fn status(&self) -> http::StatusCode {
-                http::StatusCode::$status
             }
         }
 
