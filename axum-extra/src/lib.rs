@@ -80,16 +80,4 @@ pub mod __private {
 use axum_macros::__private_axum_test as test;
 
 #[cfg(test)]
-#[allow(unused_imports)]
-pub(crate) mod test_helpers {
-    use axum::{extract::Request, response::Response, serve};
-
-    mod test_client {
-        #![allow(dead_code)]
-        include!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../axum/src/test_helpers/test_client.rs"
-        ));
-    }
-    pub(crate) use self::test_client::*;
-}
+pub(crate) use axum::test_helpers;
