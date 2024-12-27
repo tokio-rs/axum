@@ -2,7 +2,7 @@
 //!
 //! See [`axum::response`] for more details.
 //!
-//! [`axum::response`]: https://docs.rs/axum/0.7/axum/response/index.html
+//! [`axum::response`]: https://docs.rs/axum/0.8/axum/response/index.html
 
 use crate::body::Body;
 

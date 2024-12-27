@@ -2,7 +2,7 @@
 //!
 //! See [`axum::extract`] for more details.
 //!
-//! [`axum::extract`]: https://docs.rs/axum/0.7/axum/extract/index.html
+//! [`axum::extract`]: https://docs.rs/axum/0.8/axum/extract/index.html
 
 use crate::{body::Body, response::IntoResponse};
 use http::request::Parts;
@@ -46,11 +46,11 @@ mod private {
 ///
 /// See [`axum::extract`] for more general docs about extractors.
 ///
-/// [`axum::extract`]: https://docs.rs/axum/0.7/axum/extract/index.html
+/// [`axum::extract`]: https://docs.rs/axum/0.8/axum/extract/index.html
 #[rustversion::attr(
     since(1.78),
     diagnostic::on_unimplemented(
-        note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/0.7/axum/extract/index.html` for details",
+        note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/0.8/axum/extract/index.html` for details",
     )
 )]
 pub trait FromRequestParts<S>: Sized {
@@ -75,11 +75,11 @@ pub trait FromRequestParts<S>: Sized {
 ///
 /// See [`axum::extract`] for more general docs about extractors.
 ///
-/// [`axum::extract`]: https://docs.rs/axum/0.7/axum/extract/index.html
+/// [`axum::extract`]: https://docs.rs/axum/0.8/axum/extract/index.html
 #[rustversion::attr(
     since(1.78),
     diagnostic::on_unimplemented(
-        note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/0.7/axum/extract/index.html` for details",
+        note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/0.8/axum/extract/index.html` for details",
     )
 )]
 pub trait FromRequest<S, M = private::ViaRequest>: Sized {
