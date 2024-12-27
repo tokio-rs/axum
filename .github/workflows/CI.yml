@@ -43,6 +43,9 @@ jobs:
 
   cargo-hack:
     runs-on: ubuntu-24.04
+    env:
+      # Fail the build if there are any warnings
+      RUSTFLAGS: "-D warnings"
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
