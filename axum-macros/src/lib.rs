@@ -568,7 +568,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 ///
 /// This macro has no effect when compiled with the release profile. (eg. `cargo build --release`)
 ///
-/// [`axum`]: https://docs.rs/axum/0.7
+/// [`axum`]: https://docs.rs/axum/0.8
 /// [`Handler`]: https://docs.rs/axum/0.8/axum/handler/trait.Handler.html
 /// [`axum::extract::State`]: https://docs.rs/axum/0.8/axum/extract/struct.State.html
 /// [`debug_handler`]: macro@debug_handler
