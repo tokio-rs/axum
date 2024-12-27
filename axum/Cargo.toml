@@ -61,7 +61,7 @@ pin-project-lite = "0.2.7"
 rustversion = "1.0.9"
 serde = "1.0"
 sync_wrapper = "1.0.0"
-tower = { version = "0.5.1", default-features = false, features = ["util"] }
+tower = { version = "0.5.2", default-features = false, features = ["util"] }
 tower-layer = "0.3.2"
 tower-service = "0.3"
 
@@ -135,7 +135,7 @@ uuid = { version = "1.0", features = ["serde", "v4"] }
 
 [dev-dependencies.tower]
 package = "tower"
-version = "0.5.1"
+version = "0.5.2"
 features = [
     "util",
     "timeout",

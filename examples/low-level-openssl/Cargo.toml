@@ -12,6 +12,6 @@ hyper-util = { version = "0.1" }
 openssl = "0.10"
 tokio = { version = "1", features = ["full"] }
 tokio-openssl = "0.6"
-tower = { version = "0.5.1", features = ["make"] }
+tower = { version = "0.5.2", features = ["make"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

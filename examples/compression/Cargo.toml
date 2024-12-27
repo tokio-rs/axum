@@ -8,7 +8,7 @@ publish = false
 axum = { path = "../../axum" }
 serde_json = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-tower = "0.5.1"
+tower = "0.5.2"
 tower-http = { version = "0.6.1", features = ["compression-full", "decompression-full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
