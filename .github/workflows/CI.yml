@@ -101,12 +101,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
-    - name: Get rust-toolchain version
-      id: rust-toolchain
-      run: echo "version=$(cat axum-macros/rust-toolchain)" >> $GITHUB_OUTPUT
-    - uses: dtolnay/rust-toolchain@master
-      with:
-        toolchain: ${{ steps.rust-toolchain.outputs.version }}
+    # we do not need to install nightly via `dtolnay/rust-toolchain`, because
+    # `axum-macros` has a `rust-toolchain` file that makes rustup use the
+    # right nightly version anyway.
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
