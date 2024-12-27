@@ -11,6 +11,8 @@ pub mod rejection;
 pub mod ws;
 
 pub(crate) mod nested_path;
+#[cfg(feature = "original-uri")]
+mod original_uri;
 mod raw_form;
 mod raw_query;
 mod request_parts;
@@ -72,7 +74,7 @@ pub use self::query::Query;
 
 #[cfg(feature = "original-uri")]
 #[doc(inline)]
-pub use self::request_parts::OriginalUri;
+pub use self::original_uri::OriginalUri;
 
 #[cfg(feature = "ws")]
 #[doc(inline)]
