@@ -1,3 +1,6 @@
+/// This module contains the tests for the `impl<S> FromRequestParts<S> for Parts`
+/// implementation in the `axum-core` crate. The tests cannot be moved there
+/// because we don't have access to the `TestClient` and `Router` types there.
 #[cfg(test)]
 mod tests {
     use crate::{extract::Extension, routing::get, test_helpers::*, Router};
