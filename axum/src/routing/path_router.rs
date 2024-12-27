@@ -369,7 +369,7 @@ where
 
     pub(super) fn call_with_state(
         &self,
-        mut req: Request,
+        #[cfg_attr(not(feature = "original-uri"), allow(unused_mut))] mut req: Request,
         state: S,
     ) -> Result<RouteFuture<Infallible>, (Request, S)> {
         #[cfg(feature = "original-uri")]
