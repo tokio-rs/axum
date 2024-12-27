@@ -8,6 +8,8 @@ use axum::{
     response::{IntoResponse, Response},
     RequestExt,
 };
+use axum_core::__composite_rejection as composite_rejection;
+use axum_core::__define_rejection as define_rejection;
 use futures_util::stream::Stream;
 use http::{
     header::{HeaderMap, CONTENT_TYPE},
@@ -313,99 +315,22 @@ fn parse_boundary(headers: &HeaderMap) -> Option<String> {
     multer::parse_boundary(content_type).ok()
 }
 
-/// Rejection used for [`Multipart`].
-///
-/// Contains one variant for each way the [`Multipart`] extractor can fail.
-#[derive(Debug)]
-#[non_exhaustive]
-pub enum MultipartRejection {
-    #[allow(missing_docs)]
-    InvalidBoundary(InvalidBoundary),
-}
-
-impl IntoResponse for MultipartRejection {
-    fn into_response(self) -> Response {
-        match self {
-            Self::InvalidBoundary(inner) => inner.into_response(),
-        }
+composite_rejection! {
+    /// Rejection used for [`Multipart`].
+    ///
+    /// Contains one variant for each way the [`Multipart`] extractor can fail.
+    pub enum MultipartRejection {
+        InvalidBoundary,
     }
 }
 
-impl MultipartRejection {
-    /// Get the response body text used for this rejection.
-    pub fn body_text(&self) -> String {
-        match self {
-            Self::InvalidBoundary(inner) => inner.body_text(),
-        }
-    }
-
-    /// Get the status code used for this rejection.
-    pub fn status(&self) -> http::StatusCode {
-        match self {
-            Self::InvalidBoundary(inner) => inner.status(),
-        }
-    }
+define_rejection! {
+    #[status = BAD_REQUEST]
+    #[body = "Invalid `boundary` for `multipart/form-data` request"]
+    /// Rejection type used if the `boundary` in a `multipart/form-data` is
+    /// missing or invalid.
+    pub struct InvalidBoundary;
 }
-
-impl From<InvalidBoundary> for MultipartRejection {
-    fn from(inner: InvalidBoundary) -> Self {
-        Self::InvalidBoundary(inner)
-    }
-}
-
-impl std::fmt::Display for MultipartRejection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::InvalidBoundary(inner) => write!(f, "{}", inner.body_text()),
-        }
-    }
-}
-
-impl std::error::Error for MultipartRejection {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::InvalidBoundary(inner) => Some(inner),
-        }
-    }
-}
-
-/// Rejection type used if the `boundary` in a `multipart/form-data` is
-/// missing or invalid.
-#[derive(Debug, Default)]
-#[non_exhaustive]
-pub struct InvalidBoundary;
-
-impl IntoResponse for InvalidBoundary {
-    fn into_response(self) -> Response {
-        let body = self.body_text();
-        axum_core::__log_rejection!(
-            rejection_type = Self,
-            body_text = body,
-            status = self.status(),
-        );
-        (self.status(), body).into_response()
-    }
-}
-
-impl InvalidBoundary {
-    /// Get the response body text used for this rejection.
-    pub fn body_text(&self) -> String {
-        "Invalid `boundary` for `multipart/form-data` request".into()
-    }
-
-    /// Get the status code used for this rejection.
-    pub fn status(&self) -> http::StatusCode {
-        http::StatusCode::BAD_REQUEST
-    }
-}
-
-impl std::fmt::Display for InvalidBoundary {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.body_text())
-    }
-}
-
-impl std::error::Error for InvalidBoundary {}
 
 #[cfg(test)]
 mod tests {
