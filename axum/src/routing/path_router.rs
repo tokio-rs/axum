@@ -341,7 +341,7 @@ where
     }
 
     pub(super) fn get_route_paths(&self) -> Vec<Arc<str>> {
-        self.node.path_to_route_id.keys().into_iter().map(Arc::clone).collect()
+        self.node.path_to_route_id.keys().map(Arc::clone).collect()
     }
 
     pub(super) fn has_routes(&self) -> bool {
