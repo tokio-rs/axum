@@ -328,6 +328,11 @@ where
         })
     }
 
+    /// List routes that the router contains.
+    pub fn get_route_paths(&self) -> Vec<Arc<str>> {
+        self.inner.path_router.get_route_paths()
+    }
+
     /// True if the router currently has at least one route added.
     pub fn has_routes(&self) -> bool {
         self.inner.path_router.has_routes()
