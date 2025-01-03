@@ -332,7 +332,7 @@ impl<F> WebSocketUpgrade<F> {
             callback(socket).await;
         });
 
-        if let Some(sec_websocket_key) = &self.sec_websocket_key {
+        let mut response = if let Some(sec_websocket_key) = &self.sec_websocket_key {
             // If `sec_websocket_key` was `Some`, we are using HTTP/1.1.
 
             #[allow(clippy::declare_interior_mutable_const)]
@@ -340,26 +340,30 @@ impl<F> WebSocketUpgrade<F> {
             #[allow(clippy::declare_interior_mutable_const)]
             const WEBSOCKET: HeaderValue = HeaderValue::from_static("websocket");
 
-            let mut builder = Response::builder()
+            Response::builder()
                 .status(StatusCode::SWITCHING_PROTOCOLS)
                 .header(header::CONNECTION, UPGRADE)
                 .header(header::UPGRADE, WEBSOCKET)
                 .header(
                     header::SEC_WEBSOCKET_ACCEPT,
                     sign(sec_websocket_key.as_bytes()),
-                );
-
-            if let Some(protocol) = self.protocol {
-                builder = builder.header(header::SEC_WEBSOCKET_PROTOCOL, protocol);
-            }
-
-            builder.body(Body::empty()).unwrap()
+                )
+                .body(Body::empty())
+                .unwrap()
         } else {
             // Otherwise, we are HTTP/2+. As established in RFC 9113 section 8.5, we just respond
             // with a 2XX with an empty body:
             // <https://datatracker.ietf.org/doc/html/rfc9113#name-the-connect-method>.
             Response::new(Body::empty())
+        };
+
+        if let Some(protocol) = self.protocol {
+            response
+                .headers_mut()
+                .insert(header::SEC_WEBSOCKET_PROTOCOL, protocol);
         }
+
+        response
     }
 }
 
