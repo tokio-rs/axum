@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **added:** `OptionalFromRequest` impl for `Json`.
+
 # 0.8.0
 
 ## since rc.1
