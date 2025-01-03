@@ -1,5 +1,6 @@
 use crate::extract::Request;
 use crate::extract::{rejection::*, FromRequest};
+use axum_core::extract::OptionalFromRequest;
 use axum_core::response::{IntoResponse, Response};
 use bytes::{BufMut, Bytes, BytesMut};
 use http::{
@@ -108,6 +109,27 @@ where
             Self::from_bytes(&bytes)
         } else {
             Err(MissingJsonContentType.into())
+        }
+    }
+}
+
+impl<T, S> OptionalFromRequest<S> for Json<T>
+where
+    T: DeserializeOwned,
+    S: Send + Sync,
+{
+    type Rejection = JsonRejection;
+
+    async fn from_request(req: Request, state: &S) -> Result<Option<Self>, Self::Rejection> {
+        if json_content_type(req.headers()) {
+            let bytes = Bytes::from_request(req, state).await?;
+            if !bytes.is_empty() {
+                Ok(Some(Self::from_bytes(&bytes)?))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
         }
     }
 }
