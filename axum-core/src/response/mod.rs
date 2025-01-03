@@ -4,6 +4,10 @@
 //!
 //! [`axum::response`]: https://docs.rs/axum/0.8/axum/response/index.html
 
+use std::convert::Infallible;
+
+use http::StatusCode;
+
 use crate::body::Body;
 
 mod append_headers;
@@ -126,5 +130,58 @@ where
 {
     fn from(value: T) -> Self {
         Self(value.into_response())
+    }
+}
+
+/// ```
+/// todo!();
+/// ```
+#[derive(Copy, Clone, Debug)]
+pub struct IntoResponseFailed;
+
+impl IntoResponseParts for IntoResponseFailed {
+    type Error = Infallible;
+
+    fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+        res.extensions_mut().insert(self);
+        Ok(res)
+    }
+}
+
+/// Not sure it makes sense to return `IntoResponseFailed` as the whole response. You should
+/// probably at least combine it with a status code.
+///
+/// ```compile_fail
+/// fn foo()
+/// where
+///     axum_core::response::IntoResponseFailed: axum_core::response::IntoResponse,
+/// {}
+/// ```
+#[allow(dead_code)]
+fn into_response_failed_doesnt_impl_into_response() {}
+
+/// Override all status codes regardless if [`IntoResponseFailed`] is used or not.
+///
+/// See the docs for [`IntoResponseFailed`] for more details.
+#[derive(Debug, Copy, Clone, Default)]
+pub struct OverrideAllStatusCodes(pub StatusCode);
+
+impl IntoResponse for OverrideAllStatusCodes {
+    fn into_response(self) -> Response {
+        let mut res = ().into_response();
+        *res.status_mut() = self.0;
+        res
+    }
+}
+
+impl<R> IntoResponse for (OverrideAllStatusCodes, R)
+where
+    R: IntoResponse,
+{
+    fn into_response(self) -> Response {
+        let (OverrideAllStatusCodes(status), res) = self;
+        let mut res = res.into_response();
+        *res.status_mut() = status;
+        res
     }
 }
