@@ -39,16 +39,6 @@ define_rejection! {
     pub struct MissingJsonContentType;
 }
 
-#[cfg(feature = "json")]
-define_rejection! {
-    #[status = BAD_REQUEST]
-    #[body = "Expected non-empty request body for `Content-Type: application/json`"]
-    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    /// Rejection type for [`Json`](super::Json) used if the request body
-    /// is empty.
-    pub struct EmptyJsonBody;
-}
-
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "Missing request extension"]
@@ -143,7 +133,6 @@ composite_rejection! {
     pub enum JsonRejection {
         JsonDataError,
         JsonSyntaxError,
-        EmptyJsonBody,
         MissingJsonContentType,
         BytesRejection,
     }

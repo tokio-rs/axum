@@ -121,13 +121,16 @@ where
     type Rejection = JsonRejection;
 
     async fn from_request(req: Request, state: &S) -> Result<Option<Self>, Self::Rejection> {
-        let is_json = json_content_type(req.headers());
-        let bytes = Bytes::from_request(req, state).await?;
-
-        match (is_json, bytes.is_empty()) {
-            (true, _) => Ok(Some(Json::from_bytes(&bytes)?)),
-            (false, true) => Ok(None),
-            (false, false) => Err(MissingJsonContentType.into()),
+        let headers = req.headers();
+        if headers.get(header::CONTENT_TYPE).is_some() {
+            if json_content_type(headers) {
+                let bytes = Bytes::from_request(req, state).await?;
+                Ok(Some(Self::from_bytes(&bytes)?))
+            } else {
+                Err(MissingJsonContentType.into())
+            }
+        } else {
+            Ok(None)
         }
     }
 }
