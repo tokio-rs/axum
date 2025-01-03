@@ -1,7 +1,7 @@
 Add another route to the router.
 
 `path` is a string of path segments separated by `/`. Each segment
-can be either static, a capture, or a wildcard.
+can either be static, contain a capture, or be a wildcard.
 
 `method_router` is the [`MethodRouter`] that should receive the request if the
 path matches `path`. `method_router` will commonly be a handler wrapped in a method
@@ -24,11 +24,15 @@ Paths can contain segments like `/{key}` which matches any single segment and
 will store the value captured at `key`. The value captured can be zero-length
 except for in the invalid path `//`.
 
+Each segment may have only one capture, but it may have static prefixes and suffixes.
+
 Examples:
 
 - `/{key}`
 - `/users/{id}`
 - `/users/{id}/tweets`
+- `/avatars/large_{id}.png`
+- `/avatars/small_{id}.jpg`
 
 Captures can be extracted using [`Path`](crate::extract::Path). See its
 documentation for more details.
@@ -38,6 +42,9 @@ regular expression. You must handle that manually in your handlers.
 
 [`MatchedPath`](crate::extract::MatchedPath) can be used to extract the matched
 path rather than the actual path.
+
+Captures must not be empty. For example `/a/` will not match `/a/{capture}` and
+`/.png` will not match `/{image}.png`.
 
 # Wildcards
 
