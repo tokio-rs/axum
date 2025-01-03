@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **added:** Implement `OptionalFromRequest` for `Json` ([#3142])
+
+[#3142]: https://github.com/tokio-rs/axum/pull/3142
+
 # 0.8.0
 
 ## since rc.1
