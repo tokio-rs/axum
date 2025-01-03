@@ -125,8 +125,7 @@ where
         let bytes = Bytes::from_request(req, state).await?;
 
         match (is_json, bytes.is_empty()) {
-            (true, true) => Err(EmptyJsonBody.into()),
-            (true, false) => Ok(Some(Json::from_bytes(&bytes)?)),
+            (true, _) => Ok(Some(Json::from_bytes(&bytes)?)),
             (false, true) => Ok(None),
             (false, false) => Err(MissingJsonContentType.into()),
         }
