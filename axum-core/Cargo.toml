@@ -19,7 +19,7 @@ __private_docs = ["dep:tower-http"]
 
 [dependencies]
 bytes = "1.2"
-futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+futures-core = "0.3"
 http = "1.0.0"
 http-body = "1.0.0"
 http-body-util = "0.1.0"
@@ -38,7 +38,6 @@ tracing = { version = "0.1.37", default-features = false, optional = true }
 axum = { path = "../axum", features = ["__private"] }
 axum-extra = { path = "../axum-extra", features = ["typed-header"] }
 axum-macros = { path = "../axum-macros", features = ["__private"] }
-futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 hyper = "1.0.0"
 tokio = { version = "1.25.0", features = ["macros"] }
 tower-http = { version = "0.6.0", features = ["limit"] }

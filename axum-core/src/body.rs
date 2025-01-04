@@ -2,8 +2,7 @@
 
 use crate::{BoxError, Error};
 use bytes::Bytes;
-use futures_util::stream::Stream;
-use futures_util::TryStream;
+use futures_core::{Stream, TryStream};
 use http_body::{Body as _, Frame};
 use http_body_util::BodyExt;
 use pin_project_lite::pin_project;
