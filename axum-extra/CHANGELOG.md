@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **breaking:** Remove unused `async-stream` feature, which was accidentally
+  introduced as an implicit feature through an optional dependency which was no
+  longer being used ([#3145])
+
+[#3145]: https://github.com/tokio-rs/axum/pull/3145
+
 # 0.10.0
 
 ## since rc.1

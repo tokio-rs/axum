@@ -57,7 +57,6 @@ tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-async-stream = { version = "0.3", optional = true }
 axum-macros = { path = "../axum-macros", version = "0.5.0", optional = true }
 cookie = { package = "cookie", version = "0.18.0", features = ["percent-encode"], optional = true }
 fastrand = { version = "2.1.0", optional = true }
