@@ -34,17 +34,14 @@ use axum_core::{
     response::{IntoResponse, Response},
 };
 use bytes::{BufMut, BytesMut};
-use futures_util::{
-    ready,
-    stream::{Stream, TryStream},
-};
+use futures_util::stream::{Stream, TryStream};
 use http_body::Frame;
 use pin_project_lite::pin_project;
 use std::{
     fmt,
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
+    task::{ready, Context, Poll},
     time::Duration,
 };
 use sync_wrapper::SyncWrapper;

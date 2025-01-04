@@ -109,7 +109,7 @@ use std::{
     borrow::Cow,
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
+    task::{ready, Context, Poll},
 };
 use tokio_tungstenite::{
     tungstenite::{
@@ -518,7 +518,7 @@ impl Stream for WebSocket {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         loop {
-            match futures_util::ready!(self.inner.poll_next_unpin(cx)) {
+            match ready!(self.inner.poll_next_unpin(cx)) {
                 Some(Ok(msg)) => {
                     if let Some(msg) = Message::from_tungstenite(msg) {
                         return Poll::Ready(Some(Ok(msg)));
