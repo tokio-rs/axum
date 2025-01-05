@@ -2,7 +2,7 @@ use crate::{
     extract::FromRequestParts,
     response::{IntoResponse, Response},
 };
-use futures_util::{future::BoxFuture, ready};
+use futures_util::future::BoxFuture;
 use http::Request;
 use pin_project_lite::pin_project;
 use std::{
@@ -10,7 +10,7 @@ use std::{
     future::Future,
     marker::PhantomData,
     pin::Pin,
-    task::{Context, Poll},
+    task::{ready, Context, Poll},
 };
 use tower_layer::Layer;
 use tower_service::Service;
