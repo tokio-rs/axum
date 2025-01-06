@@ -4,7 +4,6 @@ use http::{header, HeaderValue, StatusCode};
 
 mod redirect;
 
-#[cfg(feature = "tokio")]
 pub mod sse;
 
 #[doc(no_inline)]
@@ -27,7 +26,6 @@ pub use axum_core::response::{
 pub use self::redirect::Redirect;
 
 #[doc(inline)]
-#[cfg(feature = "tokio")]
 pub use sse::Sse;
 
 /// An HTML response.
