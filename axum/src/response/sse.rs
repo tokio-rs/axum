@@ -46,7 +46,6 @@ use std::{
     time::Duration,
 };
 use sync_wrapper::SyncWrapper;
-use tokio::time::Sleep;
 
 /// An SSE response
 #[derive(Clone)]
@@ -496,7 +495,7 @@ pin_project! {
     #[derive(Debug)]
     pub struct KeepAliveStream<S> {
         #[pin]
-        alive_timer: Sleep,
+        alive_timer: tokio::time::Sleep,
         #[pin]
         inner: S,
         keep_alive: KeepAlive,
