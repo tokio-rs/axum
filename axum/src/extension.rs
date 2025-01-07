@@ -3,7 +3,7 @@ use axum_core::{
     extract::FromRequestParts,
     response::{IntoResponse, Response, ResponseParts},
 };
-use http::{request::Parts, Request};
+use http::{request::Parts, Extensions, Request};
 use std::{
     convert::Infallible,
     task::{Context, Poll},
@@ -69,6 +69,15 @@ use tower_service::Service;
 #[must_use]
 pub struct Extension<T>(pub T);
 
+impl<T> Extension<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    fn from_extensions(extensions: &Extensions) -> Option<Self> {
+        extensions.get::<T>().cloned().map(Extension)
+    }
+}
+
 impl<T, S> FromRequestParts<S> for Extension<T>
 where
     T: Clone + Send + Sync + 'static,
@@ -77,17 +86,12 @@ where
     type Rejection = ExtensionRejection;
 
     async fn from_request_parts(req: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let value = req
-            .extensions
-            .get::<T>()
-            .ok_or_else(|| {
-                MissingExtension::from_err(format!(
-                    "Extension of type `{}` was not found. Perhaps you forgot to add it? See `axum::Extension`.",
-                    std::any::type_name::<T>()
-                ))
-            }).cloned()?;
-
-        Ok(Extension(value))
+        Ok(Self::from_extensions(&req.extensions).ok_or_else(|| {
+            MissingExtension::from_err(format!(
+                "Extension of type `{}` was not found. Perhaps you forgot to add it? See `axum::Extension`.",
+                std::any::type_name::<T>()
+            ))
+        })?)
     }
 }
 
