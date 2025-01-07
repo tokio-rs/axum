@@ -38,9 +38,7 @@ use futures_util::stream::{Stream, TryStream};
 use http_body::Frame;
 use pin_project_lite::pin_project;
 use std::{
-    fmt,
-    future::Future,
-    mem,
+    fmt, mem,
     pin::Pin,
     task::{ready, Context, Poll},
     time::Duration,
@@ -527,6 +525,8 @@ where
     type Item = Result<Event, E>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        use std::future::Future;
+
         let mut this = self.as_mut().project();
 
         match this.inner.as_mut().poll_next(cx) {
