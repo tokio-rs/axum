@@ -3,6 +3,8 @@
 use self::{future::RouteFuture, not_found::NotFound, path_router::PathRouter};
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
+#[cfg(feature = "matched-path")]
+use crate::extract::MatchedPath;
 use crate::{
     body::{Body, HttpBody},
     boxed::BoxedIntoRoute,
@@ -20,7 +22,8 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-use tower_layer::Layer;
+use tower::service_fn;
+use tower_layer::{layer_fn, Layer};
 use tower_service::Service;
 
 pub mod future;
@@ -78,8 +81,7 @@ impl<S> Clone for Router<S> {
 }
 
 struct RouterInner<S> {
-    path_router: PathRouter<S, false>,
-    fallback_router: PathRouter<S, true>,
+    path_router: PathRouter<S>,
     default_fallback: bool,
     catch_all_fallback: Fallback<S>,
 }
@@ -97,7 +99,6 @@ impl<S> fmt::Debug for Router<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Router")
             .field("path_router", &self.inner.path_router)
-            .field("fallback_router", &self.inner.fallback_router)
             .field("default_fallback", &self.inner.default_fallback)
             .field("catch_all_fallback", &self.inner.catch_all_fallback)
             .finish()
@@ -147,7 +148,6 @@ where
         Self {
             inner: Arc::new(RouterInner {
                 path_router: Default::default(),
-                fallback_router: PathRouter::new_fallback(),
                 default_fallback: true,
                 catch_all_fallback: Fallback::Default(Route::new(NotFound)),
             }),
@@ -159,7 +159,6 @@ where
             Ok(inner) => inner,
             Err(arc) => RouterInner {
                 path_router: arc.path_router.clone(),
-                fallback_router: arc.fallback_router.clone(),
                 default_fallback: arc.default_fallback,
                 catch_all_fallback: arc.catch_all_fallback.clone(),
             },
@@ -213,8 +212,7 @@ where
 
         let RouterInner {
             path_router,
-            fallback_router,
-            default_fallback,
+            default_fallback: _,
             // we don't need to inherit the catch-all fallback. It is only used for CONNECT
             // requests with an empty path. If we were to inherit the catch-all fallback
             // it would end up matching `/{path}/*` which doesn't match empty paths.
@@ -223,10 +221,6 @@ where
 
         tap_inner!(self, mut this => {
             panic_on_err!(this.path_router.nest(path, path_router));
-
-            if !default_fallback {
-                panic_on_err!(this.fallback_router.nest(path, fallback_router));
-            }
         })
     }
 
@@ -253,42 +247,32 @@ where
     where
         R: Into<Router<S>>,
     {
-        const PANIC_MSG: &str =
-            "Failed to merge fallbacks. This is a bug in axum. Please file an issue";
-
         let other: Router<S> = other.into();
         let RouterInner {
             path_router,
-            fallback_router: mut other_fallback,
             default_fallback,
             catch_all_fallback,
         } = other.into_inner();
 
         map_inner!(self, mut this => {
-            panic_on_err!(this.path_router.merge(path_router));
-
             match (this.default_fallback, default_fallback) {
                 // both have the default fallback
                 // use the one from other
-                (true, true) => {
-                    this.fallback_router.merge(other_fallback).expect(PANIC_MSG);
-                }
+                (true, true) => {}
                 // this has default fallback, other has a custom fallback
                 (true, false) => {
-                    this.fallback_router.merge(other_fallback).expect(PANIC_MSG);
                     this.default_fallback = false;
                 }
                 // this has a custom fallback, other has a default
                 (false, true) => {
-                    let fallback_router = std::mem::take(&mut this.fallback_router);
-                    other_fallback.merge(fallback_router).expect(PANIC_MSG);
-                    this.fallback_router = other_fallback;
                 }
                 // both have a custom fallback, not allowed
                 (false, false) => {
                     panic!("Cannot merge two `Router`s that both have a fallback")
                 }
             };
+
+            panic_on_err!(this.path_router.merge(path_router));
 
             this.catch_all_fallback = this
                 .catch_all_fallback
@@ -310,7 +294,6 @@ where
     {
         map_inner!(self, this => RouterInner {
             path_router: this.path_router.layer(layer.clone()),
-            fallback_router: this.fallback_router.layer(layer.clone()),
             default_fallback: this.default_fallback,
             catch_all_fallback: this.catch_all_fallback.map(|route| route.layer(layer)),
         })
@@ -328,7 +311,6 @@ where
     {
         map_inner!(self, this => RouterInner {
             path_router: this.path_router.route_layer(layer),
-            fallback_router: this.fallback_router,
             default_fallback: this.default_fallback,
             catch_all_fallback: this.catch_all_fallback,
         })
@@ -397,8 +379,51 @@ where
     }
 
     fn fallback_endpoint(self, endpoint: Endpoint<S>) -> Self {
+        // TODO make this better, get rid of the `unwrap`s.
+        // We need the returned `Service` to be `Clone` and the function inside `service_fn` to be
+        // `FnMut` so instead of just using the owned service, we do this trick with `Option`. We
+        // know this will be called just once so it's fine. We're doing that so that we avoid one
+        // clone inside `oneshot_inner` so that the `Router` and subsequently the `State` is not
+        // cloned too much.
         tap_inner!(self, mut this => {
-            this.fallback_router.set_fallback(endpoint);
+            _ = this.path_router.route_endpoint(
+                "/",
+                endpoint.clone().layer(
+                    layer_fn(
+                        |service: Route| {
+                            let mut service = Some(service);
+                            service_fn(
+                                #[cfg_attr(not(feature = "matched-path"), allow(unused_mut))]
+                                move |mut request: Request| {
+                                    #[cfg(feature = "matched-path")]
+                                    request.extensions_mut().remove::<MatchedPath>();
+                                    service.take().unwrap().oneshot_inner_owned(request)
+                                }
+                            )
+                        }
+                    )
+                )
+            );
+
+            _ = this.path_router.route_endpoint(
+                FALLBACK_PARAM_PATH,
+                endpoint.layer(
+                    layer_fn(
+                        |service: Route| {
+                            let mut service = Some(service);
+                            service_fn(
+                                #[cfg_attr(not(feature = "matched-path"), allow(unused_mut))]
+                                move |mut request: Request| {
+                                    #[cfg(feature = "matched-path")]
+                                    request.extensions_mut().remove::<MatchedPath>();
+                                    service.take().unwrap().oneshot_inner_owned(request)
+                                }
+                            )
+                        }
+                    )
+                )
+            );
+
             this.default_fallback = false;
         })
     }
@@ -407,7 +432,6 @@ where
     pub fn with_state<S2>(self, state: S) -> Router<S2> {
         map_inner!(self, this => RouterInner {
             path_router: this.path_router.with_state(state.clone()),
-            fallback_router: this.fallback_router.with_state(state.clone()),
             default_fallback: this.default_fallback,
             catch_all_fallback: this.catch_all_fallback.with_state(state),
         })
@@ -415,11 +439,6 @@ where
 
     pub(crate) fn call_with_state(&self, req: Request, state: S) -> RouteFuture<Infallible> {
         let (req, state) = match self.inner.path_router.call_with_state(req, state) {
-            Ok(future) => return future,
-            Err((req, state)) => (req, state),
-        };
-
-        let (req, state) = match self.inner.fallback_router.call_with_state(req, state) {
             Ok(future) => return future,
             Err((req, state)) => (req, state),
         };

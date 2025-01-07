@@ -407,6 +407,87 @@ async fn what_matches_wildcard() {
     assert_eq!(get("/x/a/b/").await, "x");
 }
 
+#[should_panic(
+    expected = "Invalid route \"/{*wild}\": Insertion failed due to conflict with previously registered route: /{*__private__axum_fallback}"
+)]
+#[test]
+fn colliding_fallback_with_wildcard() {
+    _ = Router::<()>::new()
+        .fallback(|| async { "fallback" })
+        .route("/{*wild}", get(|| async { "wildcard" }));
+}
+
+// We might want to reject this too
+#[crate::test]
+async fn colliding_wildcard_with_fallback() {
+    let router = Router::new()
+        .route("/{*wild}", get(|| async { "wildcard" }))
+        .fallback(|| async { "fallback" });
+
+    let client = TestClient::new(router);
+
+    let res = client.get("/").await;
+    let body = res.text().await;
+    assert_eq!(body, "fallback");
+
+    let res = client.get("/x").await;
+    let body = res.text().await;
+    assert_eq!(body, "wildcard");
+}
+
+// We might want to reject this too
+#[crate::test]
+async fn colliding_fallback_with_fallback() {
+    let router = Router::new()
+        .fallback(|| async { "fallback1" })
+        .fallback(|| async { "fallback2" });
+
+    let client = TestClient::new(router);
+
+    let res = client.get("/").await;
+    let body = res.text().await;
+    assert_eq!(body, "fallback1");
+
+    let res = client.get("/x").await;
+    let body = res.text().await;
+    assert_eq!(body, "fallback1");
+}
+
+#[crate::test]
+async fn colliding_root_with_fallback() {
+    let router = Router::new()
+        .route("/", get(|| async { "root" }))
+        .fallback(|| async { "fallback" });
+
+    let client = TestClient::new(router);
+
+    let res = client.get("/").await;
+    let body = res.text().await;
+    assert_eq!(body, "root");
+
+    let res = client.get("/x").await;
+    let body = res.text().await;
+    assert_eq!(body, "fallback");
+}
+
+#[crate::test]
+async fn colliding_fallback_with_root() {
+    let router = Router::new()
+        .fallback(|| async { "fallback" })
+        .route("/", get(|| async { "root" }));
+
+    let client = TestClient::new(router);
+
+    // This works because fallback registers `any` so the `get` gets merged into it.
+    let res = client.get("/").await;
+    let body = res.text().await;
+    assert_eq!(body, "root");
+
+    let res = client.get("/x").await;
+    let body = res.text().await;
+    assert_eq!(body, "fallback");
+}
+
 #[crate::test]
 async fn static_and_dynamic_paths() {
     let app = Router::new()
