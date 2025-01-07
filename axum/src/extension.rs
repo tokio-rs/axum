@@ -1,4 +1,5 @@
 use crate::{extract::rejection::*, response::IntoResponseParts};
+use axum_core::extract::OptionalFromRequestParts;
 use axum_core::{
     extract::FromRequestParts,
     response::{IntoResponse, Response, ResponseParts},
@@ -43,7 +44,8 @@ use tower_service::Service;
 /// ```
 ///
 /// If the extension is missing it will reject the request with a `500 Internal
-/// Server Error` response.
+/// Server Error` response. Alternatively, you can use `Option<Extension<T>>` to
+/// make the extension extractor optional.
 ///
 /// # As response
 ///
@@ -92,6 +94,21 @@ where
                 std::any::type_name::<T>()
             ))
         })?)
+    }
+}
+
+impl<T, S> OptionalFromRequestParts<S> for Extension<T>
+where
+    T: Clone + Send + Sync + 'static,
+    S: Send + Sync,
+{
+    type Rejection = Infallible;
+
+    async fn from_request_parts(
+        req: &mut Parts,
+        _state: &S,
+    ) -> Result<Option<Self>, Self::Rejection> {
+        Ok(Self::from_extensions(&req.extensions))
     }
 }
 
