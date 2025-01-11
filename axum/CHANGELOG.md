@@ -9,9 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** Implement `OptionalFromRequest` for `Json` ([#3142])
 - **added:** Implement `OptionalFromRequest` for `Extension` ([#3157])
+- **change:** Make the `status` function of rejections a `const` function, such
+  as `JsonRejection`, `QueryRejection` and `PathRejection` ([#3168])
 
 [#3142]: https://github.com/tokio-rs/axum/pull/3142
 [#3157]: https://github.com/tokio-rs/axum/pull/3157
+[#3168]: https://github.com/tokio-rs/axum/pull/3168
 
 # 0.8.0
 

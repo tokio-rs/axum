@@ -10,8 +10,11 @@ and this project adheres to [Semantic Versioning].
 - **breaking:** Remove unused `async-stream` feature, which was accidentally
   introduced as an implicit feature through an optional dependency which was no
   longer being used ([#3145])
+- **change:** Make the `status` function of rejections a `const` function, such
+  as `FormRejection`, `QueryRejection` and `MultipartRejection` ([#3168])
 
 [#3145]: https://github.com/tokio-rs/axum/pull/3145
+[#3168]: https://github.com/tokio-rs/axum/pull/3168
 
 # 0.10.0
 
