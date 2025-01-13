@@ -572,8 +572,14 @@ impl Utf8Bytes {
         self.0.as_str()
     }
 
-    fn into_tungstenite(self) -> ts::Utf8Bytes {
+    /// Convert Utf8Bytes into ts::Utf8Bytes
+    pub fn into_tungstenite(self) -> ts::Utf8Bytes {
         self.0
+    }
+
+    /// Convert ts::Utf8Bytes into Utf8Bytes
+    pub fn from_tungstenite(byte: ts::Utf8Bytes) -> Self {
+        Utf8Bytes(byte)
     }
 }
 
