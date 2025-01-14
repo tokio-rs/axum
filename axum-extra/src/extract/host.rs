@@ -203,7 +203,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(matches!(host, Some(Host(_))));
+        assert!(host.is_some());
     }
 
     #[crate::test]
@@ -213,7 +213,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(matches!(host, None));
+        assert!(host.is_none());
     }
 
     #[test]
