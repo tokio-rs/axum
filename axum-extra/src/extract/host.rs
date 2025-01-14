@@ -1,10 +1,11 @@
 use super::rejection::{FailedToResolveHost, HostRejection};
-use axum::extract::FromRequestParts;
+use axum::extract::{FromRequestParts, OptionalFromRequestParts};
 use http::{
     header::{HeaderMap, FORWARDED},
     request::Parts,
     uri::Authority,
 };
+use std::convert::Infallible;
 
 const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 
@@ -56,6 +57,24 @@ where
         }
 
         Err(HostRejection::FailedToResolveHost(FailedToResolveHost))
+    }
+}
+
+impl<S> OptionalFromRequestParts<S> for Host
+where
+    S: Send + Sync,
+{
+    type Rejection = Infallible;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> Result<Option<Self>, Self::Rejection> {
+        Ok(
+            <Self as FromRequestParts<S>>::from_request_parts(parts, _state)
+                .await
+                .ok(),
+        )
     }
 }
 
@@ -148,7 +167,10 @@ mod tests {
     async fn ip4_uri_host() {
         let mut parts = Request::new(()).into_parts().0;
         parts.uri = "https://127.0.0.1:1234/image.jpg".parse().unwrap();
-        let host = Host::from_request_parts(&mut parts, &()).await.unwrap();
+        let host =
+            <Host as axum::extract::FromRequestParts<_>>::from_request_parts(&mut parts, &())
+                .await
+                .unwrap();
         assert_eq!(host.0, "127.0.0.1:1234");
     }
 
@@ -156,8 +178,42 @@ mod tests {
     async fn ip6_uri_host() {
         let mut parts = Request::new(()).into_parts().0;
         parts.uri = "http://cool:user@[::1]:456/file.txt".parse().unwrap();
-        let host = Host::from_request_parts(&mut parts, &()).await.unwrap();
+        let host =
+            <Host as axum::extract::FromRequestParts<_>>::from_request_parts(&mut parts, &())
+                .await
+                .unwrap();
         assert_eq!(host.0, "[::1]:456");
+    }
+
+    #[crate::test]
+    async fn missing_host() {
+        let mut parts = Request::new(()).into_parts().0;
+        let host =
+            <Host as axum::extract::FromRequestParts<_>>::from_request_parts(&mut parts, &())
+                .await
+                .unwrap_err();
+        assert!(matches!(host, HostRejection::FailedToResolveHost(_)));
+    }
+
+    #[crate::test]
+    async fn optional_extractor() {
+        let mut parts = Request::new(()).into_parts().0;
+        parts.uri = "https://127.0.0.1:1234/image.jpg".parse().unwrap();
+        let host = Option::<Host>::from_request_parts(&mut parts, &())
+            .await
+            .unwrap();
+
+        assert!(matches!(host, Some(Host(_))));
+    }
+
+    #[crate::test]
+    async fn optional_extractor_none() {
+        let mut parts = Request::new(()).into_parts().0;
+        let host = Option::<Host>::from_request_parts(&mut parts, &())
+            .await
+            .unwrap();
+
+        assert!(matches!(host, None));
     }
 
     #[test]
