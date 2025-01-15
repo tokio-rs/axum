@@ -171,10 +171,7 @@ mod tests {
     async fn ip4_uri_host() {
         let mut parts = Request::new(()).into_parts().0;
         parts.uri = "https://127.0.0.1:1234/image.jpg".parse().unwrap();
-        let host =
-            <Host as axum::extract::FromRequestParts<_>>::from_request_parts(&mut parts, &())
-                .await
-                .unwrap();
+        let host = parts.extract::<Host>().await.unwrap();
         assert_eq!(host.0, "127.0.0.1:1234");
     }
 
@@ -182,21 +179,14 @@ mod tests {
     async fn ip6_uri_host() {
         let mut parts = Request::new(()).into_parts().0;
         parts.uri = "http://cool:user@[::1]:456/file.txt".parse().unwrap();
-        let host =
-            <Host as axum::extract::FromRequestParts<_>>::from_request_parts(&mut parts, &())
-                .await
-                .unwrap();
-
+        let host = parts.extract::<Host>().await.unwrap();
         assert_eq!(host.0, "[::1]:456");
     }
 
     #[crate::test]
     async fn missing_host() {
         let mut parts = Request::new(()).into_parts().0;
-        let host =
-            <Host as axum::extract::FromRequestParts<_>>::from_request_parts(&mut parts, &())
-                .await
-                .unwrap_err();
+        let host = parts.extract::<Host>().await.unwrap_err();
         assert!(matches!(host, HostRejection::FailedToResolveHost(_)));
     }
 
@@ -204,20 +194,14 @@ mod tests {
     async fn optional_extractor() {
         let mut parts = Request::new(()).into_parts().0;
         parts.uri = "https://127.0.0.1:1234/image.jpg".parse().unwrap();
-        let host = Option::<Host>::from_request_parts(&mut parts, &())
-            .await
-            .unwrap();
-
+        let host = parts.extract::<Option<Host>>().await.unwrap();
         assert!(host.is_some());
     }
 
     #[crate::test]
     async fn optional_extractor_none() {
         let mut parts = Request::new(()).into_parts().0;
-        let host = Option::<Host>::from_request_parts(&mut parts, &())
-            .await
-            .unwrap();
-
+        let host = parts.extract::<Option<Host>>().await.unwrap();
         assert!(host.is_none());
     }
 
