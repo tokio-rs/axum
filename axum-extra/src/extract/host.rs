@@ -1,5 +1,8 @@
 use super::rejection::{FailedToResolveHost, HostRejection};
-use axum::extract::{FromRequestParts, OptionalFromRequestParts};
+use axum::{
+    extract::{FromRequestParts, OptionalFromRequestParts},
+    RequestPartsExt,
+};
 use http::{
     header::{HeaderMap, FORWARDED},
     request::Parts,
@@ -32,31 +35,12 @@ where
     type Rejection = HostRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        if let Some(host) = parse_forwarded(&parts.headers) {
-            return Ok(Host(host.to_owned()));
-        }
-
-        if let Some(host) = parts
-            .headers
-            .get(X_FORWARDED_HOST_HEADER_KEY)
-            .and_then(|host| host.to_str().ok())
-        {
-            return Ok(Host(host.to_owned()));
-        }
-
-        if let Some(host) = parts
-            .headers
-            .get(http::header::HOST)
-            .and_then(|host| host.to_str().ok())
-        {
-            return Ok(Host(host.to_owned()));
-        }
-
-        if let Some(authority) = parts.uri.authority() {
-            return Ok(Host(parse_authority(authority).to_owned()));
-        }
-
-        Err(HostRejection::FailedToResolveHost(FailedToResolveHost))
+        parts
+            .extract::<Option<Host>>()
+            .await
+            .ok()
+            .flatten()
+            .ok_or(HostRejection::FailedToResolveHost(FailedToResolveHost))
     }
 }
 
@@ -70,11 +54,31 @@ where
         parts: &mut Parts,
         _state: &S,
     ) -> Result<Option<Self>, Self::Rejection> {
-        Ok(
-            <Self as FromRequestParts<S>>::from_request_parts(parts, _state)
-                .await
-                .ok(),
-        )
+        if let Some(host) = parse_forwarded(&parts.headers) {
+            return Ok(Some(Host(host.to_owned())));
+        }
+
+        if let Some(host) = parts
+            .headers
+            .get(X_FORWARDED_HOST_HEADER_KEY)
+            .and_then(|host| host.to_str().ok())
+        {
+            return Ok(Some(Host(host.to_owned())));
+        }
+
+        if let Some(host) = parts
+            .headers
+            .get(http::header::HOST)
+            .and_then(|host| host.to_str().ok())
+        {
+            return Ok(Some(Host(host.to_owned())));
+        }
+
+        if let Some(authority) = parts.uri.authority() {
+            return Ok(Some(Host(parse_authority(authority).to_owned())));
+        }
+
+        Ok(None)
     }
 }
 
@@ -182,6 +186,7 @@ mod tests {
             <Host as axum::extract::FromRequestParts<_>>::from_request_parts(&mut parts, &())
                 .await
                 .unwrap();
+
         assert_eq!(host.0, "[::1]:456");
     }
 
