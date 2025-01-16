@@ -8,7 +8,7 @@ publish = false
 axum = { path = "../../axum" }
 futures-util = { version = "0.3", default-features = false }
 hyper = { version = "1.0.0", features = ["full"] }
-hyper-util = { version = "0.1" }
+hyper-util = { version = "0.1", features = ["http2"] }
 tokio = { version = "1", features = ["full"] }
 tokio-rustls = "0.26"
 tower-service = "0.3.2"
