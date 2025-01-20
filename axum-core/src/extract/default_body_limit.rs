@@ -103,7 +103,6 @@ impl DefaultBodyLimit {
     ///     extract::DefaultBodyLimit,
     /// };
     /// use tower_http::limit::RequestBodyLimitLayer;
-    /// use http_body_util::Limited;
     ///
     /// let app: Router<()> = Router::new()
     ///     .route("/", get(|body: Bytes| async {}))
@@ -137,8 +136,6 @@ impl DefaultBodyLimit {
     ///     body::{Bytes, Body},
     ///     extract::DefaultBodyLimit,
     /// };
-    /// use tower_http::limit::RequestBodyLimitLayer;
-    /// use http_body_util::Limited;
     ///
     /// let app: Router<()> = Router::new()
     ///     .route("/", get(|body: Bytes| async {}))
