@@ -152,6 +152,12 @@ impl<F> std::fmt::Debug for WebSocketUpgrade<F> {
 }
 
 impl<F> WebSocketUpgrade<F> {
+    /// Read buffer capacity. The default value is 128KiB
+    pub fn read_buffer_size(mut self, size: usize) -> Self {
+        self.config.read_buffer_size = size;
+        self
+    }
+
     /// The target minimum size of the write buffer to reach before writing the data
     /// to the underlying stream.
     ///
