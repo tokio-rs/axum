@@ -302,7 +302,7 @@ dependencies = [
 
 [[package]]
 name = "axum"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "anyhow",
  "axum-core",
@@ -349,7 +349,7 @@ dependencies = [
 
 [[package]]
 name = "axum-core"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "axum",
  "axum-extra",
@@ -373,7 +373,7 @@ dependencies = [
 
 [[package]]
 name = "axum-extra"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "axum",
  "axum-core",
