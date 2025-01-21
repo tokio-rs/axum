@@ -34,10 +34,14 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
-    - name: cargo doc
-      env:
-        RUSTDOCFLAGS: "-D rustdoc::all -A rustdoc::private-doc-tests"
-      run: cargo doc --all-features --no-deps
+    - name: cargo doc -p axum-core
+      run: cargo doc --package axum-core --all-features --no-deps
+    - name: cargo doc -p axum
+      run: cargo doc --package axum --all-features --no-deps
+    - name: cargo doc -p axum-extra
+      run: cargo doc --package axum-extra --all-features --no-deps
+    env:
+      RUSTDOCFLAGS: "-D rustdoc::all -A rustdoc::private-doc-tests"
 
   cargo-hack:
     runs-on: ubuntu-24.04

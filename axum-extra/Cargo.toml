@@ -41,6 +41,12 @@ tracing = ["axum-core/tracing", "axum/tracing"]
 typed-header = ["dep:headers"]
 typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
 
+# Enabled by docs.rs because it uses all-features
+__private_docs = [
+    # Required for the ErasedJson docs to be able to link to axum::Json
+    "axum/json",
+]
+
 [dependencies]
 axum = { path = "../axum", version = "0.8.0", default-features = false, features = ["original-uri"] }
 axum-core = { path = "../axum-core", version = "0.5.0" }
