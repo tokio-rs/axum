@@ -242,11 +242,10 @@ jobs:
   typos:
     name: Spell Check with Typos
     runs-on: ubuntu-24.04
-    if: github.event_name == 'push' || !github.event.pull_request.draft
 
     steps:
       - name: Checkout Actions Repository
         uses: actions/checkout@v4
 
       - name: Check the spelling of the files in our repo
-        uses: crate-ci/typos@v1.28.4
+        uses: crate-ci/typos@v1.29.4
