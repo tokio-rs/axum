@@ -259,7 +259,7 @@ If you choose to implement a custom error type such as `type Error = BoxError` (
 ```ignore
 ServiceBuilder::new()
         .layer(HandleErrorLayer::new(|_: BoxError| async {
-            // because Axum uses infallible errors, you must handle your custom error type from your middleware here
+            // because axum uses infallible errors, you must handle your custom error type from your middleware here
             StatusCode::BAD_REQUEST
         }))
         .layer(

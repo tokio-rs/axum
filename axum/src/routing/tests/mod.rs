@@ -1080,9 +1080,9 @@ async fn middleware_adding_body() {
     let app = Router::new()
         .route("/", get(()))
         .layer(MapResponseLayer::new(|mut res: Response| -> Response {
-            // If there is a content-length header, its value will be zero and Axum will avoid
+            // If there is a content-length header, its value will be zero and axum will avoid
             // overwriting it. But this means our content-length doesn’t match the length of the
-            // body, which leads to panics in Hyper. Thus we have to ensure that Axum doesn’t add
+            // body, which leads to panics in Hyper. Thus we have to ensure that axum doesn’t add
             // on content-length headers until after middleware has been run.
             assert!(!res.headers().contains_key("content-length"));
             *res.body_mut() = "…".into();
