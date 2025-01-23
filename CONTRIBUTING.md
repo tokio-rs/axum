@@ -196,7 +196,7 @@ however, will stay intact on the Pull Request page.
 
 ## Reviewing Pull Requests
 
-**Any Tokio, Hyperium, and Tower, Axum community member is welcome to review any pull request**.
+**Any Tokio, Hyperium, and Tower, axum community member is welcome to review any pull request**.
 
 All contributors who choose to review and provide feedback on Pull Requests have
 a responsibility to both the project and the individual making the contribution.
@@ -242,7 +242,7 @@ Specific performance optimization techniques, coding styles and conventions
 change over time. The first impression you give to a new contributor never does.
 
 Nits (requests for small changes that are not essential) are fine, but try to
-avoid stalling the Pull Request. Most nits can typically be fixed by the Axum
+avoid stalling the Pull Request. Most nits can typically be fixed by the axum
 Collaborator landing the Pull Request but they can also be an opportunity for
 the contributor to learn a bit more about the project.
 
