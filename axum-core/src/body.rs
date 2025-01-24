@@ -155,6 +155,14 @@ impl Stream for BodyDataStream {
             }
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let size_hint = self.inner.size_hint();
+        let lower = usize::try_from(size_hint.lower()).unwrap_or_default();
+        let upper = size_hint.upper().and_then(|v| usize::try_from(v).ok());
+        (lower, upper)
+    }
 }
 
 impl http_body::Body for BodyDataStream {
