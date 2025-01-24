@@ -25,6 +25,21 @@ pub struct Redirect {
 }
 
 impl Redirect {
+    /// Create a new [`Redirect`] that uses a [`302 Found`][mdn] status code.
+    ///
+    /// This redirect should be used for temporary redirects where the original HTTP method should not be preserved for the
+    /// subsequent redirect request, which is the case for [`Redirect::temporary`].
+    /// Clients will use the `GET` method for the subsequent redirection request.
+    ///
+    /// # Panics
+    ///
+    /// If `uri` isn't a valid [`HeaderValue`].
+    ///
+    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/302
+    pub fn found(uri: &str) -> Self {
+        Self::with_status_code(StatusCode::FOUND, uri)
+    }
+
     /// Create a new [`Redirect`] that uses a [`303 See Other`][mdn] status code.
     ///
     /// This redirect instructs the client to change the method to GET for the subsequent request
