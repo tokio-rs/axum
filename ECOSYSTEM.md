@@ -53,6 +53,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-ws-broadcaster](https://github.com/Necoo33/axum-ws-broadcaster): A broadcasting liblary for both [axum-typed-websockets](https://crates.io/crates/axum-typed-websockets) and `axum::extract::ws`.
 - [axum-negotiate-layer](https://github.com/2ndDerivative/axum-negotiate-layer): Middleware/Layer for Kerberos/NTLM "Negotiate" authentication.
 - [axum-kit](https://github.com/4lkaid/axum-kit): Streamline the integration and usage of axum with SQLx and Redis.
+- [tower_allowed_hosts](https://crates.io/crates/tower_allowed_hosts): Allowed hosts middleware which limits request from only allowed hosts.
 
 ## Project showcase
 
