@@ -66,7 +66,7 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
 
         match item {
             Item::Both(path_segment, prefix_segment) => {
-                if is_capture(prefix_segment) || path_segment == prefix_segment {
+                if prefix_matches(prefix_segment, path_segment) {
                     // the prefix segment is either a param, which matches anything, or
                     // it actually matches the path segment
                     *matching_prefix_length.as_mut().unwrap() += path_segment.len();
@@ -148,12 +148,67 @@ where
     })
 }
 
-fn is_capture(segment: &str) -> bool {
-    segment.starts_with('{')
-        && segment.ends_with('}')
-        && !segment.starts_with("{{")
-        && !segment.ends_with("}}")
-        && !segment.starts_with("{*")
+fn prefix_matches(prefix_segment: &str, path_segment: &str) -> bool {
+    if let Some((prefix, suffix)) = capture_prefix_suffix(prefix_segment) {
+        path_segment.starts_with(prefix) && path_segment.ends_with(suffix)
+    } else {
+        prefix_segment == path_segment
+    }
+}
+
+/// Takes a segment and returns prefix and suffix of the path, omitting the capture. Currently,
+/// matchit supports only one capture so this can be a pair. If there is no capture, `None` is
+/// returned.
+fn capture_prefix_suffix(segment: &str) -> Option<(&str, &str)> {
+    fn find_first_not_double(needle: u8, haystack: &[u8]) -> Option<usize> {
+        let mut possible_capture = 0;
+        while let Some(index) = haystack
+            .get(possible_capture..)
+            .and_then(|haystack| haystack.iter().position(|byte| byte == &needle))
+        {
+            let index = index + possible_capture;
+
+            if haystack.get(index + 1) == Some(&needle) {
+                possible_capture = index + 2;
+                continue;
+            }
+
+            return Some(index);
+        }
+
+        None
+    }
+
+    let capture_start = find_first_not_double(b'{', segment.as_bytes())?;
+
+    let Some(capture_end) = find_first_not_double(b'}', segment.as_bytes()) else {
+        if cfg!(debug_assertions) {
+            panic!(
+                "Segment `{segment}` is malformed. It seems to contain a capture start but no \
+                capture end. This should have been rejected at application start, please file a \
+                bug in axum repository."
+            );
+        } else {
+            // This is very bad but let's not panic in production. This will most likely not match.
+            return None;
+        }
+    };
+
+    if capture_start > capture_end {
+        if cfg!(debug_assertions) {
+            panic!(
+                "Segment `{segment}` is malformed. It seems to contain a capture start after \
+                capture end. This should have been rejected at application start, please file a \
+                bug in axum repository."
+            );
+        } else {
+            // This is very bad but let's not panic in production. This will most likely not match.
+            return None;
+        }
+    }
+
+    // Slicing may panic but we found the indexes inside the string so this should be fine.
+    Some((&segment[..capture_start], &segment[capture_end + 1..]))
 }
 
 #[derive(Debug)]
@@ -378,6 +433,27 @@ mod tests {
         uri = "/a/a",
         prefix = "/a/",
         expected = Some("/a"),
+    );
+
+    test!(
+        param_14,
+        uri = "/abc",
+        prefix = "/a{b}c",
+        expected = Some("/"),
+    );
+
+    test!(
+        param_15,
+        uri = "/z/abc/d",
+        prefix = "/z/a{b}c",
+        expected = Some("/d"),
+    );
+
+    test!(
+        param_16,
+        uri = "/abc/d/e",
+        prefix = "/a{b}c/d/",
+        expected = Some("/e"),
     );
 
     #[quickcheck]
