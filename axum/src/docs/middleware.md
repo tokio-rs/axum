@@ -547,7 +547,7 @@ fn rewrite_request_uri<B>(req: Request<B>) -> Request<B> {
 }
 
 // this can be any `tower::Layer`
-let middleware = tower::util::MapRequestLayer::new(rewrite_request_uri);
+let middleware = axum::middleware::map_request(rewrite_request_uri);
 
 let app = Router::new();
 
