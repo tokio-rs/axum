@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **fixed:** Removed the warning about breaking changes from README
 
+- **changed:** Updated `matchit` allowing for routes with captures and static prefixes and suffixes ([#3143])
+
+[#3143]: https://github.com/tokio-rs/axum/pull/3143
+
 # 0.8.0
 
 ## since rc.1
