@@ -53,7 +53,7 @@ where
 ///
 /// Prefer using [`TypedHeader`] to extract only the headers you need.
 ///
-/// [`TypedHeader`]: https://docs.rs/axum/0.8/axum/extract/struct.TypedHeader.html
+/// [`TypedHeader`]: https://docs.rs/axum-extra/latest/axum_extra/struct.TypedHeader.html
 impl<S> FromRequestParts<S> for HeaderMap
 where
     S: Send + Sync,
