@@ -63,7 +63,7 @@ pub(crate) struct RouteId(u32);
 /// to handle requests. Thus, only `Router<()>` (i.e. without missing state) can
 /// be passed to [`serve`]. See [`Router::with_state`] for more details.
 ///
-/// [`serve`]: crate::serve
+/// [`serve`]: crate::serve()
 #[must_use]
 pub struct Router<S = ()> {
     inner: Arc<RouterInner<S>>,
