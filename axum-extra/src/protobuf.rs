@@ -3,11 +3,13 @@
 use axum::{
     extract::{rejection::BytesRejection, FromRequest, Request},
     response::{IntoResponse, Response},
+    RequestExt,
 };
 use axum_core::__composite_rejection as composite_rejection;
 use axum_core::__define_rejection as define_rejection;
-use bytes::{Bytes, BytesMut};
+use bytes::BytesMut;
 use http::StatusCode;
+use http_body_util::BodyExt;
 use prost::Message;
 
 /// A Protocol Buffer message extractor and response.
@@ -98,10 +100,15 @@ where
 {
     type Rejection = ProtobufRejection;
 
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        let mut bytes = Bytes::from_request(req, state).await?;
+    async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
+        let mut buf = req
+            .into_limited_body()
+            .collect()
+            .await
+            .map_err(ProtobufDecodeError)?
+            .aggregate();
 
-        match T::decode(&mut bytes) {
+        match T::decode(&mut buf) {
             Ok(value) => Ok(Protobuf(value)),
             Err(err) => Err(ProtobufDecodeError::from_err(err).into()),
         }
