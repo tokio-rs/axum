@@ -122,7 +122,7 @@ macro_rules! impl_handler_call_with {
              Fut: Future + Send + 'static,
              Fut::Output: IntoResponse,
          {
-             // this puts `futures_util` in our public API but thats fine in axum-extra
+             // this puts `futures_util` in our public API but that's fine in axum-extra
              type Future = Map<Fut, fn(Fut::Output) -> Response>;
 
              fn call(
