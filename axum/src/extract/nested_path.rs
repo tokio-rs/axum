@@ -27,7 +27,7 @@ use super::rejection::NestedPathRejection;
 /// let api = Router::new().route(
 ///     "/users",
 ///     get(|path: NestedPath| async move {
-///         // `path` will be "/api" because thats what this
+///         // `path` will be "/api" because that's what this
 ///         // router is nested at when we build `app`
 ///         let path = path.as_str();
 ///     })

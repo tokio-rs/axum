@@ -283,7 +283,7 @@ more flexibility and allows us to change internal implementations without
 breaking the public API.
 
 For example that means while [`Json`] is implemented using [`serde_json`] it
-doesn't directly expose the [`serde_json::Error`] thats contained in
+doesn't directly expose the [`serde_json::Error`] that's contained in
 [`JsonRejection::JsonDataError`]. However it is still possible to access via
 methods from [`std::error::Error`]:
 
