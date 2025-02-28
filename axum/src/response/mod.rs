@@ -84,6 +84,31 @@ impl IntoResponse for NoContent {
     }
 }
 
+/// An empty response with 202 Accepted status.
+///
+/// Due to historical and implementation reasons, the `IntoResponse` implementation of `()`
+/// (unit type) returns an empty response with 200 [`StatusCode::OK`] status.
+/// If you specifically want a 202 [`StatusCode::ACCEPTED`] status, you can use either `StatusCode` type
+/// directly, or this shortcut struct for self-documentation.
+///
+/// ```
+/// use axum::{extract::Path, response::Accepted};
+///
+/// async fn delete_user(Path(user): Path<String>) -> Result<Accepted, String> {
+///     // ...access database...
+/// # drop(user);
+///     Ok(Accepted)
+/// }
+/// ```
+#[derive(Debug, Clone, Copy)]
+pub struct Accepted;
+
+impl IntoResponse for Accepted {
+    fn into_response(self) -> Response {
+        StatusCode::ACCEPTED.into_response()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::extract::Extension;
@@ -254,6 +279,14 @@ mod tests {
         assert_eq!(
             super::NoContent.into_response().status(),
             StatusCode::NO_CONTENT,
+        )
+    }
+
+    #[test]
+    fn accepted() {
+        assert_eq!(
+            super::Accepted.into_response().status(),
+            StatusCode::ACCEPTED,
         )
     }
 }
