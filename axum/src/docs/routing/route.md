@@ -1,7 +1,7 @@
 Add another route to the router.
 
 `path` is a string of path segments separated by `/`. Each segment
-can be either static, a capture, or a wildcard.
+can either be static, contain a capture, or be a wildcard.
 
 `method_router` is the [`MethodRouter`] that should receive the request if the
 path matches `path`. `method_router` will commonly be a handler wrapped in a method
@@ -24,11 +24,15 @@ Paths can contain segments like `/{key}` which matches any single segment and
 will store the value captured at `key`. The value captured can be zero-length
 except for in the invalid path `//`.
 
+Each segment may have only one capture, but it may have static prefixes and suffixes.
+
 Examples:
 
 - `/{key}`
 - `/users/{id}`
 - `/users/{id}/tweets`
+- `/avatars/large_{id}.png`
+- `/avatars/small_{id}.jpg`
 
 Captures can be extracted using [`Path`](crate::extract::Path). See its
 documentation for more details.
@@ -38,6 +42,31 @@ regular expression. You must handle that manually in your handlers.
 
 [`MatchedPath`](crate::extract::MatchedPath) can be used to extract the matched
 path rather than the actual path.
+
+Captures must not be empty. For example `/a/` will not match `/a/{capture}` and
+`/.png` will not match `/{image}.png`.
+
+You may mix captures that have different static prefixes or suffixes, though it is discouraged as it
+might lead to surprising behavior.  If multiple routes would match, the one with the longest static
+prefix is used, if there are multiple with the same match, the longest matched static suffix is
+chosen. For example, if a request is done to `/abcdef` here are examples of routes that would all
+match. If multiple of these were defined in a single router, the topmost one would be used.
+
+- `/abcdef`
+- `/abc{x}ef`
+- `/abc{x}f`
+- `/abc{x}`
+- `/a{x}def`
+- `/a{x}`
+- `/{x}def`
+- `/{x}`
+
+This is done on each level of the path and if the path matches even if due to a wildcard, that path
+will be chosen. For example if one makes a request to `/foo/bar/baz` the first route will be used by
+axum because it has better match on the leftmost differing path segment and the whole path matches.
+
+- `/foo/{*wildcard}`
+- `/fo{x}/bar/baz`
 
 # Wildcards
 
