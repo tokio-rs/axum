@@ -265,6 +265,15 @@ impl<F> WebSocketUpgrade<F> {
         self
     }
 
+    /// Return the selected WebSocket subprotocol, if one has been chosen.
+    ///
+    /// If [`protocols()`][Self::protocols] has been called and a matching
+    /// protocol has been selected, the return value will be `Some` containing
+    /// said protocol. Otherwise, it will be `None`.
+    pub fn selected_protocol(&self) -> Option<&HeaderValue> {
+        self.protocol.as_ref()
+    }
+
     /// Provide a callback to call if upgrading the connection fails.
     ///
     /// The connection upgrade is performed in a background task. If that fails this callback
@@ -1154,6 +1163,7 @@ mod tests {
 
     fn echo_app() -> Router {
         async fn handle_socket(mut socket: WebSocket) {
+            assert_eq!(socket.protocol().unwrap(), "echo");
             while let Some(Ok(msg)) = socket.recv().await {
                 match msg {
                     Message::Text(_) | Message::Binary(_) | Message::Close(_) => {
@@ -1171,7 +1181,9 @@ mod tests {
         Router::new().route(
             "/echo",
             any(|ws: WebSocketUpgrade| {
-                ready(ws.protocols(["echo2", "echo"]).on_upgrade(handle_socket))
+                let ws = ws.protocols(["echo2", "echo"]);
+                assert_eq!(ws.selected_protocol().unwrap(), "echo");
+                ready(ws.on_upgrade(handle_socket))
             }),
         )
     }
