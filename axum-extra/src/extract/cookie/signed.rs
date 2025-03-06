@@ -306,11 +306,11 @@ impl<K> SignedCookieJar<K> {
         cookie: Cookie<'static>,
     ) -> Self {
         let with_cookie = self.add(cookie.clone());
-        let cookie_name = cookie.name().to_string();
+        let cookie_name = cookie.name().to_owned();
         let mut result = with_cookie;
 
         if let Some(signed_cookie) = result.jar.get(&cookie_name) {
-            let signed_value = signed_cookie.value().to_string();
+            let signed_value = signed_cookie.value().to_owned();
 
             result.jar.remove(Cookie::new(cookie_name.clone(), ""));
             let mut prefixed_jar = result.jar.prefixed_mut(prefix);
@@ -339,11 +339,13 @@ impl<K> SignedCookieJar<K> {
     /// ```
     pub fn get_prefixed<P: cookie::prefix::Prefix>(
         &self,
-        prefix: P,
+        _prefix: P,
         name: &str,
     ) -> Option<Cookie<'static>> {
-        let prefixed_jar = self.jar.prefixed(prefix);
-        prefixed_jar.get(name).and_then(|c| self.verify(c.clone()))
+        let prefixed_name = format!("{}{}", P::PREFIX, name);
+        self.jar
+            .get(&prefixed_name)
+            .and_then(|c| self.verify(c.clone()))
     }
     /// Remove a signed cookie with the specified prefix from the jar.
     ///

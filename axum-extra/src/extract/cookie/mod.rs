@@ -428,12 +428,27 @@ mod tests {
                 println!("Set Cookie value: {}", cookie_value);
                 assert!(cookie_value.contains("__Host-key"));
 
+                // For signed/private cookies, verify that the plaintext value is not directly visible
+                // (only for signed and private jars, not for the regular CookieJar)
+                if std::any::type_name::<$jar>().contains("Private")
+                    || std::any::type_name::<$jar>().contains("Signed")
+                {
+                    assert!(!cookie_value.contains("key=value"));
+                } else {
+                    assert!(cookie_value.contains("key=value"));
+                }
+
+                // Extract just the cookie part (before the first semicolon)
+                // Set-Cookie: __Host-key=value; Secure; Path=/ -> __Host-key=value
+                let cookie_header_value = cookie_value.split(';').next().unwrap().trim();
+                println!("Using Cookie header value: {}", cookie_header_value);
+
                 let res = app
                     .clone()
                     .oneshot(
                         Request::builder()
                             .uri("/get")
-                            .header("cookie", cookie_value)
+                            .header("cookie", cookie_header_value)
                             .body(Body::empty())
                             .unwrap(),
                     )
