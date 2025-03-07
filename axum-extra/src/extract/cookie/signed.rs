@@ -356,7 +356,7 @@ impl<K> SignedCookieJar<K> {
         _prefix: P,
         name: &str,
     ) -> Option<Cookie<'static>> {
-        let prefixed_name = format!("{}{}", P::PREFIX, name);
+        let prefixed_name = format!("{}{name}", P::PREFIX);
         self.jar
             .get(&prefixed_name)
             .and_then(|c| self.verify(c.clone()))
