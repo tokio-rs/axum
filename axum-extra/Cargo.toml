@@ -15,7 +15,13 @@ version = "0.11.0"
 default = ["tracing"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
-file-stream = ["dep:tokio-util", "tokio-util?/io", "dep:tokio", "tokio?/fs", "tokio?/io-util"]
+file-stream = [
+    "dep:tokio-util",
+    "tokio-util?/io",
+    "dep:tokio",
+    "tokio?/fs",
+    "tokio?/io-util",
+]
 attachment = ["dep:tracing"]
 error-response = ["dep:tracing", "tracing/std"]
 cookie = ["dep:cookie"]
@@ -36,10 +42,19 @@ json-lines = [
 multipart = ["dep:multer", "dep:fastrand"]
 protobuf = ["dep:prost"]
 scheme = []
-query = ["dep:form_urlencoded", "dep:serde_html_form", "dep:serde_path_to_error"]
+query = [
+    "dep:form_urlencoded",
+    "dep:serde_html_form",
+    "dep:serde_path_to_error",
+]
 tracing = ["axum-core/tracing", "axum/tracing"]
 typed-header = ["dep:headers"]
-typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
+typed-routing = [
+    "dep:axum-macros",
+    "dep:percent-encoding",
+    "dep:serde_html_form",
+    "dep:form_urlencoded",
+]
 
 # Enabled by docs.rs because it uses all-features
 __private_docs = [
@@ -48,10 +63,14 @@ __private_docs = [
 ]
 
 [dependencies]
-axum = { path = "../axum", version = "0.8.2", default-features = false, features = ["original-uri"] }
+axum = { path = "../axum", version = "0.8.2", default-features = false, features = [
+    "original-uri",
+] }
 axum-core = { path = "../axum-core", version = "0.5.1" }
 bytes = "1.1.0"
-futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+futures-util = { version = "0.3", default-features = false, features = [
+    "alloc",
+] }
 http = "1.0.0"
 http-body = "1.0.0"
 http-body-util = "0.1.0"
@@ -64,7 +83,9 @@ tower-service = "0.3"
 
 # optional dependencies
 axum-macros = { path = "../axum-macros", version = "0.5.0", optional = true }
-cookie = { package = "cookie", version = "0.18.0", features = ["percent-encode"], optional = true }
+cookie = { package = "cookie", version = "0.18.0", features = [
+    "percent-encode",
+], optional = true }
 fastrand = { version = "2.1.0", optional = true }
 form_urlencoded = { version = "1.1.0", optional = true }
 headers = { version = "0.4.0", optional = true }
@@ -84,7 +105,11 @@ typed-json = { version = "0.1.1", optional = true }
 axum = { path = "../axum", features = ["macros", "__private"] }
 axum-macros = { path = "../axum-macros", features = ["__private"] }
 hyper = "1.0.0"
-reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "multipart"] }
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "stream",
+    "multipart",
+] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.71"
 tokio = { version = "1.14", features = ["full"] }
