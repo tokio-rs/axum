@@ -305,22 +305,36 @@ impl<K> SignedCookieJar<K> {
         prefix: P,
         cookie: Cookie<'static>,
     ) -> Self {
-        let with_cookie = self.add(cookie.clone());
+        // Step 1: First add the cookie to the jar normally, which signs its value
+        let jar_with_signed_cookie = self.add(cookie.clone());
         let cookie_name = cookie.name().to_owned();
-        let mut result = with_cookie;
+        let mut modified_jar = jar_with_signed_cookie;
 
-        if let Some(signed_cookie) = result.jar.get(&cookie_name) {
+        // Step 2: Retrieve the signed cookie that was just added
+        if let Some(signed_cookie) = modified_jar.jar.get(&cookie_name) {
+            // Extract the signed value (the value with signature attached)
             let signed_value = signed_cookie.value().to_owned();
 
-            result.jar.remove(Cookie::new(cookie_name.clone(), ""));
-            let mut prefixed_jar = result.jar.prefixed_mut(prefix);
+            // Step 3: Remove the original non-prefixed cookie
+            modified_jar
+                .jar
+                .remove(Cookie::new(cookie_name.clone(), ""));
 
-            let mut new_cookie = cookie.clone();
-            new_cookie.set_value(signed_value);
-            prefixed_jar.add(new_cookie);
+            // Step 4: Create a prefixed jar to handle proper attribute enforcement
+            // (prefixed cookies require specific attributes like Secure, Path=/, etc.)
+            let mut prefixed_jar = modified_jar.jar.prefixed_mut(prefix);
+
+            // Step 5: Create a new cookie with the same base name but with the signed value
+            let mut prefixed_cookie = cookie.clone();
+            prefixed_cookie.set_value(signed_value);
+
+            // Step 6: Add the cookie to the prefixed jar, which will:
+            // - Add the prefix to the name (e.g., __Host- or __Secure-)
+            // - Set required security attributes based on the prefix
+            prefixed_jar.add(prefixed_cookie);
         }
 
-        result
+        modified_jar
     }
     /// Get a signed cookie with the specified prefix from the jar.
     ///
@@ -364,9 +378,7 @@ impl<K> SignedCookieJar<K> {
         P: cookie::prefix::Prefix,
         S: Into<String>,
     {
-        // Get a mutable PrefixedJar with the specified prefix
         let mut prefixed_jar = self.jar.prefixed_mut(prefix);
-        // Remove the cookie by its original name (targets the prefixed version)
         prefixed_jar.remove(name.into());
         self
     }

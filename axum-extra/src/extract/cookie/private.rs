@@ -247,31 +247,7 @@ impl<K> PrivateCookieJar<K> {
     /// Authenticates and decrypts `cookie`, returning the plaintext version if decryption succeeds
     /// or `None` otherwise.
     pub fn decrypt(&self, cookie: Cookie<'static>) -> Option<Cookie<'static>> {
-        // First try direct decryption
-        let decrypted = self.private_jar().decrypt(cookie.clone());
-        if decrypted.is_some() {
-            return decrypted;
-        }
-
-        // Check if this is a prefixed cookie and try different approaches
-        for prefix in &["__Host-", "__Secure-"] {
-            if cookie.name().starts_with(prefix) {
-                // For prefixed cookies, we need to try decrypting without the prefix
-                let mut cookie_without_prefix = cookie.clone();
-                let name_without_prefix = cookie.name().strip_prefix(prefix)?;
-                cookie_without_prefix.set_name(name_without_prefix.to_owned());
-
-                // Try decrypting without the prefix
-                if let Some(mut decrypted) = self.private_jar().decrypt(cookie_without_prefix) {
-                    // If successful, set the original prefixed name
-                    let prefixed_name = format!("{}{}", prefix, decrypted.name());
-                    decrypted.set_name(prefixed_name);
-                    return Some(decrypted);
-                }
-            }
-        }
-
-        None
+        self.private_jar().decrypt(cookie.clone())
     }
 
     /// Get an iterator over all cookies in the jar.
@@ -336,7 +312,7 @@ impl<K> PrivateCookieJar<K> {
     ///
     /// async fn handler(jar: PrivateCookieJar) {
     ///     if let Some(cookie) = jar.get_prefixed(cookie::prefix::Host, "session_id") {
-    ///         let value = cookie.value(); // Unsigned value
+    ///         let value = cookie.value();
     ///     }
     /// }
     /// ```
