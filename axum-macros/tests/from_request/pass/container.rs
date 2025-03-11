@@ -1,6 +1,7 @@
-use axum::{
-    extract::{FromRequest, Json},
-    response::Response,
+use axum::extract::{
+    rejection::JsonRejection,
+    FromRequest,
+    Json,
 };
 use serde::Deserialize;
 
@@ -14,7 +15,7 @@ struct Extractor {
 
 fn assert_from_request()
 where
-    Extractor: FromRequest<(), Rejection = Response>,
+    Extractor: FromRequest<(), Rejection = JsonRejection>,
 {
 }
 
