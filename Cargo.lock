@@ -1951,9 +1951,11 @@ name = "example-validator"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "http-body-util",
  "serde",
  "thiserror 1.0.69",
  "tokio",
+ "tower 0.5.2",
  "tracing",
  "tracing-subscriber",
  "validator",
