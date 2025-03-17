@@ -1814,7 +1814,9 @@ version = "0.1.0"
 dependencies = [
  "askama",
  "axum",
+ "http-body-util",
  "tokio",
+ "tower 0.5.2",
  "tracing",
  "tracing-subscriber",
 ]

@@ -25,7 +25,7 @@ async fn main() {
         .init();
 
     // build our application with some routes
-    let app = Router::new().route("/greet/{name}", get(greet));
+    let app = app();
 
     // run it
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
@@ -33,6 +33,10 @@ async fn main() {
         .unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
+}
+
+fn app() -> Router {
+    Router::new().route("/greet/{name}", get(greet))
 }
 
 async fn greet(extract::Path(name): extract::Path<String>) -> impl IntoResponse {
@@ -61,5 +65,35 @@ where
             )
                 .into_response(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+    };
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn test_main() {
+        let response = app()
+            .oneshot(
+                Request::builder()
+                    .uri("/greet/Foo")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body();
+        let bytes = body.collect().await.unwrap().to_bytes();
+        let html = String::from_utf8(bytes.to_vec()).unwrap();
+
+        assert_eq!(html, "<h1>Hello, Foo!</h1>");
     }
 }
