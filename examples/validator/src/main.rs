@@ -99,9 +99,18 @@ impl IntoResponse for ServerError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{body::Body, http::Request, http::StatusCode};
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+    };
     use http_body_util::BodyExt;
     use tower::ServiceExt;
+
+    async fn get_html(response: Response<Body>) -> String {
+        let body = response.into_body();
+        let bytes = body.collect().await.unwrap().to_bytes();
+        String::from_utf8(bytes.to_vec()).unwrap()
+    }
 
     #[tokio::test]
     async fn test_no_param() {
@@ -111,10 +120,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-        let body = response.into_body();
-        let bytes = body.collect().await.unwrap().to_bytes();
-        let html = String::from_utf8(bytes.to_vec()).unwrap();
-
+        let html = get_html(response).await;
         assert_eq!(html, "Failed to deserialize form: missing field `name`");
     }
 
@@ -131,10 +137,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-        let body = response.into_body();
-        let bytes = body.collect().await.unwrap().to_bytes();
-        let html = String::from_utf8(bytes.to_vec()).unwrap();
-
+        let html = get_html(response).await;
         assert_eq!(html, "Input validation error: [name: Can not be empty]");
     }
 
@@ -151,10 +154,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-        let body = response.into_body();
-        let bytes = body.collect().await.unwrap().to_bytes();
-        let html = String::from_utf8(bytes.to_vec()).unwrap();
-
+        let html = get_html(response).await;
         assert_eq!(html, "Input validation error: [name: Can not be empty]");
     }
 
@@ -171,10 +171,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
-        let body = response.into_body();
-        let bytes = body.collect().await.unwrap().to_bytes();
-        let html = String::from_utf8(bytes.to_vec()).unwrap();
-
+        let html = get_html(response).await;
         assert_eq!(html, "<h1>Hello, LT!</h1>");
     }
 }
