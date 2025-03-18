@@ -34,7 +34,7 @@ async fn main() {
         .init();
 
     // build our application with a route
-    let app = Router::new().route("/", get(handler));
+    let app = app();
 
     // run it
     let listener = TcpListener::bind("127.0.0.1:3000").await.unwrap();
@@ -42,9 +42,13 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
+fn app() -> Router {
+    Router::new().route("/", get(handler))
+}
+
 #[derive(Debug, Deserialize, Validate)]
 pub struct NameInput {
-    #[validate(length(min = 1, message = "Can not be empty"))]
+    #[validate(length(min = 2, message = "Can not be empty"))]
     pub name: String,
 }
 
@@ -89,5 +93,85 @@ impl IntoResponse for ServerError {
             ServerError::AxumFormRejection(_) => (StatusCode::BAD_REQUEST, self.to_string()),
         }
         .into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+    };
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    async fn get_html(response: Response<Body>) -> String {
+        let body = response.into_body();
+        let bytes = body.collect().await.unwrap().to_bytes();
+        String::from_utf8(bytes.to_vec()).unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_no_param() {
+        let response = app()
+            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let html = get_html(response).await;
+        assert_eq!(html, "Failed to deserialize form: missing field `name`");
+    }
+
+    #[tokio::test]
+    async fn test_with_param_without_value() {
+        let response = app()
+            .oneshot(
+                Request::builder()
+                    .uri("/?name=")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let html = get_html(response).await;
+        assert_eq!(html, "Input validation error: [name: Can not be empty]");
+    }
+
+    #[tokio::test]
+    async fn test_with_param_with_short_value() {
+        let response = app()
+            .oneshot(
+                Request::builder()
+                    .uri("/?name=X")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let html = get_html(response).await;
+        assert_eq!(html, "Input validation error: [name: Can not be empty]");
+    }
+
+    #[tokio::test]
+    async fn test_with_param_and_value() {
+        let response = app()
+            .oneshot(
+                Request::builder()
+                    .uri("/?name=LT")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let html = get_html(response).await;
+        assert_eq!(html, "<h1>Hello, LT!</h1>");
     }
 }
