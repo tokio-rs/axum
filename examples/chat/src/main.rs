@@ -159,3 +159,27 @@ fn check_username(state: &AppState, string: &mut String, name: &str) {
 async fn index() -> Html<&'static str> {
     Html(std::include_str!("../chat.html"))
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_check_username() {
+        let user_set = Mutex::new(HashSet::new());
+        let (tx, _rx) = broadcast::channel(100);
+        let app_state = Arc::new(AppState { user_set, tx });
+        let mut username = String::new();
+        let name = "Ferris";
+
+        check_username(&app_state, &mut username, name);
+
+        assert!(app_state.user_set.lock().unwrap().contains(name));
+        assert_eq!(username, name);
+
+        username.clear();
+        check_username(&app_state, &mut username, name);
+
+        assert_eq!(username, "");
+    }
+}
