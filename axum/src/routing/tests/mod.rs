@@ -1099,3 +1099,37 @@ async fn middleware_adding_body() {
 
     assert_eq!(res.text().await, "…");
 }
+
+#[crate::test]
+async fn test_call_with_state() {
+    let app = Router::new()
+        .route(
+            "/lower",
+            get(|State(x): State<String>| async move { x.to_lowercase() }),
+        )
+        .fallback(get(|State(x): State<String>| async move { x }));
+
+    let response = app
+        .call_with_state(
+            Request::get("/lower").body(Body::empty()).unwrap(),
+            "Foo".to_owned(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        response.into_body().collect().await.unwrap().to_bytes(),
+        "foo"
+    );
+
+    let response = app
+        .call_with_state(
+            Request::get("/blah").body(Body::empty()).unwrap(),
+            "Bar".to_owned(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        response.into_body().collect().await.unwrap().to_bytes(),
+        "Bar"
+    );
+}
