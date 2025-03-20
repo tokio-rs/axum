@@ -398,7 +398,7 @@ where
         })
     }
 
-    pub(crate) fn call_with_state(&self, req: Request, state: S) -> RouteFuture<Infallible> {
+    pub(crate) fn call_with_state_inner(&self, req: Request, state: S) -> RouteFuture<Infallible> {
         let (req, state) = match self.inner.path_router.call_with_state(req, state) {
             Ok(future) => return future,
             Err((req, state)) => (req, state),
@@ -413,6 +413,22 @@ where
             .catch_all_fallback
             .clone()
             .call_with_state(req, state)
+    }
+
+    /// Directly call into the router with the provided state.
+    ///
+    /// Normally, state is attached statically to a `Router` using
+    /// [`Router::with_state`], converting it into a `Router<()>`, which
+    /// implements [`Service`]. Per-request data can be provided with
+    /// [`Extension`](crate::Extension), which is usable by middleware.
+    /// However, if the state must be calculated dynamically, this method
+    /// provides an escape hatch to do so at the top level.
+    pub fn call_with_state<B>(&self, req: Request<B>, state: S) -> RouteFuture<Infallible>
+    where
+        B: HttpBody<Data = bytes::Bytes> + Send + 'static,
+        B::Error: Into<axum_core::BoxError>,
+    {
+        self.call_with_state_inner(req.map(Body::new), state)
     }
 
     /// Convert the router into a borrowed [`Service`] with a fixed request body type, to aid type
@@ -564,7 +580,7 @@ where
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
         let req = req.map(Body::new);
-        self.call_with_state(req, ())
+        self.call_with_state_inner(req, ())
     }
 }
 

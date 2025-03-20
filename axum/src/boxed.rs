@@ -121,7 +121,7 @@ where
     }
 
     fn call_with_state(self: Box<Self>, request: Request, state: S) -> RouteFuture<Infallible> {
-        self.router.call_with_state(request, state)
+        self.router.call_with_state_inner(request, state)
     }
 }
 
