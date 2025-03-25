@@ -429,7 +429,7 @@ impl FailedToDeserializePathParams {
     }
 
     /// Get the status code used for this rejection.
-    pub const fn status(&self) -> StatusCode {
+    pub fn status(&self) -> StatusCode {
         match self.0.kind {
             ErrorKind::Message(_)
             | ErrorKind::DeserializeError { .. }
@@ -563,7 +563,7 @@ impl InvalidUtf8InPathParam {
     }
 
     /// Get the status code used for this rejection.
-    pub const fn status(&self) -> StatusCode {
+    pub fn status(&self) -> StatusCode {
         StatusCode::BAD_REQUEST
     }
 }
