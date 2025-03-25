@@ -8,8 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **added:** Implement `From<Bytes>` for `Message` ([#3273])
+- **changed:** Improved code size / compile time of `Handler` implementations ([#3285])
 
 [#3273]: https://github.com/tokio-rs/axum/pull/3273
+[#3285]: https://github.com/tokio-rs/axum/pull/3285
 
 # 0.8.2
 
