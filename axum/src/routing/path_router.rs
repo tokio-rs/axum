@@ -36,6 +36,26 @@ where
     }
 }
 
+// Validates a path in compile time, used with the vpath macro.
+const fn validate_static_pathpath(path: &'static str) -> &'static str {
+    if path.is_empty() {
+        panic!("Paths must start with a `/`. Use \"/\" for root routes")
+    }
+    if path.as_bytes()[0] != b'/' {
+        panic!("Paths must start with /");
+    }
+    path
+}
+
+// usage: .route(vpath("/")) // compiles fine
+// .route(vpath("porato")) // compilation error -> "Paths must start with a /"
+#[macro_export]
+macro_rules! vpath {
+    ($e:expr) => {
+        const { validate_path($e) }
+    };
+}
+
 fn validate_path(v7_checks: bool, path: &str) -> Result<(), &'static str> {
     if path.is_empty() {
         return Err("Paths must start with a `/`. Use \"/\" for root routes");
