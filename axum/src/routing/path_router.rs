@@ -40,7 +40,8 @@ where
 // Allow dead code needed because this is only used within the vpath macro
 // and if there's no call to it, then, there's no users of it.
 #[allow(dead_code)]
-const fn validate_static_path(path: &'static str) -> &'static str {
+#[doc(hidden)]
+pub const fn __private_validate_static_path(path: &'static str) -> &'static str {
     if path.is_empty() {
         panic!("Paths must start with a `/`. Use \"/\" for root routes")
     }
@@ -51,11 +52,39 @@ const fn validate_static_path(path: &'static str) -> &'static str {
 }
 
 #[macro_export]
-/// usage: .route(vpath("/")) // compiles fine
-/// .route(vpath("porato")) // compilation error -> "Paths must start with a /"
+/// This macro checks that your string is the correct format to be used as a route,
+/// and fails in compilation time instead of runtime, if it's not.
+///
+/// This example will stop the compialtion:
+///
+/// ```compile_fail
+/// use axum::routing::*;
+/// use axum::vpath;
+///
+/// let handler = async {};
+/// let router = axum::Router::<()>::new()
+///     .route(vpath!("invalid_path"), get(root))
+///     .to_owned();
+///
+/// async fn root() {}
+/// ```
+///
+/// This one will compile without problems:
+///
+/// ```no_run
+/// use axum::routing::*;
+/// use axum::vpath;
+///
+/// let router = axum::Router::<()>::new()
+///     .route(vpath!("/valid_path"), get(root))
+///     .to_owned();
+///
+/// async fn root() {}
+/// ```
+///
 macro_rules! vpath {
     ($e:expr) => {
-        const { validate_static_path($e) }
+        const { __private_validate_static_path($e) }
     };
 }
 

@@ -461,6 +461,8 @@ pub use self::json::Json;
 #[doc(inline)]
 pub use self::routing::Router;
 
+pub use self::routing::__private_validate_static_path;
+
 #[doc(inline)]
 #[cfg(feature = "form")]
 pub use self::form::Form;
