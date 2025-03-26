@@ -51,17 +51,15 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
     path
 }
 
+#[rustversion::since(1.80)]
 #[macro_export]
-/// This macro checks that your string is the correct format to be used as a route,
-/// and fails in compilation time instead of runtime, if it's not.
+/// This macro aborts compilation if the path is invalid.
 ///
 /// This example will stop the compialtion:
 ///
 /// ```compile_fail
-/// use axum::routing::*;
-/// use axum::vpath;
+/// use axum::{vpath, routing::{Router, get}};
 ///
-/// let handler = async {};
 /// let router = axum::Router::<()>::new()
 ///     .route(vpath!("invalid_path"), get(root))
 ///     .to_owned();
@@ -72,8 +70,7 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
 /// This one will compile without problems:
 ///
 /// ```no_run
-/// use axum::routing::*;
-/// use axum::vpath;
+/// use axum::{vpath, routing::{Router, get}};
 ///
 /// let router = axum::Router::<()>::new()
 ///     .route(vpath!("/valid_path"), get(root))
@@ -84,7 +81,17 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
 ///
 macro_rules! vpath {
     ($e:expr) => {
-        const { __private_validate_static_path($e) }
+        const { $crate::routing::__private_validate_static_path($e) }
+    };
+}
+
+#[rustversion::before(1.80)]
+#[macro_export]
+/// The compiler is too old for this macro to do anything useful.
+/// Compile time path evaluation will work on rustc >= 1.80
+macro_rules! vpath {
+    ($e:expr) => {
+        $e
     };
 }
 
