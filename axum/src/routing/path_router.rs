@@ -37,7 +37,10 @@ where
 }
 
 // Validates a path in compile time, used with the vpath macro.
-const fn validate_static_pathpath(path: &'static str) -> &'static str {
+// Allow dead code needed because this is only used within the vpath macro
+// and if there's no call to it, then, there's no users of it.
+#[allow(dead_code)]
+const fn validate_static_path(path: &'static str) -> &'static str {
     if path.is_empty() {
         panic!("Paths must start with a `/`. Use \"/\" for root routes")
     }
@@ -47,12 +50,12 @@ const fn validate_static_pathpath(path: &'static str) -> &'static str {
     path
 }
 
-// usage: .route(vpath("/")) // compiles fine
-// .route(vpath("porato")) // compilation error -> "Paths must start with a /"
 #[macro_export]
+/// usage: .route(vpath("/")) // compiles fine
+/// .route(vpath("porato")) // compilation error -> "Paths must start with a /"
 macro_rules! vpath {
     ($e:expr) => {
-        const { validate_path($e) }
+        const { validate_static_path($e) }
     };
 }
 
