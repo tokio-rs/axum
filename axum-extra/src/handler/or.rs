@@ -66,9 +66,9 @@ where
     type Future = BoxFuture<'static, Response>;
 
     fn call(self, req: Request, state: S) -> Self::Future {
-        Box::pin(async move {
-            let (mut parts, body) = req.into_parts();
+        let (mut parts, body) = req.into_parts();
 
+        Box::pin(async move {
             if let Ok(lt) = Lt::from_request_parts(&mut parts, &state).await {
                 return self.lhs.call(lt, state).await;
             }
