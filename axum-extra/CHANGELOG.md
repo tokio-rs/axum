@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning].
 # Unreleased
 
 - **fixed:** Fix a broken link in the documentation of `ErasedJson` ([#3186])
+- **added:** Add `vpath!` for compile time path verification on static paths. [[#3288]]
 
 [#3186]: https://github.com/tokio-rs/axum/pull/3186
 

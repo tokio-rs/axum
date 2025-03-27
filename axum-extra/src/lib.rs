@@ -59,11 +59,6 @@ pub use headers;
 #[doc(inline)]
 pub use typed_header::TypedHeader;
 
-#[cfg(feature = "typed-routing")]
-#[rustversion::since(1.80)]
-#[doc(inline)]
-pub use self::routing::__private_validate_static_path;
-
 #[cfg(feature = "protobuf")]
 pub mod protobuf;
 

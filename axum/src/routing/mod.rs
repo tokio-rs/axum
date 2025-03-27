@@ -32,7 +32,6 @@ mod not_found;
 pub(crate) mod path_router;
 mod route;
 mod strip_prefix;
-
 pub(crate) mod url_params;
 
 #[cfg(test)]

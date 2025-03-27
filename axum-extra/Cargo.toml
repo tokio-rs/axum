@@ -40,7 +40,7 @@ scheme = []
 query = ["dep:form_urlencoded", "dep:serde_html_form", "dep:serde_path_to_error"]
 tracing = ["axum-core/tracing", "axum/tracing"]
 typed-header = ["dep:headers"]
-typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded", "dep:rustversion"]
+typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
 
 # Enabled by docs.rs because it uses all-features
 __private_docs = [
@@ -58,6 +58,7 @@ http-body = "1.0.0"
 http-body-util = "0.1.0"
 mime = "0.3"
 pin-project-lite = "0.2"
+rustversion = { version = "1.0.9"}
 serde = "1.0"
 tower = { version = "0.5.2", default-features = false, features = ["util"] }
 tower-layer = "0.3"
@@ -72,7 +73,6 @@ headers = { version = "0.4.0", optional = true }
 multer = { version = "3.0.0", optional = true }
 percent-encoding = { version = "2.1", optional = true }
 prost = { version = "0.13", optional = true }
-rustversion = { version = "1.0.9", optional = true }
 serde_html_form = { version = "0.2.0", optional = true }
 serde_json = { version = "1.0.71", optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }

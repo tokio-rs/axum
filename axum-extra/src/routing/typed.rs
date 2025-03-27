@@ -2,59 +2,7 @@ use std::{any::type_name, fmt};
 
 use super::sealed::Sealed;
 use http::Uri;
-use rustversion;
 use serde::Serialize;
-
-// Validates a path in compile time, used with the vpath macro.
-// Allow dead code needed because this is only used within the vpath macro
-// and if there's no call to it, then, there's no users of it.
-#[rustversion::since(1.80)]
-#[doc(hidden)]
-pub const fn __private_validate_static_path(path: &'static str) -> &'static str {
-    if path.is_empty() {
-        panic!("Paths must start with a `/`. Use \"/\" for root routes")
-    }
-    if path.as_bytes()[0] != b'/' {
-        panic!("Paths must start with /");
-    }
-    path
-}
-
-#[rustversion::since(1.80)]
-#[macro_export]
-/// This macro abort compilation if the path is invalid.
-///
-/// This example will stop the compilation:
-///
-/// ```compile_fail
-/// use axum::routing::{Router, get};
-/// use axum_extra::vpath;
-///
-/// let router = axum::Router::<()>::new()
-///     .route(vpath!("invalid_path"), get(root))
-///     .to_owned();
-///
-/// async fn root() {}
-/// ```
-///
-/// This one will compile without problems:
-///
-/// ```no_run
-/// use axum::routing::{Router, get};
-/// use axum_extra::vpath;
-///
-/// let router = axum::Router::<()>::new()
-///     .route(vpath!("/valid_path"), get(root))
-///     .to_owned();
-///
-/// async fn root() {}
-/// ```
-///
-macro_rules! vpath {
-    ($e:expr) => {
-        const { $crate::routing::__private_validate_static_path($e) }
-    };
-}
 
 /// A type safe path.
 ///
