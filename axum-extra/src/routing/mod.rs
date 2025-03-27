@@ -7,6 +7,10 @@ use axum::{
     Router,
 };
 use http::{uri::PathAndQuery, StatusCode, Uri};
+
+#[cfg(feature = "typed-routing")]
+use rustversion;
+
 use std::{borrow::Cow, convert::Infallible};
 use tower_service::Service;
 

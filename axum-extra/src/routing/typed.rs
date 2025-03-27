@@ -2,6 +2,7 @@ use std::{any::type_name, fmt};
 
 use super::sealed::Sealed;
 use http::Uri;
+use rustversion;
 use serde::Serialize;
 
 // Validates a path in compile time, used with the vpath macro.
