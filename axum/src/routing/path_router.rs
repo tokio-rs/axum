@@ -39,7 +39,7 @@ where
 // Validates a path in compile time, used with the vpath macro.
 // Allow dead code needed because this is only used within the vpath macro
 // and if there's no call to it, then, there's no users of it.
-#[allow(dead_code)]
+#[rustversion::since(1.80)]
 #[doc(hidden)]
 pub const fn __private_validate_static_path(path: &'static str) -> &'static str {
     if path.is_empty() {
@@ -53,9 +53,9 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
 
 #[rustversion::since(1.80)]
 #[macro_export]
-/// This macro aborts compilation if the path is invalid.
+/// This macro abort compilation if the path is invalid.
 ///
-/// This example will stop the compialtion:
+/// This example will stop the compilation:
 ///
 /// ```compile_fail
 /// use axum::{vpath, routing::{Router, get}};
