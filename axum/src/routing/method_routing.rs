@@ -19,7 +19,7 @@ use std::{
     fmt,
     task::{Context, Poll},
 };
-use tower::{service_fn, util::MapResponseLayer};
+use tower::service_fn;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -748,7 +748,7 @@ where
     /// requests.
     pub fn new() -> Self {
         let fallback = Route::new(service_fn(|_: Request| async {
-            Ok(StatusCode::METHOD_NOT_ALLOWED.into_response())
+            Ok(StatusCode::METHOD_NOT_ALLOWED)
         }));
 
         Self {
@@ -1016,11 +1016,7 @@ where
             );
         }
 
-        let layer_fn = move |svc| {
-            let svc = layer.layer(svc);
-            let svc = MapResponseLayer::new(IntoResponse::into_response).layer(svc);
-            Route::new(svc)
-        };
+        let layer_fn = move |svc| Route::new(layer.layer(svc));
 
         self.get = self.get.map(layer_fn.clone());
         self.head = self.head.map(layer_fn.clone());
