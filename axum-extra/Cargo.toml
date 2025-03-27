@@ -58,7 +58,7 @@ http-body = "1.0.0"
 http-body-util = "0.1.0"
 mime = "0.3"
 pin-project-lite = "0.2"
-rustversion = { version = "1.0.9"}
+rustversion = "1.0.9"
 serde = "1.0"
 tower = { version = "0.5.2", default-features = false, features = ["util"] }
 tower-layer = "0.3"
