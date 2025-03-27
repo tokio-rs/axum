@@ -7,12 +7,8 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- **breaking:** Remove unused `async-stream` feature, which was accidentally
-  introduced as an implicit feature through an optional dependency which was no
-  longer being used ([#3145])
 - **fixed:** Fix a broken link in the documentation of `ErasedJson` ([#3186])
 
-[#3145]: https://github.com/tokio-rs/axum/pull/3145
 [#3186]: https://github.com/tokio-rs/axum/pull/3186
 
 # 0.11.0
