@@ -38,7 +38,7 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
     path
 }
 
-/// This macro abort compilation if the path is invalid.
+/// This macro aborts compilation if the path is invalid.
 ///
 /// This example will fail to compile:
 ///
