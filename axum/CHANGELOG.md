@@ -8,21 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **added:** Implement `From<Bytes>` for `Message` ([#3273])
+- **added:** Implement `OptionalFromRequest` for `Json` ([#3142])
+- **added:** Implement `OptionalFromRequest` for `Extension` ([#3157])
 - **changed:** Improved code size / compile time of `Handler` implementations ([#3285])
 
 [#3273]: https://github.com/tokio-rs/axum/pull/3273
+[#3142]: https://github.com/tokio-rs/axum/pull/3142
+[#3157]: https://github.com/tokio-rs/axum/pull/3157
 [#3285]: https://github.com/tokio-rs/axum/pull/3285
 
 # 0.8.2
 
-- **added:** Implement `OptionalFromRequest` for `Json` ([#3142])
-- **added:** Implement `OptionalFromRequest` for `Extension` ([#3157])
-- **changed:** Make the `status` function of rejections a `const` function, such
-  as `JsonRejection`, `QueryRejection` and `PathRejection` ([#3168])
+Yanked from crates.io due to unforeseen breaking change, see [#3190] for details.
 
-[#3142]: https://github.com/tokio-rs/axum/pull/3142
-[#3157]: https://github.com/tokio-rs/axum/pull/3157
-[#3168]: https://github.com/tokio-rs/axum/pull/3168
+[#3190]: https://github.com/tokio-rs/axum/pull/3190
 
 # 0.8.1
 

@@ -5,18 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
-# 0.11.0
+# Unreleased
 
 - **breaking:** Remove unused `async-stream` feature, which was accidentally
   introduced as an implicit feature through an optional dependency which was no
   longer being used ([#3145])
 - **fixed:** Fix a broken link in the documentation of `ErasedJson` ([#3186])
-- **changed:** Make the `status` function of rejections a `const` function, such
-  as `FormRejection`, `QueryRejection` and `MultipartRejection` ([#3168])
 
 [#3145]: https://github.com/tokio-rs/axum/pull/3145
-[#3168]: https://github.com/tokio-rs/axum/pull/3168
 [#3186]: https://github.com/tokio-rs/axum/pull/3186
+
+# 0.11.0
+
+Yanked from crates.io due to unforeseen breaking change, see [#3190] for details.
+
+[#3190]: https://github.com/tokio-rs/axum/pull/3190
 
 # 0.10.0
 
