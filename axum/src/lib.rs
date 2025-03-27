@@ -461,6 +461,7 @@ pub use self::json::Json;
 #[doc(inline)]
 pub use self::routing::Router;
 
+#[rustversion::since(1.80)]
 pub use self::routing::__private_validate_static_path;
 
 #[doc(inline)]
