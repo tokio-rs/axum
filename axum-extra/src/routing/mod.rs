@@ -29,8 +29,8 @@ pub use axum_macros::TypedPath;
 #[cfg(feature = "typed-routing")]
 pub use self::typed::{SecondElementIs, TypedPath};
 
-#[rustversion::since(1.80)]
 #[cfg(feature = "typed-routing")]
+#[rustversion::since(1.80)]
 pub use self::typed::__private_validate_static_path;
 
 /// Extension trait that adds additional methods to [`Router`].
