@@ -40,7 +40,7 @@ scheme = []
 query = ["dep:form_urlencoded", "dep:serde_html_form", "dep:serde_path_to_error"]
 tracing = ["axum-core/tracing", "axum/tracing"]
 typed-header = ["dep:headers"]
-typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
+typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded", "dep:rustversion"]
 
 # Enabled by docs.rs because it uses all-features
 __private_docs = [
@@ -80,6 +80,7 @@ tokio-stream = { version = "0.1.9", optional = true }
 tokio-util = { version = "0.7", optional = true }
 tracing = { version = "0.1.37", default-features = false, optional = true }
 typed-json = { version = "0.1.1", optional = true }
+rustversion = { version = "1.0.9", optional = true }
 
 [dev-dependencies]
 axum = { path = "../axum", features = ["macros", "__private"] }

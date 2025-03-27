@@ -394,6 +394,7 @@ dependencies = [
  "pin-project-lite",
  "prost",
  "reqwest 0.12.12",
+ "rustversion",
  "serde",
  "serde_html_form",
  "serde_json",

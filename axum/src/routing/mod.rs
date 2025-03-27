@@ -33,9 +33,6 @@ pub(crate) mod path_router;
 mod route;
 mod strip_prefix;
 
-#[rustversion::since(1.80)]
-pub use path_router::__private_validate_static_path;
-
 pub(crate) mod url_params;
 
 #[cfg(test)]

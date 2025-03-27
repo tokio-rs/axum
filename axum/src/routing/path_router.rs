@@ -36,65 +36,6 @@ where
     }
 }
 
-// Validates a path in compile time, used with the vpath macro.
-// Allow dead code needed because this is only used within the vpath macro
-// and if there's no call to it, then, there's no users of it.
-#[rustversion::since(1.80)]
-#[doc(hidden)]
-pub const fn __private_validate_static_path(path: &'static str) -> &'static str {
-    if path.is_empty() {
-        panic!("Paths must start with a `/`. Use \"/\" for root routes")
-    }
-    if path.as_bytes()[0] != b'/' {
-        panic!("Paths must start with /");
-    }
-    path
-}
-
-#[rustversion::since(1.80)]
-#[macro_export]
-/// This macro abort compilation if the path is invalid.
-///
-/// This example will stop the compilation:
-///
-/// ```compile_fail
-/// use axum::{vpath, routing::{Router, get}};
-///
-/// let router = axum::Router::<()>::new()
-///     .route(vpath!("invalid_path"), get(root))
-///     .to_owned();
-///
-/// async fn root() {}
-/// ```
-///
-/// This one will compile without problems:
-///
-/// ```no_run
-/// use axum::{vpath, routing::{Router, get}};
-///
-/// let router = axum::Router::<()>::new()
-///     .route(vpath!("/valid_path"), get(root))
-///     .to_owned();
-///
-/// async fn root() {}
-/// ```
-///
-macro_rules! vpath {
-    ($e:expr) => {
-        const { $crate::routing::__private_validate_static_path($e) }
-    };
-}
-
-#[rustversion::before(1.80)]
-#[macro_export]
-/// The compiler is too old for this macro to do anything useful.
-/// Compile time path evaluation will work on rustc >= 1.80
-macro_rules! vpath {
-    ($e:expr) => {
-        $e
-    };
-}
-
 fn validate_path(v7_checks: bool, path: &str) -> Result<(), &'static str> {
     if path.is_empty() {
         return Err("Paths must start with a `/`. Use \"/\" for root routes");
