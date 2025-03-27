@@ -67,11 +67,7 @@ impl<E> Route<E> {
         <L::Service as Service<Request>>::Future: Send + 'static,
         NewError: 'static,
     {
-        let layer = (
-            MapErrLayer::new(Into::into),
-            MapResponseLayer::new(IntoResponse::into_response),
-            layer,
-        );
+        let layer = (MapErrLayer::new(Into::into), layer);
 
         Route::new(layer.layer(self))
     }
