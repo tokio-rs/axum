@@ -7,7 +7,6 @@ use axum::{
     Router,
 };
 use http::{uri::PathAndQuery, StatusCode, Uri};
-use rustversion;
 use std::{borrow::Cow, convert::Infallible};
 use tower_service::Service;
 
@@ -26,9 +25,7 @@ pub use axum_macros::TypedPath;
 #[cfg(feature = "typed-routing")]
 pub use self::typed::{SecondElementIs, TypedPath};
 
-// Validates a path in compile time, used with the vpath macro.
-// Allow dead code needed because this is only used within the vpath macro
-// and if there's no call to it, then, there's no users of it.
+// Validates a path at compile time, used with the vpath macro.
 #[rustversion::since(1.80)]
 #[doc(hidden)]
 pub const fn __private_validate_static_path(path: &'static str) -> &'static str {
@@ -43,7 +40,7 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
 
 /// This macro abort compilation if the path is invalid.
 ///
-/// This example will stop the compilation:
+/// This example will fail to compile:
 ///
 /// ```compile_fail
 /// use axum::routing::{Router, get};
@@ -70,7 +67,6 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
 /// ```
 ///
 /// This macro is available only on rust versions 1.80 and above.
-
 #[rustversion::since(1.80)]
 #[macro_export]
 macro_rules! vpath {
