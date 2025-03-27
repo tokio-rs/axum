@@ -101,9 +101,12 @@ where
 {
     type Rejection = <Self as FromRequestParts<S>>::Rejection;
 
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+    fn from_request(
+        req: Request,
+        state: &S,
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> {
         let (mut parts, _) = req.into_parts();
-        Self::from_request_parts(&mut parts, state).await
+        async move { Self::from_request_parts(&mut parts, state).await }
     }
 }
 
