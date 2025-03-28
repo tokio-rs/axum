@@ -290,6 +290,44 @@ async fn nest_at_capture() {
     assert_eq!(res.text().await, "a=foo b=bar");
 }
 
+// Not `crate::test` because `nest_service` would fail.
+#[tokio::test]
+async fn nest_at_prefix_capture() {
+    let empty_routes = Router::new();
+    let api_routes = Router::new().route(
+        "/{b}",
+        get(|Path((a, b)): Path<(String, String)>| async move { format!("a={a} b={b}") }),
+    );
+
+    let app = Router::new()
+        .nest("/x{a}x", api_routes)
+        .nest("/xax", empty_routes);
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/xax/bar").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "a=a b=bar");
+}
+
+#[tokio::test]
+async fn nest_service_at_prefix_capture() {
+    let empty_routes = Router::new();
+    let api_routes = Router::new().route(
+        "/{b}",
+        get(|Path((a, b)): Path<(String, String)>| async move { format!("a={a} b={b}") }),
+    );
+
+    let app = Router::new()
+        .nest_service("/x{a}x", api_routes)
+        .nest_service("/xax", empty_routes);
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/xax/bar").await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
 #[crate::test]
 async fn nest_with_and_without_trailing() {
     let app = Router::new().nest_service("/foo", get(|| async {}));
