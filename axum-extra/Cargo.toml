@@ -9,7 +9,7 @@ license = "MIT"
 name = "axum-extra"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.11.0"
+version = "0.10.1"
 
 [features]
 default = ["tracing"]
@@ -49,8 +49,8 @@ __private_docs = [
 ]
 
 [dependencies]
-axum = { path = "../axum", version = "0.8.2", default-features = false, features = ["original-uri"] }
-axum-core = { path = "../axum-core", version = "0.5.1" }
+axum = { path = "../axum", version = "0.8.3", default-features = false, features = ["original-uri"] }
+axum-core = { path = "../axum-core", version = "0.5.2" }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "1.0.0"

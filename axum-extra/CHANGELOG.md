@@ -5,18 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
-# Unreleased
-
-- **fixed:** Fix a broken link in the documentation of `ErasedJson` ([#3186])
-- **added:** Add `vpath!` for compile time path verification on static paths. ([#3288])
-
-[#3186]: https://github.com/tokio-rs/axum/pull/3186
-
 # 0.11.0
 
 Yanked from crates.io due to unforeseen breaking change, see [#3190] for details.
 
 [#3190]: https://github.com/tokio-rs/axum/pull/3190
+
+# 0.10.1
+
+- **fixed:** Fix a broken link in the documentation of `ErasedJson` ([#3186])
+- **added:** Add `vpath!` for compile time path verification on static paths. ([#3288])
+
+[#3186]: https://github.com/tokio-rs/axum/pull/3186
+[#3288]: https://github.com/tokio-rs/axum/pull/3288
 
 # 0.10.0
 
