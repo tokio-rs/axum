@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Implement `OptionalFromRequest` for `Json` ([#3142])
 - **added:** Implement `OptionalFromRequest` for `Extension` ([#3157])
 - **added:** Allow setting the read buffer capacity of `WebSocketUpgrade` ([#3178])
-- **changed:** Improved code size / compile time of dependent crates ([#3285], ([#3294]))
+- **changed:** Improved code size / compile time of dependent crates ([#3285], [#3294])
 
 [#3273]: https://github.com/tokio-rs/axum/pull/3273
 [#3142]: https://github.com/tokio-rs/axum/pull/3142
