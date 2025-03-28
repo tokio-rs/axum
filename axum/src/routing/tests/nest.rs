@@ -387,3 +387,100 @@ async fn colon_in_route() {
 async fn asterisk_in_route() {
     _ = Router::<()>::new().nest("/*foo", Router::new());
 }
+
+#[crate::test]
+async fn nesting_router_with_fallback() {
+    let nested = Router::new().fallback(|| async { "nested" });
+    let router = Router::new().route("/{x}/{y}", get(|| async { "two segments" }));
+
+    let client = TestClient::new(router.nest("/nest", nested));
+
+    let res = client.get("/a/b").await;
+    let body = res.text().await;
+    assert_eq!(body, "two segments");
+
+    let res = client.get("/nest/b").await;
+    let body = res.text().await;
+    assert_eq!(body, "nested");
+}
+
+#[crate::test]
+async fn defining_missing_routes_in_nested_router() {
+    let router = Router::new()
+        .route("/nest/before", get(|| async { "before" }))
+        .nest(
+            "/nest",
+            Router::new()
+                .route("/mid", get(|| async { "nested mid" }))
+                .fallback(|| async { "nested fallback" }),
+        )
+        .route("/nest/after", get(|| async { "after" }));
+
+    let client = TestClient::new(router);
+
+    let res = client.get("/nest/before").await;
+    let body = res.text().await;
+    assert_eq!(body, "before");
+
+    let res = client.get("/nest/after").await;
+    let body = res.text().await;
+    assert_eq!(body, "after");
+
+    let res = client.get("/nest/mid").await;
+    let body = res.text().await;
+    assert_eq!(body, "nested mid");
+
+    let res = client.get("/nest/fallback").await;
+    let body = res.text().await;
+    assert_eq!(body, "nested fallback");
+}
+
+#[test]
+#[should_panic(
+    expected = "Overlapping method route. Handler for `GET /nest/override` already exists"
+)]
+fn overriding_by_nested_router() {
+    _ = Router::<()>::new()
+        .route("/nest/override", get(|| async { "outer" }))
+        .nest(
+            "/nest",
+            Router::new().route("/override", get(|| async { "inner" })),
+        );
+}
+
+#[test]
+#[should_panic(
+    expected = "Overlapping method route. Handler for `GET /nest/override` already exists"
+)]
+fn overriding_nested_router_() {
+    _ = Router::<()>::new()
+        .nest(
+            "/nest",
+            Router::new().route("/override", get(|| async { "inner" })),
+        )
+        .route("/nest/override", get(|| async { "outer" }));
+}
+
+// This is just documenting current state, not intended behavior.
+#[crate::test]
+async fn overriding_nested_service_router() {
+    let router = Router::new()
+        .route("/nest/before", get(|| async { "outer" }))
+        .nest_service(
+            "/nest",
+            Router::new()
+                .route("/before", get(|| async { "inner" }))
+                .route("/after", get(|| async { "inner" })),
+        )
+        .route("/nest/after", get(|| async { "outer" }));
+
+    let client = TestClient::new(router);
+
+    let res = client.get("/nest/before").await;
+    let body = res.text().await;
+    assert_eq!(body, "outer");
+
+    let res = client.get("/nest/after").await;
+    let body = res.text().await;
+    assert_eq!(body, "outer");
+}
