@@ -30,25 +30,126 @@ pub use self::typed::{SecondElementIs, TypedPath};
 #[doc(hidden)]
 pub const fn __private_validate_static_path(path: &'static str) -> &'static str {
     if path.is_empty() {
-        panic!("Paths must start with a `/`. Use \"/\" for root routes")
+        panic!("Paths cannot be empty. Use \"/\" for root routes");
     }
     if path.as_bytes()[0] != b'/' {
-        panic!("Paths must start with /");
+        panic!("Paths must start with \"/\"");
+    }
+    if path.len() != 1 {
+        if path.as_bytes()[path.len() - 1] == b'/' {
+            panic!("Non-root paths must not end with a \"/\"");
+        }
+        let bytes = path.as_bytes();
+        let mut start = 1;
+        let mut i = 1;
+        while i <= bytes.len() {
+            if i == bytes.len() || bytes[i] == b'/' {
+                let seg_len = i - start;
+                if seg_len == 0 {
+                    panic!("Paths must not contain empty segments (i.e. no consecutive \"/\")");
+                }
+                if seg_len == 1 && bytes[start] == b'.' {
+                    panic!("Paths must not contain relative segments like \".\" or \"..\"");
+                }
+                if seg_len == 2 && bytes[start] == b'.' && bytes[start + 1] == b'.' {
+                    panic!("Paths must not contain relative segments like \".\" or \"..\"");
+                }
+                start = i + 1;
+            }
+            i += 1;
+        }
     }
     path
 }
 
 /// This macro aborts compilation if the path is invalid.
 ///
-/// This example will fail to compile:
+/// # Validations
+///
+/// The following constraints are enforced at compile time:
+///
+/// - **Empty paths are not allowed.**
+///   Use `"/"` for the root route instead of an empty string.
+///
+/// - **Paths must start with a `/`.**
+///
+/// - **Non-root paths must not end with a `/`.**
+///
+/// - **Paths must not contain empty segments.**
+///   This means no consecutive slashes (e.g. `"/api//users"` is invalid).
+///
+/// - **Paths must not contain relative segments like `"."` or `".."`.**
+///
+/// # Examples
+///
+/// This example will fail to compile because it lacks a leading `/`:
 ///
 /// ```compile_fail
 /// use axum::routing::{Router, get};
 /// use axum_extra::vpath;
 ///
 /// let router = axum::Router::<()>::new()
-///     .route(vpath!("invalid_path"), get(root))
-///     .to_owned();
+///     .route(vpath!("invalid_path"), get(root));
+///
+/// async fn root() {}
+/// ```
+///
+/// This one will fail due to trailing slash:
+///
+/// ```compile_fail
+/// use axum::routing::{Router, get};
+/// use axum_extra::vpath;
+///
+/// let router = axum::Router::<()>::new()
+///     .route(vpath!("/api/"), get(root));
+///
+/// async fn root() {}
+/// ```
+///
+/// This one will fail due to empty path:
+///
+/// ```compile_fail
+/// use axum::routing::{Router, get};
+/// use axum_extra::vpath;
+///
+/// let router = axum::Router::<()>::new()
+///     .route(vpath!(""), get(root));
+///
+/// async fn root() {}
+/// ```
+///
+/// This one will fail due to consecutive slashes:
+///
+/// ```compile_fail
+/// use axum::routing::{Router, get};
+/// use axum_extra::vpath;
+///
+/// let router = axum::Router::<()>::new()
+///     .route(vpath!("/api//users"), get(root));
+///
+/// async fn root() {}
+/// ```
+///
+/// This one will fail due to `"."` segment:
+///
+/// ```compile_fail
+/// use axum::routing::{Router, get};
+/// use axum_extra::vpath;
+///
+/// let router = axum::Router::<()>::new()
+///     .route(vpath!("/api/./users"), get(root));
+///
+/// async fn root() {}
+/// ```
+///
+/// This one will fail due to `".."` segment:
+///
+/// ```compile_fail
+/// use axum::routing::{Router, get};
+/// use axum_extra::vpath;
+///
+/// let router = axum::Router::<()>::new()
+///     .route(vpath!("/api/../users"), get(root));
 ///
 /// async fn root() {}
 /// ```
@@ -60,8 +161,7 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
 /// use axum_extra::vpath;
 ///
 /// let router = axum::Router::<()>::new()
-///     .route(vpath!("/valid_path"), get(root))
-///     .to_owned();
+///     .route(vpath!("/valid_path"), get(root));
 ///
 /// async fn root() {}
 /// ```
