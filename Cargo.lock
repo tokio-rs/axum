@@ -1795,6 +1795,7 @@ name = "example-static-file-server"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "http-body-util",
  "tokio",
  "tower 0.5.2",
  "tower-http 0.6.2",
