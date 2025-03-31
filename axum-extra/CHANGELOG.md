@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+ **breaking:** Remove unused `async-stream` feature, which was accidentally
+  introduced as an implicit feature through an optional dependency which was no
+  longer being used ([#3298])
+
+[#3298]: https://github.com/tokio-rs/axum/pull/3298
+
 # 0.11.0
 
 Yanked from crates.io due to unforeseen breaking change, see [#3190] for details.
