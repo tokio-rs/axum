@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 anyhow = "1"
-async-session = "3.0.0"
 axum = { path = "../../axum" }
 axum-extra = { path = "../../axum-extra", features = ["typed-header"] }
 http = "1.0.0"
@@ -17,3 +16,8 @@ serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tower-sessions = "0.14.0"
+tower-sessions-moka-store = "0.15.0"
+rusqlite = { version = "0.32.0", features = ["bundled"] }
+tower-sessions-rusqlite-store = "0.14.0"
+tempfile = "3.19.1"
