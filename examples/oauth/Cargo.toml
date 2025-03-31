@@ -6,14 +6,21 @@ publish = false
 
 [dependencies]
 anyhow = "1"
-async-session = "3.0.0"
 axum = { path = "../../axum" }
 axum-extra = { path = "../../axum-extra", features = ["typed-header"] }
 http = "1.0.0"
 oauth2 = "4.1"
 # Use Rustls because it makes it easier to cross-compile on CI
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+rusqlite = { version = "0.32.0", features = ["bundled"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.128"
+tempfile = "3.19.1"
+time = "0.3.36"
 tokio = { version = "1.0", features = ["full"] }
+tower-sessions = "0.14.0"
+tower-sessions-moka-store = "0.15.0"
+tower-sessions-rusqlite-store = "0.14.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1.15.1", features = ["v4","serde"] }
