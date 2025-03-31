@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
- **breaking:** Remove unused `async-stream` feature, which was accidentally
+- **breaking:** Remove unused `async-stream` feature, which was accidentally
   introduced as an implicit feature through an optional dependency which was no
   longer being used ([#3298])
 
