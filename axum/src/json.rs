@@ -176,31 +176,31 @@ where
     /// but special cases may require first extracting a `Request` into `Bytes` then optionally
     /// constructing a `Json<T>`.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, JsonRejection> {
-        let deserializer = &mut serde_json::Deserializer::from_slice(bytes);
-
-        let value = match serde_path_to_error::deserialize(deserializer) {
-            Ok(value) => value,
-            Err(err) => {
-                let rejection = match err.inner().classify() {
-                    serde_json::error::Category::Data => JsonDataError::from_err(err).into(),
-                    serde_json::error::Category::Syntax | serde_json::error::Category::Eof => {
+        // Extracted into separate fn so it's only compiled once for all T.
+        fn make_rejection(err: serde_path_to_error::Error<serde_json::Error>) -> JsonRejection {
+            match err.inner().classify() {
+                serde_json::error::Category::Data => JsonDataError::from_err(err).into(),
+                serde_json::error::Category::Syntax | serde_json::error::Category::Eof => {
+                    JsonSyntaxError::from_err(err).into()
+                }
+                serde_json::error::Category::Io => {
+                    if cfg!(debug_assertions) {
+                        // we don't use `serde_json::from_reader` and instead always buffer
+                        // bodies first, so we shouldn't encounter any IO errors
+                        unreachable!()
+                    } else {
                         JsonSyntaxError::from_err(err).into()
                     }
-                    serde_json::error::Category::Io => {
-                        if cfg!(debug_assertions) {
-                            // we don't use `serde_json::from_reader` and instead always buffer
-                            // bodies first, so we shouldn't encounter any IO errors
-                            unreachable!()
-                        } else {
-                            JsonSyntaxError::from_err(err).into()
-                        }
-                    }
-                };
-                return Err(rejection);
+                }
             }
-        };
+        }
 
-        Ok(Json(value))
+        let deserializer = &mut serde_json::Deserializer::from_slice(bytes);
+
+        match serde_path_to_error::deserialize(deserializer) {
+            Ok(value) => Ok(Json(value)),
+            Err(err) => Err(make_rejection(err)),
+        }
     }
 }
 
