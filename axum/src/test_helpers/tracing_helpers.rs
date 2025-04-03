@@ -120,10 +120,7 @@ impl io::Write for Writer<'_> {
                 vec.extend(buf);
                 Ok(len)
             }
-            None => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "inner writer has been taken",
-            )),
+            None => Err(io::Error::other("inner writer has been taken")),
         }
     }
 
