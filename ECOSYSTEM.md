@@ -56,6 +56,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [tower_allowed_hosts](https://crates.io/crates/tower_allowed_hosts): Allowed hosts middleware which limits request from only allowed hosts.
 - [baxe](https://github.com/zyphelabs/baxe): Simple macro for defining backend errors once and automatically generate standardized JSON error responses, saving time and reducing complexity
 - [axum-html-minifier](https://crates.io/crates/axum_html_minifier): This middleware minify the html body content of a axum response.
+- [static-serve](https://crates.io/crates/static-serve): A helper macro for compressing and embedding static assets in an Axum webserver
 
 ## Project showcase
 
