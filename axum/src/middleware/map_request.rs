@@ -366,6 +366,7 @@ mod private {
 /// This trait is sealed such that it cannot be implemented outside this crate.
 pub trait IntoMapRequestResult<B>: private::Sealed<B> {
     /// Perform the conversion.
+    #[allow(clippy::result_large_err)]
     fn into_map_request_result(self) -> Result<Request<B>, Response>;
 }
 

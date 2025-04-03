@@ -41,11 +41,11 @@ impl<T: Error + 'static> IntoResponse for InternalServerError<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{Error, ErrorKind};
+    use std::io::Error;
 
     #[test]
     fn internal_server_error() {
-        let response = InternalServerError(Error::new(ErrorKind::Other, "Test")).into_response();
+        let response = InternalServerError(Error::other("Test")).into_response();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 }
