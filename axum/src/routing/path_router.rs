@@ -80,6 +80,7 @@ where
         self.v7_checks = false;
     }
 
+    #[track_caller]
     pub(super) fn route(
         &mut self,
         path: &str,
