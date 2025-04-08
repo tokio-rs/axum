@@ -160,6 +160,7 @@ where
             .map_err(|err| format!("Invalid route {path:?}: {err}"))
     }
 
+    #[track_caller]
     pub(super) fn merge(
         &mut self,
         other: PathRouter<S, IS_FALLBACK>,
