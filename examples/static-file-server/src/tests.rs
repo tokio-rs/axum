@@ -1,5 +1,5 @@
 use super::*;
-use axum::http::StatusCode as SC;
+use axum::http::StatusCode;
 use axum::{body::Body, http::Request};
 use http_body_util::BodyExt;
 use tower::ServiceExt;
@@ -39,24 +39,38 @@ async fn check(app: Router, path: &str, status: StatusCode, content_type: &str, 
 #[tokio::test]
 async fn test_using_serve_dir() {
     let app = using_serve_dir;
-    check(app(), "/assets/index.html", SC::OK, HTML, INDEX_HTML).await;
-    check(app(), "/assets/script.js", SC::OK, JS, SCRIPT_JS).await;
-    check(app(), "/assets/", SC::OK, HTML, INDEX_HTML).await;
+    check(
+        app(),
+        "/assets/index.html",
+        StatusCode::OK,
+        HTML,
+        INDEX_HTML,
+    )
+    .await;
+    check(app(), "/assets/script.js", StatusCode::OK, JS, SCRIPT_JS).await;
+    check(app(), "/assets/", StatusCode::OK, HTML, INDEX_HTML).await;
 
-    check(app(), "/assets/other.html", SC::NOT_FOUND, "", "").await;
+    check(app(), "/assets/other.html", StatusCode::NOT_FOUND, "", "").await;
 }
 
 #[tokio::test]
 async fn test_using_serve_dir_with_assets_fallback() {
     let app = using_serve_dir_with_assets_fallback;
-    check(app(), "/assets/index.html", SC::OK, HTML, INDEX_HTML).await;
-    check(app(), "/assets/script.js", SC::OK, JS, SCRIPT_JS).await;
-    check(app(), "/assets/", SC::OK, HTML, INDEX_HTML).await;
+    check(
+        app(),
+        "/assets/index.html",
+        StatusCode::OK,
+        HTML,
+        INDEX_HTML,
+    )
+    .await;
+    check(app(), "/assets/script.js", StatusCode::OK, JS, SCRIPT_JS).await;
+    check(app(), "/assets/", StatusCode::OK, HTML, INDEX_HTML).await;
 
     check(
         app(),
         "/foo",
-        SC::OK,
+        StatusCode::OK,
         "text/plain; charset=utf-8",
         "Hi from /foo",
     )
