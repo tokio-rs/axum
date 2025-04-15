@@ -13,4 +13,6 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
+headers = "0.4.0"
 http-body-util = "0.1.0"
+mime = "0.3.17"
