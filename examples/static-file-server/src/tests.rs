@@ -1,16 +1,14 @@
 use super::*;
 use axum::http::StatusCode;
 use axum::{body::Body, http::Request};
+use headers::ContentType;
 use http_body_util::BodyExt;
 use tower::ServiceExt;
 
 const INDEX_HTML: &str = include_str!("../assets/index.html");
 const SCRIPT_JS: &str = include_str!("../assets/script.js");
 
-const JS: &str = "text/javascript";
-const HTML: &str = "text/html";
-
-async fn get_page(app: Router, path: &str) -> (StatusCode, String, String) {
+async fn get_page(app: Router, path: &str) -> (StatusCode, Option<ContentType>, String) {
     let response = app
         .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
         .await
@@ -18,8 +16,8 @@ async fn get_page(app: Router, path: &str) -> (StatusCode, String, String) {
 
     let status = response.status();
     let content_type = match response.headers().get("content-type") {
-        Some(content_type) => content_type.to_str().unwrap().to_owned(),
-        None => String::new(),
+        Some(header) => Some(header.to_str().unwrap().parse::<ContentType>().unwrap()),
+        None => None,
     };
 
     let body = response.into_body();
@@ -29,7 +27,13 @@ async fn get_page(app: Router, path: &str) -> (StatusCode, String, String) {
     (status, content_type, html)
 }
 
-async fn check(app: Router, path: &str, status: StatusCode, content_type: &str, content: &str) {
+async fn check(
+    app: Router,
+    path: &str,
+    status: StatusCode,
+    content_type: Option<ContentType>,
+    content: &str,
+) {
     let (actual_status, actual_content_type, actual_content) = get_page(app, path).await;
     assert_eq!(status, actual_status);
     assert_eq!(content_type, actual_content_type);
@@ -43,14 +47,27 @@ async fn test_using_serve_dir() {
         app(),
         "/assets/index.html",
         StatusCode::OK,
-        HTML,
+        Some(ContentType::html()),
         INDEX_HTML,
     )
     .await;
-    check(app(), "/assets/script.js", StatusCode::OK, JS, SCRIPT_JS).await;
-    check(app(), "/assets/", StatusCode::OK, HTML, INDEX_HTML).await;
-
-    check(app(), "/assets/other.html", StatusCode::NOT_FOUND, "", "").await;
+    check(
+        app(),
+        "/assets/script.js",
+        StatusCode::OK,
+        Some(ContentType::from(mime::TEXT_JAVASCRIPT)),
+        SCRIPT_JS,
+    )
+    .await;
+    check(
+        app(),
+        "/assets/",
+        StatusCode::OK,
+        Some(ContentType::html()),
+        INDEX_HTML,
+    )
+    .await;
+    check(app(), "/assets/other.html", StatusCode::NOT_FOUND, None, "").await;
 }
 
 #[tokio::test]
@@ -60,18 +77,32 @@ async fn test_using_serve_dir_with_assets_fallback() {
         app(),
         "/assets/index.html",
         StatusCode::OK,
-        HTML,
+        Some(ContentType::html()),
         INDEX_HTML,
     )
     .await;
-    check(app(), "/assets/script.js", StatusCode::OK, JS, SCRIPT_JS).await;
-    check(app(), "/assets/", StatusCode::OK, HTML, INDEX_HTML).await;
+    check(
+        app(),
+        "/assets/script.js",
+        StatusCode::OK,
+        Some(ContentType::from(mime::TEXT_JAVASCRIPT)),
+        SCRIPT_JS,
+    )
+    .await;
+    check(
+        app(),
+        "/assets/",
+        StatusCode::OK,
+        Some(ContentType::html()),
+        INDEX_HTML,
+    )
+    .await;
 
     check(
         app(),
         "/foo",
         StatusCode::OK,
-        "text/plain; charset=utf-8",
+        Some(ContentType::text_utf8()),
         "Hi from /foo",
     )
     .await;
