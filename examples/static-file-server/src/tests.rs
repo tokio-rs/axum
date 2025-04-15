@@ -1,12 +1,12 @@
-use super::*;
+use super::{using_serve_dir, using_serve_dir_with_assets_fallback, Router};
 use axum::http::StatusCode;
 use axum::{body::Body, http::Request};
 use headers::ContentType;
 use http_body_util::BodyExt;
 use tower::ServiceExt;
 
-const INDEX_HTML: &str = include_str!("../assets/index.html");
-const SCRIPT_JS: &str = include_str!("../assets/script.js");
+const INDEX_HTML_CONTENT: &str = include_str!("../assets/index.html");
+const SCRIPT_JS_CONTENT: &str = include_str!("../assets/script.js");
 
 async fn get_page(app: Router, path: &str) -> (StatusCode, Option<ContentType>, String) {
     let response = app
@@ -48,7 +48,7 @@ async fn test_using_serve_dir() {
         "/assets/index.html",
         StatusCode::OK,
         Some(ContentType::html()),
-        INDEX_HTML,
+        INDEX_HTML_CONTENT,
     )
     .await;
     check(
@@ -56,7 +56,7 @@ async fn test_using_serve_dir() {
         "/assets/script.js",
         StatusCode::OK,
         Some(ContentType::from(mime::TEXT_JAVASCRIPT)),
-        SCRIPT_JS,
+        SCRIPT_JS_CONTENT,
     )
     .await;
     check(
@@ -64,7 +64,7 @@ async fn test_using_serve_dir() {
         "/assets/",
         StatusCode::OK,
         Some(ContentType::html()),
-        INDEX_HTML,
+        INDEX_HTML_CONTENT,
     )
     .await;
     check(app(), "/assets/other.html", StatusCode::NOT_FOUND, None, "").await;
@@ -78,7 +78,7 @@ async fn test_using_serve_dir_with_assets_fallback() {
         "/assets/index.html",
         StatusCode::OK,
         Some(ContentType::html()),
-        INDEX_HTML,
+        INDEX_HTML_CONTENT,
     )
     .await;
     check(
@@ -86,7 +86,7 @@ async fn test_using_serve_dir_with_assets_fallback() {
         "/assets/script.js",
         StatusCode::OK,
         Some(ContentType::from(mime::TEXT_JAVASCRIPT)),
-        SCRIPT_JS,
+        SCRIPT_JS_CONTENT,
     )
     .await;
     check(
@@ -94,7 +94,7 @@ async fn test_using_serve_dir_with_assets_fallback() {
         "/assets/",
         StatusCode::OK,
         Some(ContentType::html()),
-        INDEX_HTML,
+        INDEX_HTML_CONTENT,
     )
     .await;
 
