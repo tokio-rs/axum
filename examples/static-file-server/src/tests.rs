@@ -15,10 +15,10 @@ async fn get_page(app: Router, path: &str) -> (StatusCode, Option<ContentType>, 
         .unwrap();
 
     let status = response.status();
-    let content_type = match response.headers().get("content-type") {
-        Some(header) => Some(header.to_str().unwrap().parse::<ContentType>().unwrap()),
-        None => None,
-    };
+    let content_type = response
+        .headers()
+        .get("content-type")
+        .map(|header| header.to_str().unwrap().parse::<ContentType>().unwrap());
 
     let body = response.into_body();
     let bytes = body.collect().await.unwrap().to_bytes();
