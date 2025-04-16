@@ -214,8 +214,9 @@ where
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
         let state = self.state.clone();
+        let (mut parts, body) = req.into_parts();
+
         let extract_future = Box::pin(async move {
-            let (mut parts, body) = req.into_parts();
             let extracted = E::from_request_parts(&mut parts, &state).await;
             let req = Request::from_parts(parts, body);
             (req, extracted)

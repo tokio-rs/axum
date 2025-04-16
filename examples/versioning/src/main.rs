@@ -7,7 +7,7 @@
 use axum::{
     extract::{FromRequestParts, Path},
     http::{request::Parts, StatusCode},
-    response::{IntoResponse, Response},
+    response::{Html, IntoResponse, Response},
     routing::get,
     RequestPartsExt, Router,
 };
@@ -25,7 +25,7 @@ async fn main() {
         .init();
 
     // build our application with some routes
-    let app = Router::new().route("/{version}/foo", get(handler));
+    let app = app();
 
     // run it
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
@@ -35,8 +35,12 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn handler(version: Version) {
-    println!("received request with version {version:?}");
+fn app() -> Router {
+    Router::new().route("/{version}/foo", get(handler))
+}
+
+async fn handler(version: Version) -> Html<String> {
+    Html(format!("received request with version {version:?}"))
 }
 
 #[derive(Debug)]
@@ -66,5 +70,53 @@ where
             "v3" => Ok(Version::V3),
             _ => Err((StatusCode::NOT_FOUND, "unknown version").into_response()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{body::Body, http::Request, http::StatusCode};
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn test_v1() {
+        let response = app()
+            .oneshot(
+                Request::builder()
+                    .uri("/v1/foo")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body();
+        let bytes = body.collect().await.unwrap().to_bytes();
+        let html = String::from_utf8(bytes.to_vec()).unwrap();
+
+        assert_eq!(html, "received request with version V1");
+    }
+
+    #[tokio::test]
+    async fn test_v4() {
+        let response = app()
+            .oneshot(
+                Request::builder()
+                    .uri("/v4/foo")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let body = response.into_body();
+        let bytes = body.collect().await.unwrap().to_bytes();
+        let html = String::from_utf8(bytes.to_vec()).unwrap();
+
+        assert_eq!(html, "unknown version");
     }
 }

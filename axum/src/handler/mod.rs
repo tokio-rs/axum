@@ -220,12 +220,10 @@ macro_rules! impl_handler {
             type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
             fn call(self, req: Request, state: S) -> Self::Future {
+                let (mut parts, body) = req.into_parts();
                 Box::pin(async move {
-                    let (mut parts, body) = req.into_parts();
-                    let state = &state;
-
                     $(
-                        let $ty = match $ty::from_request_parts(&mut parts, state).await {
+                        let $ty = match $ty::from_request_parts(&mut parts, &state).await {
                             Ok(value) => value,
                             Err(rejection) => return rejection.into_response(),
                         };
@@ -233,14 +231,12 @@ macro_rules! impl_handler {
 
                     let req = Request::from_parts(parts, body);
 
-                    let $last = match $last::from_request(req, state).await {
+                    let $last = match $last::from_request(req, &state).await {
                         Ok(value) => value,
                         Err(rejection) => return rejection.into_response(),
                     };
 
-                    let res = self($($ty,)* $last,).await;
-
-                    res.into_response()
+                    self($($ty,)* $last,).await.into_response()
                 })
             }
         }

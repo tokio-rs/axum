@@ -25,6 +25,56 @@ pub use axum_macros::TypedPath;
 #[cfg(feature = "typed-routing")]
 pub use self::typed::{SecondElementIs, TypedPath};
 
+// Validates a path at compile time, used with the vpath macro.
+#[rustversion::since(1.80)]
+#[doc(hidden)]
+pub const fn __private_validate_static_path(path: &'static str) -> &'static str {
+    if path.is_empty() {
+        panic!("Paths must start with a `/`. Use \"/\" for root routes")
+    }
+    if path.as_bytes()[0] != b'/' {
+        panic!("Paths must start with /");
+    }
+    path
+}
+
+/// This macro aborts compilation if the path is invalid.
+///
+/// This example will fail to compile:
+///
+/// ```compile_fail
+/// use axum::routing::{Router, get};
+/// use axum_extra::vpath;
+///
+/// let router = axum::Router::<()>::new()
+///     .route(vpath!("invalid_path"), get(root))
+///     .to_owned();
+///
+/// async fn root() {}
+/// ```
+///
+/// This one will compile without problems:
+///
+/// ```no_run
+/// use axum::routing::{Router, get};
+/// use axum_extra::vpath;
+///
+/// let router = axum::Router::<()>::new()
+///     .route(vpath!("/valid_path"), get(root))
+///     .to_owned();
+///
+/// async fn root() {}
+/// ```
+///
+/// This macro is available only on rust versions 1.80 and above.
+#[rustversion::since(1.80)]
+#[macro_export]
+macro_rules! vpath {
+    ($e:expr) => {
+        const { $crate::routing::__private_validate_static_path($e) }
+    };
+}
+
 /// Extension trait that adds additional methods to [`Router`].
 pub trait RouterExt<S>: sealed::Sealed {
     /// Add a typed `GET` route to the router.

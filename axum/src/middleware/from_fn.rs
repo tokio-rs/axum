@@ -1,4 +1,3 @@
-use crate::response::{IntoResponse, Response};
 use axum_core::extract::{FromRequest, FromRequestParts, Request};
 use futures_util::future::BoxFuture;
 use std::{
@@ -11,9 +10,13 @@ use std::{
     task::{Context, Poll},
 };
 use tower::util::BoxCloneSyncService;
-use tower::ServiceBuilder;
 use tower_layer::Layer;
 use tower_service::Service;
+
+use crate::{
+    response::{IntoResponse, Response},
+    util::MapIntoResponse,
+};
 
 /// Create a middleware from an async function.
 ///
@@ -283,10 +286,9 @@ macro_rules! impl_service {
 
                 let mut f = self.f.clone();
                 let state = self.state.clone();
+                let (mut parts, body) = req.into_parts();
 
                 let future = Box::pin(async move {
-                    let (mut parts, body) = req.into_parts();
-
                     $(
                         let $ty = match $ty::from_request_parts(&mut parts, &state).await {
                             Ok(value) => value,
@@ -301,10 +303,7 @@ macro_rules! impl_service {
                         Err(rejection) => return rejection.into_response(),
                     };
 
-                    let inner = ServiceBuilder::new()
-                        .layer_fn(BoxCloneSyncService::new)
-                        .map_response(IntoResponse::into_response)
-                        .service(ready_inner);
+                    let inner = BoxCloneSyncService::new(MapIntoResponse::new(ready_inner));
                     let next = Next { inner };
 
                     f($($ty,)* $last, next).await.into_response()

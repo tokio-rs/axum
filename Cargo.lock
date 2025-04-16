@@ -302,7 +302,7 @@ dependencies = [
 
 [[package]]
 name = "axum"
-version = "0.8.2"
+version = "0.8.3"
 dependencies = [
  "anyhow",
  "axum-core",
@@ -349,7 +349,7 @@ dependencies = [
 
 [[package]]
 name = "axum-core"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "axum",
  "axum-extra",
@@ -373,7 +373,7 @@ dependencies = [
 
 [[package]]
 name = "axum-extra"
-version = "0.11.0"
+version = "0.10.1"
 dependencies = [
  "axum",
  "axum-core",
@@ -394,6 +394,7 @@ dependencies = [
  "pin-project-lite",
  "prost",
  "reqwest 0.12.12",
+ "rustversion",
  "serde",
  "serde_html_form",
  "serde_json",
@@ -1329,7 +1330,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "http-body-util",
  "tokio",
+ "tower 0.5.2",
 ]
 
 [[package]]
@@ -1463,8 +1466,11 @@ name = "example-form"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "http-body-util",
+ "mime",
  "serde",
  "tokio",
+ "tower 0.5.2",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1814,7 +1820,9 @@ version = "0.1.0"
 dependencies = [
  "askama",
  "axum",
+ "http-body-util",
  "tokio",
+ "tower 0.5.2",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1946,9 +1954,11 @@ name = "example-validator"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "http-body-util",
  "serde",
  "thiserror 1.0.69",
  "tokio",
+ "tower 0.5.2",
  "tracing",
  "tracing-subscriber",
  "validator",
@@ -1959,7 +1969,9 @@ name = "example-versioning"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "http-body-util",
  "tokio",
+ "tower 0.5.2",
  "tracing",
  "tracing-subscriber",
 ]
@@ -2477,12 +2489,12 @@ dependencies = [
 
 [[package]]
 name = "http-body-util"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "793429d76616a256bcb62c2a2ec2bed781c8307e797e2598c50010f2bee2544f"
+checksum = "b021d93e26becf5dc7e1b75b1bed1fd93124b374ceb73f43d4d4eafec896a64a"
 dependencies = [
  "bytes",
- "futures-util",
+ "futures-core",
  "http 1.2.0",
  "http-body 1.0.1",
  "pin-project-lite",

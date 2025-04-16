@@ -9,12 +9,13 @@ license = "MIT"
 name = "axum-extra"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.11.0"
+version = "0.10.1"
 
 [features]
 default = ["tracing"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
+async-stream = [] # unused, remove before the next breaking-change release
 file-stream = [
     "dep:tokio-util",
     "tokio-util?/io",
@@ -63,10 +64,8 @@ __private_docs = [
 ]
 
 [dependencies]
-axum = { path = "../axum", version = "0.8.2", default-features = false, features = [
-    "original-uri",
-] }
-axum-core = { path = "../axum-core", version = "0.5.1" }
+axum = { path = "../axum", version = "0.8.3", default-features = false, features = ["original-uri"] }
+axum-core = { path = "../axum-core", version = "0.5.2" }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = [
     "alloc",
@@ -76,6 +75,7 @@ http-body = "1.0.0"
 http-body-util = "0.1.0"
 mime = "0.3"
 pin-project-lite = "0.2"
+rustversion = "1.0.9"
 serde = "1.0"
 tower = { version = "0.5.2", default-features = false, features = ["util"] }
 tower-layer = "0.3"

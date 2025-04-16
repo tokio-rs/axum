@@ -1,7 +1,7 @@
 use super::{FromRequest, FromRequestParts, Request};
 use crate::response::{IntoResponse, Response};
 use http::request::Parts;
-use std::convert::Infallible;
+use std::{convert::Infallible, future::Future};
 
 impl<S> FromRequestParts<S> for ()
 where
@@ -52,18 +52,20 @@ macro_rules! impl_from_request {
         {
             type Rejection = Response;
 
-            async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+            fn from_request(req: Request, state: &S) -> impl Future<Output = Result<Self, Self::Rejection>> {
                 let (mut parts, body) = req.into_parts();
 
-                $(
-                    let $ty = $ty::from_request_parts(&mut parts, state).await.map_err(|err| err.into_response())?;
-                )*
+                async move {
+                    $(
+                        let $ty = $ty::from_request_parts(&mut parts, state).await.map_err(|err| err.into_response())?;
+                    )*
 
-                let req = Request::from_parts(parts, body);
+                    let req = Request::from_parts(parts, body);
 
-                let $last = $last::from_request(req, state).await.map_err(|err| err.into_response())?;
+                    let $last = $last::from_request(req, state).await.map_err(|err| err.into_response())?;
 
-                Ok(($($ty,)* $last,))
+                    Ok(($($ty,)* $last,))
+                }
             }
         }
     };

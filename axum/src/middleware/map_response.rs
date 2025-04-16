@@ -261,10 +261,9 @@ macro_rules! impl_service {
 
                 let mut f = self.f.clone();
                 let _state = self.state.clone();
+                let (mut parts, body) = req.into_parts();
 
                 let future = Box::pin(async move {
-                    let (mut parts, body) = req.into_parts();
-
                     $(
                         let $ty = match $ty::from_request_parts(&mut parts, &_state).await {
                             Ok(value) => value,

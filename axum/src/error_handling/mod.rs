@@ -180,9 +180,9 @@ macro_rules! impl_service {
                 let clone = self.inner.clone();
                 let inner = std::mem::replace(&mut self.inner, clone);
 
-                let future = Box::pin(async move {
-                    let (mut parts, body) = req.into_parts();
+                let (mut parts, body) = req.into_parts();
 
+                let future = Box::pin(async move {
                     $(
                         let $ty = match $ty::from_request_parts(&mut parts, &()).await {
                             Ok(value) => value,

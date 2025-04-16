@@ -1,6 +1,7 @@
 use crate::{
     body::{Body, HttpBody},
     response::Response,
+    util::MapIntoResponse,
 };
 use axum_core::{extract::Request, response::IntoResponse};
 use bytes::Bytes;
@@ -17,7 +18,7 @@ use std::{
     task::{ready, Context, Poll},
 };
 use tower::{
-    util::{BoxCloneSyncService, MapErrLayer, MapResponseLayer, Oneshot},
+    util::{BoxCloneSyncService, MapErrLayer, Oneshot},
     ServiceExt,
 };
 use tower_layer::Layer;
@@ -36,9 +37,7 @@ impl<E> Route<E> {
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
-        Self(BoxCloneSyncService::new(
-            svc.map_response(IntoResponse::into_response),
-        ))
+        Self(BoxCloneSyncService::new(MapIntoResponse::new(svc)))
     }
 
     /// Variant of [`Route::call`] that takes ownership of the route to avoid cloning.
@@ -67,11 +66,7 @@ impl<E> Route<E> {
         <L::Service as Service<Request>>::Future: Send + 'static,
         NewError: 'static,
     {
-        let layer = (
-            MapErrLayer::new(Into::into),
-            MapResponseLayer::new(IntoResponse::into_response),
-            layer,
-        );
+        let layer = (MapErrLayer::new(Into::into), layer);
 
         Route::new(layer.layer(self))
     }

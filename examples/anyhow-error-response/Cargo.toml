@@ -8,3 +8,7 @@ publish = false
 anyhow = "1.0"
 axum = { path = "../../axum" }
 tokio = { version = "1.0", features = ["full"] }
+
+[dev-dependencies]
+http-body-util = "0.1.0"
+tower = { version = "0.5.2", features = ["util"] }

@@ -858,6 +858,12 @@ impl<'b> From<&'b [u8]> for Message {
     }
 }
 
+impl From<Bytes> for Message {
+    fn from(data: Bytes) -> Self {
+        Message::Binary(data)
+    }
+}
+
 impl From<Vec<u8>> for Message {
     fn from(data: Vec<u8>) -> Self {
         Message::Binary(data.into())

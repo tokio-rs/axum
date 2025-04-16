@@ -5,16 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# 0.8.2
+# 0.8.3
 
+- **added:** Implement `From<Bytes>` for `Message` ([#3273])
 - **added:** Implement `OptionalFromRequest` for `Json` ([#3142])
 - **added:** Implement `OptionalFromRequest` for `Extension` ([#3157])
-- **changed:** Make the `status` function of rejections a `const` function, such
-  as `JsonRejection`, `QueryRejection` and `PathRejection` ([#3168])
+- **added:** Allow setting the read buffer capacity of `WebSocketUpgrade` ([#3178])
+- **changed:** Improved code size / compile time of dependent crates ([#3285], [#3294])
 
+[#3273]: https://github.com/tokio-rs/axum/pull/3273
 [#3142]: https://github.com/tokio-rs/axum/pull/3142
 [#3157]: https://github.com/tokio-rs/axum/pull/3157
-[#3168]: https://github.com/tokio-rs/axum/pull/3168
+[#3178]: https://github.com/tokio-rs/axum/pull/3178
+[#3285]: https://github.com/tokio-rs/axum/pull/3285
+[#3294]: https://github.com/tokio-rs/axum/pull/3294
+
+# 0.8.2
+
+Yanked from crates.io due to unforeseen breaking change, see [#3190] for details.
+
+[#3190]: https://github.com/tokio-rs/axum/pull/3190
 
 # 0.8.1
 
