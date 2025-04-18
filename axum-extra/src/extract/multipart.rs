@@ -398,4 +398,36 @@ mod tests {
         let res = client.post("/").multipart(form).await;
         assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
     }
+
+    #[tokio::test]
+    async fn body_too_large_with_tracing() {
+        tracing::subscriber::set_global_default(
+            tracing_subscriber::FmtSubscriber::builder()
+                .with_max_level(tracing::level_filters::LevelFilter::TRACE)
+                .with_writer(std::io::sink)
+                .finish(),
+        )
+        .unwrap();
+
+        const BYTES: &[u8] = "<!doctype html><title>🦀</title>".as_bytes();
+
+        async fn handle(mut multipart: Multipart) -> Result<(), MultipartError> {
+            while let Some(field) = multipart.next_field().await? {
+                field.bytes().await?;
+            }
+            Ok(())
+        }
+
+        let app = Router::new()
+            .route("/", post(handle))
+            .layer(DefaultBodyLimit::max(BYTES.len() - 1));
+
+        let client = TestClient::new(app);
+
+        let form =
+            reqwest::multipart::Form::new().part("file", reqwest::multipart::Part::bytes(BYTES));
+
+        let res = client.post("/").multipart(form).await;
+        assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    }
 }

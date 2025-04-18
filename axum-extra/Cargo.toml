@@ -92,6 +92,8 @@ serde_json = "1.0.71"
 tokio = { version = "1.14", features = ["full"] }
 tower = { version = "0.5.2", features = ["util"] }
 tower-http = { version = "0.6.0", features = ["map-response-body", "timeout"] }
+tracing = "0.1.37"
+tracing-subscriber = "0.3.19"
 
 [lints]
 workspace = true
