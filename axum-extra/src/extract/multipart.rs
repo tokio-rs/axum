@@ -403,21 +403,27 @@ mod tests {
     #[tokio::test]
     #[cfg(feature = "tracing")]
     async fn body_too_large_with_tracing() {
-        tracing::subscriber::set_global_default(
-            tracing_subscriber::FmtSubscriber::builder()
-                .with_max_level(tracing::level_filters::LevelFilter::TRACE)
-                .with_writer(std::io::sink)
-                .finish(),
-        )
-        .unwrap();
-
         const BYTES: &[u8] = "<!doctype html><title>🦀</title>".as_bytes();
 
-        async fn handle(mut multipart: Multipart) -> Result<(), MultipartError> {
-            while let Some(field) = multipart.next_field().await? {
-                field.bytes().await?;
+        async fn handle(mut multipart: Multipart) -> impl IntoResponse {
+            let result: Result<(), MultipartError> = async {
+                while let Some(field) = multipart.next_field().await? {
+                    field.bytes().await?;
+                }
+                Ok(())
             }
-            Ok(())
+            .await;
+
+            let subscriber = tracing_subscriber::FmtSubscriber::builder()
+                .with_max_level(tracing::level_filters::LevelFilter::TRACE)
+                .with_writer(std::io::sink)
+                .finish();
+
+            let guard = tracing::subscriber::set_default(subscriber);
+            let response = result.into_response();
+            drop(guard);
+
+            response
         }
 
         let app = Router::new()
