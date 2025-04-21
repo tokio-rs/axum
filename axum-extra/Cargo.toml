@@ -38,7 +38,7 @@ multipart = ["dep:multer", "dep:fastrand"]
 protobuf = ["dep:prost"]
 scheme = []
 query = ["dep:form_urlencoded", "dep:serde_html_form", "dep:serde_path_to_error"]
-tracing = ["axum-core/tracing", "axum/tracing"]
+tracing = ["axum-core/tracing", "axum/tracing", "dep:tracing"]
 typed-header = ["dep:headers"]
 typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
 
@@ -92,7 +92,6 @@ serde_json = "1.0.71"
 tokio = { version = "1.14", features = ["full"] }
 tower = { version = "0.5.2", features = ["util"] }
 tower-http = { version = "0.6.0", features = ["map-response-body", "timeout"] }
-tracing = "0.1.37"
 tracing-subscriber = "0.3.19"
 
 [lints]

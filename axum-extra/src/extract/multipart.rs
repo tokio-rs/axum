@@ -401,6 +401,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(feature = "tracing")]
     async fn body_too_large_with_tracing() {
         tracing::subscriber::set_global_default(
             tracing_subscriber::FmtSubscriber::builder()
