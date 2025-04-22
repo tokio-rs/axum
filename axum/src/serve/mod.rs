@@ -6,7 +6,6 @@ use std::{
     future::{poll_fn, Future, IntoFuture},
     io,
     marker::PhantomData,
-    sync::Arc,
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
@@ -293,7 +292,7 @@ where
         } = self;
 
         let (signal_tx, signal_rx) = watch::channel(());
-        let signal_tx = Arc::new(signal_tx);
+        let signal_tx = signal_tx;
         tokio::spawn(async move {
             signal.await;
             trace!("received graceful shutdown signal. Telling tasks to shutdown");
@@ -330,7 +329,7 @@ where
 
             let hyper_service = TowerToHyperService::new(tower_service);
 
-            let signal_tx = Arc::clone(&signal_tx);
+            let signal_tx = signal_tx.clone();
 
             let close_rx = close_rx.clone();
 
