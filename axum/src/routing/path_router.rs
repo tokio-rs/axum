@@ -525,6 +525,10 @@ fn validate_nest_path(v7_checks: bool, path: &str) -> &str {
     }
 
     if v7_checks {
+        if path.is_empty() || path == "/" {
+            panic!("Nesting at the root is no longer supported. Use fallback_service instead.");
+        }
+
         validate_v07_paths(path).unwrap();
     }
 

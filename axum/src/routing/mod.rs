@@ -238,10 +238,6 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        if path.is_empty() || path == "/" {
-            panic!("Nesting at the root is no longer supported. Use fallback_service instead.");
-        }
-
         tap_inner!(self, mut this => {
             panic_on_err!(this.path_router.nest_service(path, service));
         })
