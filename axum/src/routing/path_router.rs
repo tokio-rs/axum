@@ -367,6 +367,7 @@ where
         }
     }
 
+    #[allow(clippy::result_large_err)]
     pub(super) fn call_with_state(
         &self,
         #[cfg_attr(not(feature = "original-uri"), allow(unused_mut))] mut req: Request,

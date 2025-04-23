@@ -110,17 +110,21 @@ where
     T: Serialize,
 {
     fn into_response(self) -> Response {
-        match serde_urlencoded::to_string(&self.0) {
-            Ok(body) => (
-                [(CONTENT_TYPE, mime::APPLICATION_WWW_FORM_URLENCODED.as_ref())],
-                body,
-            )
-                .into_response(),
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
+        // Extracted into separate fn so it's only compiled once for all T.
+        fn make_response(ser_result: Result<String, serde_urlencoded::ser::Error>) -> Response {
+            match ser_result {
+                Ok(body) => (
+                    [(CONTENT_TYPE, mime::APPLICATION_WWW_FORM_URLENCODED.as_ref())],
+                    body,
+                )
+                    .into_response(),
+                Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
+            }
         }
+
+        make_response(serde_urlencoded::to_string(&self.0))
     }
 }
-
 axum_core::__impl_deref!(Form);
 
 #[cfg(test)]

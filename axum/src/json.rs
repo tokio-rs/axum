@@ -176,31 +176,31 @@ where
     /// but special cases may require first extracting a `Request` into `Bytes` then optionally
     /// constructing a `Json<T>`.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, JsonRejection> {
-        let deserializer = &mut serde_json::Deserializer::from_slice(bytes);
-
-        let value = match serde_path_to_error::deserialize(deserializer) {
-            Ok(value) => value,
-            Err(err) => {
-                let rejection = match err.inner().classify() {
-                    serde_json::error::Category::Data => JsonDataError::from_err(err).into(),
-                    serde_json::error::Category::Syntax | serde_json::error::Category::Eof => {
+        // Extracted into separate fn so it's only compiled once for all T.
+        fn make_rejection(err: serde_path_to_error::Error<serde_json::Error>) -> JsonRejection {
+            match err.inner().classify() {
+                serde_json::error::Category::Data => JsonDataError::from_err(err).into(),
+                serde_json::error::Category::Syntax | serde_json::error::Category::Eof => {
+                    JsonSyntaxError::from_err(err).into()
+                }
+                serde_json::error::Category::Io => {
+                    if cfg!(debug_assertions) {
+                        // we don't use `serde_json::from_reader` and instead always buffer
+                        // bodies first, so we shouldn't encounter any IO errors
+                        unreachable!()
+                    } else {
                         JsonSyntaxError::from_err(err).into()
                     }
-                    serde_json::error::Category::Io => {
-                        if cfg!(debug_assertions) {
-                            // we don't use `serde_json::from_reader` and instead always buffer
-                            // bodies first, so we shouldn't encounter any IO errors
-                            unreachable!()
-                        } else {
-                            JsonSyntaxError::from_err(err).into()
-                        }
-                    }
-                };
-                return Err(rejection);
+                }
             }
-        };
+        }
 
-        Ok(Json(value))
+        let deserializer = &mut serde_json::Deserializer::from_slice(bytes);
+
+        match serde_path_to_error::deserialize(deserializer) {
+            Ok(value) => Ok(Json(value)),
+            Err(err) => Err(make_rejection(err)),
+        }
     }
 }
 
@@ -209,28 +209,34 @@ where
     T: Serialize,
 {
     fn into_response(self) -> Response {
+        // Extracted into separate fn so it's only compiled once for all T.
+        fn make_response(buf: BytesMut, ser_result: serde_json::Result<()>) -> Response {
+            match ser_result {
+                Ok(()) => (
+                    [(
+                        header::CONTENT_TYPE,
+                        HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
+                    )],
+                    buf.freeze(),
+                )
+                    .into_response(),
+                Err(err) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    [(
+                        header::CONTENT_TYPE,
+                        HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
+                    )],
+                    err.to_string(),
+                )
+                    .into_response(),
+            }
+        }
+
         // Use a small initial capacity of 128 bytes like serde_json::to_vec
         // https://docs.rs/serde_json/1.0.82/src/serde_json/ser.rs.html#2189
         let mut buf = BytesMut::with_capacity(128).writer();
-        match serde_json::to_writer(&mut buf, &self.0) {
-            Ok(()) => (
-                [(
-                    header::CONTENT_TYPE,
-                    HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
-                )],
-                buf.into_inner().freeze(),
-            )
-                .into_response(),
-            Err(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                [(
-                    header::CONTENT_TYPE,
-                    HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
-                )],
-                err.to_string(),
-            )
-                .into_response(),
-        }
+        let res = serde_json::to_writer(&mut buf, &self.0);
+        make_response(buf.into_inner(), res)
     }
 }
 
