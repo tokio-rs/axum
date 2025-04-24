@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Unreleased
+
+- **added:** `Router::reset_fallback` ([#3320])
+
+[#3320]: https://github.com/tokio-rs/axum/pull/3320
+
 # 0.8.3
 
 - **added:** Implement `From<Bytes>` for `Message` ([#3273])
