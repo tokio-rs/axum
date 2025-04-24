@@ -127,7 +127,7 @@ macro_rules! tap_inner {
         #[allow(redundant_semicolons)]
         {
             let mut $inner = $self_.into_inner();
-            $($stmt)*
+            $($stmt)*;
             Router {
                 inner: Arc::new($inner),
             }
