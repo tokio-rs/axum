@@ -381,6 +381,21 @@ where
         })
     }
 
+    /// Reset the fallback to its default.
+    ///
+    /// Useful to merge two routers with fallbacks, as [`merge`] doesn't allow
+    /// both routers to have an explicit fallback. Use this method to remove the
+    /// one you want to discard before merging.
+    ///
+    /// [`merge`]: Self::merge
+    pub fn reset_fallback(self) -> Self {
+        tap_inner!(self, mut this => {
+            this.fallback_router = PathRouter::new_fallback();
+            this.default_fallback = true;
+            this.catch_all_fallback = Fallback::Default(Route::new(NotFound));
+        })
+    }
+
     fn fallback_endpoint(self, endpoint: Endpoint<S>) -> Self {
         tap_inner!(self, mut this => {
             this.fallback_router.set_fallback(endpoint);
