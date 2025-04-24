@@ -292,7 +292,6 @@ where
         } = self;
 
         let (signal_tx, signal_rx) = watch::channel(());
-        let signal_tx = signal_tx;
         tokio::spawn(async move {
             signal.await;
             trace!("received graceful shutdown signal. Telling tasks to shutdown");
