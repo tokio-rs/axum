@@ -98,7 +98,7 @@ where
             let service = Endpoint::MethodRouter(
                 prev_method_router
                     .clone()
-                    .merge_for_path(Some(path), method_router),
+                    .merge_for_path(Some(path), method_router)?,
             );
             self.routes.insert(route_id, service);
             return Ok(());
