@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **added:** `Router::reset_fallback`
+- **added:** `Router::reset_fallback` ([#3320])
+
+[#3320]: https://github.com/tokio-rs/axum/pull/3320
 
 # 0.8.3
 
