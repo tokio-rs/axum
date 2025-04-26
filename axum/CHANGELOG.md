@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **breaking:** `serve` now requires the listener IO type to be `Sync`
+
+# Unreleased
+
 - **added:** `Router::reset_fallback` ([#3320])
 
 [#3320]: https://github.com/tokio-rs/axum/pull/3320

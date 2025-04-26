@@ -222,6 +222,7 @@ impl<L, M, S> IntoFuture for Serve<L, M, S>
 where
     L: Listener,
     L::Addr: Debug,
+    L::Io: Sync,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
     for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
     S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
@@ -336,6 +337,7 @@ impl<L, M, S, F> IntoFuture for WithGracefulShutdown<L, M, S, F>
 where
     L: Listener,
     L::Addr: Debug,
+    L::Io: Sync,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
     for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
     S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
@@ -366,6 +368,26 @@ async fn handle_connection<L, M, S>(
 {
     let io = TokioIo::new(io);
 
+    let conn_service = prep_serve_connection(make_service, remote_addr, &io).await;
+    tokio::spawn(serve_connection(
+        io,
+        conn_service,
+        signal_tx.clone(),
+        close_rx.clone(),
+    ));
+}
+
+async fn prep_serve_connection<L, M, S>(
+    make_service: &mut M,
+    remote_addr: <L as Listener>::Addr,
+    io: &TokioIo<<L as Listener>::Io>,
+) -> S
+where
+    L: Listener,
+    L::Addr: Debug,
+    M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
+    for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
+{
     trace!("connection {remote_addr:?} accepted");
 
     make_service
@@ -373,20 +395,10 @@ async fn handle_connection<L, M, S>(
         .await
         .unwrap_or_else(|err| match err {});
 
-    let conn_service = make_service
-        .call(IncomingStream {
-            io: &io,
-            remote_addr,
-        })
+    make_service
+        .call(IncomingStream { io, remote_addr })
         .await
-        .unwrap_or_else(|err| match err {});
-
-    tokio::spawn(serve_connection(
-        io,
-        conn_service,
-        signal_tx.clone(),
-        close_rx.clone(),
-    ));
+        .unwrap_or_else(|err| match err {})
 }
 
 async fn serve_connection<I, S>(
