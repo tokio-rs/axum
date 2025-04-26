@@ -128,7 +128,7 @@ where
     T: Message + Default,
 {
     fn into_response(self) -> Response {
-        let mut buf = BytesMut::with_capacity(128);
+        let mut buf = BytesMut::with_capacity(self.0.encoded_len());
         match &self.0.encode(&mut buf) {
             Ok(()) => buf.into_response(),
             Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
