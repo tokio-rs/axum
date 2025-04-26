@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **breaking:** `serve` now requires the listener IO type to be `Sync`
+- **changed:** Cancelling `serve` now cancels all tokio tasks it spawned for handling connections
 
 # Unreleased
 
