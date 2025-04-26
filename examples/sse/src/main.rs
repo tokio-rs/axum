@@ -89,7 +89,7 @@ mod tests {
             // Retrieve the port assigned to us by the OS
             let port = listener.local_addr().unwrap().port();
             tokio::spawn(async {
-                axum::serve(listener, app()).await.unwrap();
+                axum::serve(listener, app()).await;
             });
             // Returns address (e.g. http://127.0.0.1{random_port})
             format!("http://{}:{}", host, port)
