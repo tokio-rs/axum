@@ -191,7 +191,15 @@ where
 
         loop {
             let (io, remote_addr) = listener.accept().await;
-            handle_connection(&mut make_service, &signal_tx, &close_rx, io, remote_addr).await;
+            let io = TokioIo::new(io);
+
+            let conn_service = prep_serve_connection(&mut make_service, remote_addr, &io).await;
+            tokio::spawn(serve_connection(
+                io,
+                conn_service,
+                signal_tx.clone(),
+                close_rx.clone(),
+            ));
         }
     }
 }
@@ -293,8 +301,15 @@ where
                     break;
                 }
             };
+            let io = TokioIo::new(io);
 
-            handle_connection(&mut make_service, &signal_tx, &close_rx, io, remote_addr).await;
+            let conn_service = prep_serve_connection(&mut make_service, remote_addr, &io).await;
+            tokio::spawn(serve_connection(
+                io,
+                conn_service,
+                signal_tx.clone(),
+                close_rx.clone(),
+            ));
         }
 
         drop(close_rx);
@@ -350,31 +365,6 @@ where
     fn into_future(self) -> Self::IntoFuture {
         private::ServeFuture(Box::pin(self.run()))
     }
-}
-
-async fn handle_connection<L, M, S>(
-    make_service: &mut M,
-    signal_tx: &watch::Sender<()>,
-    close_rx: &watch::Receiver<()>,
-    io: <L as Listener>::Io,
-    remote_addr: <L as Listener>::Addr,
-) where
-    L: Listener,
-    L::Addr: Debug,
-    M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
-    for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
-    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
-    S::Future: Send,
-{
-    let io = TokioIo::new(io);
-
-    let conn_service = prep_serve_connection(make_service, remote_addr, &io).await;
-    tokio::spawn(serve_connection(
-        io,
-        conn_service,
-        signal_tx.clone(),
-        close_rx.clone(),
-    ));
 }
 
 async fn prep_serve_connection<L, M, S>(
