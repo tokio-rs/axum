@@ -52,7 +52,7 @@ mod unix {
                 .route("/", get(handler))
                 .into_make_service_with_connect_info::<UdsConnectInfo>();
 
-            axum::serve(uds, app).await.unwrap();
+            axum::serve(uds, app).await;
         });
 
         let stream = TokioIo::new(UnixStream::connect(path).await.unwrap());

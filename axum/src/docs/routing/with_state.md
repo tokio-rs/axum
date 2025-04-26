@@ -179,7 +179,7 @@ let app = routes(AppState {});
 // but `app` is a `Router<AppState>`
 # async {
 let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-axum::serve(listener, app).await.unwrap();
+axum::serve(listener, app).await;
 # };
 ```
 
@@ -202,7 +202,7 @@ let app = routes(AppState {});
 // We can now call `Router::into_make_service`
 # async {
 let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-axum::serve(listener, app).await.unwrap();
+axum::serve(listener, app).await;
 # };
 ```
 

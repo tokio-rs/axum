@@ -224,7 +224,7 @@ where
     S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
 {
-    type Output = io::Result<()>;
+    type Output = ();
     type IntoFuture = private::ServeFuture;
 
     fn into_future(self) -> Self::IntoFuture {
@@ -339,14 +339,11 @@ where
     S::Future: Send,
     F: Future<Output = ()> + Send + 'static,
 {
-    type Output = io::Result<()>;
+    type Output = ();
     type IntoFuture = private::ServeFuture;
 
     fn into_future(self) -> Self::IntoFuture {
-        private::ServeFuture(Box::pin(async move {
-            self.run().await;
-            Ok(())
-        }))
+        private::ServeFuture(Box::pin(self.run()))
     }
 }
 
@@ -447,15 +444,14 @@ where
 mod private {
     use std::{
         future::Future,
-        io,
         pin::Pin,
         task::{Context, Poll},
     };
 
-    pub struct ServeFuture(pub(super) futures_util::future::BoxFuture<'static, io::Result<()>>);
+    pub struct ServeFuture(pub(super) futures_util::future::BoxFuture<'static, ()>);
 
     impl Future for ServeFuture {
-        type Output = io::Result<()>;
+        type Output = ();
 
         #[inline]
         fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -526,9 +522,7 @@ mod tests {
 
         // router
         serve(TcpListener::bind(addr).await.unwrap(), router.clone());
-        serve(tcp_nodelay_listener().await, router.clone())
-            .await
-            .unwrap();
+        serve(tcp_nodelay_listener().await, router.clone());
         #[cfg(unix)]
         serve(UnixListener::bind("").unwrap(), router.clone());
 

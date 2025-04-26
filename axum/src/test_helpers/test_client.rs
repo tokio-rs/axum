@@ -20,11 +20,7 @@ where
     let addr = listener.local_addr().unwrap();
     println!("Listening on {addr}");
 
-    tokio::spawn(async move {
-        serve(listener, Shared::new(svc))
-            .await
-            .expect("server error")
-    });
+    tokio::spawn(serve(listener, Shared::new(svc)).into_future());
 
     addr
 }

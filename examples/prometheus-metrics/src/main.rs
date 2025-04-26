@@ -45,7 +45,7 @@ async fn start_main_server() {
         .await
         .unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app).await;
 }
 
 async fn start_metrics_server() {
@@ -56,7 +56,7 @@ async fn start_metrics_server() {
         .await
         .unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app).await;
 }
 
 #[tokio::main]

@@ -1451,7 +1451,7 @@ mod tests {
         );
 
         let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await.unwrap();
-        crate::serve(listener, app).await.unwrap();
+        crate::serve(listener, app).await;
     }
 
     #[crate::test]
