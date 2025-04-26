@@ -6,10 +6,11 @@ use std::{
     future::{poll_fn, Future, IntoFuture},
     io,
     marker::PhantomData,
+    pin::pin,
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
-use futures_util::{pin_mut, FutureExt};
+use futures_util::FutureExt;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 #[cfg(any(feature = "http1", feature = "http2"))]
@@ -338,11 +339,9 @@ where
                 // CONNECT protocol needed for HTTP/2 websockets
                 #[cfg(feature = "http2")]
                 builder.http2().enable_connect_protocol();
-                let conn = builder.serve_connection_with_upgrades(io, hyper_service);
-                pin_mut!(conn);
 
-                let signal_closed = signal_tx.closed().fuse();
-                pin_mut!(signal_closed);
+                let mut conn = pin!(builder.serve_connection_with_upgrades(io, hyper_service));
+                let mut signal_closed = pin!(signal_tx.closed().fuse());
 
                 loop {
                     tokio::select! {
