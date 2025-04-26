@@ -201,8 +201,10 @@ where
     type IntoFuture = private::ServeFuture;
 
     fn into_future(self) -> Self::IntoFuture {
-        self.with_graceful_shutdown(std::future::pending())
-            .into_future()
+        private::ServeFuture(Box::pin(async move {
+            do_serve(self.listener, self.make_service, std::future::pending()).await;
+            Ok(())
+        }))
     }
 }
 
