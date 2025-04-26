@@ -3,7 +3,7 @@
 use std::{
     convert::Infallible,
     fmt::Debug,
-    future::{poll_fn, Future, IntoFuture},
+    future::{Future, IntoFuture},
     io,
     marker::PhantomData,
     pin::pin,
@@ -308,7 +308,8 @@ where
 
         trace!("connection {remote_addr:?} accepted");
 
-        poll_fn(|cx| make_service.poll_ready(cx))
+        make_service
+            .ready()
             .await
             .unwrap_or_else(|err| match err {});
 
@@ -322,9 +323,7 @@ where
             .map_request(|req: Request<Incoming>| req.map(Body::new));
 
         let hyper_service = TowerToHyperService::new(tower_service);
-
         let signal_tx = signal_tx.clone();
-
         let close_rx = close_rx.clone();
 
         tokio::spawn(async move {
