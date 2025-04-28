@@ -131,6 +131,12 @@ where
     }
 }
 
+/// The state of an event's buffer.
+///
+/// While the buffer is active, more bytes can be written to it.
+/// Once finalized, it's immutable and cheap to clone.
+/// The buffer is active during the event building, but eventually
+/// becomes finalized to send http body frames as [`Bytes`].
 #[derive(Debug, Clone)]
 enum Buffer {
     Active(BytesMut),
@@ -138,6 +144,10 @@ enum Buffer {
 }
 
 impl Buffer {
+    /// Returns a mutable reference to the internal buffer.
+    ///
+    /// If the buffer was finalized, this method creates
+    /// a new active buffer with the previous contents.
     fn as_mut(&mut self) -> &mut BytesMut {
         match self {
             Buffer::Active(bytes_mut) => bytes_mut,
