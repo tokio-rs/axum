@@ -66,6 +66,8 @@ impl<S> Sse<S> {
     }
 
     /// Configure the interval between keep-alive messages.
+    ///
+    /// Defaults to no keep-alive messages.
     #[cfg(feature = "tokio")]
     pub fn keep_alive(self, keep_alive: KeepAlive) -> Sse<KeepAliveStream<S>> {
         Sse {
