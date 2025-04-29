@@ -148,10 +148,12 @@
 //! pool of database connections or clients to other services may need to
 //! be shared.
 //!
-//! The three most common ways of doing that are:
+//! The four most common ways of doing that are:
+//!
 //! - Using the [`State`] extractor
 //! - Using request extensions
 //! - Using closure captures
+//! - Using task-local variables
 //!
 //! ## Using the [`State`] extractor
 //!
@@ -182,13 +184,13 @@
 //! ```
 //!
 //! You should prefer using [`State`] if possible since it's more type safe. The downside is that
-//! it's less dynamic than request extensions.
+//! it's less dynamic than task-local variables and request extensions.
 //!
 //! See [`State`] for more details about accessing state.
 //!
 //! ## Using request extensions
 //!
-//! Another way to extract state in handlers is using [`Extension`](crate::extract::Extension) as
+//! Another way to share state with handlers is using [`Extension`](crate::extract::Extension) as
 //! layer and extractor:
 //!
 //! ```rust,no_run
@@ -273,12 +275,11 @@
 //! # let _: Router = app;
 //! ```
 //!
-//! The downside to this approach is that it's a little more verbose than using
-//! [`State`] or extensions.
+//! The downside to this approach is that it's a the most verbose approach.
 //!
-//! ## Using [tokio's `task_local` macro](https://docs.rs/tokio/1/tokio/macro.task_local.html):
+//! ## Using task-local variables
 //!
-//! This allows to share state with `IntoResponse` implementations.
+//! This also allows to share state with `IntoResponse` implementations:
 //!
 //! ```rust,no_run
 //! use axum::{
@@ -336,6 +337,12 @@
 //!     .route("/", get(handler))
 //!     .route_layer(middleware::from_fn(auth));
 //! ```
+//!
+//! The main downside to this approach is that it only works when the async executor being used
+//! has the concept of task-local variables. The example above uses
+//! [tokio's `task_local` macro](https://docs.rs/tokio/1/tokio/macro.task_local.html).
+//! smol does not yet offer equivalent functionality at the time of writing (see
+//! [this GitHub issue](https://github.com/smol-rs/async-executor/issues/139)).
 //!
 //! # Building integrations for axum
 //!
