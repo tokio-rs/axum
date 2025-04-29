@@ -106,7 +106,7 @@ where
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         if !json_content_type(req.headers()) {
             return Err(MissingJsonContentType.into());
-        };
+        }
 
         let bytes = Bytes::from_request(req, state).await?;
         Self::from_bytes(&bytes)
