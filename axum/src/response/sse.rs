@@ -133,6 +133,9 @@ where
 
 /// The state of an event's buffer.
 ///
+/// This type allows creating events in a `const` context
+/// by using a finalized buffer.
+///
 /// While the buffer is active, more bytes can be written to it.
 /// Once finalized, it's immutable and cheap to clone.
 /// The buffer is active during the event building, but eventually
