@@ -104,12 +104,12 @@ where
     type Rejection = JsonRejection;
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        if json_content_type(req.headers()) {
-            let bytes = Bytes::from_request(req, state).await?;
-            Self::from_bytes(&bytes)
-        } else {
-            Err(MissingJsonContentType.into())
+        if !json_content_type(req.headers()) {
+            return Err(MissingJsonContentType.into());
         }
+
+        let bytes = Bytes::from_request(req, state).await?;
+        Self::from_bytes(&bytes)
     }
 }
 
@@ -136,21 +136,15 @@ where
 }
 
 fn json_content_type(headers: &HeaderMap) -> bool {
-    let content_type = if let Some(content_type) = headers.get(header::CONTENT_TYPE) {
-        content_type
-    } else {
+    let Some(content_type) = headers.get(header::CONTENT_TYPE) else {
         return false;
     };
 
-    let content_type = if let Ok(content_type) = content_type.to_str() {
-        content_type
-    } else {
+    let Ok(content_type) = content_type.to_str() else {
         return false;
     };
 
-    let mime = if let Ok(mime) = content_type.parse::<mime::Mime>() {
-        mime
-    } else {
+    let Ok(mime) = content_type.parse::<mime::Mime>() else {
         return false;
     };
 
