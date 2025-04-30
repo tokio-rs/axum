@@ -49,7 +49,7 @@ __private_docs = [
 ]
 
 [dependencies]
-axum = { path = "../axum", version = "0.8.3", default-features = false, features = ["original-uri"] }
+axum = { path = "../axum", version = "0.8.4", default-features = false, features = ["original-uri"] }
 axum-core = { path = "../axum-core", version = "0.5.2" }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
