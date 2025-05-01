@@ -4,7 +4,7 @@ Add another route to the router.
 can be either static, a capture, or a wildcard.
 
 `method_router` is the [`MethodRouter`] that should receive the request if the
-path matches `path`. `method_router` will commonly be a handler wrapped in a method
+path matches `path`. Usually, `method_router` will be a handler wrapped in a method
 router like [`get`]. See [`handler`](crate::handler) for more details on handlers.
 
 # Static paths
@@ -36,8 +36,7 @@ documentation for more details.
 It is not possible to create segments that only match some types like numbers or
 regular expression. You must handle that manually in your handlers.
 
-[`MatchedPath`](crate::extract::MatchedPath) can be used to extract the matched
-path rather than the actual path.
+[`MatchedPath`] can be used to extract the matched path rather than the actual path.
 
 # Wildcards
 

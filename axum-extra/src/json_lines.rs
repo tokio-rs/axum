@@ -110,7 +110,7 @@ where
         // so we can call `AsyncRead::lines` and then convert it back to a `Stream`
         let body = req.into_body();
         let stream = body.into_data_stream();
-        let stream = stream.map_err(|err| io::Error::new(io::ErrorKind::Other, err));
+        let stream = stream.map_err(io::Error::other);
         let read = StreamReader::new(stream);
         let lines_stream = LinesStream::new(read.lines());
 

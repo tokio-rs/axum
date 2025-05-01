@@ -162,27 +162,30 @@ where
     type Rejection = PathRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let params = match parts.extensions.get::<UrlParams>() {
-            Some(UrlParams::Params(params)) => params,
-            Some(UrlParams::InvalidUtf8InPathParam { key }) => {
-                let err = PathDeserializationError {
-                    kind: ErrorKind::InvalidUtf8InPathParam {
-                        key: key.to_string(),
-                    },
-                };
-                let err = FailedToDeserializePathParams(err);
-                return Err(err.into());
+        // Extracted into separate fn so it's only compiled once for all T.
+        fn get_params(parts: &Parts) -> Result<&[(Arc<str>, PercentDecodedStr)], PathRejection> {
+            match parts.extensions.get::<UrlParams>() {
+                Some(UrlParams::Params(params)) => Ok(params),
+                Some(UrlParams::InvalidUtf8InPathParam { key }) => {
+                    let err = PathDeserializationError {
+                        kind: ErrorKind::InvalidUtf8InPathParam {
+                            key: key.to_string(),
+                        },
+                    };
+                    Err(FailedToDeserializePathParams(err).into())
+                }
+                None => Err(MissingPathParams.into()),
             }
-            None => {
-                return Err(MissingPathParams.into());
-            }
-        };
+        }
 
-        T::deserialize(de::PathDeserializer::new(params))
-            .map_err(|err| {
-                PathRejection::FailedToDeserializePathParams(FailedToDeserializePathParams(err))
-            })
-            .map(Path)
+        fn failed_to_deserialize_path_params(err: PathDeserializationError) -> PathRejection {
+            PathRejection::FailedToDeserializePathParams(FailedToDeserializePathParams(err))
+        }
+
+        match T::deserialize(de::PathDeserializer::new(get_params(parts)?)) {
+            Ok(val) => Ok(Path(val)),
+            Err(e) => Err(failed_to_deserialize_path_params(e)),
+        }
     }
 }
 

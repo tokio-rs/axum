@@ -15,7 +15,6 @@ version = "0.10.1"
 default = ["tracing"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
-async-stream = [] # unused, remove before the next breaking-change release
 file-stream = ["dep:tokio-util", "tokio-util?/io", "dep:tokio", "tokio?/fs", "tokio?/io-util"]
 attachment = ["dep:tracing"]
 error-response = ["dep:tracing", "tracing/std"]
@@ -38,7 +37,7 @@ multipart = ["dep:multer", "dep:fastrand"]
 protobuf = ["dep:prost"]
 scheme = []
 query = ["dep:form_urlencoded", "dep:serde_html_form", "dep:serde_path_to_error"]
-tracing = ["axum-core/tracing", "axum/tracing"]
+tracing = ["axum-core/tracing", "axum/tracing", "dep:tracing"]
 typed-header = ["dep:headers"]
 typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
 
@@ -49,7 +48,7 @@ __private_docs = [
 ]
 
 [dependencies]
-axum = { path = "../axum", version = "0.8.3", default-features = false, features = ["original-uri"] }
+axum = { path = "../axum", version = "0.8.4", default-features = false, features = ["original-uri"] }
 axum-core = { path = "../axum-core", version = "0.5.2" }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
@@ -92,6 +91,7 @@ serde_json = "1.0.71"
 tokio = { version = "1.14", features = ["full"] }
 tower = { version = "0.5.2", features = ["util"] }
 tower-http = { version = "0.6.0", features = ["map-response-body", "timeout"] }
+tracing-subscriber = "0.3.19"
 
 [lints]
 workspace = true
