@@ -372,7 +372,6 @@ where
     /// [`merge`]: Self::merge
     pub fn reset_fallback(self) -> Self {
         tap_inner!(self, mut this => {
-            this.fallback_router = PathRouter::new_fallback();
             this.default_fallback = true;
             this.catch_all_fallback = Fallback::Default(Route::new(NotFound));
         })
