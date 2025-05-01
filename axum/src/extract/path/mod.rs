@@ -852,6 +852,27 @@ mod tests {
     }
 
     #[crate::test]
+    async fn deserialize_into_vec_of_tuples_with_prefixes_and_suffixes() {
+        let app = Router::new().route(
+            "/f{o}o/b{a}r",
+            get(|Path(params): Path<Vec<(String, String)>>| async move {
+                assert_eq!(
+                    params,
+                    vec![
+                        ("o".to_owned(), "0".to_owned()),
+                        ("a".to_owned(), "4".to_owned())
+                    ]
+                );
+            }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/f0o/b4r").await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
     async fn type_that_uses_deserialize_any() {
         use time::Date;
 

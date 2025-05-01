@@ -489,6 +489,66 @@ async fn colliding_fallback_with_root() {
 }
 
 #[crate::test]
+async fn prefix_suffix_match() {
+    let app = Router::new()
+        .route("/{picture}.png", get(|| async { "picture" }))
+        .route("/hello-{name}", get(|| async { "greeting" }))
+        .route("/start-{regex}-end", get(|| async { "regex" }))
+        .route("/logo.svg", get(|| async { "logo" }))
+        .fallback(|| async { "fallback" });
+
+    let client = TestClient::new(app);
+
+    let get = |path| {
+        let f = client.get(path);
+        async move { f.await.text().await }
+    };
+
+    assert_eq!(get("/").await, "fallback");
+    assert_eq!(get("/a/b.png").await, "fallback");
+    assert_eq!(get("/a.png/").await, "fallback");
+    assert_eq!(get("//a.png").await, "fallback");
+
+    // Empty capture is not allowed
+    assert_eq!(get("/.png").await, "fallback");
+    assert_eq!(get("/..png").await, "picture");
+    assert_eq!(get("/a.png").await, "picture");
+    assert_eq!(get("/b.png").await, "picture");
+
+    assert_eq!(get("/hello-").await, "fallback");
+    assert_eq!(get("/hello-world").await, "greeting");
+
+    assert_eq!(get("/start--end").await, "fallback");
+    assert_eq!(get("/start-regex-end").await, "regex");
+
+    assert_eq!(get("/logo.svg").await, "logo");
+
+    assert_eq!(get("/hello-.png").await, "greeting");
+}
+
+#[crate::test]
+async fn prefix_suffix_nested_match() {
+    let app = Router::new()
+        .route("/{a}/a", get(|| async { "a" }))
+        .route("/{b}/b", get(|| async { "b" }))
+        .route("/a{c}c/a", get(|| async { "c" }))
+        .route("/a{d}c/{*anything}", get(|| async { "d" }))
+        .fallback(|| async { "fallback" });
+
+    let client = TestClient::new(app);
+
+    let get = |path| {
+        let f = client.get(path);
+        async move { f.await.text().await }
+    };
+
+    assert_eq!(get("/ac/a").await, "a");
+    assert_eq!(get("/ac/b").await, "b");
+    assert_eq!(get("/abc/a").await, "c");
+    assert_eq!(get("/abc/b").await, "d");
+}
+
+#[crate::test]
 async fn static_and_dynamic_paths() {
     let app = Router::new()
         .route(
