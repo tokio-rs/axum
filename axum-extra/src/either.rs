@@ -134,13 +134,14 @@ use axum::{
 };
 use bytes::Bytes;
 use http::request::Parts;
+use paste::paste;
 use tower_layer::Layer;
 use tower_service::Service;
 
 /// Combines two extractors or responses into a single type.
 ///
 /// See the [module docs](self) for examples.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[must_use]
 pub enum Either<E1, E2> {
     #[allow(missing_docs)]
@@ -310,39 +311,41 @@ macro_rules! impl_traits_for_either {
             }
         }
 
-        impl<S, $($ident),*, $last> FromRequest<S> for $either<$($ident),*, $last>
-        where
-            S: Send + Sync,
-            $($ident: FromRequest<S>),*,
-            $last: FromRequest<S>,
-            $($ident::Rejection: Send),*,
-            $last::Rejection: IntoResponse + Send,
-        {
-            type Rejection = EitherRejection<$last::Rejection>;
+        paste! {
+            impl<S, $($ident),*, $last, $([< $ident Via >]),*, [<$last Via>]> FromRequest<S, ($([< $ident Via >]),*, [<$last Via>])> for $either<$($ident),*, $last>
+            where
+                S: Send + Sync,
+                $($ident: FromRequest<S, [<$ident Via>]>),*,
+                $last: FromRequest<S, [<$last Via>]>,
+                $($ident::Rejection: Send),*,
+                $last::Rejection: IntoResponse + Send,
+            {
+                type Rejection = EitherRejection<$last::Rejection>;
 
-            async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-                let (parts, body) = req.into_parts();
-                let bytes = Bytes::from_request(Request::from_parts(parts.clone(), body), state)
-                    .await
-                    .map_err(EitherRejection::Bytes)?;
+                async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+                    let (parts, body) = req.into_parts();
+                    let bytes = Bytes::from_request(Request::from_parts(parts.clone(), body), state)
+                        .await
+                        .map_err(EitherRejection::Bytes)?;
 
-                $(
+                    $(
+                        let req = Request::from_parts(
+                            parts.clone(),
+                            axum::body::Body::new(http_body_util::Full::new(bytes.clone())),
+                        );
+                        if let Ok(extracted) = $ident::from_request(req, state).await {
+                            return Ok(Self::$ident(extracted));
+                        }
+                    )*
+
                     let req = Request::from_parts(
                         parts.clone(),
                         axum::body::Body::new(http_body_util::Full::new(bytes.clone())),
                     );
-                    if let Ok(extracted) = $ident::from_request(req, state).await {
-                        return Ok(Self::$ident(extracted));
+                    match $last::from_request(req, state).await {
+                        Ok(extracted) => Ok(Self::$last(extracted)),
+                        Err(error) => Err(EitherRejection::LastRejection(error)),
                     }
-                )*
-
-                let req = Request::from_parts(
-                    parts.clone(),
-                    axum::body::Body::new(http_body_util::Full::new(bytes.clone())),
-                );
-                match $last::from_request(req, state).await {
-                    Ok(extracted) => Ok(Self::$last(extracted)),
-                    Err(error) => Err(EitherRejection::LastRejection(error)),
                 }
             }
         }
@@ -421,6 +424,7 @@ mod tests {
 
     use super::*;
 
+    #[derive(Debug, PartialEq)]
     struct False;
 
     impl<S> FromRequestParts<S> for False {
@@ -470,5 +474,16 @@ mod tests {
             .unwrap();
 
         assert!(matches!(either, Either3::E3(State(()))));
+    }
+
+    #[tokio::test]
+    async fn either_from_request_or_parts() {
+        let request = Request::new(Body::empty());
+
+        let either = Either::<False, Bytes>::from_request(request, &())
+            .await
+            .unwrap();
+
+        assert_eq!(either, Either::E2(Bytes::new()));
     }
 }
