@@ -485,7 +485,7 @@ fn extract_fields(
                             #member: {
                                 let (mut parts, body) = req.into_parts();
                                 let value =
-                                    <#field_ty as ::axum::extract::FromRequestParts<_>>::from_request_parts(
+                                    <#field_ty as ::axum::extract::FromRequestParts<_, _>>::from_request_parts(
                                         &mut parts,
                                         state,
                                     )
@@ -500,7 +500,7 @@ fn extract_fields(
                     Trait::FromRequestParts => {
                         quote_spanned! {ty_span=>
                             #member: {
-                                <#field_ty as ::axum::extract::FromRequestParts<_>>::from_request_parts(
+                                <#field_ty as ::axum::extract::FromRequestParts<_, _>>::from_request_parts(
                                     parts,
                                     state,
                                 )
@@ -520,7 +520,7 @@ fn extract_fields(
                             #member: {
                                 let (mut parts, body) = req.into_parts();
                                 let value =
-                                    <#field_ty as ::axum::extract::FromRequestParts<_>>::from_request_parts(
+                                    <#field_ty as ::axum::extract::FromRequestParts<_, _>>::from_request_parts(
                                         &mut parts,
                                         state,
                                     )
@@ -534,7 +534,7 @@ fn extract_fields(
                     Trait::FromRequestParts => {
                         quote_spanned! {ty_span=>
                             #member: {
-                                <#field_ty as ::axum::extract::FromRequestParts<_>>::from_request_parts(
+                                <#field_ty as ::axum::extract::FromRequestParts<_, _>>::from_request_parts(
                                     parts,
                                     state,
                                 )
@@ -559,7 +559,7 @@ fn extract_fields(
                             #member: {
                                 let (mut parts, body) = req.into_parts();
                                 let value =
-                                    <#field_ty as ::axum::extract::FromRequestParts<_>>::from_request_parts(
+                                    <#field_ty as ::axum::extract::FromRequestParts<_, _>>::from_request_parts(
                                         &mut parts,
                                         state,
                                     )
@@ -574,7 +574,7 @@ fn extract_fields(
                     Trait::FromRequestParts => {
                         quote_spanned! {ty_span=>
                             #member: {
-                                <#field_ty as ::axum::extract::FromRequestParts<_>>::from_request_parts(
+                                <#field_ty as ::axum::extract::FromRequestParts<_, _>>::from_request_parts(
                                     parts,
                                     state,
                                 )
