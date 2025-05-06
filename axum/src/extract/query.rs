@@ -1,4 +1,5 @@
-use super::{rejection::*, FromRequestParts};
+use super::rejection::*;
+use axum_core::extract::FromStatelessRequestParts;
 use http::{request::Parts, Uri};
 use serde::de::DeserializeOwned;
 
@@ -50,14 +51,13 @@ use serde::de::DeserializeOwned;
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Query<T>(pub T);
 
-impl<T, S> FromRequestParts<S> for Query<T>
+impl<T> FromStatelessRequestParts for Query<T>
 where
     T: DeserializeOwned,
-    S: Send + Sync,
 {
     type Rejection = QueryRejection;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts) -> Result<Self, Self::Rejection> {
         Self::try_from_uri(&parts.uri)
     }
 }
