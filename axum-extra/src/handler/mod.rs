@@ -163,10 +163,10 @@ pub struct IntoHandler<H, T, S> {
     _marker: PhantomData<fn() -> (T, S)>,
 }
 
-impl<H, T, S> Handler<T, S> for IntoHandler<H, T, S>
+impl<H, T, S, Via> Handler<(Via, T,), S> for IntoHandler<H, T, S>
 where
     H: HandlerCallWithExtractors<T, S> + Clone + Send + Sync + 'static,
-    T: FromRequest<S> + Send + 'static,
+    T: FromRequest<S, Via> + Send + 'static,
     T::Rejection: Send,
     S: Send + Sync + 'static,
 {
