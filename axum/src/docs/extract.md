@@ -578,7 +578,7 @@ where
 
         // ... or use `extract` / `extract_with_state` from `RequestExt` / `RequestPartsExt`
         use axum::RequestPartsExt;
-        let Extension(state) = parts.extract::<Extension<State>>()
+        let Extension(state) = parts.extract::<Extension<State>, _>()
             .await
             .map_err(|err| err.into_response())?;
 

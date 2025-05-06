@@ -200,7 +200,7 @@ where
         parts: &mut Parts,
         _state: &S,
     ) -> Result<Option<Self>, Self::Rejection> {
-        match parts.extract::<Self>().await {
+        match parts.extract::<Self, _>().await {
             Ok(Self(params)) => Ok(Some(Self(params))),
             Err(PathRejection::FailedToDeserializePathParams(e))
                 if matches!(e.kind(), ErrorKind::WrongNumberOfParameters { got: 0, .. }) =>
