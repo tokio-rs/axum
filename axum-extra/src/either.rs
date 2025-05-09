@@ -90,13 +90,17 @@
 //! [`BytesRejection`]: axum::extract::rejection::BytesRejection
 //! [`IntoResponse::into_response`]: https://docs.rs/axum/0.8/axum/response/index.html#returning-different-response-types
 
-use std::task::{Context, Poll};
+use std::{
+    marker::PhantomData,
+    task::{Context, Poll},
+};
 
 use axum::{
-    extract::FromRequestParts,
+    extract::{FromRequest, FromRequestParts, Request},
     response::{IntoResponse, Response},
 };
 use http::request::Parts;
+use paste::paste;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -226,40 +230,64 @@ pub enum Either8<E1, E2, E3, E4, E5, E6, E7, E8> {
     E8(E8),
 }
 
+pub struct ViaEither<T>(PhantomData<T>);
+
 macro_rules! impl_traits_for_either {
     (
         $either:ident =>
         [$($ident:ident),* $(,)?],
         $last:ident $(,)?
     ) => {
-        impl<S, $($ident),*, $last> FromRequestParts<S> for $either<$($ident),*, $last>
-        where
-            $($ident: FromRequestParts<S>),*,
-            $last: FromRequestParts<S>,
-            S: Send + Sync,
-        {
-            type Rejection = $last::Rejection;
+        paste! {
+            impl<S, $($ident),*, $last, $([<$ident Via>],)* [<$last Via>]> FromRequestParts<S, ViaEither<($([<$ident Via>],)* [<$last Via>],)>> for $either<$($ident),*, $last>
+            where
+                $($ident: FromRequestParts<S, [<$ident Via>]>),*,
+                $last: FromRequestParts<S, [<$last Via>]>,
+                S: Send + Sync,
+            {
+                type Rejection = $last::Rejection;
 
-            async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-                $(
-                    if let Ok(value) = <$ident as FromRequestParts<S>>::from_request_parts(parts, state).await {
-                        return Ok(Self::$ident(value));
-                    }
-                )*
+                async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+                    $(
+                        if let Ok(value) = <$ident as FromRequestParts<S, _>>::from_request_parts(parts, state).await {
+                            return Ok(Self::$ident(value));
+                        }
+                    )*
 
-                <$last as FromRequestParts<S>>::from_request_parts(parts, state).await.map(Self::$last)
+                    <$last as FromRequestParts<S, _>>::from_request_parts(parts, state).await.map(Self::$last)
+                }
             }
-        }
 
-        impl<$($ident),*, $last> IntoResponse for $either<$($ident),*, $last>
-        where
-            $($ident: IntoResponse),*,
-            $last: IntoResponse,
-        {
-            fn into_response(self) -> Response {
-                match self {
-                    $( Self::$ident(value) => value.into_response(), )*
-                    Self::$last(value) => value.into_response(),
+            impl<S, $($ident),*, $last, $([<$ident Via>],)* [<$last Via>]> FromRequest<S, ViaEither<($([<$ident Via>],)* [<$last Via>],)>> for $either<$($ident),*, $last>
+            where
+                $($ident: FromRequestParts<S, [<$ident Via>]>),*,
+                $last: FromRequestParts<S, [<$last Via>]>,
+                S: Send + Sync,
+            {
+                type Rejection = $last::Rejection;
+
+                async fn from_request(request: Request, state: &S) -> Result<Self, Self::Rejection> {
+                    let (mut parts, _body) = request.into_parts();
+                    $(
+                        if let Ok(value) = <$ident as FromRequestParts<S, _>>::from_request_parts(&mut parts, state).await {
+                            return Ok(Self::$ident(value));
+                        }
+                    )*
+
+                    <$last as FromRequestParts<S, _>>::from_request_parts(&mut parts, state).await.map(Self::$last)
+                }
+            }
+
+            impl<$($ident),*, $last> IntoResponse for $either<$($ident),*, $last>
+            where
+                $($ident: IntoResponse),*,
+                $last: IntoResponse,
+            {
+                fn into_response(self) -> Response {
+                    match self {
+                        $( Self::$ident(value) => value.into_response(), )*
+                        Self::$last(value) => value.into_response(),
+                    }
                 }
             }
         }
@@ -310,5 +338,80 @@ where
             Either::E1(inner) => futures_util::future::Either::Left(inner.call(req)),
             Either::E2(inner) => futures_util::future::Either::Right(inner.call(req)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::extract::FromRequestParts;
+    use axum::{routing::get, Router};
+    use bytes::Bytes;
+    use http::Method;
+
+    use crate::handler::HandlerCallWithExtractors;
+
+    use super::{Either, Either3};
+
+    fn assert_from_request_parts<Via, T: FromRequestParts<(), Via>>() {}
+
+    #[test]
+    fn either_of_two() {
+        assert_from_request_parts::<_, Either<(), ()>>();
+    }
+
+    #[test]
+    fn either_of_three() {
+        assert_from_request_parts::<_, Either3<(), (), ()>>();
+    }
+
+    #[test]
+    fn nested_either() {
+        assert_from_request_parts::<_, Either<Either<Either<(), ()>, Either<(), ()>>, ()>>();
+    }
+
+    // extractors for checking permissions
+    struct AdminPermissions {}
+
+    impl<S> FromRequestParts<S> for AdminPermissions
+    where
+        S: Send + Sync,
+    {
+        // check for admin permissions...
+        type Rejection = ();
+        async fn from_request_parts(
+            parts: &mut axum::http::request::Parts,
+            state: &S,
+        ) -> Result<Self, Self::Rejection> {
+            todo!()
+        }
+    }
+
+    struct User {}
+
+    impl<S> FromRequestParts<S> for User
+    where
+        S: Send + Sync,
+    {
+        // check for a logged in user...
+        type Rejection = ();
+        async fn from_request_parts(
+            parts: &mut axum::http::request::Parts,
+            state: &S,
+        ) -> Result<Self, Self::Rejection> {
+            todo!()
+        }
+    }
+
+    async fn handler(body: Either3<AdminPermissions, User, ()>) {
+        match body {
+            Either3::E1(admin) => { /* ... */ }
+            Either3::E2(user) => { /* ... */ }
+            Either3::E3(guest) => { /* ... */ }
+        }
+    }
+
+    #[test]
+    fn foo() {
+        let _: axum::routing::MethodRouter = axum::routing::get(handler.into_handler());
     }
 }

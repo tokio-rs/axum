@@ -130,7 +130,7 @@ where
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         // Extract the token from the authorization header
         let TypedHeader(Authorization(bearer)) = parts
-            .extract::<TypedHeader<Authorization<Bearer>>>()
+            .extract::<TypedHeader<Authorization<Bearer>>, _>()
             .await
             .map_err(|_| AuthError::InvalidToken)?;
         // Decode the user data

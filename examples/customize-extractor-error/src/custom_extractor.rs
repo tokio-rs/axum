@@ -35,7 +35,7 @@ where
         //
         // Have to run that first since `Json` extraction consumes the request.
         let path = parts
-            .extract::<MatchedPath>()
+            .extract::<MatchedPath, _>()
             .await
             .map(|path| path.as_str().to_owned())
             .ok();

@@ -28,12 +28,21 @@ pub use self::{
 /// type used with axum.
 pub type Request<T = Body> = http::Request<T>;
 
-mod private {
+pub mod private {
     #[derive(Debug, Clone, Copy)]
     pub enum ViaParts {}
 
     #[derive(Debug, Clone, Copy)]
+    pub enum ViaStatelessParts {}
+
+    #[derive(Debug, Clone, Copy)]
     pub enum ViaRequest {}
+
+    #[derive(Debug, Clone, Copy)]
+    pub enum WithState {}
+
+    #[derive(Debug, Clone, Copy)]
+    pub enum Stateless {}
 }
 
 /// Types that can be created from request parts.
@@ -53,7 +62,7 @@ mod private {
         note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/0.8/axum/extract/index.html` for details",
     )
 )]
-pub trait FromRequestParts<S>: Sized {
+pub trait FromRequestParts<S, Via = private::WithState>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
@@ -63,6 +72,32 @@ pub trait FromRequestParts<S>: Sized {
         parts: &mut Parts,
         state: &S,
     ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send;
+}
+
+/// Like `FromRequestParts` but without `State`.
+pub trait FromStatelessRequestParts: Sized {
+    /// If the extractor fails it'll use this "rejection" type. A rejection is
+    /// a kind of error that can be converted into a response.
+    type Rejection: IntoResponse;
+
+    /// Perform the extraction.
+    fn from_request_parts(
+        parts: &mut Parts,
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send;
+}
+
+impl<T, S> FromRequestParts<S, private::Stateless> for T
+where
+    T: FromStatelessRequestParts,
+{
+    type Rejection = T::Rejection;
+
+    fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
+        T::from_request_parts(parts)
+    }
 }
 
 /// Types that can be created from requests.
@@ -97,7 +132,7 @@ pub trait FromRequest<S, M = private::ViaRequest>: Sized {
 impl<S, T> FromRequest<S, private::ViaParts> for T
 where
     S: Send + Sync,
-    T: FromRequestParts<S>,
+    T: FromRequestParts<S, private::WithState>,
 {
     type Rejection = <Self as FromRequestParts<S>>::Rejection;
 
@@ -109,6 +144,23 @@ where
         async move { Self::from_request_parts(&mut parts, state).await }
     }
 }
+
+impl<S, T> FromRequest<S, private::ViaStatelessParts> for T
+where
+    S: Send + Sync,
+    T: FromRequestParts<S, private::Stateless>,
+{
+    type Rejection = <Self as FromRequestParts<S, private::Stateless>>::Rejection;
+
+    fn from_request(
+        req: Request,
+        state: &S,
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> {
+        let (mut parts, _) = req.into_parts();
+        async move { Self::from_request_parts(&mut parts, state).await }
+    }
+}
+
 
 impl<S, T> FromRequestParts<S> for Result<T, T::Rejection>
 where
