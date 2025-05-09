@@ -9,7 +9,9 @@
 //! ```
 
 use anyhow::{anyhow, Context, Result};
-use async_session::{MemoryStore, Session, SessionStore};
+use tower_sessions::{session::Record, CachingSessionStore, Session, SessionManagerLayer, SessionStore};
+use tower_sessions_moka_store::MokaStore;
+use tower_sessions_rusqlite_store::{RusqliteStore, tokio_rusqlite};
 use axum::{
     extract::{FromRef, FromRequestParts, OptionalFromRequestParts, Query, State},
     http::{header::SET_COOKIE, HeaderMap},
@@ -40,11 +42,26 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // `MemoryStore` is just used as an example. Don't use this in production.
-    let store = MemoryStore::new();
+    // Create session backing SQL database.
+    // While some monolithic application may use a local file in production to back their database,
+    // it is common that you would setup a connection to a remote service. You may need to change
+    // `conn` to suit your use-case.
+    let file = tempfile::NamedTempFile::new().unwrap();
+    let conn = tokio_rusqlite::Connection::open(file.path()).await.unwrap();
+    let sql_store = RusqliteStore::new(conn);
+
+    // Create session in-memory cache.
+    let moka_store = MokaStore::new(Some(100));
+    let store = CachingSessionStore::new(moka_store, sql_store);
+    // Use the `SessionManagerLayer` for easier handling.
+    // > A session is initialized by looking for a cookie that matches the configured session cookie
+    // > name. If no such cookie is found or a cookie is found but is malformed, an empty session is
+    // > initialized.
+    let layer = SessionManagerLayer::new(store).with_name(COOKIE_NAME);
+
+    // Create app state.
     let oauth_client = oauth_client().unwrap();
     let app_state = AppState {
-        store,
         oauth_client,
     };
 
@@ -54,6 +71,7 @@ async fn main() {
         .route("/auth/authorized", get(login_authorized))
         .route("/protected", get(protected))
         .route("/logout", get(logout))
+        .layer(layer)
         .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
@@ -72,16 +90,11 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
+type MemoryStore = CachingSessionStore<MokaStore,RusqliteStore>;
+
 #[derive(Clone)]
 struct AppState {
-    store: MemoryStore,
     oauth_client: BasicClient,
-}
-
-impl FromRef<AppState> for MemoryStore {
-    fn from_ref(state: &AppState) -> Self {
-        state.store.clone()
-    }
 }
 
 impl FromRef<AppState> for BasicClient {
@@ -132,7 +145,8 @@ struct User {
 }
 
 // Session is optional
-async fn index(user: Option<User>) -> impl IntoResponse {
+async fn index(session: Session) -> impl IntoResponse {
+    let user = session.get::<User>("user").await.unwrap();
     match user {
         Some(u) => format!(
             "Hey {}! You're logged in!\nYou may now access `/protected`.\nLog out with `/logout`.",
@@ -143,26 +157,17 @@ async fn index(user: Option<User>) -> impl IntoResponse {
 }
 
 async fn discord_auth(
+    session: Session,
     State(client): State<BasicClient>,
-    State(store): State<MemoryStore>,
 ) -> Result<impl IntoResponse, AppError> {
     let (auth_url, csrf_token) = client
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new("identify".to_string()))
         .url();
 
-    // Create session to store csrf_token
-    let mut session = Session::new();
-    session
-        .insert(CSRF_TOKEN, &csrf_token)
-        .context("failed in inserting CSRF token into session")?;
-
-    // Store the session in MemoryStore and retrieve the session cookie
-    let cookie = store
-        .store_session(session)
-        .await
-        .context("failed to store CSRF token session")?
-        .context("unexpected error retrieving CSRF cookie value")?;
+    // Store the token in the session and retrieve the session cookie.
+    session.insert(CSRF_TOKEN, csrf_token).await.context("failed in inserting CSRF token into session")?;
+    let cookie = session.id().context("unexpected error retrieving CSRF cookie value")?;
 
     // Attach the session cookie to the response header
     let cookie = format!("{COOKIE_NAME}={cookie}; SameSite=Lax; HttpOnly; Secure; Path=/");
@@ -176,30 +181,15 @@ async fn discord_auth(
 }
 
 // Valid user session required. If there is none, redirect to the auth page
-async fn protected(user: User) -> impl IntoResponse {
+async fn protected(session: Session) -> impl IntoResponse {
+    let user = session.get::<User>("user").await.unwrap().unwrap();
     format!("Welcome to the protected area :)\nHere's your info:\n{user:?}")
 }
 
 async fn logout(
-    State(store): State<MemoryStore>,
-    TypedHeader(cookies): TypedHeader<headers::Cookie>,
+    session: Session,
 ) -> Result<impl IntoResponse, AppError> {
-    let cookie = cookies
-        .get(COOKIE_NAME)
-        .context("unexpected error getting cookie name")?;
-
-    let session = match store
-        .load_session(cookie.to_string())
-        .await
-        .context("failed to load session")?
-    {
-        Some(s) => s,
-        // No session active, just redirect
-        None => return Ok(Redirect::to("/")),
-    };
-
-    store
-        .destroy_session(session)
+    session.delete()
         .await
         .context("failed to destroy session")?;
 
@@ -215,34 +205,17 @@ struct AuthRequest {
 
 async fn csrf_token_validation_workflow(
     auth_request: &AuthRequest,
-    cookies: &headers::Cookie,
-    store: &MemoryStore,
+    session: &Session,
 ) -> Result<(), AppError> {
-    // Extract the cookie from the request
-    let cookie = cookies
-        .get(COOKIE_NAME)
-        .context("unexpected error getting cookie name")?
-        .to_string();
-
-    // Load the session
-    let session = match store
-        .load_session(cookie)
-        .await
-        .context("failed to load session")?
-    {
-        Some(session) => session,
-        None => return Err(anyhow!("Session not found").into()),
-    };
-
     // Extract the CSRF token from the session
     let stored_csrf_token = session
-        .get::<CsrfToken>(CSRF_TOKEN)
+        .get::<CsrfToken>(CSRF_TOKEN).await
+        .context("failed to get value from session")?
         .context("CSRF token not found in session")?
         .to_owned();
 
     // Cleanup the CSRF token session
-    store
-        .destroy_session(session)
+    session.delete()
         .await
         .context("Failed to destroy old session")?;
 
@@ -256,11 +229,10 @@ async fn csrf_token_validation_workflow(
 
 async fn login_authorized(
     Query(query): Query<AuthRequest>,
-    State(store): State<MemoryStore>,
     State(oauth_client): State<BasicClient>,
-    TypedHeader(cookies): TypedHeader<headers::Cookie>,
+    session: Session,
 ) -> Result<impl IntoResponse, AppError> {
-    csrf_token_validation_workflow(&query, &cookies, &store).await?;
+    csrf_token_validation_workflow(&query, &session).await?;
 
     // Get an auth token
     let token = oauth_client
@@ -283,17 +255,13 @@ async fn login_authorized(
         .context("failed to deserialize response as JSON")?;
 
     // Create a new session filled with user data
-    let mut session = Session::new();
     session
         .insert("user", &user_data)
+        .await
         .context("failed in inserting serialized value into session")?;
 
     // Store session and get corresponding cookie
-    let cookie = store
-        .store_session(session)
-        .await
-        .context("failed to store session")?
-        .context("unexpected error retrieving cookie value")?;
+    let cookie = session.id().context("unexpected error retrieving cookie value")?;
 
     // Build the cookie
     let cookie = format!("{COOKIE_NAME}={cookie}; SameSite=Lax; HttpOnly; Secure; Path=/");
@@ -306,67 +274,6 @@ async fn login_authorized(
     );
 
     Ok((headers, Redirect::to("/")))
-}
-
-struct AuthRedirect;
-
-impl IntoResponse for AuthRedirect {
-    fn into_response(self) -> Response {
-        Redirect::temporary("/auth/discord").into_response()
-    }
-}
-
-impl<S> FromRequestParts<S> for User
-where
-    MemoryStore: FromRef<S>,
-    S: Send + Sync,
-{
-    // If anything goes wrong or no session is found, redirect to the auth page
-    type Rejection = AuthRedirect;
-
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let store = MemoryStore::from_ref(state);
-
-        let cookies = parts
-            .extract::<TypedHeader<headers::Cookie>>()
-            .await
-            .map_err(|e| match *e.name() {
-                header::COOKIE => match e.reason() {
-                    TypedHeaderRejectionReason::Missing => AuthRedirect,
-                    _ => panic!("unexpected error getting Cookie header(s): {e}"),
-                },
-                _ => panic!("unexpected error getting cookies: {e}"),
-            })?;
-        let session_cookie = cookies.get(COOKIE_NAME).ok_or(AuthRedirect)?;
-
-        let session = store
-            .load_session(session_cookie.to_string())
-            .await
-            .unwrap()
-            .ok_or(AuthRedirect)?;
-
-        let user = session.get::<User>("user").ok_or(AuthRedirect)?;
-
-        Ok(user)
-    }
-}
-
-impl<S> OptionalFromRequestParts<S> for User
-where
-    MemoryStore: FromRef<S>,
-    S: Send + Sync,
-{
-    type Rejection = Infallible;
-
-    async fn from_request_parts(
-        parts: &mut Parts,
-        state: &S,
-    ) -> Result<Option<Self>, Self::Rejection> {
-        match <User as FromRequestParts<S>>::from_request_parts(parts, state).await {
-            Ok(res) => Ok(Some(res)),
-            Err(AuthRedirect) => Ok(None),
-        }
-    }
 }
 
 // Use anyhow, define error and enable '?'
