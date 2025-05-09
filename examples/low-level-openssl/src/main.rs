@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run -p example-low-level-openssl
+//! ```
+
 use axum::{http::Request, routing::get, Router};
 use futures_util::pin_mut;
 use hyper::body::Incoming;
