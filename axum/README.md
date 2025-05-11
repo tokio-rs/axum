@@ -1,5 +1,8 @@
 # axum
 
+🌍 **Languages Available**:  
+🇺🇸 [English](README.md) | 🇷🇺 [Russian](README.ru.md) | 🇨🇳 [Chinese](README.zh.md) | 🇪🇬 [Arabic](README.ar.md) | 🇮🇳 [Hindi](README.hi.md) | 🇯🇵 [Japanese](README.ja.md)
+
 `axum` is a web application framework that focuses on ergonomics and modularity.
 
 [![Build status](https://github.com/tokio-rs/axum/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/tokio-rs/axum/actions/workflows/CI.yml)
