@@ -77,7 +77,7 @@ async fn main() {
                 .with_upgrades()
                 .await
             {
-                println!("Failed to serve connection: {:?}", err);
+                println!("Failed to serve connection: {err:?}");
             }
         });
     }

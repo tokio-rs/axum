@@ -45,7 +45,7 @@ async fn handler(State(client): State<Client>, mut req: Request) -> Result<Respo
         .map(|v| v.as_str())
         .unwrap_or(path);
 
-    let uri = format!("http://127.0.0.1:3000{}", path_query);
+    let uri = format!("http://127.0.0.1:3000{path_query}");
 
     *req.uri_mut() = Uri::try_from(uri).unwrap();
 
