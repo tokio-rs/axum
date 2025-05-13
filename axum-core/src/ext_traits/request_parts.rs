@@ -37,13 +37,13 @@ pub trait RequestPartsExt: sealed::Sealed + Sized {
     ///
     ///     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
     ///         let path_params = parts
-    ///             .extract::<Path<HashMap<String, String>>>()
+    ///             .extract::<Path<HashMap<String, String>>, _>()
     ///             .await
     ///             .map(|Path(path_params)| path_params)
     ///             .map_err(|err| err.into_response())?;
     ///
     ///         let query_params = parts
-    ///             .extract::<Query<HashMap<String, String>>>()
+    ///             .extract::<Query<HashMap<String, String>>, _>()
     ///             .await
     ///             .map(|Query(params)| params)
     ///             .map_err(|err| err.into_response())?;
@@ -52,9 +52,10 @@ pub trait RequestPartsExt: sealed::Sealed + Sized {
     ///     }
     /// }
     /// ```
-    fn extract<E>(&mut self) -> impl Future<Output = Result<E, E::Rejection>> + Send
+    fn extract<E, Via>(&mut self) -> impl Future<Output = Result<E, E::Rejection>> + Send
     where
-        E: FromRequestParts<()> + 'static;
+        E: FromRequestParts<(), Via> + 'static,
+        Via: 'static;
 
     /// Apply an extractor that requires some state to this `Parts`.
     ///
@@ -83,7 +84,7 @@ pub trait RequestPartsExt: sealed::Sealed + Sized {
     ///
     ///     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
     ///         let requires_state = parts
-    ///             .extract_with_state::<RequiresState, _>(state)
+    ///             .extract_with_state::<RequiresState, _, _>(state)
     ///             .await?;
     ///
     ///         Ok(MyExtractor { requires_state })
@@ -105,30 +106,33 @@ pub trait RequestPartsExt: sealed::Sealed + Sized {
     ///     # }
     /// }
     /// ```
-    fn extract_with_state<'a, E, S>(
+    fn extract_with_state<'a, E, S, Via>(
         &'a mut self,
         state: &'a S,
     ) -> impl Future<Output = Result<E, E::Rejection>> + Send + 'a
     where
-        E: FromRequestParts<S> + 'static,
-        S: Send + Sync;
+        E: FromRequestParts<S, Via> + 'static,
+        S: Send + Sync,
+        Via: 'static;
 }
 
 impl RequestPartsExt for Parts {
-    fn extract<E>(&mut self) -> impl Future<Output = Result<E, E::Rejection>> + Send
+    fn extract<E, Via>(&mut self) -> impl Future<Output = Result<E, E::Rejection>> + Send
     where
-        E: FromRequestParts<()> + 'static,
+        E: FromRequestParts<(), Via> + 'static,
+        Via: 'static,
     {
         self.extract_with_state(&())
     }
 
-    fn extract_with_state<'a, E, S>(
+    fn extract_with_state<'a, E, S, Via>(
         &'a mut self,
         state: &'a S,
     ) -> impl Future<Output = Result<E, E::Rejection>> + Send + 'a
     where
-        E: FromRequestParts<S> + 'static,
+        E: FromRequestParts<S, Via> + 'static,
         S: Send + Sync,
+        Via: 'static,
     {
         E::from_request_parts(self, state)
     }
@@ -161,7 +165,7 @@ mod tests {
         let state = "state".to_owned();
 
         let State(extracted_state): State<String> = parts
-            .extract_with_state::<State<String>, String>(&state)
+            .extract_with_state::<State<String>, String, _>(&state)
             .await
             .unwrap();
 

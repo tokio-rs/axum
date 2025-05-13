@@ -48,7 +48,7 @@ where
         _: &S,
     ) -> Result<Self, Self::Rejection> {
         parts
-            .extract::<Option<Path<T>>>()
+            .extract::<Option<Path<T>>, _>()
             .await
             .map(|opt| Self(opt.map(|Path(x)| x)))
     }

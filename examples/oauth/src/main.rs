@@ -328,7 +328,7 @@ where
         let store = MemoryStore::from_ref(state);
 
         let cookies = parts
-            .extract::<TypedHeader<headers::Cookie>>()
+            .extract::<TypedHeader<headers::Cookie>, _>()
             .await
             .map_err(|e| match *e.name() {
                 header::COOKIE => match e.reason() {

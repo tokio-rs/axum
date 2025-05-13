@@ -51,6 +51,7 @@ use crate::{
     response::{IntoResponse, Response},
     routing::IntoMakeService,
 };
+use paste::paste;
 use std::{convert::Infallible, fmt, future::Future, marker::PhantomData, pin::Pin};
 use tower::ServiceExt;
 use tower_layer::Layer;
@@ -207,37 +208,40 @@ macro_rules! impl_handler {
     (
         [$($ty:ident),*], $last:ident
     ) => {
-        #[allow(non_snake_case, unused_mut)]
-        impl<F, Fut, S, Res, M, $($ty,)* $last> Handler<(M, $($ty,)* $last,), S> for F
-        where
-            F: FnOnce($($ty,)* $last,) -> Fut + Clone + Send + Sync + 'static,
-            Fut: Future<Output = Res> + Send,
-            S: Send + Sync + 'static,
-            Res: IntoResponse,
-            $( $ty: FromRequestParts<S> + Send, )*
-            $last: FromRequest<S, M> + Send,
-        {
-            type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
+        paste! {
+            #[allow(non_snake_case, unused_mut)]
+            impl<F, Fut, S, Res, $($ty,)* $last, $([<$ty Via>],)* [<$last Via>]> Handler<(($([<$ty Via>],)* [<$last Via>],), $($ty,)* $last,), S> for F
+            where
+                F: FnOnce($($ty,)* $last,) -> Fut + Clone + Send + Sync + 'static,
+                Fut: Future<Output = Res> + Send,
+                S: Send + Sync + 'static,
+                Res: IntoResponse,
+                $( $ty: Send, )*
+                $( $ty: FromRequestParts<S, [<$ty Via>]> + Send, )*
+                $last: FromRequest<S, [<$last Via>]> + Send,
+            {
+                type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-            fn call(self, req: Request, state: S) -> Self::Future {
-                let (mut parts, body) = req.into_parts();
-                Box::pin(async move {
-                    $(
-                        let $ty = match $ty::from_request_parts(&mut parts, &state).await {
+                fn call(self, req: Request, state: S) -> Self::Future {
+                    let (mut parts, body) = req.into_parts();
+                    Box::pin(async move {
+                        $(
+                            let $ty = match $ty::from_request_parts(&mut parts, &state).await {
+                                Ok(value) => value,
+                                Err(rejection) => return rejection.into_response(),
+                            };
+                        )*
+
+                        let req = Request::from_parts(parts, body);
+
+                        let $last = match $last::from_request(req, &state).await {
                             Ok(value) => value,
                             Err(rejection) => return rejection.into_response(),
                         };
-                    )*
 
-                    let req = Request::from_parts(parts, body);
-
-                    let $last = match $last::from_request(req, &state).await {
-                        Ok(value) => value,
-                        Err(rejection) => return rejection.into_response(),
-                    };
-
-                    self($($ty,)* $last,).await.into_response()
-                })
+                        self($($ty,)* $last,).await.into_response()
+                    })
+                }
             }
         }
     };
