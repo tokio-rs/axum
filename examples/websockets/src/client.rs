@@ -129,13 +129,13 @@ fn process_message(msg: Message, who: usize) -> ControlFlow<(), ()> {
             println!(">>> {who} got str: {t:?}");
         }
         Message::Binary(d) => {
-            println!(">>> {} got {} bytes: {:?}", who, d.len(), d);
+            println!(">>> {who} got {} bytes: {d:?}", d.len());
         }
         Message::Close(c) => {
             if let Some(cf) = c {
                 println!(
-                    ">>> {} got close with code {} and reason `{}`",
-                    who, cf.code, cf.reason
+                    ">>> {who} got close with code {} and reason `{}`",
+                    cf.code, cf.reason
                 );
             } else {
                 println!(">>> {who} somehow got close message without CloseFrame");
