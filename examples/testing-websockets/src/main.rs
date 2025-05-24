@@ -13,7 +13,7 @@ use axum::{
     routing::get,
     Router,
 };
-use futures::{Sink, SinkExt, Stream, StreamExt};
+use futures_util::{Sink, SinkExt, Stream, StreamExt};
 
 #[tokio::main]
 async fn main() {
@@ -131,8 +131,8 @@ mod tests {
     async fn unit_test() {
         // Need to use "futures" channels rather than "tokio" channels as they implement `Sink` and
         // `Stream`
-        let (socket_write, mut test_rx) = futures::channel::mpsc::channel(1024);
-        let (mut test_tx, socket_read) = futures::channel::mpsc::channel(1024);
+        let (socket_write, mut test_rx) = futures_channel::mpsc::channel(1024);
+        let (mut test_tx, socket_read) = futures_channel::mpsc::channel(1024);
 
         tokio::spawn(unit_testable_handle_socket(socket_write, socket_read));
 

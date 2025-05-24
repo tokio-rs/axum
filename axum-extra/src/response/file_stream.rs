@@ -4,7 +4,7 @@ use axum::{
     BoxError,
 };
 use bytes::Bytes;
-use futures_util::TryStream;
+use futures_core::TryStream;
 use http::{header, StatusCode};
 use std::{io, path::Path};
 use tokio::{

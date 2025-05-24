@@ -7,7 +7,8 @@ use axum::{
     handler::Handler,
     response::{IntoResponse, Response},
 };
-use futures_util::future::{BoxFuture, FutureExt, Map};
+use futures_core::future::BoxFuture;
+use futures_util::future::{FutureExt, Map};
 use std::{future::Future, marker::PhantomData};
 
 mod or;

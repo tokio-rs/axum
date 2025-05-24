@@ -5,7 +5,6 @@
 //! ```
 
 use axum::{extract::Request, routing::get, Router};
-use futures_util::pin_mut;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use std::{
@@ -47,7 +46,6 @@ async fn main() {
     info!("HTTPS server listening on {bind}. To contact curl -k https://localhost:3000");
     let app = Router::new().route("/", get(handler));
 
-    pin_mut!(tcp_listener);
     loop {
         let tower_service = app.clone();
         let tls_acceptor = tls_acceptor.clone();

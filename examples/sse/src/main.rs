@@ -14,7 +14,7 @@ use axum::{
     Router,
 };
 use axum_extra::TypedHeader;
-use futures::stream::{self, Stream};
+use futures_util::stream::{self, Stream};
 use std::{convert::Infallible, path::PathBuf, time::Duration};
 use tokio_stream::StreamExt as _;
 use tower_http::{services::ServeDir, trace::TraceLayer};

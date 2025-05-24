@@ -1,6 +1,6 @@
 use crate::response::{IntoResponse, Response};
 use axum_core::extract::FromRequestParts;
-use futures_util::future::BoxFuture;
+use futures_core::future::BoxFuture;
 use http::Request;
 use std::{
     any::type_name,

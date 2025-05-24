@@ -34,7 +34,8 @@ use axum_core::{
     response::{IntoResponse, Response},
 };
 use bytes::{BufMut, BytesMut};
-use futures_util::stream::{Stream, TryStream};
+use futures_core::Stream;
+use futures_util::stream::TryStream;
 use http_body::Frame;
 use pin_project_lite::pin_project;
 use std::{
