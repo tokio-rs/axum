@@ -11,6 +11,34 @@ license = "MIT"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
 
+[package.metadata.docs.rs]
+all-features = true
+
+[package.metadata.playground]
+features = ["http1", "http2", "json", "multipart", "ws"]
+
+[package.metadata.cargo-public-api-crates]
+allowed = [
+    # our crates
+    "axum_core",
+    "axum_macros",
+    # not 1.0
+    "futures_core",
+    "futures_sink",
+    "futures_util",
+    "pin_project_lite",
+    "tower_layer",
+    "tower_service",
+    # >=1.0
+    "bytes",
+    "http",
+    "http_body",
+    "serde",
+    "tokio",
+    # for the `__private` feature
+    "reqwest",
+]
+
 [features]
 default = [
     "form",
@@ -32,7 +60,14 @@ matched-path = []
 multipart = ["dep:multer"]
 original-uri = []
 query = ["dep:form_urlencoded", "dep:serde_urlencoded", "dep:serde_path_to_error"]
-tokio = ["dep:hyper-util", "dep:tokio", "tokio/net", "tokio/rt", "tower/make", "tokio/macros"]
+tokio = [
+    "dep:hyper-util",
+    "dep:tokio",
+    "tokio/net",
+    "tokio/rt",
+    "tower/make",
+    "tokio/macros",
+]
 tower-log = ["tower/log"]
 tracing = ["dep:tracing", "axum-core/tracing"]
 ws = ["dep:hyper", "tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
@@ -42,7 +77,8 @@ __private_docs = [
     # but they need the same sort of treatment as below to be complete
     "axum-core/__private_docs",
     # Enables upstream things linked to in docs
-    "tower/full", "dep:tower-http",
+    "tower/full",
+    "dep:tower-http",
 ]
 
 # This feature is used to enable private test helper usage
@@ -186,43 +222,6 @@ features = [
 
 [lints]
 workspace = true
-
-[package.metadata.docs.rs]
-all-features = true
-
-[package.metadata.playground]
-features = [
-    "http1",
-    "http2",
-    "json",
-    "multipart",
-    "ws",
-]
-
-[package.metadata.cargo-public-api-crates]
-allowed = [
-    # our crates
-    "axum_core",
-    "axum_macros",
-
-    # not 1.0
-    "futures_core",
-    "futures_sink",
-    "futures_util",
-    "pin_project_lite",
-    "tower_layer",
-    "tower_service",
-
-    # >=1.0
-    "bytes",
-    "http",
-    "http_body",
-    "serde",
-    "tokio",
-
-    # for the `__private` feature
-    "reqwest",
-]
 
 [[bench]]
 name = "benches"
