@@ -94,10 +94,9 @@ use self::rejection::*;
 use super::FromRequestParts;
 use crate::{body::Bytes, response::Response, Error};
 use axum_core::body::Body;
-use futures_util::{
-    sink::{Sink, SinkExt},
-    stream::{Stream, StreamExt},
-};
+use futures_core::Stream;
+use futures_sink::Sink;
+use futures_util::{sink::SinkExt, stream::StreamExt};
 use http::{
     header::{self, HeaderMap, HeaderName, HeaderValue},
     request::Parts,

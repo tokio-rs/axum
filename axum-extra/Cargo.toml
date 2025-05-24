@@ -51,6 +51,7 @@ __private_docs = [
 axum = { path = "../axum", version = "0.8.4", default-features = false, features = ["original-uri"] }
 axum-core = { path = "../axum-core", version = "0.5.2" }
 bytes = "1.1.0"
+futures-core = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "1.0.0"
 http-body = "1.0.0"

@@ -472,7 +472,7 @@ mod private {
         task::{Context, Poll},
     };
 
-    pub struct ServeFuture(pub(super) futures_util::future::BoxFuture<'static, io::Result<()>>);
+    pub struct ServeFuture(pub(super) futures_core::future::BoxFuture<'static, io::Result<()>>);
 
     impl Future for ServeFuture {
         type Output = io::Result<()>;
