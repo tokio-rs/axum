@@ -4,6 +4,14 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[[bin]]
+name = "example-websockets"
+path = "src/main.rs"
+
+[[bin]]
+name = "example-client"
+path = "src/client.rs"
+
 [dependencies]
 axum = { path = "../../axum", features = ["ws"] }
 axum-extra = { path = "../../axum-extra", features = ["typed-header"] }
@@ -15,11 +23,3 @@ tokio-tungstenite = "0.26.0"
 tower-http = { version = "0.6.1", features = ["fs", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-
-[[bin]]
-name = "example-websockets"
-path = "src/main.rs"
-
-[[bin]]
-name = "example-client"
-path = "src/client.rs"
