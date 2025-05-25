@@ -10,7 +10,7 @@ use axum::{
 };
 use axum_core::__composite_rejection as composite_rejection;
 use axum_core::__define_rejection as define_rejection;
-use futures_util::stream::Stream;
+use futures_core::stream::Stream;
 use http::{
     header::{HeaderMap, CONTENT_TYPE},
     Request, StatusCode,

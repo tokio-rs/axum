@@ -2,7 +2,7 @@ use crate::body::{Body, Bytes, HttpBody};
 use crate::response::{IntoResponse, Response};
 use crate::BoxError;
 use axum_core::extract::{FromRequest, FromRequestParts};
-use futures_util::future::BoxFuture;
+use futures_core::future::BoxFuture;
 use http::Request;
 use std::{
     any::type_name,
