@@ -1,0 +1,10 @@
+[package]
+name = "hot-patch"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+axum = { path = "../../axum" }
+dioxus-devtools = { version = "0.7.0-alpha.0", git = "https://github.com/DioxusLabs/dioxus.git", ref = "77d10a4" }
+tokio = { version = "1.0", features = ["full"] }
