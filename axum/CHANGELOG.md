@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3205]: https://github.com/tokio-rs/axum/pull/3205
+[#3220]: https://github.com/tokio-rs/axum/pull/3220
 
 # 0.8.4
 
