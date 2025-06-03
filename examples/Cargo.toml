@@ -1,5 +1,7 @@
 [workspace]
-members = ["axum", "axum-*"]
+members = ["*"]
+# Example has been deleted, but README.md remains
+exclude = ["async-graphql", "target"]
 resolver = "2"
 
 [workspace.package]
@@ -42,9 +44,3 @@ uninlined_format_args = "warn"
 unnested_or_patterns = "warn"
 unused_self = "warn"
 verbose_file_reads = "warn"
-
-# configuration for https://github.com/crate-ci/typos
-[workspace.metadata.typos.default.extend-identifiers]
-# These have been fixed in the past, but are still present in the changelog.
-DefaultOnFailedUpdgrade = "DefaultOnFailedUpdgrade"
-OnFailedUpdgrade = "OnFailedUpdgrade"
