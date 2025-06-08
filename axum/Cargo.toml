@@ -87,7 +87,7 @@ __private = ["tokio", "http1", "dep:reqwest"]
 
 [dependencies]
 axum-core = { path = "../axum-core", version = "0.5.2" }
-bytes = "1.0"
+bytes = "1.7"
 futures-core = "0.3"
 futures-sink = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
@@ -173,7 +173,7 @@ tokio = { package = "tokio", version = "1.44.2", features = ["macros", "rt", "rt
 tokio-stream = "0.1"
 tokio-tungstenite = "0.26.0"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["json"] }
+tracing-subscriber = { version = "0.3", features = ["json", "tracing"] }
 uuid = { version = "1.0", features = ["serde", "v4"] }
 
 [dev-dependencies.tower]
