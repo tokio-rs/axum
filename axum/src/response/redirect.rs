@@ -68,7 +68,7 @@ impl Redirect {
     }
 
     /// Returns the current Redirect StatusCode
-    pub fn status(&self) -> StatusCode {
+    pub fn status_code(&self) -> StatusCode {
         self.status_code
     }
 
