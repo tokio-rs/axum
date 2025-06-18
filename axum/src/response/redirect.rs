@@ -108,7 +108,7 @@ mod tests {
     use super::Redirect;
     use http::StatusCode;
 
-    const EXAMPLE_URL: &'static str = "https://example.com";
+    const EXAMPLE_URL: &str = "https://example.com";
 
     #[test]
     fn correct_status() {
