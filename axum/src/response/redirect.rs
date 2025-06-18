@@ -74,7 +74,8 @@ impl Redirect {
 
     /// Returns the parsed location header as a &str.
     ///
-    /// This function shouldn't ever return a Err() since Redirect takes a &str, and will be valid UTF-8.
+    /// This function shouldn't ever return a Err() since Redirect takes a &str in it's constructors,
+    /// and will be valid UTF-8.
     pub fn location(&self) -> Result<&str, http::header::ToStrError> {
         self.location.to_str()
     }
