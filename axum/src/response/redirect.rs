@@ -72,7 +72,9 @@ impl Redirect {
         self.status_code
     }
 
-    /// Parses the location header to a String.
+    /// Attempts to parse the location header to a &str, and returns the result.
+    ///
+    /// This function shouldn't ever return a Err() since Redirect takes a &str.
     pub fn location(&self) -> Result<&str, http::header::ToStrError> {
         self.location.to_str()
     }
@@ -97,5 +99,44 @@ impl Redirect {
 impl IntoResponse for Redirect {
     fn into_response(self) -> Response {
         (self.status_code, [(LOCATION, self.location)]).into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Redirect;
+    use http::StatusCode;
+
+    const EXAMPLE_URL: &'static str = "https://example.com";
+
+    #[test]
+    fn correct_status() {
+        assert_eq!(
+            StatusCode::SEE_OTHER,
+            Redirect::to(EXAMPLE_URL).status_code()
+        );
+
+        assert_eq!(
+            StatusCode::TEMPORARY_REDIRECT,
+            Redirect::temporary(EXAMPLE_URL).status_code()
+        );
+
+        assert_eq!(
+            StatusCode::PERMANENT_REDIRECT,
+            Redirect::permanent(EXAMPLE_URL).status_code()
+        );
+    }
+
+    #[test]
+    fn correct_location() {
+        assert_eq!(
+            EXAMPLE_URL,
+            Redirect::permanent(EXAMPLE_URL).location().unwrap()
+        );
+
+        assert_eq!(
+            "/redirect",
+            Redirect::permanent("/redirect").location().unwrap()
+        )
     }
 }
