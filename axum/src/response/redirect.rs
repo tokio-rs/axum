@@ -72,6 +72,11 @@ impl Redirect {
         self.status_code
     }
 
+    /// Parses the location header to a String.
+    pub fn location(&self) -> Result<&str, http::header::ToStrError> {
+        self.location.to_str()
+    }
+
     // This is intentionally not public since other kinds of redirects might not
     // use the `Location` header, namely `304 Not Modified`.
     //
