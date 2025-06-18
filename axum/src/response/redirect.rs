@@ -67,6 +67,11 @@ impl Redirect {
         Self::with_status_code(StatusCode::PERMANENT_REDIRECT, uri)
     }
 
+    /// Returns the current Redirect StatusCode
+    pub fn status(&self) -> StatusCode {
+        self.status_code
+    }
+
     // This is intentionally not public since other kinds of redirects might not
     // use the `Location` header, namely `304 Not Modified`.
     //
