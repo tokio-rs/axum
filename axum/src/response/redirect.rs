@@ -67,7 +67,7 @@ impl Redirect {
         Self::with_status_code(StatusCode::PERMANENT_REDIRECT, uri)
     }
 
-    /// Returns the current Redirect StatusCode
+    /// Returns the HTTP status code of the Redirect.
     pub fn status_code(&self) -> StatusCode {
         self.status_code
     }
