@@ -345,7 +345,6 @@ mod tests {
                     .await
                     .unwrap();
                 let cookie_value = res.headers()["set-cookie"].to_str().unwrap();
-                println!("Set Cookie value: {}", cookie_value);
 
                 assert!(cookie_value.starts_with("key="));
 
@@ -425,7 +424,6 @@ mod tests {
                     .await
                     .unwrap();
                 let cookie_value = res.headers()["set-cookie"].to_str().unwrap();
-                println!("Set Cookie value: {}", cookie_value);
                 assert!(cookie_value.contains("__Host-key"));
 
                 // For signed/private cookies, verify that the plaintext value is not directly visible
@@ -441,7 +439,6 @@ mod tests {
                 // Extract just the cookie part (before the first semicolon)
                 // Set-Cookie: __Host-key=value; Secure; Path=/ -> __Host-key=value
                 let cookie_header_value = cookie_value.split(';').next().unwrap().trim();
-                println!("Using Cookie header value: {}", cookie_header_value);
 
                 let res = app
                     .clone()
