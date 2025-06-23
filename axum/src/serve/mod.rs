@@ -2,15 +2,17 @@
 
 use std::{
     convert::Infallible,
+    error::Error as StdError,
     fmt::Debug,
-    future::{poll_fn, Future, IntoFuture},
+    future::{Future, IntoFuture},
     io,
     marker::PhantomData,
-    sync::Arc,
+    pin::pin,
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
-use futures_util::{pin_mut, FutureExt};
+use futures_util::FutureExt;
+use http_body::Body as HttpBody;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 #[cfg(any(feature = "http1", feature = "http2"))]
@@ -94,12 +96,15 @@ pub use self::listener::{Listener, ListenerExt, TapIo};
 /// [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: crate::handler::HandlerWithoutStateExt::into_make_service_with_connect_info
 /// [`HandlerService::into_make_service_with_connect_info`]: crate::handler::HandlerService::into_make_service_with_connect_info
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-pub fn serve<L, M, S>(listener: L, make_service: M) -> Serve<L, M, S>
+pub fn serve<L, M, S, B>(listener: L, make_service: M) -> Serve<L, M, S, B>
 where
     L: Listener,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S>,
-    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S: Service<Request, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<Box<dyn StdError + Send + Sync>>,
 {
     Serve {
         listener,
@@ -111,14 +116,14 @@ where
 /// Future returned by [`serve`].
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[must_use = "futures must be awaited or polled"]
-pub struct Serve<L, M, S> {
+pub struct Serve<L, M, S, B> {
     listener: L,
     make_service: M,
-    _marker: PhantomData<S>,
+    _marker: PhantomData<(S, B)>,
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S> Serve<L, M, S>
+impl<L, M, S, B> Serve<L, M, S, B>
 where
     L: Listener,
 {
@@ -148,7 +153,7 @@ where
     ///
     /// Similarly to [`serve`], although this future resolves to `io::Result<()>`, it will never
     /// error. It returns `Ok(())` only after the `signal` future completes.
-    pub fn with_graceful_shutdown<F>(self, signal: F) -> WithGracefulShutdown<L, M, S, F>
+    pub fn with_graceful_shutdown<F>(self, signal: F) -> WithGracefulShutdown<L, M, S, F, B>
     where
         F: Future<Output = ()> + Send + 'static,
     {
@@ -167,7 +172,37 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S> Debug for Serve<L, M, S>
+impl<L, M, S, B> Serve<L, M, S, B>
+where
+    L: Listener,
+    L::Addr: Debug,
+    M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
+    for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
+    S: Service<Request, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
+    S::Future: Send,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<Box<dyn StdError + Send + Sync>>,
+{
+    async fn run(self) -> ! {
+        let Self {
+            mut listener,
+            mut make_service,
+            _marker,
+        } = self;
+
+        let (signal_tx, _signal_rx) = watch::channel(());
+        let (_close_tx, close_rx) = watch::channel(());
+
+        loop {
+            let (io, remote_addr) = listener.accept().await;
+            handle_connection(&mut make_service, &signal_tx, &close_rx, io, remote_addr).await;
+        }
+    }
+}
+
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl<L, M, S, B> Debug for Serve<L, M, S, B>
 where
     L: Debug + 'static,
     M: Debug,
@@ -188,36 +223,38 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S> IntoFuture for Serve<L, M, S>
+impl<L, M, S, B> IntoFuture for Serve<L, M, S, B>
 where
     L: Listener,
     L::Addr: Debug,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
     for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
-    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S: Service<Request, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<Box<dyn StdError + Send + Sync>>,
 {
     type Output = io::Result<()>;
     type IntoFuture = private::ServeFuture;
 
     fn into_future(self) -> Self::IntoFuture {
-        self.with_graceful_shutdown(std::future::pending())
-            .into_future()
+        private::ServeFuture(Box::pin(async move { self.run().await }))
     }
 }
 
 /// Serve future with graceful shutdown enabled.
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[must_use = "futures must be awaited or polled"]
-pub struct WithGracefulShutdown<L, M, S, F> {
+pub struct WithGracefulShutdown<L, M, S, F, B> {
     listener: L,
     make_service: M,
     signal: F,
-    _marker: PhantomData<S>,
+    _marker: PhantomData<(S, B)>,
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F> WithGracefulShutdown<L, M, S, F>
+impl<L, M, S, F, B> WithGracefulShutdown<L, M, S, F, B>
 where
     L: Listener,
 {
@@ -228,7 +265,61 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F> Debug for WithGracefulShutdown<L, M, S, F>
+impl<L, M, S, F, B> WithGracefulShutdown<L, M, S, F, B>
+where
+    L: Listener,
+    L::Addr: Debug,
+    M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
+    for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
+    S: Service<Request, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
+    S::Future: Send,
+    F: Future<Output = ()> + Send + 'static,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<Box<dyn StdError + Send + Sync>>,
+{
+    async fn run(self) {
+        let Self {
+            mut listener,
+            mut make_service,
+            signal,
+            _marker,
+        } = self;
+
+        let (signal_tx, signal_rx) = watch::channel(());
+        tokio::spawn(async move {
+            signal.await;
+            trace!("received graceful shutdown signal. Telling tasks to shutdown");
+            drop(signal_rx);
+        });
+
+        let (close_tx, close_rx) = watch::channel(());
+
+        loop {
+            let (io, remote_addr) = tokio::select! {
+                conn = listener.accept() => conn,
+                _ = signal_tx.closed() => {
+                    trace!("signal received, not accepting new connections");
+                    break;
+                }
+            };
+
+            handle_connection(&mut make_service, &signal_tx, &close_rx, io, remote_addr).await;
+        }
+
+        drop(close_rx);
+        drop(listener);
+
+        trace!(
+            "waiting for {} task(s) to finish",
+            close_tx.receiver_count()
+        );
+        close_tx.closed().await;
+    }
+}
+
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl<L, M, S, F, B> Debug for WithGracefulShutdown<L, M, S, F, B>
 where
     L: Debug + 'static,
     M: Debug,
@@ -252,15 +343,18 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F> IntoFuture for WithGracefulShutdown<L, M, S, F>
+impl<L, M, S, F, B> IntoFuture for WithGracefulShutdown<L, M, S, F, B>
 where
     L: Listener,
     L::Addr: Debug,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
     for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
-    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S: Service<Request, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
     F: Future<Output = ()> + Send + 'static,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<Box<dyn StdError + Send + Sync>>,
 {
     type Output = io::Result<()>;
     type IntoFuture = private::ServeFuture;
@@ -273,107 +367,72 @@ where
     }
 }
 
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F> WithGracefulShutdown<L, M, S, F>
-where
+async fn handle_connection<L, M, S, B>(
+    make_service: &mut M,
+    signal_tx: &watch::Sender<()>,
+    close_rx: &watch::Receiver<()>,
+    io: <L as Listener>::Io,
+    remote_addr: <L as Listener>::Addr,
+) where
     L: Listener,
     L::Addr: Debug,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
     for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
-    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S: Service<Request, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
-    F: Future<Output = ()> + Send + 'static,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<Box<dyn StdError + Send + Sync>>,
 {
-    async fn run(self) {
-        let Self {
-            mut listener,
-            mut make_service,
-            signal,
-            _marker: _,
-        } = self;
+    let io = TokioIo::new(io);
 
-        let (signal_tx, signal_rx) = watch::channel(());
-        let signal_tx = Arc::new(signal_tx);
-        tokio::spawn(async move {
-            signal.await;
-            trace!("received graceful shutdown signal. Telling tasks to shutdown");
-            drop(signal_rx);
-        });
+    trace!("connection {remote_addr:?} accepted");
 
-        let (close_tx, close_rx) = watch::channel(());
+    make_service
+        .ready()
+        .await
+        .unwrap_or_else(|err| match err {});
+
+    let tower_service = make_service
+        .call(IncomingStream {
+            io: &io,
+            remote_addr,
+        })
+        .await
+        .unwrap_or_else(|err| match err {})
+        .map_request(|req: Request<Incoming>| req.map(Body::new));
+
+    let hyper_service = TowerToHyperService::new(tower_service);
+    let signal_tx = signal_tx.clone();
+    let close_rx = close_rx.clone();
+
+    tokio::spawn(async move {
+        #[allow(unused_mut)]
+        let mut builder = Builder::new(TokioExecutor::new());
+        // CONNECT protocol needed for HTTP/2 websockets
+        #[cfg(feature = "http2")]
+        builder.http2().enable_connect_protocol();
+
+        let mut conn = pin!(builder.serve_connection_with_upgrades(io, hyper_service));
+        let mut signal_closed = pin!(signal_tx.closed().fuse());
 
         loop {
-            let (io, remote_addr) = tokio::select! {
-                conn = listener.accept() => conn,
-                _ = signal_tx.closed() => {
-                    trace!("signal received, not accepting new connections");
+            tokio::select! {
+                result = conn.as_mut() => {
+                    if let Err(_err) = result {
+                        trace!("failed to serve connection: {_err:#}");
+                    }
                     break;
                 }
-            };
-
-            let io = TokioIo::new(io);
-
-            trace!("connection {remote_addr:?} accepted");
-
-            poll_fn(|cx| make_service.poll_ready(cx))
-                .await
-                .unwrap_or_else(|err| match err {});
-
-            let tower_service = make_service
-                .call(IncomingStream {
-                    io: &io,
-                    remote_addr,
-                })
-                .await
-                .unwrap_or_else(|err| match err {})
-                .map_request(|req: Request<Incoming>| req.map(Body::new));
-
-            let hyper_service = TowerToHyperService::new(tower_service);
-
-            let signal_tx = Arc::clone(&signal_tx);
-
-            let close_rx = close_rx.clone();
-
-            tokio::spawn(async move {
-                #[allow(unused_mut)]
-                let mut builder = Builder::new(TokioExecutor::new());
-                // CONNECT protocol needed for HTTP/2 websockets
-                #[cfg(feature = "http2")]
-                builder.http2().enable_connect_protocol();
-                let conn = builder.serve_connection_with_upgrades(io, hyper_service);
-                pin_mut!(conn);
-
-                let signal_closed = signal_tx.closed().fuse();
-                pin_mut!(signal_closed);
-
-                loop {
-                    tokio::select! {
-                        result = conn.as_mut() => {
-                            if let Err(_err) = result {
-                                trace!("failed to serve connection: {_err:#}");
-                            }
-                            break;
-                        }
-                        _ = &mut signal_closed => {
-                            trace!("signal received in task, starting graceful shutdown");
-                            conn.as_mut().graceful_shutdown();
-                        }
-                    }
+                _ = &mut signal_closed => {
+                    trace!("signal received in task, starting graceful shutdown");
+                    conn.as_mut().graceful_shutdown();
                 }
-
-                drop(close_rx);
-            });
+            }
         }
 
         drop(close_rx);
-        drop(listener);
-
-        trace!(
-            "waiting for {} task(s) to finish",
-            close_tx.receiver_count()
-        );
-        close_tx.closed().await;
-    }
+    });
 }
 
 /// An incoming stream.
@@ -413,7 +472,7 @@ mod private {
         task::{Context, Poll},
     };
 
-    pub struct ServeFuture(pub(super) futures_util::future::BoxFuture<'static, io::Result<()>>);
+    pub struct ServeFuture(pub(super) futures_core::future::BoxFuture<'static, io::Result<()>>);
 
     impl Future for ServeFuture {
         type Output = io::Result<()>;
@@ -439,7 +498,7 @@ mod tests {
     };
 
     use axum_core::{body::Body, extract::Request};
-    use http::StatusCode;
+    use http::{Response, StatusCode};
     use hyper_util::rt::TokioIo;
     #[cfg(unix)]
     use tokio::net::UnixListener;
@@ -447,6 +506,7 @@ mod tests {
         io::{self, AsyncRead, AsyncWrite},
         net::TcpListener,
     };
+    use tower::ServiceBuilder;
 
     #[cfg(unix)]
     use super::IncomingStream;
@@ -458,7 +518,7 @@ mod tests {
         handler::{Handler, HandlerWithoutStateExt},
         routing::get,
         serve::ListenerExt,
-        Router,
+        Router, ServiceExt,
     };
 
     #[allow(dead_code, unused_must_use)]
@@ -685,5 +745,32 @@ mod tests {
         let body = to_bytes(body, usize::MAX).await.unwrap();
         let body = String::from_utf8(body.to_vec()).unwrap();
         assert_eq!(body, "Hello, World!");
+    }
+
+    #[crate::test]
+    async fn serving_with_custom_body_type() {
+        struct CustomBody;
+        impl http_body::Body for CustomBody {
+            type Data = bytes::Bytes;
+            type Error = std::convert::Infallible;
+            fn poll_frame(
+                self: std::pin::Pin<&mut Self>,
+                _cx: &mut std::task::Context<'_>,
+            ) -> std::task::Poll<Option<Result<http_body::Frame<Self::Data>, Self::Error>>>
+            {
+                #![allow(clippy::unreachable)] // The implementation is not used, we just need to provide one.
+                unreachable!();
+            }
+        }
+
+        let app = ServiceBuilder::new()
+            .layer_fn(|_| tower::service_fn(|_| std::future::ready(Ok(Response::new(CustomBody)))))
+            .service(Router::<()>::new().route("/hello", get(|| async {})));
+        let addr = "0.0.0.0:0";
+
+        _ = serve(
+            TcpListener::bind(addr).await.unwrap(),
+            app.into_make_service(),
+        );
     }
 }

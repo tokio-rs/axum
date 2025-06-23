@@ -775,10 +775,11 @@ fn impl_struct_by_extracting_all_at_once(
         .chain(via_marker_type)
         .collect::<Punctuated<Type, Token![,]>>();
 
-    let ident_generics = generic_ident
-        .is_some()
-        .then(|| quote! { <T> })
-        .unwrap_or_default();
+    let ident_generics = if generic_ident.is_some() {
+        quote! { <T> }
+    } else {
+        TokenStream::new()
+    };
 
     let rejection_bound = rejection.as_ref().map(|rejection| {
         match (tr, generic_ident.is_some()) {

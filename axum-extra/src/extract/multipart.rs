@@ -10,7 +10,7 @@ use axum::{
 };
 use axum_core::__composite_rejection as composite_rejection;
 use axum_core::__define_rejection as define_rejection;
-use futures_util::stream::Stream;
+use futures_core::stream::Stream;
 use http::{
     header::{HeaderMap, CONTENT_TYPE},
     Request, StatusCode,
@@ -243,12 +243,13 @@ impl MultipartError {
 
     /// Get the response body text used for this rejection.
     pub fn body_text(&self) -> String {
+        let body = self.source.to_string();
         axum_core::__log_rejection!(
             rejection_type = Self,
-            body_text = self.body_text(),
+            body_text = body,
             status = self.status(),
         );
-        self.source.to_string()
+        body
     }
 
     /// Get the status code used for this rejection.
@@ -384,6 +385,45 @@ mod tests {
                 field.bytes().await?;
             }
             Ok(())
+        }
+
+        let app = Router::new()
+            .route("/", post(handle))
+            .layer(DefaultBodyLimit::max(BYTES.len() - 1));
+
+        let client = TestClient::new(app);
+
+        let form =
+            reqwest::multipart::Form::new().part("file", reqwest::multipart::Part::bytes(BYTES));
+
+        let res = client.post("/").multipart(form).await;
+        assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    }
+
+    #[tokio::test]
+    #[cfg(feature = "tracing")]
+    async fn body_too_large_with_tracing() {
+        const BYTES: &[u8] = "<!doctype html><title>🦀</title>".as_bytes();
+
+        async fn handle(mut multipart: Multipart) -> impl IntoResponse {
+            let result: Result<(), MultipartError> = async {
+                while let Some(field) = multipart.next_field().await? {
+                    field.bytes().await?;
+                }
+                Ok(())
+            }
+            .await;
+
+            let subscriber = tracing_subscriber::FmtSubscriber::builder()
+                .with_max_level(tracing::level_filters::LevelFilter::TRACE)
+                .with_writer(std::io::sink)
+                .finish();
+
+            let guard = tracing::subscriber::set_default(subscriber);
+            let response = result.into_response();
+            drop(guard);
+
+            response
         }
 
         let app = Router::new()

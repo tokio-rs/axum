@@ -1,6 +1,6 @@
 [package]
 name = "axum"
-version = "0.8.3" # remember to bump the version that axum-extra depends on
+version = "0.8.4" # remember to bump the version that axum-extra depends on
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "Web framework that focuses on ergonomics and modularity"
 edition = "2021"
@@ -10,6 +10,34 @@ keywords = ["http", "web", "framework"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
+
+[package.metadata.docs.rs]
+all-features = true
+
+[package.metadata.playground]
+features = ["http1", "http2", "json", "multipart", "ws"]
+
+[package.metadata.cargo-public-api-crates]
+allowed = [
+    # our crates
+    "axum_core",
+    "axum_macros",
+    # not 1.0
+    "futures_core",
+    "futures_sink",
+    "futures_util",
+    "pin_project_lite",
+    "tower_layer",
+    "tower_service",
+    # >=1.0
+    "bytes",
+    "http",
+    "http_body",
+    "serde",
+    "tokio",
+    # for the `__private` feature
+    "reqwest",
+]
 
 [features]
 default = [
@@ -32,7 +60,14 @@ matched-path = []
 multipart = ["dep:multer"]
 original-uri = []
 query = ["dep:form_urlencoded", "dep:serde_urlencoded", "dep:serde_path_to_error"]
-tokio = ["dep:hyper-util", "dep:tokio", "tokio/net", "tokio/rt", "tower/make", "tokio/macros"]
+tokio = [
+    "dep:hyper-util",
+    "dep:tokio",
+    "tokio/net",
+    "tokio/rt",
+    "tower/make",
+    "tokio/macros",
+]
 tower-log = ["tower/log"]
 tracing = ["dep:tracing", "axum-core/tracing"]
 ws = ["dep:hyper", "tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
@@ -42,7 +77,8 @@ __private_docs = [
     # but they need the same sort of treatment as below to be complete
     "axum-core/__private_docs",
     # Enables upstream things linked to in docs
-    "tower/full", "dep:tower-http",
+    "tower/full",
+    "dep:tower-http",
 ]
 
 # This feature is used to enable private test helper usage
@@ -52,6 +88,8 @@ __private = ["tokio", "http1", "dep:reqwest"]
 [dependencies]
 axum-core = { path = "../axum-core", version = "0.5.2" }
 bytes = "1.0"
+futures-core = "0.3"
+futures-sink = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "1.0.0"
 http-body = "1.0.0"
@@ -81,7 +119,7 @@ serde_json = { version = "1.0", features = ["raw_value"], optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
 sha1 = { version = "0.10", optional = true }
-tokio = { package = "tokio", version = "1.25.0", features = ["time"], optional = true }
+tokio = { package = "tokio", version = "1.44", features = ["time"], optional = true }
 tokio-tungstenite = { version = "0.26.0", optional = true }
 tracing = { version = "0.1", default-features = false, optional = true }
 
@@ -131,7 +169,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "str
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
 time = { version = "0.3", features = ["serde-human-readable"] }
-tokio = { package = "tokio", version = "1.25.0", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
+tokio = { package = "tokio", version = "1.44.2", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
 tokio-stream = "0.1"
 tokio-tungstenite = "0.26.0"
 tracing = "0.1"
@@ -186,43 +224,6 @@ features = [
 
 [lints]
 workspace = true
-
-[package.metadata.docs.rs]
-all-features = true
-
-[package.metadata.playground]
-features = [
-    "http1",
-    "http2",
-    "json",
-    "multipart",
-    "ws",
-]
-
-[package.metadata.cargo-public-api-crates]
-allowed = [
-    # our crates
-    "axum_core",
-    "axum_macros",
-
-    # not 1.0
-    "futures_core",
-    "futures_sink",
-    "futures_util",
-    "pin_project_lite",
-    "tower_layer",
-    "tower_service",
-
-    # >=1.0
-    "bytes",
-    "http",
-    "http_body",
-    "serde",
-    "tokio",
-
-    # for the `__private` feature
-    "reqwest",
-]
 
 [[bench]]
 name = "benches"

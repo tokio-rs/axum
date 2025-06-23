@@ -15,6 +15,7 @@ use crate::{
 use axum_core::{extract::Request, response::IntoResponse, BoxError};
 use bytes::BytesMut;
 use std::{
+    borrow::Cow,
     convert::Infallible,
     fmt,
     task::{Context, Poll},
@@ -1031,58 +1032,66 @@ where
         self
     }
 
-    #[track_caller]
-    pub(crate) fn merge_for_path(mut self, path: Option<&str>, other: MethodRouter<S, E>) -> Self {
+    pub(crate) fn merge_for_path(
+        mut self,
+        path: Option<&str>,
+        other: MethodRouter<S, E>,
+    ) -> Result<Self, Cow<'static, str>> {
         // written using inner functions to generate less IR
-        #[track_caller]
         fn merge_inner<S, E>(
             path: Option<&str>,
             name: &str,
             first: MethodEndpoint<S, E>,
             second: MethodEndpoint<S, E>,
-        ) -> MethodEndpoint<S, E> {
+        ) -> Result<MethodEndpoint<S, E>, Cow<'static, str>> {
             match (first, second) {
-                (MethodEndpoint::None, MethodEndpoint::None) => MethodEndpoint::None,
-                (pick, MethodEndpoint::None) | (MethodEndpoint::None, pick) => pick,
+                (MethodEndpoint::None, MethodEndpoint::None) => Ok(MethodEndpoint::None),
+                (pick, MethodEndpoint::None) | (MethodEndpoint::None, pick) => Ok(pick),
                 _ => {
                     if let Some(path) = path {
-                        panic!(
+                        Err(format!(
                             "Overlapping method route. Handler for `{name} {path}` already exists"
-                        );
+                        )
+                        .into())
                     } else {
-                        panic!(
+                        Err(format!(
                             "Overlapping method route. Cannot merge two method routes that both \
                              define `{name}`"
-                        );
+                        )
+                        .into())
                     }
                 }
             }
         }
 
-        self.get = merge_inner(path, "GET", self.get, other.get);
-        self.head = merge_inner(path, "HEAD", self.head, other.head);
-        self.delete = merge_inner(path, "DELETE", self.delete, other.delete);
-        self.options = merge_inner(path, "OPTIONS", self.options, other.options);
-        self.patch = merge_inner(path, "PATCH", self.patch, other.patch);
-        self.post = merge_inner(path, "POST", self.post, other.post);
-        self.put = merge_inner(path, "PUT", self.put, other.put);
-        self.trace = merge_inner(path, "TRACE", self.trace, other.trace);
-        self.connect = merge_inner(path, "CONNECT", self.connect, other.connect);
+        self.get = merge_inner(path, "GET", self.get, other.get)?;
+        self.head = merge_inner(path, "HEAD", self.head, other.head)?;
+        self.delete = merge_inner(path, "DELETE", self.delete, other.delete)?;
+        self.options = merge_inner(path, "OPTIONS", self.options, other.options)?;
+        self.patch = merge_inner(path, "PATCH", self.patch, other.patch)?;
+        self.post = merge_inner(path, "POST", self.post, other.post)?;
+        self.put = merge_inner(path, "PUT", self.put, other.put)?;
+        self.trace = merge_inner(path, "TRACE", self.trace, other.trace)?;
+        self.connect = merge_inner(path, "CONNECT", self.connect, other.connect)?;
 
         self.fallback = self
             .fallback
             .merge(other.fallback)
-            .expect("Cannot merge two `MethodRouter`s that both have a fallback");
+            .ok_or("Cannot merge two `MethodRouter`s that both have a fallback")?;
 
         self.allow_header = self.allow_header.merge(other.allow_header);
 
-        self
+        Ok(self)
     }
 
     #[doc = include_str!("../docs/method_routing/merge.md")]
     #[track_caller]
     pub fn merge(self, other: MethodRouter<S, E>) -> Self {
-        self.merge_for_path(None, other)
+        match self.merge_for_path(None, other) {
+            Ok(t) => t,
+            // not using unwrap or unwrap_or_else to get a clean panic message + the right location
+            Err(e) => panic!("{e}"),
+        }
     }
 
     /// Apply a [`HandleErrorLayer`].

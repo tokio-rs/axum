@@ -10,10 +10,10 @@
 //! websocket server and how the client-side and server-side code can be quite similar.
 //!
 
-use futures_util::stream::FuturesUnordered;
 use futures_util::{SinkExt, StreamExt};
 use std::ops::ControlFlow;
 use std::time::Instant;
+use tokio::task::JoinSet;
 use tokio_tungstenite::tungstenite::Utf8Bytes;
 
 // we will use tungstenite for websocket client impl (same library as what axum is using)
@@ -29,12 +29,10 @@ const SERVER: &str = "ws://127.0.0.1:3000/ws";
 async fn main() {
     let start_time = Instant::now();
     //spawn several clients that will concurrently talk to the server
-    let mut clients = (0..N_CLIENTS)
-        .map(|cli| tokio::spawn(spawn_client(cli)))
-        .collect::<FuturesUnordered<_>>();
+    let mut clients = (0..N_CLIENTS).map(spawn_client).collect::<JoinSet<_>>();
 
     //wait for all our clients to exit
-    while clients.next().await.is_some() {}
+    while clients.join_next().await.is_some() {}
 
     let end_time = Instant::now();
 
@@ -129,13 +127,13 @@ fn process_message(msg: Message, who: usize) -> ControlFlow<(), ()> {
             println!(">>> {who} got str: {t:?}");
         }
         Message::Binary(d) => {
-            println!(">>> {} got {} bytes: {:?}", who, d.len(), d);
+            println!(">>> {who} got {} bytes: {d:?}", d.len());
         }
         Message::Close(c) => {
             if let Some(cf) = c {
                 println!(
-                    ">>> {} got close with code {} and reason `{}`",
-                    who, cf.code, cf.reason
+                    ">>> {who} got close with code {} and reason `{}`",
+                    cf.code, cf.reason
                 );
             } else {
                 println!(">>> {who} somehow got close message without CloseFrame");

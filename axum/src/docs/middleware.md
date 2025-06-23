@@ -208,7 +208,7 @@ use axum::{
     body::Body,
     extract::Request,
 };
-use futures_util::future::BoxFuture;
+use futures_core::future::BoxFuture;
 use tower::{Service, Layer};
 use std::task::{Context, Poll};
 
