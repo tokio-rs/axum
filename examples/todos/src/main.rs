@@ -18,7 +18,7 @@ use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, patch},
+    routing::{get, patch, post},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
@@ -49,6 +49,7 @@ async fn main() {
     let app = Router::new()
         .route("/todos", get(todos_index).post(todos_create))
         .route("/todos/{id}", patch(todos_update).delete(todos_delete))
+        .route("/todos/{id}:ping", post(todos_ping))
         // Add middleware to all routes
         .layer(
             ServiceBuilder::new()
@@ -149,6 +150,15 @@ async fn todos_delete(Path(id): Path<Uuid>, State(db): State<Db>) -> impl IntoRe
     } else {
         StatusCode::NOT_FOUND
     }
+}
+
+#[derive(Debug, Deserialize)]
+struct Ping {
+    message: String,
+}
+
+async fn todos_ping(Path(id): Path<Uuid>, Json(ping): Json<Ping>) -> impl IntoResponse {
+    (StatusCode::OK, format!("Ping[{id}]: {}", ping.message))
 }
 
 type Db = Arc<RwLock<HashMap<Uuid, Todo>>>;
