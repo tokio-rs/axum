@@ -21,7 +21,7 @@ use http::{header::LOCATION, HeaderValue, StatusCode};
 #[derive(Debug, Clone)]
 pub struct Redirect {
     status_code: StatusCode,
-    location: HeaderValue,
+    location: String,
 }
 
 impl Redirect {
@@ -35,7 +35,8 @@ impl Redirect {
     ///
     /// # Panics
     ///
-    /// If `uri` isn't a valid [`HeaderValue`].
+    /// Panics if the URI isn't a valid [`HeaderValue`], which
+    /// only occurs if input uses non-allowed bytes in HTTP headers (e.g newlines).
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/303
     pub fn to(uri: &str) -> Self {
@@ -49,7 +50,8 @@ impl Redirect {
     ///
     /// # Panics
     ///
-    /// If `uri` isn't a valid [`HeaderValue`].
+    /// Panics if the URI isn't a valid [`HeaderValue`], which
+    /// only occurs if input uses non-allowed bytes in HTTP headers (e.g newlines).
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
     pub fn temporary(uri: &str) -> Self {
@@ -60,7 +62,8 @@ impl Redirect {
     ///
     /// # Panics
     ///
-    /// If `uri` isn't a valid [`HeaderValue`].
+    /// Panics if the URI isn't a valid [`HeaderValue`], which
+    /// only occurs if input uses non-allowed bytes in HTTP headers (e.g newlines).
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/308
     pub fn permanent(uri: &str) -> Self {
@@ -72,12 +75,9 @@ impl Redirect {
         self.status_code
     }
 
-    /// Returns the parsed Location header as a &str.
-    ///
-    /// This function shouldn't ever return a Err since Redirect takes a &str in it's constructors,
-    /// and will be valid UTF-8.
-    pub fn location(&self) -> Result<&str, http::header::ToStrError> {
-        self.location.to_str()
+    /// Returns the Redirect's URI as a &str.
+    pub fn location(&self) -> &str {
+        &self.location
     }
 
     // This is intentionally not public since other kinds of redirects might not
@@ -92,24 +92,34 @@ impl Redirect {
 
         Self {
             status_code,
-            location: HeaderValue::try_from(uri).expect("URI isn't a valid header value"),
+            location: uri.to_owned(),
         }
     }
 }
 
 impl IntoResponse for Redirect {
     fn into_response(self) -> Response {
-        (self.status_code, [(LOCATION, self.location)]).into_response()
+        (
+            self.status_code,
+            [(
+                LOCATION,
+                HeaderValue::try_from(self.location).expect("URI isn't a valid header value"),
+            )],
+        )
+            .into_response()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Redirect;
+    use axum_core::response::IntoResponse;
     use http::StatusCode;
 
     const EXAMPLE_URL: &str = "https://example.com";
 
+    // Tests to make sure Redirect has the correct status codes
+    // based on the way it was constructed.
     #[test]
     fn correct_status() {
         assert_eq!(
@@ -130,14 +140,16 @@ mod tests {
 
     #[test]
     fn correct_location() {
-        assert_eq!(
-            EXAMPLE_URL,
-            Redirect::permanent(EXAMPLE_URL).location().unwrap()
-        );
+        assert_eq!(EXAMPLE_URL, Redirect::permanent(EXAMPLE_URL).location());
 
-        assert_eq!(
-            "/redirect",
-            Redirect::permanent("/redirect").location().unwrap()
-        )
+        assert_eq!("/redirect", Redirect::permanent("/redirect").location())
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_panic() {
+        // Newlines aren't allowed in HTTP headers, and should therefore panic.
+        let _ = Redirect::permanent("Axum is awesome, \n but newlines aren't allowed :(")
+            .into_response();
     }
 }
