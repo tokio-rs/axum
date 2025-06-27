@@ -60,7 +60,7 @@ impl Redirect {
         self.status_code
     }
 
-    /// Returns the Redirect's URI as a &str.
+    /// Returns the `Redirect`'s URI.
     pub fn location(&self) -> &str {
         &self.location
     }
