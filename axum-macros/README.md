@@ -1,6 +1,6 @@
 # axum-macros
 
-[![Build status](https://github.com/tokio-rs/axum/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/tokio-rs/axum-macros/actions/workflows/CI.yml)
+[![Build status](https://github.com/tokio-rs/axum/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/tokio-rs/axum/actions/workflows/CI.yml)
 [![Crates.io](https://img.shields.io/crates/v/axum-macros)](https://crates.io/crates/axum-macros)
 [![Documentation](https://docs.rs/axum-macros/badge.svg)](https://docs.rs/axum-macros)
 
