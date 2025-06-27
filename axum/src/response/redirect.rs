@@ -94,6 +94,7 @@ impl IntoResponse for Redirect {
 #[cfg(test)]
 mod tests {
     use super::Redirect;
+    use axum_core::response::IntoResponse;
     use http::StatusCode;
 
     const EXAMPLE_URL: &str = "https://example.com";
@@ -123,5 +124,13 @@ mod tests {
         assert_eq!(EXAMPLE_URL, Redirect::permanent(EXAMPLE_URL).location());
 
         assert_eq!("/redirect", Redirect::permanent("/redirect").location())
+    }
+
+    #[test]
+    fn test_internal_error() {
+        let response = Redirect::permanent("Axum is awesome, \n but newlines aren't allowed :(")
+            .into_response();
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 }
