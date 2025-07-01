@@ -681,10 +681,10 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
             #[allow(unreachable_code)]
             #[doc(hidden)]
             async fn #name() {
-                let value = #receiver #make_value_name().await;
                 fn check<T>(_: T)
                     where T: ::axum::response::IntoResponse
                 {}
+                let value = #receiver #make_value_name().await;
                 check(value);
             }
         }
@@ -696,11 +696,11 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
             async fn #name() {
                 #make
 
-                let value = #make_value_name().await;
-
                 fn check<T>(_: T)
                 where T: ::axum::response::IntoResponse
                 {}
+
+                let value = #make_value_name().await;
 
                 check(value);
             }
@@ -732,10 +732,13 @@ fn check_future_send(item_fn: &ItemFn, kind: FunctionKind) -> TokenStream {
 
     let name = format_ident!("__axum_macros_check_{}_future", item_fn.sig.ident);
 
-    let do_check = quote! {
+    let define_check = quote! {
         fn check<T>(_: T)
             where T: ::std::future::Future + Send
         {}
+    };
+
+    let do_check = quote! {
         check(future);
     };
 
@@ -745,6 +748,7 @@ fn check_future_send(item_fn: &ItemFn, kind: FunctionKind) -> TokenStream {
             #[allow(unreachable_code)]
             #[doc(hidden)]
             fn #name() {
+                #define_check
                 let future = #receiver #handler_name(#(#args),*);
                 #do_check
             }
@@ -756,6 +760,7 @@ fn check_future_send(item_fn: &ItemFn, kind: FunctionKind) -> TokenStream {
             #[doc(hidden)]
             fn #name() {
                 #item_fn
+                #define_check
                 let future = #handler_name(#(#args),*);
                 #do_check
             }
