@@ -57,6 +57,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [baxe](https://github.com/zyphelabs/baxe): Simple macro for defining backend errors once and automatically generate standardized JSON error responses, saving time and reducing complexity
 - [axum-html-minifier](https://crates.io/crates/axum_html_minifier): This middleware minify the html body content of a axum response.
 - [static-serve](https://crates.io/crates/static-serve): A helper macro for compressing and embedding static assets in an axum webserver.
+- [datastar](https://crates.io/crates/datastar): Rust implementation of the Datastar SDK specification with Axum support
 
 ## Project showcase
 
