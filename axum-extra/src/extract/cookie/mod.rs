@@ -118,6 +118,7 @@ impl CookieJar {
     /// run extractors. Normally you should create `CookieJar`s through [`FromRequestParts`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
+    #[must_use]
     pub fn from_headers(headers: &HeaderMap) -> Self {
         let mut jar = cookie::CookieJar::new();
         for cookie in cookies_from_request(headers) {
@@ -135,6 +136,7 @@ impl CookieJar {
     /// CookieJar`.
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -153,6 +155,7 @@ impl CookieJar {
     ///         .map(|cookie| cookie.value().to_owned());
     /// }
     /// ```
+    #[must_use]
     pub fn get(&self, name: &str) -> Option<&Cookie<'static>> {
         self.jar.get(name)
     }
