@@ -93,11 +93,13 @@ pub struct RequestBuilder {
 }
 
 impl RequestBuilder {
+    #[must_use]
     pub fn body(mut self, body: impl Into<reqwest::Body>) -> Self {
         self.builder = self.builder.body(body);
         self
     }
 
+    #[must_use]
     pub fn json<T>(mut self, json: &T) -> Self
     where
         T: serde::Serialize,
@@ -106,6 +108,7 @@ impl RequestBuilder {
         self
     }
 
+    #[must_use]
     pub fn header<K, V>(mut self, key: K, value: V) -> Self
     where
         HeaderName: TryFrom<K>,
@@ -117,6 +120,7 @@ impl RequestBuilder {
         self
     }
 
+    #[must_use]
     #[allow(dead_code)]
     pub fn multipart(mut self, form: reqwest::multipart::Form) -> Self {
         self.builder = self.builder.multipart(form);

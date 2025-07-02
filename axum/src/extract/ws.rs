@@ -152,6 +152,7 @@ impl<F> std::fmt::Debug for WebSocketUpgrade<F> {
 
 impl<F> WebSocketUpgrade<F> {
     /// Read buffer capacity. The default value is 128KiB
+    #[must_use]
     pub fn read_buffer_size(mut self, size: usize) -> Self {
         self.config.read_buffer_size = size;
         self
@@ -166,6 +167,7 @@ impl<F> WebSocketUpgrade<F> {
     /// It is often more optimal to allow them to buffer a little, hence the default value.
     ///
     /// Note: [`flush`](SinkExt::flush) will always fully write the buffer regardless.
+    #[must_use]
     pub fn write_buffer_size(mut self, size: usize) -> Self {
         self.config.write_buffer_size = size;
         self
@@ -182,24 +184,28 @@ impl<F> WebSocketUpgrade<F> {
     ///
     /// Note: Should always be at least [`write_buffer_size + 1 message`](Self::write_buffer_size)
     /// and probably a little more depending on error handling strategy.
+    #[must_use]
     pub fn max_write_buffer_size(mut self, max: usize) -> Self {
         self.config.max_write_buffer_size = max;
         self
     }
 
     /// Set the maximum message size (defaults to 64 megabytes)
+    #[must_use]
     pub fn max_message_size(mut self, max: usize) -> Self {
         self.config.max_message_size = Some(max);
         self
     }
 
     /// Set the maximum frame size (defaults to 16 megabytes)
+    #[must_use]
     pub fn max_frame_size(mut self, max: usize) -> Self {
         self.config.max_frame_size = Some(max);
         self
     }
 
     /// Allow server to accept unmasked frames (defaults to false)
+    #[must_use]
     pub fn accept_unmasked_frames(mut self, accept: bool) -> Self {
         self.config.accept_unmasked_frames = accept;
         self
@@ -235,6 +241,7 @@ impl<F> WebSocketUpgrade<F> {
     /// }
     /// # let _: Router = app;
     /// ```
+    #[must_use]
     pub fn protocols<I>(mut self, protocols: I) -> Self
     where
         I: IntoIterator,
