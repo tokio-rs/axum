@@ -45,7 +45,7 @@ where
     fn from_request_parts(
         parts: &mut Parts,
         state: &S,
-    ) -> impl Future<Output = Result<Option<T>, Self::Rejection>> {
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> {
         T::from_request_parts(parts, state)
     }
 }
@@ -57,7 +57,7 @@ where
 {
     type Rejection = T::Rejection;
 
-    async fn from_request(req: Request, state: &S) -> Result<Option<T>, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         T::from_request(req, state).await
     }
 }

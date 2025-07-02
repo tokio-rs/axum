@@ -283,8 +283,8 @@ where
 
     fn layer(&self, inner: S) -> Self::Service {
         match self {
-            Either::E1(layer) => Either::E1(layer.layer(inner)),
-            Either::E2(layer) => Either::E2(layer.layer(inner)),
+            Self::E1(layer) => Either::E1(layer.layer(inner)),
+            Self::E2(layer) => Either::E2(layer.layer(inner)),
         }
     }
 }
@@ -300,15 +300,15 @@ where
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         match self {
-            Either::E1(inner) => inner.poll_ready(cx),
-            Either::E2(inner) => inner.poll_ready(cx),
+            Self::E1(inner) => inner.poll_ready(cx),
+            Self::E2(inner) => inner.poll_ready(cx),
         }
     }
 
     fn call(&mut self, req: R) -> Self::Future {
         match self {
-            Either::E1(inner) => futures_util::future::Either::Left(inner.call(req)),
-            Either::E2(inner) => futures_util::future::Either::Right(inner.call(req)),
+            Self::E1(inner) => futures_util::future::Either::Left(inner.call(req)),
+            Self::E2(inner) => futures_util::future::Either::Right(inner.call(req)),
         }
     }
 }

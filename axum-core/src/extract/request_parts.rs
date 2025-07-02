@@ -73,7 +73,7 @@ where
 
     async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
         let mut body = req.into_limited_body();
-        let mut bytes = BytesMut::new();
+        let mut bytes = Self::new();
         body_to_bytes_mut(&mut body, &mut bytes).await?;
         Ok(bytes)
     }
@@ -128,7 +128,7 @@ where
                 }
             })?;
 
-        let string = String::from_utf8(bytes.into()).map_err(InvalidUtf8::from_err)?;
+        let string = Self::from_utf8(bytes.into()).map_err(InvalidUtf8::from_err)?;
 
         Ok(string)
     }

@@ -21,8 +21,8 @@ pub(crate) enum Trait {
 impl Trait {
     fn via_marker_type(&self) -> Option<Type> {
         match self {
-            Trait::FromRequest => Some(parse_quote!(M)),
-            Trait::FromRequestParts => None,
+            Self::FromRequest => Some(parse_quote!(M)),
+            Self::FromRequestParts => None,
         }
     }
 }
@@ -30,8 +30,8 @@ impl Trait {
 impl fmt::Display for Trait {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Trait::FromRequest => f.write_str("FromRequest"),
-            Trait::FromRequestParts => f.write_str("FromRequestParts"),
+            Self::FromRequest => f.write_str("FromRequest"),
+            Self::FromRequestParts => f.write_str("FromRequestParts"),
         }
     }
 }
@@ -50,9 +50,9 @@ impl State {
     /// ```
     fn impl_generics(&self) -> impl Iterator<Item = Type> {
         match self {
-            State::Default(inner) => Some(inner.clone()),
-            State::Custom(_) => None,
-            State::CannotInfer => Some(parse_quote!(S)),
+            Self::Default(inner) => Some(inner.clone()),
+            Self::Custom(_) => None,
+            Self::CannotInfer => Some(parse_quote!(S)),
         }
         .into_iter()
     }
@@ -63,18 +63,18 @@ impl State {
     /// ```
     fn trait_generics(&self) -> impl Iterator<Item = Type> {
         match self {
-            State::Default(inner) | State::Custom(inner) => iter::once(inner.clone()),
-            State::CannotInfer => iter::once(parse_quote!(S)),
+            Self::Default(inner) | Self::Custom(inner) => iter::once(inner.clone()),
+            Self::CannotInfer => iter::once(parse_quote!(S)),
         }
     }
 
     fn bounds(&self) -> TokenStream {
         match self {
-            State::Custom(_) => quote! {},
-            State::Default(inner) => quote! {
+            Self::Custom(_) => quote! {},
+            Self::Default(inner) => quote! {
                 #inner: ::std::marker::Send + ::std::marker::Sync,
             },
-            State::CannotInfer => quote! {
+            Self::CannotInfer => quote! {
                 S: ::std::marker::Send + ::std::marker::Sync,
             },
         }
@@ -84,8 +84,8 @@ impl State {
 impl ToTokens for State {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            State::Custom(inner) | State::Default(inner) => inner.to_tokens(tokens),
-            State::CannotInfer => quote! { S }.to_tokens(tokens),
+            Self::Custom(inner) | Self::Default(inner) => inner.to_tokens(tokens),
+            Self::CannotInfer => quote! { S }.to_tokens(tokens),
         }
     }
 }
