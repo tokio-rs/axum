@@ -23,7 +23,7 @@ where
     tokio::spawn(async move {
         serve(listener, Shared::new(svc))
             .await
-            .expect("server error")
+            .expect("server error");
     });
 
     addr
@@ -47,21 +47,24 @@ impl TestClient {
             .build()
             .unwrap();
 
-        TestClient { client, addr }
+        Self { client, addr }
     }
 
+    #[must_use]
     pub fn get(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
             builder: self.client.get(format!("http://{}{url}", self.addr)),
         }
     }
 
+    #[must_use]
     pub fn head(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
             builder: self.client.head(format!("http://{}{url}", self.addr)),
         }
     }
 
+    #[must_use]
     pub fn post(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
             builder: self.client.post(format!("http://{}{url}", self.addr)),
@@ -69,6 +72,7 @@ impl TestClient {
     }
 
     #[allow(dead_code)]
+    #[must_use]
     pub fn put(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
             builder: self.client.put(format!("http://{}{url}", self.addr)),
@@ -76,6 +80,7 @@ impl TestClient {
     }
 
     #[allow(dead_code)]
+    #[must_use]
     pub fn patch(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
             builder: self.client.patch(format!("http://{}{url}", self.addr)),
@@ -83,7 +88,8 @@ impl TestClient {
     }
 
     #[allow(dead_code)]
-    pub fn server_port(&self) -> u16 {
+    #[must_use]
+    pub const fn server_port(&self) -> u16 {
         self.addr.port()
     }
 }
@@ -93,11 +99,13 @@ pub struct RequestBuilder {
 }
 
 impl RequestBuilder {
+    #[must_use]
     pub fn body(mut self, body: impl Into<reqwest::Body>) -> Self {
         self.builder = self.builder.body(body);
         self
     }
 
+    #[must_use]
     pub fn json<T>(mut self, json: &T) -> Self
     where
         T: serde::Serialize,
@@ -106,6 +114,7 @@ impl RequestBuilder {
         self
     }
 
+    #[must_use]
     pub fn header<K, V>(mut self, key: K, value: V) -> Self
     where
         HeaderName: TryFrom<K>,
@@ -117,6 +126,7 @@ impl RequestBuilder {
         self
     }
 
+    #[must_use]
     #[allow(dead_code)]
     pub fn multipart(mut self, form: reqwest::multipart::Form) -> Self {
         self.builder = self.builder.multipart(form);

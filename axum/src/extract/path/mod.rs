@@ -4,7 +4,10 @@
 mod de;
 
 use crate::{
-    extract::{rejection::*, FromRequestParts},
+    extract::{
+        rejection::{MissingPathParams, PathRejection, RawPathParamsRejection},
+        FromRequestParts,
+    },
     routing::url_params::UrlParams,
     util::PercentDecodedStr,
 };
@@ -178,12 +181,12 @@ where
             }
         }
 
-        fn failed_to_deserialize_path_params(err: PathDeserializationError) -> PathRejection {
+        const fn failed_to_deserialize_path_params(err: PathDeserializationError) -> PathRejection {
             PathRejection::FailedToDeserializePathParams(FailedToDeserializePathParams(err))
         }
 
         match T::deserialize(de::PathDeserializer::new(get_params(parts)?)) {
-            Ok(val) => Ok(Path(val)),
+            Ok(val) => Ok(Self(val)),
             Err(e) => Err(failed_to_deserialize_path_params(e)),
         }
     }
@@ -220,16 +223,16 @@ pub(crate) struct PathDeserializationError {
 }
 
 impl PathDeserializationError {
-    pub(super) fn new(kind: ErrorKind) -> Self {
+    pub(super) const fn new(kind: ErrorKind) -> Self {
         Self { kind }
     }
 
-    pub(super) fn wrong_number_of_parameters() -> WrongNumberOfParameters<()> {
+    pub(super) const fn wrong_number_of_parameters() -> WrongNumberOfParameters<()> {
         WrongNumberOfParameters { got: () }
     }
 
     #[track_caller]
-    pub(super) fn unsupported_type(name: &'static str) -> Self {
+    pub(super) const fn unsupported_type(name: &'static str) -> Self {
         Self::new(ErrorKind::UnsupportedType { name })
     }
 }
@@ -246,7 +249,7 @@ impl<G> WrongNumberOfParameters<G> {
 }
 
 impl WrongNumberOfParameters<usize> {
-    pub(super) fn expected(self, expected: usize) -> PathDeserializationError {
+    pub(super) const fn expected(self, expected: usize) -> PathDeserializationError {
         PathDeserializationError::new(ErrorKind::WrongNumberOfParameters {
             got: self.got,
             expected,
@@ -356,9 +359,9 @@ pub enum ErrorKind {
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ErrorKind::Message(error) => error.fmt(f),
-            ErrorKind::InvalidUtf8InPathParam { key } => write!(f, "Invalid UTF-8 in `{key}`"),
-            ErrorKind::WrongNumberOfParameters { got, expected } => {
+            Self::Message(error) => error.fmt(f),
+            Self::InvalidUtf8InPathParam { key } => write!(f, "Invalid UTF-8 in `{key}`"),
+            Self::WrongNumberOfParameters { got, expected } => {
                 write!(
                     f,
                     "Wrong number of path arguments for `Path`. Expected {expected} but got {got}"
@@ -370,8 +373,8 @@ impl fmt::Display for ErrorKind {
 
                 Ok(())
             }
-            ErrorKind::UnsupportedType { name } => write!(f, "Unsupported type `{name}`"),
-            ErrorKind::ParseErrorAtKey {
+            Self::UnsupportedType { name } => write!(f, "Unsupported type `{name}`"),
+            Self::ParseErrorAtKey {
                 key,
                 value,
                 expected_type,
@@ -379,11 +382,11 @@ impl fmt::Display for ErrorKind {
                 f,
                 "Cannot parse `{key}` with value `{value}` to a `{expected_type}`"
             ),
-            ErrorKind::ParseError {
+            Self::ParseError {
                 value,
                 expected_type,
             } => write!(f, "Cannot parse `{value}` to a `{expected_type}`"),
-            ErrorKind::ParseErrorAtIndex {
+            Self::ParseErrorAtIndex {
                 index,
                 value,
                 expected_type,
@@ -391,7 +394,7 @@ impl fmt::Display for ErrorKind {
                 f,
                 "Cannot parse value at index {index} with value `{value}` to a `{expected_type}`"
             ),
-            ErrorKind::DeserializeError {
+            Self::DeserializeError {
                 key,
                 value,
                 message,
@@ -407,16 +410,19 @@ pub struct FailedToDeserializePathParams(PathDeserializationError);
 
 impl FailedToDeserializePathParams {
     /// Get a reference to the underlying error kind.
-    pub fn kind(&self) -> &ErrorKind {
+    #[must_use]
+    pub const fn kind(&self) -> &ErrorKind {
         &self.0.kind
     }
 
     /// Convert this error into the underlying error kind.
+    #[must_use]
     pub fn into_kind(self) -> ErrorKind {
         self.0.kind
     }
 
     /// Get the response body text used for this rejection.
+    #[must_use]
     pub fn body_text(&self) -> String {
         match self.0.kind {
             ErrorKind::Message(_)
@@ -432,7 +438,8 @@ impl FailedToDeserializePathParams {
     }
 
     /// Get the status code used for this rejection.
-    pub fn status(&self) -> StatusCode {
+    #[must_use]
+    pub const fn status(&self) -> StatusCode {
         match self.0.kind {
             ErrorKind::Message(_)
             | ErrorKind::DeserializeError { .. }
@@ -523,6 +530,7 @@ where
 
 impl RawPathParams {
     /// Get an iterator over the path parameters.
+    #[must_use]
     pub fn iter(&self) -> RawPathParamsIter<'_> {
         self.into_iter()
     }
@@ -561,12 +569,14 @@ pub struct InvalidUtf8InPathParam {
 
 impl InvalidUtf8InPathParam {
     /// Get the response body text used for this rejection.
+    #[must_use]
     pub fn body_text(&self) -> String {
         self.to_string()
     }
 
     /// Get the status code used for this rejection.
-    pub fn status(&self) -> StatusCode {
+    #[must_use]
+    pub const fn status(&self) -> StatusCode {
         StatusCode::BAD_REQUEST
     }
 }
@@ -766,7 +776,7 @@ mod tests {
                 D: serde::Deserializer<'de>,
             {
                 let s = <&str as serde::Deserialize>::deserialize(deserializer)?;
-                Ok(Param(s.to_owned()))
+                Ok(Self(s.to_owned()))
             }
         }
 

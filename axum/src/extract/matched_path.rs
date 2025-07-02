@@ -1,4 +1,7 @@
-use super::{rejection::*, FromRequestParts};
+use super::{
+    rejection::{MatchedPathMissing, MatchedPathRejection},
+    FromRequestParts,
+};
 use crate::routing::{RouteId, NEST_TAIL_PARAM_CAPTURE};
 use axum_core::extract::OptionalFromRequestParts;
 use http::request::Parts;
@@ -58,6 +61,7 @@ pub struct MatchedPath(pub(crate) Arc<str>);
 
 impl MatchedPath {
     /// Returns a `str` representation of the path.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -102,9 +106,7 @@ pub(crate) fn set_matched_path_for_request(
     route_id_to_path: &HashMap<RouteId, Arc<str>>,
     extensions: &mut http::Extensions,
 ) {
-    let matched_path = if let Some(matched_path) = route_id_to_path.get(&id) {
-        matched_path
-    } else {
+    let Some(matched_path) = route_id_to_path.get(&id) else {
         #[cfg(debug_assertions)]
         panic!("should always have a matched path for a route id");
         #[cfg(not(debug_assertions))]
@@ -124,20 +126,21 @@ pub(crate) fn set_matched_path_for_request(
 
 // a previous `MatchedPath` might exist if we're inside a nested Router
 fn append_nested_matched_path(matched_path: &Arc<str>, extensions: &http::Extensions) -> Arc<str> {
-    if let Some(previous) = extensions
+    extensions
         .get::<MatchedPath>()
         .map(|matched_path| matched_path.as_str())
         .or_else(|| Some(&extensions.get::<MatchedNestedPath>()?.0))
-    {
-        let previous = previous
-            .strip_suffix(NEST_TAIL_PARAM_CAPTURE)
-            .unwrap_or(previous);
+        .map_or_else(
+            || Arc::clone(matched_path),
+            |previous| {
+                let previous = previous
+                    .strip_suffix(NEST_TAIL_PARAM_CAPTURE)
+                    .unwrap_or(previous);
 
-        let matched_path = format!("{previous}{matched_path}");
-        matched_path.into()
-    } else {
-        Arc::clone(matched_path)
-    }
+                let matched_path = format!("{previous}{matched_path}");
+                matched_path.into()
+            },
+        )
 }
 
 #[cfg(test)]

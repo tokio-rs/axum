@@ -56,11 +56,13 @@ impl Redirect {
     }
 
     /// Returns the HTTP status code of the `Redirect`.
-    pub fn status_code(&self) -> StatusCode {
+    #[must_use]
+    pub const fn status_code(&self) -> StatusCode {
         self.status_code
     }
 
     /// Returns the `Redirect`'s URI.
+    #[must_use]
     pub fn location(&self) -> &str {
         &self.location
     }
@@ -123,7 +125,7 @@ mod tests {
     fn correct_location() {
         assert_eq!(EXAMPLE_URL, Redirect::permanent(EXAMPLE_URL).location());
 
-        assert_eq!("/redirect", Redirect::permanent("/redirect").location())
+        assert_eq!("/redirect", Redirect::permanent("/redirect").location());
     }
 
     #[test]

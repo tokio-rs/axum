@@ -90,7 +90,13 @@
 //!
 //! [`StreamExt::split`]: https://docs.rs/futures/0.3.17/futures/stream/trait.StreamExt.html#method.split
 
-use self::rejection::*;
+use self::rejection::{
+    ConnectionNotUpgradable, InvalidConnectionHeader,
+    InvalidUpgradeHeader, InvalidWebSocketVersionHeader, MethodNotConnect, MethodNotGet,
+    WebSocketKeyHeaderMissing, WebSocketUpgradeRejection,
+};
+#[cfg(feature = "http2")]
+use self::rejection::InvalidProtocolPseudoheader;
 use super::FromRequestParts;
 use crate::{body::Bytes, response::Response, Error};
 use axum_core::body::Body;
@@ -152,7 +158,8 @@ impl<F> std::fmt::Debug for WebSocketUpgrade<F> {
 
 impl<F> WebSocketUpgrade<F> {
     /// Read buffer capacity. The default value is 128KiB
-    pub fn read_buffer_size(mut self, size: usize) -> Self {
+    #[must_use]
+    pub const fn read_buffer_size(mut self, size: usize) -> Self {
         self.config.read_buffer_size = size;
         self
     }
@@ -166,7 +173,8 @@ impl<F> WebSocketUpgrade<F> {
     /// It is often more optimal to allow them to buffer a little, hence the default value.
     ///
     /// Note: [`flush`](SinkExt::flush) will always fully write the buffer regardless.
-    pub fn write_buffer_size(mut self, size: usize) -> Self {
+    #[must_use]
+    pub const fn write_buffer_size(mut self, size: usize) -> Self {
         self.config.write_buffer_size = size;
         self
     }
@@ -182,25 +190,29 @@ impl<F> WebSocketUpgrade<F> {
     ///
     /// Note: Should always be at least [`write_buffer_size + 1 message`](Self::write_buffer_size)
     /// and probably a little more depending on error handling strategy.
-    pub fn max_write_buffer_size(mut self, max: usize) -> Self {
+    #[must_use]
+    pub const fn max_write_buffer_size(mut self, max: usize) -> Self {
         self.config.max_write_buffer_size = max;
         self
     }
 
     /// Set the maximum message size (defaults to 64 megabytes)
-    pub fn max_message_size(mut self, max: usize) -> Self {
+    #[must_use]
+    pub const fn max_message_size(mut self, max: usize) -> Self {
         self.config.max_message_size = Some(max);
         self
     }
 
     /// Set the maximum frame size (defaults to 16 megabytes)
-    pub fn max_frame_size(mut self, max: usize) -> Self {
+    #[must_use]
+    pub const fn max_frame_size(mut self, max: usize) -> Self {
         self.config.max_frame_size = Some(max);
         self
     }
 
     /// Allow server to accept unmasked frames (defaults to false)
-    pub fn accept_unmasked_frames(mut self, accept: bool) -> Self {
+    #[must_use]
+    pub const fn accept_unmasked_frames(mut self, accept: bool) -> Self {
         self.config.accept_unmasked_frames = accept;
         self
     }
@@ -235,6 +247,7 @@ impl<F> WebSocketUpgrade<F> {
     /// }
     /// # let _: Router = app;
     /// ```
+    #[must_use]
     pub fn protocols<I>(mut self, protocols: I) -> Self
     where
         I: IntoIterator,
@@ -269,7 +282,7 @@ impl<F> WebSocketUpgrade<F> {
     /// If [`protocols()`][Self::protocols] has been called and a matching
     /// protocol has been selected, the return value will be `Some` containing
     /// said protocol. Otherwise, it will be `None`.
-    pub fn selected_protocol(&self) -> Option<&HeaderValue> {
+    pub const fn selected_protocol(&self) -> Option<&HeaderValue> {
         self.protocol.as_ref()
     }
 
@@ -346,30 +359,28 @@ impl<F> WebSocketUpgrade<F> {
             callback(socket).await;
         });
 
-        let mut response = if let Some(sec_websocket_key) = &self.sec_websocket_key {
-            // If `sec_websocket_key` was `Some`, we are using HTTP/1.1.
+        let mut response = self.sec_websocket_key.as_ref().map_or_else(
+            || Response::new(Body::empty()),
+            |sec_websocket_key| {
+                // If `sec_websocket_key` was `Some`, we are using HTTP/1.1.
 
-            #[allow(clippy::declare_interior_mutable_const)]
-            const UPGRADE: HeaderValue = HeaderValue::from_static("upgrade");
-            #[allow(clippy::declare_interior_mutable_const)]
-            const WEBSOCKET: HeaderValue = HeaderValue::from_static("websocket");
+                #[allow(clippy::declare_interior_mutable_const)]
+                const UPGRADE: HeaderValue = HeaderValue::from_static("upgrade");
+                #[allow(clippy::declare_interior_mutable_const)]
+                const WEBSOCKET: HeaderValue = HeaderValue::from_static("websocket");
 
-            Response::builder()
-                .status(StatusCode::SWITCHING_PROTOCOLS)
-                .header(header::CONNECTION, UPGRADE)
-                .header(header::UPGRADE, WEBSOCKET)
-                .header(
-                    header::SEC_WEBSOCKET_ACCEPT,
-                    sign(sec_websocket_key.as_bytes()),
-                )
-                .body(Body::empty())
-                .unwrap()
-        } else {
-            // Otherwise, we are HTTP/2+. As established in RFC 9113 section 8.5, we just respond
-            // with a 2XX with an empty body:
-            // <https://datatracker.ietf.org/doc/html/rfc9113#name-the-connect-method>.
-            Response::new(Body::empty())
-        };
+                Response::builder()
+                    .status(StatusCode::SWITCHING_PROTOCOLS)
+                    .header(header::CONNECTION, UPGRADE)
+                    .header(header::UPGRADE, WEBSOCKET)
+                    .header(
+                        header::SEC_WEBSOCKET_ACCEPT,
+                        sign(sec_websocket_key.as_bytes()),
+                    )
+                    .body(Body::empty())
+                    .unwrap()
+            },
+        );
 
         if let Some(protocol) = self.protocol {
             response
@@ -394,7 +405,7 @@ where
     F: FnOnce(Error) + Send + 'static,
 {
     fn call(self, error: Error) {
-        self(error)
+        self(error);
     }
 }
 
@@ -479,25 +490,18 @@ where
 }
 
 fn header_eq(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool {
-    if let Some(header) = headers.get(&key) {
-        header.as_bytes().eq_ignore_ascii_case(value.as_bytes())
-    } else {
-        false
-    }
+    headers
+        .get(&key)
+        .is_some_and(|header| header.as_bytes().eq_ignore_ascii_case(value.as_bytes()))
 }
 
 fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool {
-    let header = if let Some(header) = headers.get(&key) {
-        header
-    } else {
+    let Some(header) = headers.get(&key) else {
         return false;
     };
 
-    if let Ok(header) = std::str::from_utf8(header.as_bytes()) {
-        header.to_ascii_lowercase().contains(value)
-    } else {
-        false
-    }
+    std::str::from_utf8(header.as_bytes())
+        .is_ok_and(|header| header.to_ascii_lowercase().contains(value))
 }
 
 /// A stream of WebSocket messages.
@@ -526,7 +530,7 @@ impl WebSocket {
     }
 
     /// Return the selected WebSocket subprotocol, if one has been chosen.
-    pub fn protocol(&self) -> Option<&HeaderValue> {
+    pub const fn protocol(&self) -> Option<&HeaderValue> {
         self.protocol.as_ref()
     }
 }
@@ -573,13 +577,14 @@ impl Sink<Message> for WebSocket {
 
 /// UTF-8 wrapper for [Bytes].
 ///
-/// An [Utf8Bytes] is always guaranteed to contain valid UTF-8.
+/// An [`Utf8Bytes`] is always guaranteed to contain valid UTF-8.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Utf8Bytes(ts::Utf8Bytes);
 
 impl Utf8Bytes {
     /// Creates from a static str.
     #[inline]
+    #[must_use]
     pub const fn from_static(str: &'static str) -> Self {
         Self(ts::Utf8Bytes::from_static(str))
     }
@@ -806,7 +811,7 @@ impl Message {
         }
     }
 
-    /// Attempt to consume the WebSocket message and convert it to a Utf8Bytes.
+    /// Attempt to consume the WebSocket message and convert it to a [`Utf8Bytes`].
     pub fn into_text(self) -> Result<Utf8Bytes, Error> {
         match self {
             Self::Text(string) => Ok(string),
@@ -832,49 +837,49 @@ impl Message {
     }
 
     /// Create a new text WebSocket message from a stringable.
-    pub fn text<S>(string: S) -> Message
+    pub fn text<S>(string: S) -> Self
     where
         S: Into<Utf8Bytes>,
     {
-        Message::Text(string.into())
+        Self::Text(string.into())
     }
 
     /// Create a new binary WebSocket message by converting to `Bytes`.
-    pub fn binary<B>(bin: B) -> Message
+    pub fn binary<B>(bin: B) -> Self
     where
         B: Into<Bytes>,
     {
-        Message::Binary(bin.into())
+        Self::Binary(bin.into())
     }
 }
 
 impl From<String> for Message {
     fn from(string: String) -> Self {
-        Message::Text(string.into())
+        Self::Text(string.into())
     }
 }
 
 impl<'s> From<&'s str> for Message {
     fn from(string: &'s str) -> Self {
-        Message::Text(string.into())
+        Self::Text(string.into())
     }
 }
 
 impl<'b> From<&'b [u8]> for Message {
     fn from(data: &'b [u8]) -> Self {
-        Message::Binary(Bytes::copy_from_slice(data))
+        Self::Binary(Bytes::copy_from_slice(data))
     }
 }
 
 impl From<Bytes> for Message {
     fn from(data: Bytes) -> Self {
-        Message::Binary(data)
+        Self::Binary(data)
     }
 }
 
 impl From<Vec<u8>> for Message {
     fn from(data: Vec<u8>) -> Self {
-        Message::Binary(data.into())
+        Self::Binary(data.into())
     }
 }
 

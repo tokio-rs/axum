@@ -12,9 +12,9 @@ pub(crate) mod tracing_helpers;
 pub(crate) mod counting_cloneable_state;
 
 #[cfg(test)]
-pub(crate) fn assert_send<T: Send>() {}
+pub(crate) const fn assert_send<T: Send>() {}
 #[cfg(test)]
-pub(crate) fn assert_sync<T: Sync>() {}
+pub(crate) const fn assert_sync<T: Sync>() {}
 
 #[allow(dead_code)]
 pub(crate) struct NotSendSync(*const ());

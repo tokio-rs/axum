@@ -61,7 +61,7 @@ where
     S::Error: Into<BoxError>,
 {
     /// Create a new [`FileStream`]
-    pub fn new(stream: S) -> Self {
+    pub const fn new(stream: S) -> Self {
         Self {
             stream,
             file_name: None,
@@ -118,20 +118,24 @@ where
     /// Set the file name of the [`FileStream`].
     ///
     /// This adds the attachment `Content-Disposition` header with the given `file_name`.
+    #[must_use]
     pub fn file_name(mut self, file_name: impl Into<String>) -> Self {
         self.file_name = Some(file_name.into());
         self
     }
 
     /// Set the size of the file.
-    pub fn content_size(mut self, len: u64) -> Self {
+    #[must_use]
+    pub const fn content_size(mut self, len: u64) -> Self {
         self.content_size = Some(len);
         self
     }
 
     /// Return a range response.
     ///
+    /// ```rust
     /// range: (start, end, total_size)
+    /// ```
     ///
     /// # Examples
     ///

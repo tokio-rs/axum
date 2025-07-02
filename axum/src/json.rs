@@ -1,5 +1,8 @@
 use crate::extract::Request;
-use crate::extract::{rejection::*, FromRequest};
+use crate::extract::{
+    rejection::{JsonDataError, JsonRejection, JsonSyntaxError, MissingJsonContentType},
+    FromRequest,
+};
 use axum_core::extract::OptionalFromRequest;
 use axum_core::response::{IntoResponse, Response};
 use bytes::{BufMut, Bytes, BytesMut};
@@ -184,7 +187,7 @@ where
         let deserializer = &mut serde_json::Deserializer::from_slice(bytes);
 
         match serde_path_to_error::deserialize(deserializer) {
-            Ok(value) => Ok(Json(value)),
+            Ok(value) => Ok(Self(value)),
             Err(err) => Err(make_rejection(err)),
         }
     }

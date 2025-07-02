@@ -26,11 +26,10 @@ where
     K: Send + 'static,
 {
     let mut k = Some(k);
-    if let Some(k) = <dyn std::any::Any>::downcast_mut::<Option<T>>(&mut k) {
-        Ok(k.take().unwrap())
-    } else {
-        Err(k.unwrap())
-    }
+
+    <dyn std::any::Any>::downcast_mut::<Option<T>>(&mut k)
+        .and_then(Option::take)
+        .map_or_else(|| Err(k.unwrap()), Ok)
 }
 
 /// The body type used in axum requests and responses.
@@ -48,6 +47,7 @@ impl Body {
     }
 
     /// Create an empty body.
+    #[must_use]
     pub fn empty() -> Self {
         Self::new(http_body_util::Empty::new())
     }
@@ -72,7 +72,8 @@ impl Body {
     /// you need a [`Stream`] of all frame types.
     ///
     /// [`http_body_util::BodyStream`]: https://docs.rs/http-body-util/latest/http_body_util/struct.BodyStream.html
-    pub fn into_data_stream(self) -> BodyDataStream {
+    #[must_use]
+    pub const fn into_data_stream(self) -> BodyDataStream {
         BodyDataStream { inner: self }
     }
 }
@@ -84,7 +85,7 @@ impl Default for Body {
 }
 
 impl From<()> for Body {
-    fn from(_: ()) -> Self {
+    fn from((): ()) -> Self {
         Self::empty()
     }
 }

@@ -2,3 +2,4 @@ allow-mixed-uninlined-format-args = false
 disallowed-types = [
     { path = "tower::util::BoxCloneService", reason = "Use tower::util::BoxCloneSyncService instead" },
 ]
+doc-valid-idents = ["WebSocket", "WebSockets", ".."]

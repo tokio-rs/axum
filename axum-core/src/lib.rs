@@ -30,7 +30,7 @@ pub mod response;
 /// Alias for a type-erased error type.
 pub type BoxError = Box<dyn std::error::Error + Send + Sync>;
 
-pub use self::ext_traits::{request::RequestExt, request_parts::RequestPartsExt};
+pub use self::ext_traits::{RequestExt, RequestPartsExt};
 
 #[cfg(test)]
 use axum_macros::__private_axum_test as test;

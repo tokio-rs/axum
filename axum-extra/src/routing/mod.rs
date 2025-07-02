@@ -28,13 +28,13 @@ pub use self::typed::{SecondElementIs, TypedPath};
 // Validates a path at compile time, used with the vpath macro.
 #[rustversion::since(1.80)]
 #[doc(hidden)]
+#[must_use]
 pub const fn __private_validate_static_path(path: &'static str) -> &'static str {
-    if path.is_empty() {
-        panic!("Paths must start with a `/`. Use \"/\" for root routes")
-    }
-    if path.as_bytes()[0] != b'/' {
-        panic!("Paths must start with /");
-    }
+    assert!(
+        !path.is_empty(),
+        "Paths must start with a `/`. Use \"/\" for root routes"
+    );
+    assert!(path.as_bytes()[0] == b'/', "Paths must start with /");
     path
 }
 
@@ -84,6 +84,7 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
+    #[must_use]
     fn typed_get<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -97,6 +98,7 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
+    #[must_use]
     fn typed_delete<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -110,6 +112,7 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
+    #[must_use]
     fn typed_head<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -123,6 +126,7 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
+    #[must_use]
     fn typed_options<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -136,6 +140,7 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
+    #[must_use]
     fn typed_patch<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -149,6 +154,7 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
+    #[must_use]
     fn typed_post<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -162,6 +168,7 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
+    #[must_use]
     fn typed_put<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -175,6 +182,7 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
+    #[must_use]
     fn typed_trace<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -188,6 +196,7 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
+    #[must_use]
     fn typed_connect<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -219,6 +228,7 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///     .route_with_tsr("/bar/", get(|| async {}));
     /// # let _: Router = app;
     /// ```
+    #[must_use]
     fn route_with_tsr(self, path: &str, method_router: MethodRouter<S>) -> Self
     where
         Self: Sized;
@@ -226,6 +236,7 @@ pub trait RouterExt<S>: sealed::Sealed {
     /// Add another route to the router with an additional "trailing slash redirect" route.
     ///
     /// This works like [`RouterExt::route_with_tsr`] but accepts any [`Service`].
+    #[must_use]
     fn route_service_with_tsr<T>(self, path: &str, service: T) -> Self
     where
         T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
@@ -354,9 +365,10 @@ where
 
 #[track_caller]
 fn validate_tsr_path(path: &str) {
-    if path == "/" {
-        panic!("Cannot add a trailing slash redirect route for `/`")
-    }
+    assert!(
+        path != "/",
+        "Cannot add a trailing slash redirect route for `/`"
+    );
 }
 
 fn add_tsr_redirect_route<S>(router: Router<S>, path: &str) -> Router<S>
@@ -366,15 +378,13 @@ where
     async fn redirect_handler(OriginalUri(uri): OriginalUri) -> Response {
         let new_uri = map_path(uri, |path| {
             path.strip_suffix('/')
-                .map(Cow::Borrowed)
-                .unwrap_or_else(|| Cow::Owned(format!("{path}/")))
+                .map_or_else(|| Cow::Owned(format!("{path}/")), Cow::Borrowed)
         });
 
-        if let Some(new_uri) = new_uri {
-            Redirect::permanent(&new_uri.to_string()).into_response()
-        } else {
-            StatusCode::BAD_REQUEST.into_response()
-        }
+        new_uri.map_or_else(
+            || StatusCode::BAD_REQUEST.into_response(),
+            |new_uri| Redirect::permanent(&new_uri.to_string()).into_response(),
+        )
     }
 
     if let Some(path_without_trailing_slash) = path.strip_suffix('/') {

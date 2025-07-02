@@ -38,7 +38,5 @@ use tower_layer::Identity;
 /// [`HandleErrorLayer`]: axum::error_handling::HandleErrorLayer
 /// [`Infallible`]: std::convert::Infallible
 pub fn option_layer<L>(layer: Option<L>) -> Either<L, Identity> {
-    layer
-        .map(Either::E1)
-        .unwrap_or_else(|| Either::E2(Identity::new()))
+    layer.map_or_else(|| Either::E2(Identity::new()), Either::E1)
 }

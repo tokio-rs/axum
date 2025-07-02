@@ -187,14 +187,11 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        let service = match try_downcast::<Router<S>, _>(service) {
-            Ok(_) => {
-                panic!(
-                    "Invalid route: `Router::route_service` cannot be used with `Router`s. \
-                     Use `Router::nest` instead"
-                );
-            }
-            Err(service) => service,
+        let Err(service) = try_downcast::<Self, _>(service) else {
+            panic!(
+                "Invalid route: `Router::route_service` cannot be used with `Router`s. \
+                      Use `Router::nest` instead"
+            );
         };
 
         tap_inner!(self, mut this => {
@@ -205,10 +202,11 @@ where
     #[doc = include_str!("../docs/routing/nest.md")]
     #[doc(alias = "scope")] // Some web frameworks like actix-web use this term
     #[track_caller]
-    pub fn nest(self, path: &str, router: Router<S>) -> Self {
-        if path.is_empty() || path == "/" {
-            panic!("Nesting at the root is no longer supported. Use merge instead.");
-        }
+    pub fn nest(self, path: &str, router: Self) -> Self {
+        assert!(
+            !(path.is_empty() || path == "/"),
+            "Nesting at the root is no longer supported. Use merge instead."
+        );
 
         let RouterInner {
             path_router,
@@ -232,9 +230,10 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        if path.is_empty() || path == "/" {
-            panic!("Nesting at the root is no longer supported. Use fallback_service instead.");
-        }
+        assert!(
+            !(path.is_empty() || path == "/"),
+            "Nesting at the root is no longer supported. Use fallback_service instead."
+        );
 
         tap_inner!(self, mut this => {
             panic_on_err!(this.path_router.nest_service(path, service));
@@ -245,9 +244,9 @@ where
     #[track_caller]
     pub fn merge<R>(self, other: R) -> Self
     where
-        R: Into<Router<S>>,
+        R: Into<Self>,
     {
-        let other: Router<S> = other.into();
+        let other: Self = other.into();
         let RouterInner {
             path_router,
             default_fallback,
@@ -270,7 +269,7 @@ where
                 (false, false) => {
                     panic!("Cannot merge two `Router`s that both have a fallback")
                 }
-            };
+            }
 
             panic_on_err!(this.path_router.merge(path_router));
 
@@ -284,7 +283,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/layer.md")]
-    pub fn layer<L>(self, layer: L) -> Router<S>
+    pub fn layer<L>(self, layer: L) -> Self
     where
         L: Layer<Route> + Clone + Send + Sync + 'static,
         L::Service: Service<Request> + Clone + Send + Sync + 'static,
@@ -317,6 +316,7 @@ where
     }
 
     /// True if the router currently has at least one route added.
+    #[must_use]
     pub fn has_routes(&self) -> bool {
         self.inner.path_router.has_routes()
     }
@@ -513,7 +513,8 @@ where
     ///
     /// This is the same as [`Router::as_service`] instead it returns an owned [`Service`]. See
     /// that method for more details.
-    pub fn into_service<B>(self) -> RouterIntoService<B, S> {
+    #[must_use]
+    pub const fn into_service<B>(self) -> RouterIntoService<B, S> {
         RouterIntoService {
             router: self,
             _marker: PhantomData,
@@ -540,6 +541,7 @@ impl Router {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
+    #[must_use]
     pub fn into_make_service(self) -> IntoMakeService<Self> {
         // call `Router::with_state` such that everything is turned into `Route` eagerly
         // rather than doing that per request
@@ -548,6 +550,7 @@ impl Router {
 
     #[doc = include_str!("../docs/routing/into_make_service_with_connect_info.md")]
     #[cfg(feature = "tokio")]
+    #[must_use]
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         // call `Router::with_state` such that everything is turned into `Route` eagerly
         // rather than doing that per request
@@ -725,16 +728,16 @@ where
 
     fn with_state<S2>(self, state: S) -> Fallback<S2, E> {
         match self {
-            Fallback::Default(route) => Fallback::Default(route),
-            Fallback::Service(route) => Fallback::Service(route),
-            Fallback::BoxedHandler(handler) => Fallback::Service(handler.into_route(state)),
+            Self::Default(route) => Fallback::Default(route),
+            Self::Service(route) => Fallback::Service(route),
+            Self::BoxedHandler(handler) => Fallback::Service(handler.into_route(state)),
         }
     }
 
     fn call_with_state(self, req: Request, state: S) -> RouteFuture<E> {
         match self {
-            Fallback::Default(route) | Fallback::Service(route) => route.oneshot_inner_owned(req),
-            Fallback::BoxedHandler(handler) => {
+            Self::Default(route) | Self::Service(route) => route.oneshot_inner_owned(req),
+            Self::BoxedHandler(handler) => {
                 let route = handler.clone().into_route(state);
                 route.oneshot_inner_owned(req)
             }
@@ -772,7 +775,7 @@ impl<S> Endpoint<S>
 where
     S: Clone + Send + Sync + 'static,
 {
-    fn layer<L>(self, layer: L) -> Endpoint<S>
+    fn layer<L>(self, layer: L) -> Self
     where
         L: Layer<Route> + Clone + Send + Sync + 'static,
         L::Service: Service<Request> + Clone + Send + Sync + 'static,
@@ -781,10 +784,8 @@ where
         <L::Service as Service<Request>>::Future: Send + 'static,
     {
         match self {
-            Endpoint::MethodRouter(method_router) => {
-                Endpoint::MethodRouter(method_router.layer(layer))
-            }
-            Endpoint::Route(route) => Endpoint::Route(route.layer(layer)),
+            Self::MethodRouter(method_router) => Self::MethodRouter(method_router.layer(layer)),
+            Self::Route(route) => Self::Route(route.layer(layer)),
         }
     }
 }

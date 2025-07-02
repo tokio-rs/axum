@@ -41,6 +41,7 @@ pub struct NestedPath(Arc<str>);
 
 impl NestedPath {
     /// Returns a `str` representation of the path.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -53,10 +54,12 @@ where
     type Rejection = NestedPathRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        match parts.extensions.get::<Self>() {
-            Some(nested_path) => Ok(nested_path.clone()),
-            None => Err(NestedPathRejection),
-        }
+        parts
+            .extensions
+            .get::<Self>()
+            .map_or(Err(NestedPathRejection), |nested_path| {
+                Ok(nested_path.clone())
+            })
     }
 }
 
@@ -100,7 +103,7 @@ where
         } else {
             req.extensions_mut()
                 .insert(NestedPath(Arc::clone(&self.path)));
-        };
+        }
 
         self.inner.call(req)
     }

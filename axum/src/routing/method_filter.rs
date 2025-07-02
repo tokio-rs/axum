@@ -58,6 +58,7 @@ impl MethodFilter {
     }
 
     /// Performs the OR operation between the [`MethodFilter`] in `self` with `other`.
+    #[must_use]
     pub const fn or(self, other: Self) -> Self {
         Self(self.0 | other.0)
     }
@@ -71,7 +72,7 @@ pub struct NoMatchingMethodFilter {
 
 impl NoMatchingMethodFilter {
     /// Get the [`Method`] that couldn't be converted to a [`MethodFilter`].
-    pub fn method(&self) -> &Method {
+    pub const fn method(&self) -> &Method {
         &self.method
     }
 }
@@ -89,15 +90,15 @@ impl TryFrom<Method> for MethodFilter {
 
     fn try_from(m: Method) -> Result<Self, NoMatchingMethodFilter> {
         match m {
-            Method::CONNECT => Ok(MethodFilter::CONNECT),
-            Method::DELETE => Ok(MethodFilter::DELETE),
-            Method::GET => Ok(MethodFilter::GET),
-            Method::HEAD => Ok(MethodFilter::HEAD),
-            Method::OPTIONS => Ok(MethodFilter::OPTIONS),
-            Method::PATCH => Ok(MethodFilter::PATCH),
-            Method::POST => Ok(MethodFilter::POST),
-            Method::PUT => Ok(MethodFilter::PUT),
-            Method::TRACE => Ok(MethodFilter::TRACE),
+            Method::CONNECT => Ok(Self::CONNECT),
+            Method::DELETE => Ok(Self::DELETE),
+            Method::GET => Ok(Self::GET),
+            Method::HEAD => Ok(Self::HEAD),
+            Method::OPTIONS => Ok(Self::OPTIONS),
+            Method::PATCH => Ok(Self::PATCH),
+            Method::POST => Ok(Self::POST),
+            Method::PUT => Ok(Self::PUT),
+            Method::TRACE => Ok(Self::TRACE),
             other => Err(NoMatchingMethodFilter { method: other }),
         }
     }

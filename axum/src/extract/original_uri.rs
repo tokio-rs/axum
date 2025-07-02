@@ -76,7 +76,7 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let uri = Extension::<Self>::from_request_parts(parts, state)
             .await
-            .unwrap_or_else(|_| Extension(OriginalUri(parts.uri.clone())))
+            .unwrap_or_else(|_| Extension(Self(parts.uri.clone())))
             .0;
         Ok(uri)
     }

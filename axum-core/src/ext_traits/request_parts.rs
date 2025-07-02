@@ -147,7 +147,7 @@ mod tests {
 
     #[tokio::test]
     async fn extract_without_state() {
-        let (mut parts, _) = Request::new(()).into_parts();
+        let (mut parts, ()) = Request::new(()).into_parts();
 
         let method: Method = parts.extract().await.unwrap();
 
@@ -156,7 +156,7 @@ mod tests {
 
     #[tokio::test]
     async fn extract_with_state() {
-        let (mut parts, _) = Request::new(()).into_parts();
+        let (mut parts, ()) = Request::new(()).into_parts();
 
         let state = "state".to_owned();
 

@@ -153,7 +153,7 @@ where
             key,
             _marker: _,
         } = SignedCookieJar::from_headers(&parts.headers, key);
-        Ok(SignedCookieJar {
+        Ok(Self {
             jar,
             key,
             _marker: PhantomData,
@@ -170,6 +170,7 @@ impl SignedCookieJar {
     /// run extractors. Normally you should create `SignedCookieJar`s through [`FromRequestParts`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
+    #[must_use]
     pub fn from_headers(headers: &HeaderMap, key: Key) -> Self {
         let mut jar = cookie::CookieJar::new();
         let mut signed_jar = jar.signed_mut(&key);
@@ -192,6 +193,7 @@ impl SignedCookieJar {
     /// run extractors. Normally you should create `SignedCookieJar`s through [`FromRequestParts`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
+    #[must_use]
     pub fn new(key: Key) -> Self {
         Self {
             jar: Default::default(),
@@ -219,6 +221,7 @@ impl<K> SignedCookieJar<K> {
     ///         .map(|cookie| cookie.value().to_owned());
     /// }
     /// ```
+    #[must_use]
     pub fn get(&self, name: &str) -> Option<Cookie<'static>> {
         self.signed_jar().get(name)
     }
@@ -264,6 +267,7 @@ impl<K> SignedCookieJar<K> {
 
     /// Verifies the authenticity and integrity of `cookie`, returning the plaintext version if
     /// verification succeeds or `None` otherwise.
+    #[must_use]
     pub fn verify(&self, cookie: Cookie<'static>) -> Option<Cookie<'static>> {
         self.signed_jar().verify(cookie)
     }

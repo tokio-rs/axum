@@ -58,12 +58,12 @@ impl<S> Sse<S> {
     /// [`Event`]s.
     ///
     /// See the [module docs](self) for more details.
-    pub fn new(stream: S) -> Self
+    pub const fn new(stream: S) -> Self
     where
         S: TryStream<Ok = Event> + Send + 'static,
         S::Error: Into<BoxError>,
     {
-        Sse { stream }
+        Self { stream }
     }
 
     /// Configure the interval between keep-alive messages.
@@ -154,12 +154,12 @@ impl Buffer {
     /// a new active buffer with the previous contents.
     fn as_mut(&mut self) -> &mut BytesMut {
         match self {
-            Buffer::Active(bytes_mut) => bytes_mut,
-            Buffer::Finalized(bytes) => {
-                *self = Buffer::Active(BytesMut::from(mem::take(bytes)));
+            Self::Active(bytes_mut) => bytes_mut,
+            Self::Finalized(bytes) => {
+                *self = Self::Active(BytesMut::from(mem::take(bytes)));
                 match self {
-                    Buffer::Active(bytes_mut) => bytes_mut,
-                    Buffer::Finalized(_) => unreachable!(),
+                    Self::Active(bytes_mut) => bytes_mut,
+                    Self::Finalized(_) => unreachable!(),
                 }
             }
         }
@@ -199,13 +199,14 @@ impl Event {
     /// - Panics if `data` or `json_data` have already been called.
     ///
     /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
-    pub fn data<T>(mut self, data: T) -> Event
+    pub fn data<T>(mut self, data: T) -> Self
     where
         T: AsRef<str>,
     {
-        if self.flags.contains(EventFlags::HAS_DATA) {
-            panic!("Called `Event::data` multiple times");
-        }
+        assert!(
+            !self.flags.contains(EventFlags::HAS_DATA),
+            "Called `Event::data` multiple times"
+        );
 
         for line in memchr_split(b'\n', data.as_ref().as_bytes()) {
             self.field("data", line);
@@ -226,7 +227,7 @@ impl Event {
     ///
     /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
     #[cfg(feature = "json")]
-    pub fn json_data<T>(mut self, data: T) -> Result<Event, axum_core::Error>
+    pub fn json_data<T>(mut self, data: T) -> Result<Self, axum_core::Error>
     where
         T: serde::Serialize,
     {
@@ -246,9 +247,10 @@ impl Event {
                 self.0.flush()
             }
         }
-        if self.flags.contains(EventFlags::HAS_DATA) {
-            panic!("Called `Event::json_data` multiple times");
-        }
+        assert!(
+            !self.flags.contains(EventFlags::HAS_DATA),
+            "Called `Event::json_data` multiple times"
+        );
 
         let buffer = self.buffer.as_mut();
         buffer.extend_from_slice(b"data: ");
@@ -271,7 +273,7 @@ impl Event {
     ///
     /// Panics if `comment` contains any newlines or carriage returns, as they are not allowed in
     /// comments.
-    pub fn comment<T>(mut self, comment: T) -> Event
+    pub fn comment<T>(mut self, comment: T) -> Self
     where
         T: AsRef<str>,
     {
@@ -293,13 +295,14 @@ impl Event {
     ///
     /// - Panics if `event` contains any newlines or carriage returns.
     /// - Panics if this function has already been called on this event.
-    pub fn event<T>(mut self, event: T) -> Event
+    pub fn event<T>(mut self, event: T) -> Self
     where
         T: AsRef<str>,
     {
-        if self.flags.contains(EventFlags::HAS_EVENT) {
-            panic!("Called `Event::event` multiple times");
-        }
+        assert!(
+            !self.flags.contains(EventFlags::HAS_EVENT),
+            "Called `Event::event` multiple times"
+        );
         self.flags.insert(EventFlags::HAS_EVENT);
 
         self.field("event", event.as_ref());
@@ -316,10 +319,11 @@ impl Event {
     /// # Panics
     ///
     /// Panics if this function has already been called on this event.
-    pub fn retry(mut self, duration: Duration) -> Event {
-        if self.flags.contains(EventFlags::HAS_RETRY) {
-            panic!("Called `Event::retry` multiple times");
-        }
+    pub fn retry(mut self, duration: Duration) -> Self {
+        assert!(
+            !self.flags.contains(EventFlags::HAS_RETRY),
+            "Called `Event::retry` multiple times"
+        );
         self.flags.insert(EventFlags::HAS_RETRY);
 
         let buffer = self.buffer.as_mut();
@@ -360,13 +364,14 @@ impl Event {
     ///
     /// - Panics if `id` contains any newlines, carriage returns or null characters.
     /// - Panics if this function has already been called on this event.
-    pub fn id<T>(mut self, id: T) -> Event
+    pub fn id<T>(mut self, id: T) -> Self
     where
         T: AsRef<str>,
     {
-        if self.flags.contains(EventFlags::HAS_ID) {
-            panic!("Called `Event::id` multiple times");
-        }
+        assert!(
+            !self.flags.contains(EventFlags::HAS_ID),
+            "Called `Event::id` multiple times"
+        );
         self.flags.insert(EventFlags::HAS_ID);
 
         let id = id.as_ref().as_bytes();
@@ -453,7 +458,7 @@ pub struct KeepAlive {
 
 impl KeepAlive {
     /// Create a new `KeepAlive`.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             event: Event::DEFAULT_KEEP_ALIVE,
             max_interval: Duration::from_secs(15),
@@ -463,7 +468,7 @@ impl KeepAlive {
     /// Customize the interval between keep-alive messages.
     ///
     /// Default is 15 seconds.
-    pub fn interval(mut self, time: Duration) -> Self {
+    pub const fn interval(mut self, time: Duration) -> Self {
         self.max_interval = time;
         self
     }
@@ -566,7 +571,7 @@ where
     }
 }
 
-fn memchr_split(needle: u8, haystack: &[u8]) -> MemchrSplit<'_> {
+const fn memchr_split(needle: u8, haystack: &[u8]) -> MemchrSplit<'_> {
     MemchrSplit {
         needle,
         haystack: Some(haystack),

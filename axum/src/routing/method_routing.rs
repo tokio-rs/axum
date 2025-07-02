@@ -571,14 +571,14 @@ enum AllowHeader {
 impl AllowHeader {
     fn merge(self, other: Self) -> Self {
         match (self, other) {
-            (AllowHeader::Skip, _) | (_, AllowHeader::Skip) => AllowHeader::Skip,
-            (AllowHeader::None, AllowHeader::None) => AllowHeader::None,
-            (AllowHeader::None, AllowHeader::Bytes(pick)) => AllowHeader::Bytes(pick),
-            (AllowHeader::Bytes(pick), AllowHeader::None) => AllowHeader::Bytes(pick),
-            (AllowHeader::Bytes(mut a), AllowHeader::Bytes(b)) => {
+            (Self::Skip, _) | (_, Self::Skip) => Self::Skip,
+            (Self::None, Self::None) => Self::None,
+            (Self::None, Self::Bytes(pick)) => Self::Bytes(pick),
+            (Self::Bytes(pick), Self::None) => Self::Bytes(pick),
+            (Self::Bytes(mut a), Self::Bytes(b)) => {
                 a.extend_from_slice(b",");
                 a.extend_from_slice(&b);
-                AllowHeader::Bytes(a)
+                Self::Bytes(a)
             }
         }
     }
@@ -703,6 +703,7 @@ impl MethodRouter<(), Infallible> {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
+    #[must_use]
     pub fn into_make_service(self) -> IntoMakeService<Self> {
         IntoMakeService::new(self.with_state(()))
     }
@@ -736,6 +737,7 @@ impl MethodRouter<(), Infallible> {
     /// [`MakeService`]: tower::make::MakeService
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
     #[cfg(feature = "tokio")]
+    #[must_use]
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self.with_state(()))
     }
@@ -834,12 +836,11 @@ where
             S: Clone,
         {
             if endpoint_filter.contains(filter) {
-                if out.is_some() {
-                    panic!(
-                        "Overlapping method route. Cannot add two method routes that both handle \
+                assert!(
+                    !out.is_some(),
+                    "Overlapping method route. Cannot add two method routes that both handle \
                          `{method_name}`",
-                    )
-                }
+                );
                 *out = endpoint.clone();
                 for method in methods {
                     append_allow_header(allow_header, method);
@@ -992,7 +993,7 @@ where
 
     #[doc = include_str!("../docs/method_routing/route_layer.md")]
     #[track_caller]
-    pub fn route_layer<L>(mut self, layer: L) -> MethodRouter<S, E>
+    pub fn route_layer<L>(mut self, layer: L) -> Self
     where
         L: Layer<Route<E>> + Clone + Send + Sync + 'static,
         L::Service: Service<Request, Error = E> + Clone + Send + Sync + 'static,
@@ -1035,7 +1036,7 @@ where
     pub(crate) fn merge_for_path(
         mut self,
         path: Option<&str>,
-        other: MethodRouter<S, E>,
+        other: Self,
     ) -> Result<Self, Cow<'static, str>> {
         // written using inner functions to generate less IR
         fn merge_inner<S, E>(
@@ -1047,20 +1048,21 @@ where
             match (first, second) {
                 (MethodEndpoint::None, MethodEndpoint::None) => Ok(MethodEndpoint::None),
                 (pick, MethodEndpoint::None) | (MethodEndpoint::None, pick) => Ok(pick),
-                _ => {
-                    if let Some(path) = path {
-                        Err(format!(
-                            "Overlapping method route. Handler for `{name} {path}` already exists"
-                        )
-                        .into())
-                    } else {
+                _ => path.map_or_else(
+                    || {
                         Err(format!(
                             "Overlapping method route. Cannot merge two method routes that both \
                              define `{name}`"
                         )
                         .into())
-                    }
-                }
+                    },
+                    |path| {
+                        Err(format!(
+                            "Overlapping method route. Handler for `{name} {path}` already exists"
+                        )
+                        .into())
+                    },
+                ),
             }
         }
 
@@ -1086,7 +1088,7 @@ where
 
     #[doc = include_str!("../docs/method_routing/merge.md")]
     #[track_caller]
-    pub fn merge(self, other: MethodRouter<S, E>) -> Self {
+    pub fn merge(self, other: Self) -> Self {
         match self.merge_for_path(None, other) {
             Ok(t) => t,
             // not using unwrap or unwrap_or_else to get a clean panic message + the right location
@@ -1230,11 +1232,11 @@ impl<S, E> MethodEndpoint<S, E>
 where
     S: Clone,
 {
-    fn is_some(&self) -> bool {
+    const fn is_some(&self) -> bool {
         matches!(self, Self::Route(_) | Self::BoxedHandler(_))
     }
 
-    fn is_none(&self) -> bool {
+    const fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
 
@@ -1254,11 +1256,9 @@ where
 
     fn with_state<S2>(self, state: &S) -> MethodEndpoint<S2, E> {
         match self {
-            MethodEndpoint::None => MethodEndpoint::None,
-            MethodEndpoint::Route(route) => MethodEndpoint::Route(route),
-            MethodEndpoint::BoxedHandler(handler) => {
-                MethodEndpoint::Route(handler.into_route(state.clone()))
-            }
+            Self::None => MethodEndpoint::None,
+            Self::Route(route) => MethodEndpoint::Route(route),
+            Self::BoxedHandler(handler) => MethodEndpoint::Route(handler.into_route(state.clone())),
         }
     }
 }

@@ -96,7 +96,7 @@ pub use self::listener::{Listener, ListenerExt, TapIo};
 /// [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: crate::handler::HandlerWithoutStateExt::into_make_service_with_connect_info
 /// [`HandlerService::into_make_service_with_connect_info`]: crate::handler::HandlerService::into_make_service_with_connect_info
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-pub fn serve<L, M, S, B>(listener: L, make_service: M) -> Serve<L, M, S, B>
+pub const fn serve<L, M, S, B>(listener: L, make_service: M) -> Serve<L, M, S, B>
 where
     L: Listener,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S>,
@@ -298,7 +298,7 @@ where
         loop {
             let (io, remote_addr) = tokio::select! {
                 conn = listener.accept() => conn,
-                _ = signal_tx.closed() => {
+                () = signal_tx.closed() => {
                     trace!("signal received, not accepting new connections");
                     break;
                 }
@@ -424,7 +424,7 @@ async fn handle_connection<L, M, S, B>(
                     }
                     break;
                 }
-                _ = &mut signal_closed => {
+                () = &mut signal_closed => {
                     trace!("signal received in task, starting graceful shutdown");
                     conn.as_mut().graceful_shutdown();
                 }
@@ -459,7 +459,7 @@ where
     }
 
     /// Returns the remote address that this stream is bound to.
-    pub fn remote_addr(&self) -> &L::Addr {
+    pub const fn remote_addr(&self) -> &L::Addr {
         &self.remote_addr
     }
 }

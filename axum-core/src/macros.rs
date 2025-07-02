@@ -54,7 +54,7 @@ macro_rules! __define_rejection {
             }
 
             /// Get the status code used for this rejection.
-            pub fn status(&self) -> http::StatusCode {
+            pub const fn status(&self) -> http::StatusCode {
                 http::StatusCode::$status
             }
         }
@@ -106,12 +106,14 @@ macro_rules! __define_rejection {
             }
 
             /// Get the response body text used for this rejection.
+            #[must_use]
             pub fn body_text(&self) -> String {
                 self.to_string()
             }
 
             /// Get the status code used for this rejection.
-            pub fn status(&self) -> http::StatusCode {
+            #[must_use]
+            pub const fn status(&self) -> http::StatusCode {
                 http::StatusCode::$status
             }
         }
@@ -179,6 +181,7 @@ macro_rules! __composite_rejection {
 
         impl $name {
             /// Get the response body text used for this rejection.
+            #[must_use]
             pub fn body_text(&self) -> String {
                 match self {
                     $(
@@ -188,7 +191,8 @@ macro_rules! __composite_rejection {
             }
 
             /// Get the status code used for this rejection.
-            pub fn status(&self) -> http::StatusCode {
+            #[must_use]
+            pub const fn status(&self) -> http::StatusCode {
                 match self {
                     $(
                         Self::$variant(inner) => inner.status(),

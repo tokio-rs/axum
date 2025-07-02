@@ -1,4 +1,7 @@
-use super::{rejection::*, FromRequestParts};
+use super::{
+    rejection::{FailedToDeserializeQueryString, QueryRejection},
+    FromRequestParts,
+};
 use http::{request::Parts, Uri};
 use serde::de::DeserializeOwned;
 
@@ -91,7 +94,7 @@ where
             serde_urlencoded::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
         let params = serde_path_to_error::deserialize(deserializer)
             .map_err(FailedToDeserializeQueryString::from_err)?;
-        Ok(Query(params))
+        Ok(Self(params))
     }
 }
 

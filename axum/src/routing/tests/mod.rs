@@ -1090,7 +1090,7 @@ async fn logging_rejections() {
                 level: "TRACE".to_owned(),
             },
         ])
-    )
+    );
 }
 
 // https://github.com/tokio-rs/axum/issues/1955

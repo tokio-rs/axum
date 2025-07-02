@@ -119,7 +119,7 @@ where
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let extractor = E::from_request(req, state).await?;
-        Ok(WithRejection(extractor, PhantomData))
+        Ok(Self(extractor, PhantomData))
     }
 }
 
@@ -133,7 +133,7 @@ where
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let extractor = E::from_request_parts(parts, state).await?;
-        Ok(WithRejection(extractor, PhantomData))
+        Ok(Self(extractor, PhantomData))
     }
 }
 
@@ -187,8 +187,8 @@ mod tests {
         }
 
         impl From<()> for TestRejection {
-            fn from(_: ()) -> Self {
-                TestRejection
+            fn from((): ()) -> Self {
+                Self
             }
         }
 
@@ -196,7 +196,7 @@ mod tests {
         let result = WithRejection::<TestExtractor, TestRejection>::from_request(req, &()).await;
         assert!(matches!(result, Err(TestRejection)));
 
-        let (mut parts, _) = Request::new(()).into_parts();
+        let (mut parts, ()) = Request::new(()).into_parts();
         let result =
             WithRejection::<TestExtractor, TestRejection>::from_request_parts(&mut parts, &())
                 .await;

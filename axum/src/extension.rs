@@ -1,4 +1,7 @@
-use crate::{extract::rejection::*, response::IntoResponseParts};
+use crate::{
+    extract::rejection::{ExtensionRejection, MissingExtension},
+    response::IntoResponseParts,
+};
 use axum_core::extract::OptionalFromRequestParts;
 use axum_core::{
     extract::FromRequestParts,
@@ -204,7 +207,7 @@ mod tests {
         }
 
         async fn optional_foo(extension: Option<Extension<Foo>>) -> String {
-            extension.map(|foo| foo.0 .0).unwrap_or("none".to_owned())
+            extension.map_or("none".to_owned(), |foo| foo.0 .0)
         }
 
         async fn requires_bar(Extension(bar): Extension<Bar>) -> String {
@@ -212,7 +215,7 @@ mod tests {
         }
 
         async fn optional_bar(extension: Option<Extension<Bar>>) -> String {
-            extension.map(|bar| bar.0 .0).unwrap_or("none".to_owned())
+            extension.map_or("none".to_owned(), |bar| bar.0 .0)
         }
 
         let app = Router::new()

@@ -17,7 +17,7 @@ macro_rules! opaque_future {
         }
 
         impl<$($param),*> $name<$($param),*> {
-            pub(crate) fn new(future: $actual) -> Self {
+            pub(crate) const fn new(future: $actual) -> Self {
                 Self { future }
             }
         }
