@@ -1049,20 +1049,21 @@ where
             match (first, second) {
                 (MethodEndpoint::None, MethodEndpoint::None) => Ok(MethodEndpoint::None),
                 (pick, MethodEndpoint::None) | (MethodEndpoint::None, pick) => Ok(pick),
-                _ => {
-                    if let Some(path) = path {
-                        Err(format!(
-                            "Overlapping method route. Handler for `{name} {path}` already exists"
-                        )
-                        .into())
-                    } else {
+                _ => path.map_or_else(
+                    || {
                         Err(format!(
                             "Overlapping method route. Cannot merge two method routes that both \
                              define `{name}`"
                         )
                         .into())
-                    }
-                }
+                    },
+                    |path| {
+                        Err(format!(
+                            "Overlapping method route. Handler for `{name} {path}` already exists"
+                        )
+                        .into())
+                    },
+                ),
             }
         }
 

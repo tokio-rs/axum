@@ -114,14 +114,14 @@ struct Writer<'a>(&'a TestMakeWriter);
 
 impl io::Write for Writer<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match &mut *self.0.write.lock().unwrap() {
-            Some(vec) => {
+        (*self.0.write.lock().unwrap()).as_mut().map_or_else(
+            || Err(io::Error::other("inner writer has been taken")),
+            |vec| {
                 let len = buf.len();
                 vec.extend(buf);
                 Ok(len)
-            }
-            None => Err(io::Error::other("inner writer has been taken")),
-        }
+            },
+        )
     }
 
     fn flush(&mut self) -> io::Result<()> {

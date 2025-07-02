@@ -39,19 +39,22 @@ fn expand_field(state: &Ident, idx: usize, field: &Field) -> TokenStream {
     let field_ty = &field.ty;
     let span = field.ty.span();
 
-    let body = if let Some(field_ident) = &field.ident {
-        if matches!(field_ty, Type::Reference(_)) {
-            quote_spanned! {span=> state.#field_ident }
-        } else {
-            quote_spanned! {span=> state.#field_ident.clone() }
-        }
-    } else {
-        let idx = syn::Index {
-            index: idx as _,
-            span: field.span(),
-        };
-        quote_spanned! {span=> state.#idx.clone() }
-    };
+    let body = field.ident.as_ref().map_or_else(
+        || {
+            let idx = syn::Index {
+                index: idx as _,
+                span: field.span(),
+            };
+            quote_spanned! {span=> state.#idx.clone() }
+        },
+        |field_ident| {
+            if matches!(field_ty, Type::Reference(_)) {
+                quote_spanned! {span=> state.#field_ident }
+            } else {
+                quote_spanned! {span=> state.#field_ident.clone() }
+            }
+        },
+    );
 
     quote_spanned! {span=>
         #[allow(clippy::clone_on_copy, clippy::clone_on_ref_ptr)]

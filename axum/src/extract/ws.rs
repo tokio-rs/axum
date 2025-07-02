@@ -346,30 +346,28 @@ impl<F> WebSocketUpgrade<F> {
             callback(socket).await;
         });
 
-        let mut response = if let Some(sec_websocket_key) = &self.sec_websocket_key {
-            // If `sec_websocket_key` was `Some`, we are using HTTP/1.1.
+        let mut response = self.sec_websocket_key.as_ref().map_or_else(
+            || Response::new(Body::empty()),
+            |sec_websocket_key| {
+                // If `sec_websocket_key` was `Some`, we are using HTTP/1.1.
 
-            #[allow(clippy::declare_interior_mutable_const)]
-            const UPGRADE: HeaderValue = HeaderValue::from_static("upgrade");
-            #[allow(clippy::declare_interior_mutable_const)]
-            const WEBSOCKET: HeaderValue = HeaderValue::from_static("websocket");
+                #[allow(clippy::declare_interior_mutable_const)]
+                const UPGRADE: HeaderValue = HeaderValue::from_static("upgrade");
+                #[allow(clippy::declare_interior_mutable_const)]
+                const WEBSOCKET: HeaderValue = HeaderValue::from_static("websocket");
 
-            Response::builder()
-                .status(StatusCode::SWITCHING_PROTOCOLS)
-                .header(header::CONNECTION, UPGRADE)
-                .header(header::UPGRADE, WEBSOCKET)
-                .header(
-                    header::SEC_WEBSOCKET_ACCEPT,
-                    sign(sec_websocket_key.as_bytes()),
-                )
-                .body(Body::empty())
-                .unwrap()
-        } else {
-            // Otherwise, we are HTTP/2+. As established in RFC 9113 section 8.5, we just respond
-            // with a 2XX with an empty body:
-            // <https://datatracker.ietf.org/doc/html/rfc9113#name-the-connect-method>.
-            Response::new(Body::empty())
-        };
+                Response::builder()
+                    .status(StatusCode::SWITCHING_PROTOCOLS)
+                    .header(header::CONNECTION, UPGRADE)
+                    .header(header::UPGRADE, WEBSOCKET)
+                    .header(
+                        header::SEC_WEBSOCKET_ACCEPT,
+                        sign(sec_websocket_key.as_bytes()),
+                    )
+                    .body(Body::empty())
+                    .unwrap()
+            },
+        );
 
         if let Some(protocol) = self.protocol {
             response
@@ -479,11 +477,9 @@ where
 }
 
 fn header_eq(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool {
-    if let Some(header) = headers.get(&key) {
+    headers.get(&key).is_some_and(|header| {
         header.as_bytes().eq_ignore_ascii_case(value.as_bytes())
-    } else {
-        false
-    }
+    })
 }
 
 fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool {
@@ -491,11 +487,8 @@ fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) ->
         return false;
     };
 
-    if let Ok(header) = std::str::from_utf8(header.as_bytes()) {
-        header.to_ascii_lowercase().contains(value)
-    } else {
-        false
-    }
+    std::str::from_utf8(header.as_bytes())
+        .is_ok_and(|header| header.to_ascii_lowercase().contains(value))
 }
 
 /// A stream of WebSocket messages.

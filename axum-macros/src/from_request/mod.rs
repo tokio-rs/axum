@@ -316,16 +316,14 @@ fn parse_single_generic_type_on_struct(
 }
 
 fn error_on_generic_ident(generic_ident: Option<Ident>, tr: Trait) -> syn::Result<()> {
-    if let Some(generic_ident) = generic_ident {
+    generic_ident.map_or(Ok(()), |generic_ident| {
         Err(syn::Error::new_spanned(
             generic_ident,
             format_args!(
                 "#[derive({tr})] only supports generics when used with #[from_request(via)]"
             ),
         ))
-    } else {
-        Ok(())
-    }
+    })
 }
 
 fn impl_struct_by_extracting_each_field(
@@ -335,27 +333,29 @@ fn impl_struct_by_extracting_each_field(
     state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
-    let trait_fn_body = match state {
-        State::CannotInfer => quote! {
+    let trait_fn_body = if let State::CannotInfer = state {
+        quote! {
             ::std::unimplemented!()
-        },
-        _ => {
-            let extract_fields = extract_fields(&fields, &rejection, tr)?;
-            quote! {
-                ::std::result::Result::Ok(Self {
-                    #(#extract_fields)*
-                })
-            }
+        }
+    } else {
+        let extract_fields = extract_fields(&fields, &rejection, tr)?;
+        quote! {
+            ::std::result::Result::Ok(Self {
+                #(#extract_fields)*
+            })
         }
     };
 
-    let rejection_ident = if let Some(rejection) = rejection {
-        quote!(#rejection)
-    } else if has_no_fields(&fields) {
-        quote!(::std::convert::Infallible)
-    } else {
-        quote!(::axum::response::Response)
-    };
+    let rejection_ident = rejection.map_or_else(
+        || {
+            if has_no_fields(&fields) {
+                quote!(::std::convert::Infallible)
+            } else {
+                quote!(::axum::response::Response)
+            }
+        },
+        |rejection| quote!(#rejection),
+    );
 
     let impl_generics = state
         .impl_generics()
@@ -417,16 +417,16 @@ fn extract_fields(
     tr: Trait,
 ) -> syn::Result<Vec<TokenStream>> {
     fn member(field: &syn::Field, index: usize) -> TokenStream {
-        match &field.ident {
-            Some(ident) => quote! { #ident },
-            _ => {
+        field.ident.as_ref().map_or_else(
+            || {
                 let member = syn::Member::Unnamed(syn::Index {
                     index: index as u32,
                     span: field.span(),
                 });
                 quote! { #member }
-            }
-        }
+            },
+            |ident| quote! { #ident },
+        )
     }
 
     fn into_inner(via: &Option<(attr::kw::via, syn::Path)>, ty_span: Span) -> TokenStream {
@@ -547,11 +547,7 @@ fn extract_fields(
                 Ok(tokens)
             } else {
                 let field_ty = into_outer(&via,ty_span,&field.ty);
-                let map_err = if let Some(rejection) = rejection {
-                    quote! { <#rejection as ::std::convert::From<_>>::from }
-                } else {
-                    quote! { ::axum::response::IntoResponse::into_response }
-                };
+                let map_err = rejection.as_ref().map_or_else(|| quote! { ::axum::response::IntoResponse::into_response }, |rejection| quote! { <#rejection as ::std::convert::From<_>>::from });
 
                 let tokens = match tr {
                     Trait::FromRequest => {
@@ -619,11 +615,10 @@ fn extract_fields(
             }
         } else {
             let field_ty = into_outer(&via, ty_span, &field.ty);
-            let map_err = if let Some(rejection) = rejection {
-                quote! { <#rejection as ::std::convert::From<_>>::from }
-            } else {
-                quote! { ::axum::response::IntoResponse::into_response }
-            };
+            let map_err = rejection.as_ref().map_or_else(
+                || quote! { ::axum::response::IntoResponse::into_response },
+                |rejection| quote! { <#rejection as ::std::convert::From<_>>::from },
+            );
 
             quote_spanned! {ty_span=>
                 #member: {
@@ -728,17 +723,20 @@ fn impl_struct_by_extracting_all_at_once(
 
     let path_span = via_path.span();
 
-    let (associated_rejection_type, map_err) = if let Some(rejection) = &rejection {
-        let rejection = quote! { #rejection };
-        let map_err = quote! { ::std::convert::From::from };
-        (rejection, map_err)
-    } else {
-        let rejection = quote! {
-            ::axum::response::Response
-        };
-        let map_err = quote! { ::axum::response::IntoResponse::into_response };
-        (rejection, map_err)
-    };
+    let (associated_rejection_type, map_err) = rejection.as_ref().map_or_else(
+        || {
+            let rejection = quote! {
+                ::axum::response::Response
+            };
+            let map_err = quote! { ::axum::response::IntoResponse::into_response };
+            (rejection, map_err)
+        },
+        |rejection| {
+            let rejection = quote! { #rejection };
+            let map_err = quote! { ::std::convert::From::from };
+            (rejection, map_err)
+        },
+    );
 
     // for something like
     //
@@ -905,17 +903,20 @@ fn impl_enum_by_extracting_all_at_once(
         }
     }
 
-    let (associated_rejection_type, map_err) = if let Some(rejection) = &rejection {
-        let rejection = quote! { #rejection };
-        let map_err = quote! { ::std::convert::From::from };
-        (rejection, map_err)
-    } else {
-        let rejection = quote! {
-            ::axum::response::Response
-        };
-        let map_err = quote! { ::axum::response::IntoResponse::into_response };
-        (rejection, map_err)
-    };
+    let (associated_rejection_type, map_err) = rejection.as_ref().map_or_else(
+        || {
+            let rejection = quote! {
+                ::axum::response::Response
+            };
+            let map_err = quote! { ::axum::response::IntoResponse::into_response };
+            (rejection, map_err)
+        },
+        |rejection| {
+            let rejection = quote! { #rejection };
+            let map_err = quote! { ::std::convert::From::from };
+            (rejection, map_err)
+        },
+    );
 
     let path_span = path.span();
 
@@ -1036,11 +1037,9 @@ fn infer_state_type_from_field_attributes(fields: &Fields) -> impl Iterator<Item
 }
 
 fn path_ident_is_state(path: &Path) -> bool {
-    if let Some(last_segment) = path.segments.last() {
-        last_segment.ident == "State"
-    } else {
-        false
-    }
+    path.segments
+        .last()
+        .is_some_and(|last_segment| last_segment.ident == "State")
 }
 
 fn state_from_via(ident: &Ident, via: &Path) -> Option<Type> {

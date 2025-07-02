@@ -52,20 +52,23 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenS
 
             let check_future_send = check_future_send(&item_fn, kind);
 
-            if let Some(check_input_order) = check_input_order(&item_fn, kind) {
-                quote! {
-                    #check_input_order
-                    #check_future_send
-                }
-            } else {
-                let check_inputs_impls_from_request =
-                    check_inputs_impls_from_request(&item_fn, state_ty, kind);
+            check_input_order(&item_fn, kind).map_or_else(
+                || {
+                    let check_inputs_impls_from_request =
+                        check_inputs_impls_from_request(&item_fn, state_ty, kind);
 
-                quote! {
-                    #check_inputs_impls_from_request
-                    #check_future_send
-                }
-            }
+                    quote! {
+                        #check_inputs_impls_from_request
+                        #check_future_send
+                    }
+                },
+                |check_input_order| {
+                    quote! {
+                        #check_input_order
+                        #check_future_send
+                    }
+                },
+            )
         })
     } else {
         syn::Error::new_spanned(
@@ -362,8 +365,9 @@ fn check_output_tuples(item_fn: &ItemFn) -> TokenStream {
                 Position::First(ty) => match extract_clean_typename(ty).as_deref() {
                     Some("StatusCode" | "Response") => quote! {},
                     Some("Parts") => check_is_response_parts(ty, handler_ident, idx),
-                    Some(_) | None => {
-                        if let Some(tn) = well_known_last_response_type(ty) {
+                    Some(_) | None => well_known_last_response_type(ty).map_or_else(
+                        || check_into_response_parts(ty, handler_ident, idx),
+                        |tn| {
                             syn::Error::new_spanned(
                                 ty,
                                 format!(
@@ -372,22 +376,19 @@ fn check_output_tuples(item_fn: &ItemFn) -> TokenStream {
                                 ),
                             )
                             .to_compile_error()
-                        } else {
-                            check_into_response_parts(ty, handler_ident, idx)
-                        }
-                    }
+                        },
+                    ),
                 },
-                Position::Middle(ty) => {
-                    if let Some(tn) = well_known_last_response_type(ty) {
+                Position::Middle(ty) => well_known_last_response_type(ty).map_or_else(
+                    || check_into_response_parts(ty, handler_ident, idx),
+                    |tn| {
                         syn::Error::new_spanned(
                             ty,
                             format!("`{tn}` must be the last element in a response tuple"),
                         )
                         .to_compile_error()
-                    } else {
-                        check_into_response_parts(ty, handler_ident, idx)
-                    }
-                }
+                    },
+                ),
                 Position::Last(ty) | Position::Only(ty) => check_into_response(handler_ident, ty),
             })
             .collect::<TokenStream>(),
@@ -672,39 +673,42 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
 
     let name = format_ident!("__axum_macros_check_{}_into_response", item_fn.sig.ident);
 
-    if let Some(receiver) = self_receiver(item_fn) {
-        quote_spanned! {span=>
-            #make
+    self_receiver(item_fn).map_or_else(
+        || {
+            quote_spanned! {span=>
+                #[allow(warnings)]
+                #[allow(unreachable_code)]
+                #[doc(hidden)]
+                async fn #name() {
+                    #make
 
-            #[allow(warnings)]
-            #[allow(unreachable_code)]
-            #[doc(hidden)]
-            async fn #name() {
-                fn check<T>(_: T)
+                    fn check<T>(_: T)
                     where T: ::axum::response::IntoResponse
-                {}
-                let value = #receiver #make_value_name().await;
-                check(value);
+                    {}
+
+                    let value = #make_value_name().await;
+
+                    check(value);
+                }
             }
-        }
-    } else {
-        quote_spanned! {span=>
-            #[allow(warnings)]
-            #[allow(unreachable_code)]
-            #[doc(hidden)]
-            async fn #name() {
+        },
+        |receiver| {
+            quote_spanned! {span=>
                 #make
 
-                fn check<T>(_: T)
-                where T: ::axum::response::IntoResponse
-                {}
-
-                let value = #make_value_name().await;
-
-                check(value);
+                #[allow(warnings)]
+                #[allow(unreachable_code)]
+                #[doc(hidden)]
+                async fn #name() {
+                    fn check<T>(_: T)
+                        where T: ::axum::response::IntoResponse
+                    {}
+                    let value = #receiver #make_value_name().await;
+                    check(value);
+                }
             }
-        }
-    }
+        },
+    )
 }
 
 fn check_future_send(item_fn: &ItemFn, kind: FunctionKind) -> TokenStream {

@@ -54,10 +54,12 @@ where
     type Rejection = NestedPathRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        match parts.extensions.get::<Self>() {
-            Some(nested_path) => Ok(nested_path.clone()),
-            None => Err(NestedPathRejection),
-        }
+        parts
+            .extensions
+            .get::<Self>()
+            .map_or(Err(NestedPathRejection), |nested_path| {
+                Ok(nested_path.clone())
+            })
     }
 }
 

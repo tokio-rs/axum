@@ -22,11 +22,8 @@ pub(super) fn insert_url_params(extensions: &mut Extensions, params: Params<'_, 
         .filter(|(key, _)| !key.starts_with(super::NEST_TAIL_PARAM))
         .filter(|(key, _)| !key.starts_with(super::FALLBACK_PARAM))
         .map(|(k, v)| {
-            if let Some(decoded) = PercentDecodedStr::new(v) {
-                Ok((Arc::from(k), decoded))
-            } else {
-                Err(Arc::from(k))
-            }
+            PercentDecodedStr::new(v)
+                .map_or_else(|| Err(Arc::from(k)), |decoded| Ok((Arc::from(k), decoded)))
         })
         .collect::<Result<Vec<_>, _>>();
 

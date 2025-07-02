@@ -114,11 +114,7 @@ impl Multipart {
             .await
             .map_err(MultipartError::from_multer)?;
 
-        if let Some(field) = field {
-            Ok(Some(Field { inner: field }))
-        } else {
-            Ok(None)
-        }
+        field.map_or_else(|| Ok(None), |field| Ok(Some(Field { inner: field })))
     }
 
     /// Convert the `Multipart` into a stream of its fields.

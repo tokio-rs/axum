@@ -304,20 +304,22 @@ fn expand_unit_fields(
         }
     };
 
-    let rejection_assoc_type = if let Some(rejection) = &rejection {
-        quote! { #rejection }
-    } else {
-        quote! { ::axum::http::StatusCode }
-    };
-    let create_rejection = if let Some(rejection) = &rejection {
-        quote! {
-            Err(<#rejection as ::std::default::Default>::default())
-        }
-    } else {
-        quote! {
-            Err(::axum::http::StatusCode::NOT_FOUND)
-        }
-    };
+    let rejection_assoc_type = rejection.as_ref().map_or_else(
+        || quote! { ::axum::http::StatusCode },
+        |rejection| quote! { #rejection },
+    );
+    let create_rejection = rejection.as_ref().map_or_else(
+        || {
+            quote! {
+                Err(::axum::http::StatusCode::NOT_FOUND)
+            }
+        },
+        |rejection| {
+            quote! {
+                Err(<#rejection as ::std::default::Default>::default())
+            }
+        },
+    );
 
     let from_request_impl = quote! {
         #[automatically_derived]
@@ -382,18 +384,17 @@ fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
     path.value()
         .split('/')
         .map(|segment| {
-            if let Some(capture) = segment
+            segment
                 .strip_prefix('{')
                 .and_then(|segment| segment.strip_suffix('}'))
                 .and_then(|segment| {
                     (!segment.starts_with('{') && !segment.ends_with('}')).then_some(segment)
                 })
                 .map(|capture| capture.strip_prefix('*').unwrap_or(capture))
-            {
-                Ok(Segment::Capture(capture.to_owned(), path.span()))
-            } else {
-                Ok(Segment::Static(segment.to_owned()))
-            }
+                .map_or_else(
+                    || Ok(Segment::Static(segment.to_owned())),
+                    |capture| Ok(Segment::Capture(capture.to_owned(), path.span())),
+                )
         })
         .collect()
 }
@@ -410,10 +411,9 @@ fn path_rejection() -> TokenStream {
 }
 
 fn rejection_assoc_type(rejection: &Option<syn::Path>) -> TokenStream {
-    match rejection {
-        Some(rejection) => quote! { #rejection },
-        None => path_rejection(),
-    }
+    rejection
+        .as_ref()
+        .map_or_else(path_rejection, |rejection| quote! { #rejection })
 }
 
 fn map_err_rejection(rejection: &Option<syn::Path>) -> TokenStream {

@@ -112,14 +112,15 @@ impl Multipart {
             .await
             .map_err(MultipartError::from_multer)?;
 
-        if let Some(field) = field {
-            Ok(Some(Field {
-                inner: field,
-                _multipart: self,
-            }))
-        } else {
-            Ok(None)
-        }
+        field.map_or_else(
+            || Ok(None),
+            |field| {
+                Ok(Some(Field {
+                    inner: field,
+                    _multipart: self,
+                }))
+            },
+        )
     }
 }
 

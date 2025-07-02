@@ -55,12 +55,13 @@ impl<T: IntoResponse> Attachment<T> {
     ///
     /// This updates the `Content-Disposition` header to add a filename.
     pub fn filename<H: TryInto<HeaderValue>>(mut self, value: H) -> Self {
-        self.filename = if let Ok(filename) = value.try_into() {
-            Some(filename)
-        } else {
-            error!("Attachment filename contains invalid characters");
-            None
-        };
+        self.filename = value.try_into().map_or_else(
+            |_| {
+                error!("Attachment filename contains invalid characters");
+                None
+            },
+            Some
+        );
         self
     }
 
@@ -86,15 +87,17 @@ where
             headers.append(header::CONTENT_TYPE, content_type);
         }
 
-        let content_disposition = if let Some(filename) = self.filename {
-            let mut bytes = b"attachment; filename=\"".to_vec();
-            bytes.extend_from_slice(filename.as_bytes());
-            bytes.push(b'\"');
+        let content_disposition = self.filename.map_or_else(
+            || HeaderValue::from_static("attachment"),
+            |filename| {
+                let mut bytes = b"attachment; filename=\"".to_vec();
+                bytes.extend_from_slice(filename.as_bytes());
+                bytes.push(b'\"');
 
-            HeaderValue::from_bytes(&bytes).expect("This was a HeaderValue so this can not fail")
-        } else {
-            HeaderValue::from_static("attachment")
-        };
+                HeaderValue::from_bytes(&bytes)
+                    .expect("This was a HeaderValue so this can not fail")
+            },
+        );
 
         headers.append(header::CONTENT_DISPOSITION, content_disposition);
 
