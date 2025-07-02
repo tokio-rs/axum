@@ -1,4 +1,7 @@
-use crate::{extract::rejection::*, response::IntoResponseParts};
+use crate::{
+    extract::rejection::{ExtensionRejection, MissingExtension},
+    response::IntoResponseParts,
+};
 use axum_core::extract::OptionalFromRequestParts;
 use axum_core::{
     extract::FromRequestParts,

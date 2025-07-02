@@ -1,4 +1,7 @@
-use super::{rejection::*, FromRequestParts};
+use super::{
+    rejection::{FailedToDeserializeQueryString, QueryRejection},
+    FromRequestParts,
+};
 use http::{request::Parts, Uri};
 use serde::de::DeserializeOwned;
 

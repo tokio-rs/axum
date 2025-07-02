@@ -1,5 +1,10 @@
 use crate::extract::Request;
-use crate::extract::{rejection::*, FromRequest, RawForm};
+use crate::extract::{
+    rejection::{
+        FailedToDeserializeForm, FailedToDeserializeFormBody, FormRejection, RawFormRejection,
+    },
+    FromRequest, RawForm,
+};
 use axum_core::response::{IntoResponse, Response};
 use axum_core::RequestExt;
 use http::header::CONTENT_TYPE;
@@ -130,6 +135,7 @@ axum_core::__impl_deref!(Form);
 #[cfg(test)]
 mod tests {
     use crate::{
+        extract::rejection::InvalidFormContentType,
         routing::{on, MethodFilter},
         test_helpers::TestClient,
         Router,

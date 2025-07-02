@@ -1,4 +1,7 @@
-use super::{rejection::*, FromRequestParts};
+use super::{
+    rejection::{MatchedPathMissing, MatchedPathRejection},
+    FromRequestParts,
+};
 use crate::routing::{RouteId, NEST_TAIL_PARAM_CAPTURE};
 use axum_core::extract::OptionalFromRequestParts;
 use http::request::Parts;

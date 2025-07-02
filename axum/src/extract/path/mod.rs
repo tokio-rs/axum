@@ -4,7 +4,10 @@
 mod de;
 
 use crate::{
-    extract::{rejection::*, FromRequestParts},
+    extract::{
+        rejection::{MissingPathParams, PathRejection, RawPathParamsRejection},
+        FromRequestParts,
+    },
     routing::url_params::UrlParams,
     util::PercentDecodedStr,
 };

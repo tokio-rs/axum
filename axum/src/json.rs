@@ -1,5 +1,8 @@
 use crate::extract::Request;
-use crate::extract::{rejection::*, FromRequest};
+use crate::extract::{
+    rejection::{JsonDataError, JsonRejection, JsonSyntaxError, MissingJsonContentType},
+    FromRequest,
+};
 use axum_core::extract::OptionalFromRequest;
 use axum_core::response::{IntoResponse, Response};
 use bytes::{BufMut, Bytes, BytesMut};
