@@ -187,14 +187,11 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        let service = match try_downcast::<Self, _>(service) {
-            Ok(_) => {
-                panic!(
-                    "Invalid route: `Router::route_service` cannot be used with `Router`s. \
-                     Use `Router::nest` instead"
-                );
-            }
-            Err(service) => service,
+        let Err(service) = try_downcast::<Self, _>(service) else {
+            panic!(
+                "Invalid route: `Router::route_service` cannot be used with `Router`s. \
+                      Use `Router::nest` instead"
+            );
         };
 
         tap_inner!(self, mut this => {
