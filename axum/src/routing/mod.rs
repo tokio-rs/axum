@@ -515,7 +515,7 @@ where
     /// This is the same as [`Router::as_service`] instead it returns an owned [`Service`]. See
     /// that method for more details.
     #[must_use]
-    pub fn into_service<B>(self) -> RouterIntoService<B, S> {
+    pub const fn into_service<B>(self) -> RouterIntoService<B, S> {
         RouterIntoService {
             router: self,
             _marker: PhantomData,

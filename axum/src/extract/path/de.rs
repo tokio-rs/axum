@@ -48,7 +48,7 @@ pub(crate) struct PathDeserializer<'de> {
 
 impl<'de> PathDeserializer<'de> {
     #[inline]
-    pub(crate) fn new(url_params: &'de [(Arc<str>, PercentDecodedStr)]) -> Self {
+    pub(crate) const fn new(url_params: &'de [(Arc<str>, PercentDecodedStr)]) -> Self {
         PathDeserializer { url_params }
     }
 }
@@ -637,7 +637,7 @@ enum KeyOrIdx<'de> {
 }
 
 impl<'de> KeyOrIdx<'de> {
-    fn key(&self) -> &'de str {
+    const fn key(&self) -> &'de str {
         match &self {
             Self::Key(key) => key,
             Self::Idx { key, .. } => key,

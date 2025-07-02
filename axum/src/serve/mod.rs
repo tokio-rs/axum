@@ -96,7 +96,7 @@ pub use self::listener::{Listener, ListenerExt, TapIo};
 /// [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: crate::handler::HandlerWithoutStateExt::into_make_service_with_connect_info
 /// [`HandlerService::into_make_service_with_connect_info`]: crate::handler::HandlerService::into_make_service_with_connect_info
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-pub fn serve<L, M, S, B>(listener: L, make_service: M) -> Serve<L, M, S, B>
+pub const fn serve<L, M, S, B>(listener: L, make_service: M) -> Serve<L, M, S, B>
 where
     L: Listener,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S>,
@@ -459,7 +459,7 @@ where
     }
 
     /// Returns the remote address that this stream is bound to.
-    pub fn remote_addr(&self) -> &L::Addr {
+    pub const fn remote_addr(&self) -> &L::Addr {
         &self.remote_addr
     }
 }

@@ -14,7 +14,7 @@ pub struct IntoMakeService<S> {
 }
 
 impl<S> IntoMakeService<S> {
-    pub(crate) fn new(svc: S) -> Self {
+    pub(crate) const fn new(svc: S) -> Self {
         Self { svc }
     }
 }

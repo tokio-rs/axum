@@ -1061,4 +1061,4 @@ fn ui() {
 /// }
 /// ```
 #[allow(dead_code)]
-fn test_field_doesnt_impl_from_request() {}
+const fn test_field_doesnt_impl_from_request() {}

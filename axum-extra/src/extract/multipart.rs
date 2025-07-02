@@ -237,7 +237,7 @@ pub struct MultipartError {
 }
 
 impl MultipartError {
-    fn from_multer(multer: multer::Error) -> Self {
+    const fn from_multer(multer: multer::Error) -> Self {
         Self { source: multer }
     }
 

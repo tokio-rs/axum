@@ -57,7 +57,7 @@ impl Redirect {
 
     /// Returns the HTTP status code of the `Redirect`.
     #[must_use]
-    pub fn status_code(&self) -> StatusCode {
+    pub const fn status_code(&self) -> StatusCode {
         self.status_code
     }
 

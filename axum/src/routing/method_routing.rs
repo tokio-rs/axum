@@ -1233,11 +1233,11 @@ impl<S, E> MethodEndpoint<S, E>
 where
     S: Clone,
 {
-    fn is_some(&self) -> bool {
+    const fn is_some(&self) -> bool {
         matches!(self, Self::Route(_) | Self::BoxedHandler(_))
     }
 
-    fn is_none(&self) -> bool {
+    const fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
 

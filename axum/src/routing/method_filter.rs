@@ -72,7 +72,7 @@ pub struct NoMatchingMethodFilter {
 
 impl NoMatchingMethodFilter {
     /// Get the [`Method`] that couldn't be converted to a [`MethodFilter`].
-    pub fn method(&self) -> &Method {
+    pub const fn method(&self) -> &Method {
         &self.method
     }
 }

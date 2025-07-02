@@ -89,7 +89,7 @@ impl TestClient {
 
     #[allow(dead_code)]
     #[must_use]
-    pub fn server_port(&self) -> u16 {
+    pub const fn server_port(&self) -> u16 {
         self.addr.port()
     }
 }

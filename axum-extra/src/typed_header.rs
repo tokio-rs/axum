@@ -138,13 +138,13 @@ pub struct TypedHeaderRejection {
 impl TypedHeaderRejection {
     /// Name of the header that caused the rejection
     #[must_use]
-    pub fn name(&self) -> &http::header::HeaderName {
+    pub const fn name(&self) -> &http::header::HeaderName {
         self.name
     }
 
     /// Reason why the header extraction has failed
     #[must_use]
-    pub fn reason(&self) -> &TypedHeaderRejectionReason {
+    pub const fn reason(&self) -> &TypedHeaderRejectionReason {
         &self.reason
     }
 
@@ -152,7 +152,7 @@ impl TypedHeaderRejection {
     ///
     /// [`Missing`]: TypedHeaderRejectionReason::Missing
     #[must_use]
-    pub fn is_missing(&self) -> bool {
+    pub const fn is_missing(&self) -> bool {
         self.reason.is_missing()
     }
 }
@@ -173,7 +173,7 @@ impl TypedHeaderRejectionReason {
     ///
     /// [`Missing`]: TypedHeaderRejectionReason::Missing
     #[must_use]
-    pub fn is_missing(&self) -> bool {
+    pub const fn is_missing(&self) -> bool {
         matches!(self, Self::Missing)
     }
 }

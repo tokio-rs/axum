@@ -73,7 +73,7 @@ impl Body {
     ///
     /// [`http_body_util::BodyStream`]: https://docs.rs/http-body-util/latest/http_body_util/struct.BodyStream.html
     #[must_use]
-    pub fn into_data_stream(self) -> BodyDataStream {
+    pub const fn into_data_stream(self) -> BodyDataStream {
         BodyDataStream { inner: self }
     }
 }

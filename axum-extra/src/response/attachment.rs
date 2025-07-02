@@ -43,7 +43,7 @@ pub struct Attachment<T> {
 
 impl<T: IntoResponse> Attachment<T> {
     /// Creates a new [`Attachment`].
-    pub fn new(inner: T) -> Self {
+    pub const fn new(inner: T) -> Self {
         Self {
             inner,
             filename: None,

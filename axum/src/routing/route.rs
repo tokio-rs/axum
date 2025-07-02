@@ -117,7 +117,7 @@ pin_project! {
 }
 
 impl<E> RouteFuture<E> {
-    fn new(
+    const fn new(
         method: Method,
         inner: Oneshot<BoxCloneSyncService<Request, Response, E>, Request>,
     ) -> Self {
@@ -134,7 +134,7 @@ impl<E> RouteFuture<E> {
         self
     }
 
-    pub(crate) fn not_top_level(mut self) -> Self {
+    pub(crate) const fn not_top_level(mut self) -> Self {
         self.top_level = false;
         self
     }
@@ -216,7 +216,7 @@ pin_project! {
 }
 
 impl InfallibleRouteFuture {
-    pub(crate) fn new(future: RouteFuture<Infallible>) -> Self {
+    pub(crate) const fn new(future: RouteFuture<Infallible>) -> Self {
         Self { future }
     }
 }

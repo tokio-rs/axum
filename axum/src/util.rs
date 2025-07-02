@@ -51,7 +51,7 @@ pub(crate) struct MapIntoResponse<S> {
 }
 
 impl<S> MapIntoResponse<S> {
-    pub(crate) fn new(inner: S) -> Self {
+    pub(crate) const fn new(inner: S) -> Self {
         Self { inner }
     }
 }

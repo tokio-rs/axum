@@ -178,7 +178,7 @@ where
             }
         }
 
-        fn failed_to_deserialize_path_params(err: PathDeserializationError) -> PathRejection {
+        const fn failed_to_deserialize_path_params(err: PathDeserializationError) -> PathRejection {
             PathRejection::FailedToDeserializePathParams(FailedToDeserializePathParams(err))
         }
 
@@ -220,16 +220,16 @@ pub(crate) struct PathDeserializationError {
 }
 
 impl PathDeserializationError {
-    pub(super) fn new(kind: ErrorKind) -> Self {
+    pub(super) const fn new(kind: ErrorKind) -> Self {
         Self { kind }
     }
 
-    pub(super) fn wrong_number_of_parameters() -> WrongNumberOfParameters<()> {
+    pub(super) const fn wrong_number_of_parameters() -> WrongNumberOfParameters<()> {
         WrongNumberOfParameters { got: () }
     }
 
     #[track_caller]
-    pub(super) fn unsupported_type(name: &'static str) -> Self {
+    pub(super) const fn unsupported_type(name: &'static str) -> Self {
         Self::new(ErrorKind::UnsupportedType { name })
     }
 }
@@ -246,7 +246,7 @@ impl<G> WrongNumberOfParameters<G> {
 }
 
 impl WrongNumberOfParameters<usize> {
-    pub(super) fn expected(self, expected: usize) -> PathDeserializationError {
+    pub(super) const fn expected(self, expected: usize) -> PathDeserializationError {
         PathDeserializationError::new(ErrorKind::WrongNumberOfParameters {
             got: self.got,
             expected,
@@ -408,7 +408,7 @@ pub struct FailedToDeserializePathParams(PathDeserializationError);
 impl FailedToDeserializePathParams {
     /// Get a reference to the underlying error kind.
     #[must_use]
-    pub fn kind(&self) -> &ErrorKind {
+    pub const fn kind(&self) -> &ErrorKind {
         &self.0.kind
     }
 
@@ -436,7 +436,7 @@ impl FailedToDeserializePathParams {
 
     /// Get the status code used for this rejection.
     #[must_use]
-    pub fn status(&self) -> StatusCode {
+    pub const fn status(&self) -> StatusCode {
         match self.0.kind {
             ErrorKind::Message(_)
             | ErrorKind::DeserializeError { .. }
@@ -573,7 +573,7 @@ impl InvalidUtf8InPathParam {
 
     /// Get the status code used for this rejection.
     #[must_use]
-    pub fn status(&self) -> StatusCode {
+    pub const fn status(&self) -> StatusCode {
         StatusCode::BAD_REQUEST
     }
 }

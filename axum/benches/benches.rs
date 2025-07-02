@@ -102,7 +102,7 @@ struct Payload {
     b: bool,
 }
 
-fn benchmark(name: &'static str) -> BenchmarkBuilder {
+const fn benchmark(name: &'static str) -> BenchmarkBuilder {
     BenchmarkBuilder {
         name,
         path: None,
@@ -122,7 +122,7 @@ struct BenchmarkBuilder {
 
 macro_rules! config_method {
     ($name:ident, $ty:ty) => {
-        fn $name(mut self, $name: $ty) -> Self {
+        const fn $name(mut self, $name: $ty) -> Self {
             self.$name = Some($name);
             self
         }

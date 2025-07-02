@@ -91,7 +91,7 @@ pub struct AsResponse;
 
 impl<S> JsonLines<S, AsResponse> {
     /// Create a new `JsonLines` from a stream of items.
-    pub fn new(stream: S) -> Self {
+    pub const fn new(stream: S) -> Self {
         Self {
             inner: Inner::Response { stream },
             _marker: PhantomData,

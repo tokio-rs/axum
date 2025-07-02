@@ -58,7 +58,7 @@ impl<S> Sse<S> {
     /// [`Event`]s.
     ///
     /// See the [module docs](self) for more details.
-    pub fn new(stream: S) -> Self
+    pub const fn new(stream: S) -> Self
     where
         S: TryStream<Ok = Event> + Send + 'static,
         S::Error: Into<BoxError>,
@@ -453,7 +453,7 @@ pub struct KeepAlive {
 
 impl KeepAlive {
     /// Create a new `KeepAlive`.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             event: Event::DEFAULT_KEEP_ALIVE,
             max_interval: Duration::from_secs(15),
@@ -463,7 +463,7 @@ impl KeepAlive {
     /// Customize the interval between keep-alive messages.
     ///
     /// Default is 15 seconds.
-    pub fn interval(mut self, time: Duration) -> Self {
+    pub const fn interval(mut self, time: Duration) -> Self {
         self.max_interval = time;
         self
     }
@@ -566,7 +566,7 @@ where
     }
 }
 
-fn memchr_split(needle: u8, haystack: &[u8]) -> MemchrSplit<'_> {
+const fn memchr_split(needle: u8, haystack: &[u8]) -> MemchrSplit<'_> {
     MemchrSplit {
         needle,
         haystack: Some(haystack),

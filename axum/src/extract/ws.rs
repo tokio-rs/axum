@@ -152,7 +152,7 @@ impl<F> std::fmt::Debug for WebSocketUpgrade<F> {
 
 impl<F> WebSocketUpgrade<F> {
     /// Read buffer capacity. The default value is 128KiB
-    pub fn read_buffer_size(mut self, size: usize) -> Self {
+    pub const fn read_buffer_size(mut self, size: usize) -> Self {
         self.config.read_buffer_size = size;
         self
     }
@@ -166,7 +166,7 @@ impl<F> WebSocketUpgrade<F> {
     /// It is often more optimal to allow them to buffer a little, hence the default value.
     ///
     /// Note: [`flush`](SinkExt::flush) will always fully write the buffer regardless.
-    pub fn write_buffer_size(mut self, size: usize) -> Self {
+    pub const fn write_buffer_size(mut self, size: usize) -> Self {
         self.config.write_buffer_size = size;
         self
     }
@@ -182,25 +182,25 @@ impl<F> WebSocketUpgrade<F> {
     ///
     /// Note: Should always be at least [`write_buffer_size + 1 message`](Self::write_buffer_size)
     /// and probably a little more depending on error handling strategy.
-    pub fn max_write_buffer_size(mut self, max: usize) -> Self {
+    pub const fn max_write_buffer_size(mut self, max: usize) -> Self {
         self.config.max_write_buffer_size = max;
         self
     }
 
     /// Set the maximum message size (defaults to 64 megabytes)
-    pub fn max_message_size(mut self, max: usize) -> Self {
+    pub const fn max_message_size(mut self, max: usize) -> Self {
         self.config.max_message_size = Some(max);
         self
     }
 
     /// Set the maximum frame size (defaults to 16 megabytes)
-    pub fn max_frame_size(mut self, max: usize) -> Self {
+    pub const fn max_frame_size(mut self, max: usize) -> Self {
         self.config.max_frame_size = Some(max);
         self
     }
 
     /// Allow server to accept unmasked frames (defaults to false)
-    pub fn accept_unmasked_frames(mut self, accept: bool) -> Self {
+    pub const fn accept_unmasked_frames(mut self, accept: bool) -> Self {
         self.config.accept_unmasked_frames = accept;
         self
     }
@@ -269,7 +269,7 @@ impl<F> WebSocketUpgrade<F> {
     /// If [`protocols()`][Self::protocols] has been called and a matching
     /// protocol has been selected, the return value will be `Some` containing
     /// said protocol. Otherwise, it will be `None`.
-    pub fn selected_protocol(&self) -> Option<&HeaderValue> {
+    pub const fn selected_protocol(&self) -> Option<&HeaderValue> {
         self.protocol.as_ref()
     }
 
@@ -517,7 +517,7 @@ impl WebSocket {
     }
 
     /// Return the selected WebSocket subprotocol, if one has been chosen.
-    pub fn protocol(&self) -> Option<&HeaderValue> {
+    pub const fn protocol(&self) -> Option<&HeaderValue> {
         self.protocol.as_ref()
     }
 }
