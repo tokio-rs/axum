@@ -49,6 +49,7 @@ verbose_file_reads = "warn"
 must_use_candidate = "warn"
 use_self = "warn"
 redundant_else = "warn"
+unnecessary_semicolon = "warn"
 
 # configuration for https://github.com/crate-ci/typos
 [workspace.metadata.typos.default.extend-identifiers]

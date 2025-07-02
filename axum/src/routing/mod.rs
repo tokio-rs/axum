@@ -270,7 +270,7 @@ where
                 (false, false) => {
                     panic!("Cannot merge two `Router`s that both have a fallback")
                 }
-            };
+            }
 
             panic_on_err!(this.path_router.merge(path_router));
 
