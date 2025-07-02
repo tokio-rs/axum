@@ -8,6 +8,8 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, ReturnType, Token, Type};
 
+// I'm not sure how to make [`ItemFn`] be passed by reference without causing errors...
+#[allow(clippy::needless_pass_by_value)]
 pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenStream {
     let Attrs { state_ty } = attr;
 
@@ -59,7 +61,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenS
                 }
             } else {
                 let check_inputs_impls_from_request =
-                    check_inputs_impls_from_request(&item_fn, state_ty, kind);
+                    check_inputs_impls_from_request(&item_fn, &state_ty, kind);
 
                 quote! {
                     #check_inputs_impls_from_request
@@ -222,7 +224,7 @@ fn is_self_pat_type(typed: &syn::PatType) -> bool {
 
 fn check_inputs_impls_from_request(
     item_fn: &ItemFn,
-    state_ty: Type,
+    state_ty: &Type,
     kind: FunctionKind,
 ) -> TokenStream {
     let takes_self = item_fn.sig.inputs.first().is_some_and(|arg| match arg {

@@ -132,17 +132,17 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
 
             let trait_impl = match (via.map(second), rejection.map(second)) {
                 (Some(via), rejection) => impl_struct_by_extracting_all_at_once(
-                    ident,
+                    &ident,
                     fields,
-                    via,
-                    rejection,
-                    generic_ident,
+                    &via,
+                    rejection.as_ref(),
+                    generic_ident.as_ref(),
                     &state,
                     tr,
                 )?,
                 (None, rejection) => {
                     error_on_generic_ident(generic_ident, tr)?;
-                    impl_struct_by_extracting_each_field(ident, fields, rejection, &state, tr)?
+                    impl_struct_by_extracting_each_field(&ident, &fields, rejection, &state, tr)?
                 }
             };
 
@@ -206,11 +206,11 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
 
             match (via.map(second), rejection) {
                 (Some(via), rejection) => impl_enum_by_extracting_all_at_once(
-                    ident,
+                    &ident,
                     variants,
-                    via,
-                    rejection.map(second),
-                    state,
+                    &via,
+                    rejection.map(second).as_ref(),
+                    &state,
                     tr,
                 ),
                 (None, Some((rejection_kw, _))) => Err(syn::Error::new_spanned(
@@ -328,8 +328,8 @@ fn error_on_generic_ident(generic_ident: Option<Ident>, tr: Trait) -> syn::Resul
 }
 
 fn impl_struct_by_extracting_each_field(
-    ident: syn::Ident,
-    fields: syn::Fields,
+    ident: &syn::Ident,
+    fields: &syn::Fields,
     rejection: Option<syn::Path>,
     state: &State,
     tr: Trait,
@@ -339,7 +339,7 @@ fn impl_struct_by_extracting_each_field(
             ::std::unimplemented!()
         }
     } else {
-        let extract_fields = extract_fields(&fields, rejection.as_ref(), tr)?;
+        let extract_fields = extract_fields(fields, rejection.as_ref(), tr)?;
         quote! {
             ::std::result::Result::Ok(Self {
                 #(#extract_fields)*
@@ -349,7 +349,7 @@ fn impl_struct_by_extracting_each_field(
 
     let rejection_ident = if let Some(rejection) = rejection {
         quote!(#rejection)
-    } else if has_no_fields(&fields) {
+    } else if has_no_fields(fields) {
         quote!(::std::convert::Infallible)
     } else {
         quote!(::axum::response::Response)
@@ -697,11 +697,11 @@ fn peel_result_ok(ty: &syn::Type) -> Option<&syn::Type> {
 }
 
 fn impl_struct_by_extracting_all_at_once(
-    ident: syn::Ident,
+    ident: &syn::Ident,
     fields: syn::Fields,
-    via_path: syn::Path,
-    rejection: Option<syn::Path>,
-    generic_ident: Option<Ident>,
+    via_path: &syn::Path,
+    rejection: Option<&syn::Path>,
+    generic_ident: Option<&Ident>,
     state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
@@ -750,7 +750,7 @@ fn impl_struct_by_extracting_all_at_once(
     // - `State`, not other extractors
     //
     // honestly not sure why but the tests all pass
-    let via_marker_type = if path_ident_is_state(&via_path) {
+    let via_marker_type = if path_ident_is_state(via_path) {
         tr.via_marker_type()
     } else {
         None
@@ -868,11 +868,11 @@ fn impl_struct_by_extracting_all_at_once(
 }
 
 fn impl_enum_by_extracting_all_at_once(
-    ident: syn::Ident,
+    ident: &syn::Ident,
     variants: Punctuated<syn::Variant, Token![,]>,
-    path: syn::Path,
-    rejection: Option<syn::Path>,
-    state: State,
+    path: &syn::Path,
+    rejection: Option<&syn::Path>,
+    state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
     for variant in variants {

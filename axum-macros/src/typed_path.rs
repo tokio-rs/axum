@@ -4,6 +4,8 @@ use syn::{parse::Parse, ItemStruct, LitStr, Token};
 
 use crate::attr_parsing::{combine_attribute, parse_parenthesized_attribute, second, Combine};
 
+// FIXME: I don't know how to make ItemStruct be passed by reference without causing errors
+#[allow(clippy::needless_pass_by_value)]
 pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
     let ItemStruct {
         attrs,
@@ -34,13 +36,13 @@ pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
     match fields {
         syn::Fields::Named(_) => {
             let segments = parse_path(&path)?;
-            Ok(expand_named_fields(ident, path, &segments, rejection))
+            Ok(expand_named_fields(ident, &path, &segments, rejection.as_ref()))
         }
         syn::Fields::Unnamed(fields) => {
             let segments = parse_path(&path)?;
-            expand_unnamed_fields(fields, ident, path, &segments, rejection)
+            expand_unnamed_fields(fields, ident, &path, &segments, rejection.as_ref())
         }
-        syn::Fields::Unit => expand_unit_fields(ident, path, rejection),
+        syn::Fields::Unit => expand_unit_fields(ident, &path, rejection.as_ref()),
     }
 }
 
@@ -95,9 +97,9 @@ impl Combine for Attrs {
 
 fn expand_named_fields(
     ident: &syn::Ident,
-    path: LitStr,
+    path: &LitStr,
     segments: &[Segment],
-    rejection: Option<syn::Path>,
+    rejection: Option<&syn::Path>,
 ) -> TokenStream {
     let format_str = format_str_from_path(segments);
     let captures = captures_from_path(segments);
@@ -129,8 +131,8 @@ fn expand_named_fields(
         }
     };
 
-    let rejection_assoc_type = rejection_assoc_type(rejection.as_ref());
-    let map_err_rejection = map_err_rejection(rejection.as_ref());
+    let rejection_assoc_type = rejection_assoc_type(rejection);
+    let map_err_rejection = map_err_rejection(rejection);
 
     let from_request_impl = quote! {
         #[automatically_derived]
@@ -162,9 +164,9 @@ fn expand_named_fields(
 fn expand_unnamed_fields(
     fields: &syn::FieldsUnnamed,
     ident: &syn::Ident,
-    path: LitStr,
+    path: &LitStr,
     segments: &[Segment],
-    rejection: Option<syn::Path>,
+    rejection: Option<&syn::Path>,
 ) -> syn::Result<TokenStream> {
     let num_captures = segments
         .iter()
@@ -233,8 +235,8 @@ fn expand_unnamed_fields(
         }
     };
 
-    let rejection_assoc_type = rejection_assoc_type(rejection.as_ref());
-    let map_err_rejection = map_err_rejection(rejection.as_ref());
+    let rejection_assoc_type = rejection_assoc_type(rejection);
+    let map_err_rejection = map_err_rejection(rejection);
 
     let from_request_impl = quote! {
         #[automatically_derived]
@@ -273,10 +275,10 @@ fn simple_pluralize(count: usize, word: &str) -> String {
 
 fn expand_unit_fields(
     ident: &syn::Ident,
-    path: LitStr,
-    rejection: Option<syn::Path>,
+    path: &LitStr,
+    rejection: Option<&syn::Path>,
 ) -> syn::Result<TokenStream> {
-    for segment in parse_path(&path)? {
+    for segment in parse_path(path)? {
         match segment {
             Segment::Capture(_, span) => {
                 return Err(syn::Error::new(

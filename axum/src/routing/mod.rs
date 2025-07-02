@@ -347,14 +347,14 @@ where
     }
 
     #[doc = include_str!("../docs/routing/method_not_allowed_fallback.md")]
-    pub fn method_not_allowed_fallback<H, T>(self, handler: H) -> Self
+    pub fn method_not_allowed_fallback<H, T>(self, handler: &H) -> Self
     where
         H: Handler<T, S>,
         T: 'static,
     {
         tap_inner!(self, mut this => {
             this.path_router
-                .method_not_allowed_fallback(handler.clone());
+                .method_not_allowed_fallback(handler);
         })
     }
 

@@ -97,7 +97,7 @@ where
         Ok(())
     }
 
-    pub(super) fn method_not_allowed_fallback<H, T>(&mut self, handler: H)
+    pub(super) fn method_not_allowed_fallback<H, T>(&mut self, handler: &H)
     where
         H: Handler<T, S>,
         T: 'static,
@@ -362,7 +362,7 @@ where
                     &mut parts.extensions,
                 );
 
-                url_params::insert_url_params(&mut parts.extensions, match_.params);
+                url_params::insert_url_params(&mut parts.extensions, &match_.params);
 
                 let endpoint = self
                     .routes

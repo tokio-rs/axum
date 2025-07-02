@@ -423,11 +423,11 @@ where
                 return Err(MethodNotGet.into());
             }
 
-            if !header_contains(&parts.headers, header::CONNECTION, "upgrade") {
+            if !header_contains(&parts.headers, &header::CONNECTION, "upgrade") {
                 return Err(InvalidConnectionHeader.into());
             }
 
-            if !header_eq(&parts.headers, header::UPGRADE, "websocket") {
+            if !header_eq(&parts.headers, &header::UPGRADE, "websocket") {
                 return Err(InvalidUpgradeHeader.into());
             }
 
@@ -457,7 +457,7 @@ where
             None
         };
 
-        if !header_eq(&parts.headers, header::SEC_WEBSOCKET_VERSION, "13") {
+        if !header_eq(&parts.headers, &header::SEC_WEBSOCKET_VERSION, "13") {
             return Err(InvalidWebSocketVersionHeader.into());
         }
 
@@ -479,16 +479,16 @@ where
     }
 }
 
-fn header_eq(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool {
-    if let Some(header) = headers.get(&key) {
+fn header_eq(headers: &HeaderMap, key: &HeaderName, value: &'static str) -> bool {
+    if let Some(header) = headers.get(key) {
         header.as_bytes().eq_ignore_ascii_case(value.as_bytes())
     } else {
         false
     }
 }
 
-fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool {
-    let Some(header) = headers.get(&key) else {
+fn header_contains(headers: &HeaderMap, key: &HeaderName, value: &'static str) -> bool {
+    let Some(header) = headers.get(key) else {
         return false;
     };
 
