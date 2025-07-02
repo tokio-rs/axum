@@ -488,9 +488,7 @@ fn header_eq(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool 
 }
 
 fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool {
-    let header = if let Some(header) = headers.get(&key) {
-        header
-    } else {
+    let Some(header) = headers.get(&key) else {
         return false;
     };
 
