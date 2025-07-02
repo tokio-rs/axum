@@ -187,7 +187,7 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        let service = match try_downcast::<Router<S>, _>(service) {
+        let service = match try_downcast::<Self, _>(service) {
             Ok(_) => {
                 panic!(
                     "Invalid route: `Router::route_service` cannot be used with `Router`s. \
@@ -205,7 +205,7 @@ where
     #[doc = include_str!("../docs/routing/nest.md")]
     #[doc(alias = "scope")] // Some web frameworks like actix-web use this term
     #[track_caller]
-    pub fn nest(self, path: &str, router: Router<S>) -> Self {
+    pub fn nest(self, path: &str, router: Self) -> Self {
         if path.is_empty() || path == "/" {
             panic!("Nesting at the root is no longer supported. Use merge instead.");
         }
@@ -245,9 +245,9 @@ where
     #[track_caller]
     pub fn merge<R>(self, other: R) -> Self
     where
-        R: Into<Router<S>>,
+        R: Into<Self>,
     {
-        let other: Router<S> = other.into();
+        let other: Self = other.into();
         let RouterInner {
             path_router,
             default_fallback,
@@ -284,7 +284,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/layer.md")]
-    pub fn layer<L>(self, layer: L) -> Router<S>
+    pub fn layer<L>(self, layer: L) -> Self
     where
         L: Layer<Route> + Clone + Send + Sync + 'static,
         L::Service: Service<Request> + Clone + Send + Sync + 'static,
@@ -729,16 +729,16 @@ where
 
     fn with_state<S2>(self, state: S) -> Fallback<S2, E> {
         match self {
-            Fallback::Default(route) => Fallback::Default(route),
-            Fallback::Service(route) => Fallback::Service(route),
-            Fallback::BoxedHandler(handler) => Fallback::Service(handler.into_route(state)),
+            Self::Default(route) => Fallback::Default(route),
+            Self::Service(route) => Fallback::Service(route),
+            Self::BoxedHandler(handler) => Fallback::Service(handler.into_route(state)),
         }
     }
 
     fn call_with_state(self, req: Request, state: S) -> RouteFuture<E> {
         match self {
-            Fallback::Default(route) | Fallback::Service(route) => route.oneshot_inner_owned(req),
-            Fallback::BoxedHandler(handler) => {
+            Self::Default(route) | Self::Service(route) => route.oneshot_inner_owned(req),
+            Self::BoxedHandler(handler) => {
                 let route = handler.clone().into_route(state);
                 route.oneshot_inner_owned(req)
             }
@@ -776,7 +776,7 @@ impl<S> Endpoint<S>
 where
     S: Clone + Send + Sync + 'static,
 {
-    fn layer<L>(self, layer: L) -> Endpoint<S>
+    fn layer<L>(self, layer: L) -> Self
     where
         L: Layer<Route> + Clone + Send + Sync + 'static,
         L::Service: Service<Request> + Clone + Send + Sync + 'static,
@@ -785,10 +785,8 @@ where
         <L::Service as Service<Request>>::Future: Send + 'static,
     {
         match self {
-            Endpoint::MethodRouter(method_router) => {
-                Endpoint::MethodRouter(method_router.layer(layer))
-            }
-            Endpoint::Route(route) => Endpoint::Route(route.layer(layer)),
+            Self::MethodRouter(method_router) => Self::MethodRouter(method_router.layer(layer)),
+            Self::Route(route) => Self::Route(route.layer(layer)),
         }
     }
 }

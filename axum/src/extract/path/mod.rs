@@ -183,7 +183,7 @@ where
         }
 
         match T::deserialize(de::PathDeserializer::new(get_params(parts)?)) {
-            Ok(val) => Ok(Path(val)),
+            Ok(val) => Ok(Self(val)),
             Err(e) => Err(failed_to_deserialize_path_params(e)),
         }
     }
@@ -356,9 +356,9 @@ pub enum ErrorKind {
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ErrorKind::Message(error) => error.fmt(f),
-            ErrorKind::InvalidUtf8InPathParam { key } => write!(f, "Invalid UTF-8 in `{key}`"),
-            ErrorKind::WrongNumberOfParameters { got, expected } => {
+            Self::Message(error) => error.fmt(f),
+            Self::InvalidUtf8InPathParam { key } => write!(f, "Invalid UTF-8 in `{key}`"),
+            Self::WrongNumberOfParameters { got, expected } => {
                 write!(
                     f,
                     "Wrong number of path arguments for `Path`. Expected {expected} but got {got}"
@@ -370,8 +370,8 @@ impl fmt::Display for ErrorKind {
 
                 Ok(())
             }
-            ErrorKind::UnsupportedType { name } => write!(f, "Unsupported type `{name}`"),
-            ErrorKind::ParseErrorAtKey {
+            Self::UnsupportedType { name } => write!(f, "Unsupported type `{name}`"),
+            Self::ParseErrorAtKey {
                 key,
                 value,
                 expected_type,
@@ -379,11 +379,11 @@ impl fmt::Display for ErrorKind {
                 f,
                 "Cannot parse `{key}` with value `{value}` to a `{expected_type}`"
             ),
-            ErrorKind::ParseError {
+            Self::ParseError {
                 value,
                 expected_type,
             } => write!(f, "Cannot parse `{value}` to a `{expected_type}`"),
-            ErrorKind::ParseErrorAtIndex {
+            Self::ParseErrorAtIndex {
                 index,
                 value,
                 expected_type,
@@ -391,7 +391,7 @@ impl fmt::Display for ErrorKind {
                 f,
                 "Cannot parse value at index {index} with value `{value}` to a `{expected_type}`"
             ),
-            ErrorKind::DeserializeError {
+            Self::DeserializeError {
                 key,
                 value,
                 message,
@@ -773,7 +773,7 @@ mod tests {
                 D: serde::Deserializer<'de>,
             {
                 let s = <&str as serde::Deserialize>::deserialize(deserializer)?;
-                Ok(Param(s.to_owned()))
+                Ok(Self(s.to_owned()))
             }
         }
 

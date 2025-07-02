@@ -833,49 +833,49 @@ impl Message {
     }
 
     /// Create a new text WebSocket message from a stringable.
-    pub fn text<S>(string: S) -> Message
+    pub fn text<S>(string: S) -> Self
     where
         S: Into<Utf8Bytes>,
     {
-        Message::Text(string.into())
+        Self::Text(string.into())
     }
 
     /// Create a new binary WebSocket message by converting to `Bytes`.
-    pub fn binary<B>(bin: B) -> Message
+    pub fn binary<B>(bin: B) -> Self
     where
         B: Into<Bytes>,
     {
-        Message::Binary(bin.into())
+        Self::Binary(bin.into())
     }
 }
 
 impl From<String> for Message {
     fn from(string: String) -> Self {
-        Message::Text(string.into())
+        Self::Text(string.into())
     }
 }
 
 impl<'s> From<&'s str> for Message {
     fn from(string: &'s str) -> Self {
-        Message::Text(string.into())
+        Self::Text(string.into())
     }
 }
 
 impl<'b> From<&'b [u8]> for Message {
     fn from(data: &'b [u8]) -> Self {
-        Message::Binary(Bytes::copy_from_slice(data))
+        Self::Binary(Bytes::copy_from_slice(data))
     }
 }
 
 impl From<Bytes> for Message {
     fn from(data: Bytes) -> Self {
-        Message::Binary(data)
+        Self::Binary(data)
     }
 }
 
 impl From<Vec<u8>> for Message {
     fn from(data: Vec<u8>) -> Self {
-        Message::Binary(data.into())
+        Self::Binary(data.into())
     }
 }
 

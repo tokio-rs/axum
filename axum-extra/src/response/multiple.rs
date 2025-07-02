@@ -26,7 +26,7 @@ impl MultipartForm {
     /// ```
     #[must_use]
     pub fn with_parts(parts: Vec<Part>) -> Self {
-        MultipartForm { parts }
+        Self { parts }
     }
 }
 

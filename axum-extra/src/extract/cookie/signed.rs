@@ -153,7 +153,7 @@ where
             key,
             _marker: _,
         } = SignedCookieJar::from_headers(&parts.headers, key);
-        Ok(SignedCookieJar {
+        Ok(Self {
             jar,
             key,
             _marker: PhantomData,

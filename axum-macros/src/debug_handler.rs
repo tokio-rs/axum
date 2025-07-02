@@ -97,8 +97,8 @@ pub(crate) enum FunctionKind {
 impl fmt::Display for FunctionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FunctionKind::Handler => f.write_str("handler"),
-            FunctionKind::Middleware => f.write_str("middleware"),
+            Self::Handler => f.write_str("handler"),
+            Self::Middleware => f.write_str("middleware"),
         }
     }
 }
@@ -106,8 +106,8 @@ impl fmt::Display for FunctionKind {
 impl FunctionKind {
     fn name_uppercase_plural(&self) -> &'static str {
         match self {
-            FunctionKind::Handler => "Handlers",
-            FunctionKind::Middleware => "Middleware",
+            Self::Handler => "Handlers",
+            Self::Middleware => "Middleware",
         }
     }
 }

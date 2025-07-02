@@ -36,7 +36,7 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         parts
-            .extract::<Option<Host>>()
+            .extract::<Option<Self>>()
             .await
             .ok()
             .flatten()
@@ -55,7 +55,7 @@ where
         _state: &S,
     ) -> Result<Option<Self>, Self::Rejection> {
         if let Some(host) = parse_forwarded(&parts.headers) {
-            return Ok(Some(Host(host.to_owned())));
+            return Ok(Some(Self(host.to_owned())));
         }
 
         if let Some(host) = parts
@@ -63,7 +63,7 @@ where
             .get(X_FORWARDED_HOST_HEADER_KEY)
             .and_then(|host| host.to_str().ok())
         {
-            return Ok(Some(Host(host.to_owned())));
+            return Ok(Some(Self(host.to_owned())));
         }
 
         if let Some(host) = parts
@@ -71,11 +71,11 @@ where
             .get(http::header::HOST)
             .and_then(|host| host.to_str().ok())
         {
-            return Ok(Some(Host(host.to_owned())));
+            return Ok(Some(Self(host.to_owned())));
         }
 
         if let Some(authority) = parts.uri.authority() {
-            return Ok(Some(Host(parse_authority(authority).to_owned())));
+            return Ok(Some(Self(parse_authority(authority).to_owned())));
         }
 
         Ok(None)
