@@ -187,7 +187,7 @@ mod tests {
         }
 
         impl From<()> for TestRejection {
-            fn from(_: ()) -> Self {
+            fn from((): ()) -> Self {
                 Self
             }
         }
@@ -196,7 +196,7 @@ mod tests {
         let result = WithRejection::<TestExtractor, TestRejection>::from_request(req, &()).await;
         assert!(matches!(result, Err(TestRejection)));
 
-        let (mut parts, _) = Request::new(()).into_parts();
+        let (mut parts, ()) = Request::new(()).into_parts();
         let result =
             WithRejection::<TestExtractor, TestRejection>::from_request_parts(&mut parts, &())
                 .await;

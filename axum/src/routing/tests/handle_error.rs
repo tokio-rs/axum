@@ -85,7 +85,7 @@ async fn handler_multiple_methods_last() {
 async fn handler_service_ext() {
     let fallible_service = tower::service_fn(|_| async { Err::<(), ()>(()) });
     let handle_error_service =
-        fallible_service.handle_error(|_| async { StatusCode::INTERNAL_SERVER_ERROR });
+        fallible_service.handle_error(|()| async { StatusCode::INTERNAL_SERVER_ERROR });
 
     let app = Router::new().route("/", get_service(handle_error_service));
 

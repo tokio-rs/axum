@@ -298,7 +298,7 @@ where
         loop {
             let (io, remote_addr) = tokio::select! {
                 conn = listener.accept() => conn,
-                _ = signal_tx.closed() => {
+                () = signal_tx.closed() => {
                     trace!("signal received, not accepting new connections");
                     break;
                 }
@@ -424,7 +424,7 @@ async fn handle_connection<L, M, S, B>(
                     }
                     break;
                 }
-                _ = &mut signal_closed => {
+                () = &mut signal_closed => {
                     trace!("signal received in task, starting graceful shutdown");
                     conn.as_mut().graceful_shutdown();
                 }

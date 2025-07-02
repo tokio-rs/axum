@@ -133,7 +133,7 @@ mod tests {
             }
         }
 
-        let (mut parts, _) = Request::new(()).into_parts();
+        let (mut parts, ()) = Request::new(()).into_parts();
 
         let first = Cached::<Extractor>::from_request_parts(&mut parts, &())
             .await
