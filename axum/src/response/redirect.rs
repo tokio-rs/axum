@@ -125,7 +125,7 @@ mod tests {
     fn correct_location() {
         assert_eq!(EXAMPLE_URL, Redirect::permanent(EXAMPLE_URL).location());
 
-        assert_eq!("/redirect", Redirect::permanent("/redirect").location())
+        assert_eq!("/redirect", Redirect::permanent("/redirect").location());
     }
 
     #[test]

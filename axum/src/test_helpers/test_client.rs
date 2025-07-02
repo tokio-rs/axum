@@ -23,7 +23,7 @@ where
     tokio::spawn(async move {
         serve(listener, Shared::new(svc))
             .await
-            .expect("server error")
+            .expect("server error");
     });
 
     addr

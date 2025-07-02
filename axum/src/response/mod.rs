@@ -252,6 +252,6 @@ mod tests {
         assert_eq!(
             super::NoContent.into_response().status(),
             StatusCode::NO_CONTENT,
-        )
+        );
     }
 }

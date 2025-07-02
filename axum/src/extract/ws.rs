@@ -392,7 +392,7 @@ where
     F: FnOnce(Error) + Send + 'static,
 {
     fn call(self, error: Error) {
-        self(error)
+        self(error);
     }
 }
 

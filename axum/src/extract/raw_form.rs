@@ -99,6 +99,6 @@ mod tests {
         assert!(matches!(
             RawForm::from_request(req, &()).await.unwrap_err(),
             RawFormRejection::InvalidFormContentType(InvalidFormContentType)
-        ))
+        ));
     }
 }

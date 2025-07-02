@@ -4,6 +4,8 @@ use tower::timeout::TimeoutLayer;
 
 async fn unit() {}
 
+// Using a semicolon causes an error.
+#[allow(clippy::semicolon_if_nothing_returned)]
 async fn forever() {
     pending().await
 }
