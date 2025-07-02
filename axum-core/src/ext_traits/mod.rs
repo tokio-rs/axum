@@ -1,5 +1,8 @@
-pub(crate) mod request;
-pub(crate) mod request_parts;
+mod request;
+mod request_parts;
+
+pub use request::RequestExt;
+pub use request_parts::RequestPartsExt;
 
 #[cfg(test)]
 mod tests {
