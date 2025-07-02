@@ -129,8 +129,8 @@ fn expand_named_fields(
         }
     };
 
-    let rejection_assoc_type = rejection_assoc_type(&rejection);
-    let map_err_rejection = map_err_rejection(&rejection);
+    let rejection_assoc_type = rejection_assoc_type(rejection.as_ref());
+    let map_err_rejection = map_err_rejection(rejection.as_ref());
 
     let from_request_impl = quote! {
         #[automatically_derived]
@@ -233,8 +233,8 @@ fn expand_unnamed_fields(
         }
     };
 
-    let rejection_assoc_type = rejection_assoc_type(&rejection);
-    let map_err_rejection = map_err_rejection(&rejection);
+    let rejection_assoc_type = rejection_assoc_type(rejection.as_ref());
+    let map_err_rejection = map_err_rejection(rejection.as_ref());
 
     let from_request_impl = quote! {
         #[automatically_derived]
@@ -409,14 +409,14 @@ fn path_rejection() -> TokenStream {
     }
 }
 
-fn rejection_assoc_type(rejection: &Option<syn::Path>) -> TokenStream {
+fn rejection_assoc_type(rejection: Option<&syn::Path>) -> TokenStream {
     match rejection {
         Some(rejection) => quote! { #rejection },
         None => path_rejection(),
     }
 }
 
-fn map_err_rejection(rejection: &Option<syn::Path>) -> TokenStream {
+fn map_err_rejection(rejection: Option<&syn::Path>) -> TokenStream {
     rejection
         .as_ref()
         .map(|rejection| {

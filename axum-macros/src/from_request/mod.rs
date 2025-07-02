@@ -339,7 +339,7 @@ fn impl_struct_by_extracting_each_field(
             ::std::unimplemented!()
         }
     } else {
-        let extract_fields = extract_fields(&fields, &rejection, tr)?;
+        let extract_fields = extract_fields(&fields, rejection.as_ref(), tr)?;
         quote! {
             ::std::result::Result::Ok(Self {
                 #(#extract_fields)*
@@ -411,7 +411,7 @@ fn has_no_fields(fields: &syn::Fields) -> bool {
 
 fn extract_fields(
     fields: &syn::Fields,
-    rejection: &Option<syn::Path>,
+    rejection: Option<&syn::Path>,
     tr: Trait,
 ) -> syn::Result<Vec<TokenStream>> {
     fn member(field: &syn::Field, index: usize) -> TokenStream {
@@ -426,7 +426,7 @@ fn extract_fields(
         }
     }
 
-    fn into_inner(via: &Option<(attr::kw::via, syn::Path)>, ty_span: Span) -> TokenStream {
+    fn into_inner(via: Option<&(attr::kw::via, syn::Path)>, ty_span: Span) -> TokenStream {
         if let Some((_, path)) = via {
             let span = path.span();
             quote_spanned! {span=>
@@ -440,7 +440,7 @@ fn extract_fields(
     }
 
     fn into_outer(
-        via: &Option<(attr::kw::via, syn::Path)>,
+        via: Option<&(attr::kw::via, syn::Path)>,
         ty_span: Span,
         field_ty: &Type,
     ) -> TokenStream {
@@ -472,10 +472,10 @@ fn extract_fields(
 
             let member = member(field, index);
             let ty_span = field.ty.span();
-            let into_inner = into_inner(&via, ty_span);
+            let into_inner = into_inner(via.as_ref(), ty_span);
 
             if peel_option(&field.ty).is_some() {
-                let field_ty = into_outer(&via, ty_span, peel_option(&field.ty).unwrap());
+                let field_ty = into_outer(via.as_ref(), ty_span, peel_option(&field.ty).unwrap());
                 let tokens = match tr {
                     Trait::FromRequest => {
                         quote_spanned! {ty_span=>
@@ -510,7 +510,7 @@ fn extract_fields(
                 };
                 Ok(tokens)
             } else if peel_result_ok(&field.ty).is_some() {
-                let field_ty = into_outer(&via,ty_span, peel_result_ok(&field.ty).unwrap());
+                let field_ty = into_outer(via.as_ref(), ty_span, peel_result_ok(&field.ty).unwrap());
                 let tokens = match tr {
                     Trait::FromRequest => {
                         quote_spanned! {ty_span=>
@@ -543,7 +543,7 @@ fn extract_fields(
                 };
                 Ok(tokens)
             } else {
-                let field_ty = into_outer(&via,ty_span,&field.ty);
+                let field_ty = into_outer(via.as_ref(), ty_span, &field.ty);
                 let map_err = if let Some(rejection) = rejection {
                     quote! { <#rejection as ::std::convert::From<_>>::from }
                 } else {
@@ -593,10 +593,10 @@ fn extract_fields(
 
         let member = member(field, fields.len() - 1);
         let ty_span = field.ty.span();
-        let into_inner = into_inner(&via, ty_span);
+        let into_inner = into_inner(via.as_ref(), ty_span);
 
         let item = if peel_option(&field.ty).is_some() {
-            let field_ty = into_outer(&via, ty_span, peel_option(&field.ty).unwrap());
+            let field_ty = into_outer(via.as_ref(), ty_span, peel_option(&field.ty).unwrap());
             quote_spanned! {ty_span=>
                 #member: {
                     <#field_ty as ::axum::extract::FromRequest<_, _>>::from_request(req, state)
@@ -606,7 +606,7 @@ fn extract_fields(
                 },
             }
         } else if peel_result_ok(&field.ty).is_some() {
-            let field_ty = into_outer(&via, ty_span, peel_result_ok(&field.ty).unwrap());
+            let field_ty = into_outer(via.as_ref(), ty_span, peel_result_ok(&field.ty).unwrap());
             quote_spanned! {ty_span=>
                 #member: {
                     <#field_ty as ::axum::extract::FromRequest<_, _>>::from_request(req, state)
@@ -615,7 +615,7 @@ fn extract_fields(
                 },
             }
         } else {
-            let field_ty = into_outer(&via, ty_span, &field.ty);
+            let field_ty = into_outer(via.as_ref(), ty_span, &field.ty);
             let map_err = if let Some(rejection) = rejection {
                 quote! { <#rejection as ::std::convert::From<_>>::from }
             } else {
