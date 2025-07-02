@@ -642,9 +642,7 @@ fn extract_fields(
 }
 
 fn peel_option(ty: &syn::Type) -> Option<&syn::Type> {
-    let type_path = if let syn::Type::Path(type_path) = ty {
-        type_path
-    } else {
+    let syn::Type::Path(type_path) = ty else {
         return None;
     };
 
@@ -673,9 +671,7 @@ fn peel_option(ty: &syn::Type) -> Option<&syn::Type> {
 }
 
 fn peel_result_ok(ty: &syn::Type) -> Option<&syn::Type> {
-    let type_path = if let syn::Type::Path(type_path) = ty {
-        type_path
-    } else {
+    let syn::Type::Path(type_path) = ty else {
         return None;
     };
 
