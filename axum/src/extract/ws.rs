@@ -91,10 +91,12 @@
 //! [`StreamExt::split`]: https://docs.rs/futures/0.3.17/futures/stream/trait.StreamExt.html#method.split
 
 use self::rejection::{
-    ConnectionNotUpgradable, InvalidConnectionHeader, InvalidProtocolPseudoheader,
+    ConnectionNotUpgradable, InvalidConnectionHeader,
     InvalidUpgradeHeader, InvalidWebSocketVersionHeader, MethodNotConnect, MethodNotGet,
     WebSocketKeyHeaderMissing, WebSocketUpgradeRejection,
 };
+#[cfg(feature = "http2")]
+use self::rejection::InvalidProtocolPseudoheader;
 use super::FromRequestParts;
 use crate::{body::Bytes, response::Response, Error};
 use axum_core::body::Body;
