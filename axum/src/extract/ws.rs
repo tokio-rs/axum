@@ -477,9 +477,9 @@ where
 }
 
 fn header_eq(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool {
-    headers.get(&key).is_some_and(|header| {
-        header.as_bytes().eq_ignore_ascii_case(value.as_bytes())
-    })
+    headers
+        .get(&key)
+        .is_some_and(|header| header.as_bytes().eq_ignore_ascii_case(value.as_bytes()))
 }
 
 fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool {

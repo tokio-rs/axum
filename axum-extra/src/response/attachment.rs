@@ -60,7 +60,7 @@ impl<T: IntoResponse> Attachment<T> {
                 error!("Attachment filename contains invalid characters");
                 None
             },
-            Some
+            Some,
         );
         self
     }
