@@ -203,9 +203,10 @@ impl Event {
     where
         T: AsRef<str>,
     {
-        if self.flags.contains(EventFlags::HAS_DATA) {
-            panic!("Called `Event::data` multiple times");
-        }
+        assert!(
+            !self.flags.contains(EventFlags::HAS_DATA),
+            "Called `Event::data` multiple times"
+        );
 
         for line in memchr_split(b'\n', data.as_ref().as_bytes()) {
             self.field("data", line);
@@ -246,9 +247,10 @@ impl Event {
                 self.0.flush()
             }
         }
-        if self.flags.contains(EventFlags::HAS_DATA) {
-            panic!("Called `Event::json_data` multiple times");
-        }
+        assert!(
+            !self.flags.contains(EventFlags::HAS_DATA),
+            "Called `Event::json_data` multiple times"
+        );
 
         let buffer = self.buffer.as_mut();
         buffer.extend_from_slice(b"data: ");
@@ -297,9 +299,10 @@ impl Event {
     where
         T: AsRef<str>,
     {
-        if self.flags.contains(EventFlags::HAS_EVENT) {
-            panic!("Called `Event::event` multiple times");
-        }
+        assert!(
+            !self.flags.contains(EventFlags::HAS_EVENT),
+            "Called `Event::event` multiple times"
+        );
         self.flags.insert(EventFlags::HAS_EVENT);
 
         self.field("event", event.as_ref());
@@ -317,9 +320,10 @@ impl Event {
     ///
     /// Panics if this function has already been called on this event.
     pub fn retry(mut self, duration: Duration) -> Self {
-        if self.flags.contains(EventFlags::HAS_RETRY) {
-            panic!("Called `Event::retry` multiple times");
-        }
+        assert!(
+            !self.flags.contains(EventFlags::HAS_RETRY),
+            "Called `Event::retry` multiple times"
+        );
         self.flags.insert(EventFlags::HAS_RETRY);
 
         let buffer = self.buffer.as_mut();
@@ -364,9 +368,10 @@ impl Event {
     where
         T: AsRef<str>,
     {
-        if self.flags.contains(EventFlags::HAS_ID) {
-            panic!("Called `Event::id` multiple times");
-        }
+        assert!(
+            !self.flags.contains(EventFlags::HAS_ID),
+            "Called `Event::id` multiple times"
+        );
         self.flags.insert(EventFlags::HAS_ID);
 
         let id = id.as_ref().as_bytes();
