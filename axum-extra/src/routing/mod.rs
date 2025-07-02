@@ -367,8 +367,7 @@ where
     async fn redirect_handler(OriginalUri(uri): OriginalUri) -> Response {
         let new_uri = map_path(uri, |path| {
             path.strip_suffix('/')
-                .map(Cow::Borrowed)
-                .unwrap_or_else(|| Cow::Owned(format!("{path}/")))
+                .map_or_else(|| Cow::Owned(format!("{path}/")), Cow::Borrowed)
         });
 
         new_uri.map_or_else(

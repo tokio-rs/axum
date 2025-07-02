@@ -269,8 +269,7 @@ mod tests {
         let app = Router::new().route(
             "/",
             post(|OptionalQuery(data): OptionalQuery<Data>| async move {
-                data.map(|Data { values }| values.join(","))
-                    .unwrap_or("None".to_owned())
+                data.map_or("None".to_owned(), |Data { values }| values.join(","))
             }),
         );
 
