@@ -133,7 +133,9 @@ where
 
     /// Return a range response.
     ///
+    /// ```rust
     /// range: (start, end, total_size)
+    /// ```
     ///
     /// # Examples
     ///

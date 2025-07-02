@@ -575,7 +575,7 @@ impl Sink<Message> for WebSocket {
 
 /// UTF-8 wrapper for [Bytes].
 ///
-/// An [Utf8Bytes] is always guaranteed to contain valid UTF-8.
+/// An [`Utf8Bytes`] is always guaranteed to contain valid UTF-8.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Utf8Bytes(ts::Utf8Bytes);
 
@@ -809,7 +809,7 @@ impl Message {
         }
     }
 
-    /// Attempt to consume the WebSocket message and convert it to a Utf8Bytes.
+    /// Attempt to consume the WebSocket message and convert it to a [`Utf8Bytes`].
     pub fn into_text(self) -> Result<Utf8Bytes, Error> {
         match self {
             Self::Text(string) => Ok(string),
