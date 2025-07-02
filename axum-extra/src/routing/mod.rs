@@ -30,12 +30,11 @@ pub use self::typed::{SecondElementIs, TypedPath};
 #[doc(hidden)]
 #[must_use]
 pub const fn __private_validate_static_path(path: &'static str) -> &'static str {
-    if path.is_empty() {
-        panic!("Paths must start with a `/`. Use \"/\" for root routes")
-    }
-    if path.as_bytes()[0] != b'/' {
-        panic!("Paths must start with /");
-    }
+    assert!(
+        !path.is_empty(),
+        "Paths must start with a `/`. Use \"/\" for root routes"
+    );
+    assert!(path.as_bytes()[0] == b'/', "Paths must start with /");
     path
 }
 
@@ -355,9 +354,10 @@ where
 
 #[track_caller]
 fn validate_tsr_path(path: &str) {
-    if path == "/" {
-        panic!("Cannot add a trailing slash redirect route for `/`")
-    }
+    assert!(
+        path != "/",
+        "Cannot add a trailing slash redirect route for `/`"
+    );
 }
 
 fn add_tsr_redirect_route<S>(router: Router<S>, path: &str) -> Router<S>

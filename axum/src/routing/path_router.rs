@@ -282,12 +282,11 @@ where
         <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
     {
-        if self.routes.is_empty() {
-            panic!(
-                "Adding a route_layer before any routes is a no-op. \
+        assert!(
+            !self.routes.is_empty(),
+            "Adding a route_layer before any routes is a no-op. \
                  Add the routes you want the layer to apply to first."
-            );
-        }
+        );
 
         let routes = self
             .routes

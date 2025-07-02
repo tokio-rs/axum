@@ -56,6 +56,7 @@ missing_const_for_fn = "warn"
 if_not_else = "warn"
 map_unwrap_or = "warn"
 semicolon_if_nothing_returned = "warn"
+manual_assert = "warn"
 
 # configuration for https://github.com/crate-ci/typos
 [workspace.metadata.typos.default.extend-identifiers]
