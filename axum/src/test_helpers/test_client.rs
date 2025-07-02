@@ -50,18 +50,21 @@ impl TestClient {
         TestClient { client, addr }
     }
 
+    #[must_use]
     pub fn get(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
             builder: self.client.get(format!("http://{}{url}", self.addr)),
         }
     }
 
+    #[must_use]
     pub fn head(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
             builder: self.client.head(format!("http://{}{url}", self.addr)),
         }
     }
 
+    #[must_use]
     pub fn post(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
             builder: self.client.post(format!("http://{}{url}", self.addr)),
@@ -69,6 +72,7 @@ impl TestClient {
     }
 
     #[allow(dead_code)]
+    #[must_use]
     pub fn put(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
             builder: self.client.put(format!("http://{}{url}", self.addr)),
@@ -76,6 +80,7 @@ impl TestClient {
     }
 
     #[allow(dead_code)]
+    #[must_use]
     pub fn patch(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
             builder: self.client.patch(format!("http://{}{url}", self.addr)),
@@ -83,6 +88,7 @@ impl TestClient {
     }
 
     #[allow(dead_code)]
+    #[must_use]
     pub fn server_port(&self) -> u16 {
         self.addr.port()
     }

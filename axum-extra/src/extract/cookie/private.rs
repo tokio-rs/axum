@@ -153,6 +153,7 @@ impl PrivateCookieJar {
     /// run extractors. Normally you should create `PrivateCookieJar`s through [`FromRequestParts`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
+    #[must_use]
     pub fn from_headers(headers: &HeaderMap, key: Key) -> Self {
         let mut jar = cookie::CookieJar::new();
         let mut private_jar = jar.private_mut(&key);
@@ -175,6 +176,7 @@ impl PrivateCookieJar {
     /// run extractors. Normally you should create `PrivateCookieJar`s through [`FromRequestParts`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
+    #[must_use]
     pub fn new(key: Key) -> Self {
         Self {
             jar: Default::default(),
@@ -201,6 +203,7 @@ impl<K> PrivateCookieJar<K> {
     ///         .map(|cookie| cookie.value().to_owned());
     /// }
     /// ```
+    #[must_use]
     pub fn get(&self, name: &str) -> Option<Cookie<'static>> {
         self.private_jar().get(name)
     }
@@ -246,6 +249,7 @@ impl<K> PrivateCookieJar<K> {
 
     /// Authenticates and decrypts `cookie`, returning the plaintext version if decryption succeeds
     /// or `None` otherwise.
+    #[must_use]
     pub fn decrypt(&self, cookie: Cookie<'static>) -> Option<Cookie<'static>> {
         self.private_jar().decrypt(cookie)
     }

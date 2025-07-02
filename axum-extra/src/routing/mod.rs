@@ -28,6 +28,7 @@ pub use self::typed::{SecondElementIs, TypedPath};
 // Validates a path at compile time, used with the vpath macro.
 #[rustversion::since(1.80)]
 #[doc(hidden)]
+#[must_use]
 pub const fn __private_validate_static_path(path: &'static str) -> &'static str {
     if path.is_empty() {
         panic!("Paths must start with a `/`. Use \"/\" for root routes")
