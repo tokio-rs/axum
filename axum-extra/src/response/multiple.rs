@@ -8,6 +8,7 @@ use mime::Mime;
 /// Create multipart forms to be used in API responses.
 ///
 /// This struct implements [`IntoResponse`], and so it can be returned from a handler.
+#[must_use]
 #[derive(Debug)]
 pub struct MultipartForm {
     parts: Vec<Part>,
@@ -24,7 +25,6 @@ impl MultipartForm {
     /// let parts: Vec<Part> = vec![Part::text("foo".to_string(), "abc"), Part::text("bar".to_string(), "def")];
     /// let form = MultipartForm::with_parts(parts);
     /// ```
-    #[must_use]
     pub fn with_parts(parts: Vec<Part>) -> Self {
         MultipartForm { parts }
     }

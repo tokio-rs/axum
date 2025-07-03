@@ -84,6 +84,7 @@ pub use cookie::Key;
 ///     .route("/me", get(me));
 /// # let app: Router = app;
 /// ```
+#[must_use]
 #[derive(Debug, Default, Clone)]
 pub struct CookieJar {
     jar: cookie::CookieJar,
@@ -118,7 +119,6 @@ impl CookieJar {
     /// run extractors. Normally you should create `CookieJar`s through [`FromRequestParts`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
-    #[must_use]
     pub fn from_headers(headers: &HeaderMap) -> Self {
         let mut jar = cookie::CookieJar::new();
         for cookie in cookies_from_request(headers) {
@@ -136,7 +136,6 @@ impl CookieJar {
     /// CookieJar`.
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
-    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -172,7 +171,6 @@ impl CookieJar {
     ///     jar.remove(Cookie::from("foo"))
     /// }
     /// ```
-    #[must_use]
     pub fn remove<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.jar.remove(cookie);
         self
@@ -192,7 +190,6 @@ impl CookieJar {
     ///     jar.add(Cookie::new("foo", "bar"))
     /// }
     /// ```
-    #[must_use]
     #[allow(clippy::should_implement_trait)]
     pub fn add<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.jar.add(cookie);

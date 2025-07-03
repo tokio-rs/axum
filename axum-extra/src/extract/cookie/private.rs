@@ -104,6 +104,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     }
 /// }
 /// ```
+#[must_use]
 pub struct PrivateCookieJar<K = Key> {
     jar: cookie::CookieJar,
     key: Key,
@@ -153,7 +154,6 @@ impl PrivateCookieJar {
     /// run extractors. Normally you should create `PrivateCookieJar`s through [`FromRequestParts`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
-    #[must_use]
     pub fn from_headers(headers: &HeaderMap, key: Key) -> Self {
         let mut jar = cookie::CookieJar::new();
         let mut private_jar = jar.private_mut(&key);
@@ -176,7 +176,6 @@ impl PrivateCookieJar {
     /// run extractors. Normally you should create `PrivateCookieJar`s through [`FromRequestParts`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
-    #[must_use]
     pub fn new(key: Key) -> Self {
         Self {
             jar: Default::default(),
@@ -220,7 +219,6 @@ impl<K> PrivateCookieJar<K> {
     ///     jar.remove(Cookie::from("foo"))
     /// }
     /// ```
-    #[must_use]
     pub fn remove<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.private_jar_mut().remove(cookie);
         self
@@ -240,7 +238,6 @@ impl<K> PrivateCookieJar<K> {
     ///     jar.add(Cookie::new("foo", "bar"))
     /// }
     /// ```
-    #[must_use]
     #[allow(clippy::should_implement_trait)]
     pub fn add<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.private_jar_mut().add(cookie);
