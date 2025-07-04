@@ -47,7 +47,7 @@ impl TestClient {
             .build()
             .unwrap();
 
-        TestClient { client, addr }
+        Self { client, addr }
     }
 
     pub fn get(&self, url: &str) -> RequestBuilder {

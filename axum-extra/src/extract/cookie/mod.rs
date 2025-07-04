@@ -321,13 +321,13 @@ mod tests {
     }
 
     impl FromRef<AppState> for Key {
-        fn from_ref(state: &AppState) -> Key {
+        fn from_ref(state: &AppState) -> Self {
             state.key.clone()
         }
     }
 
     impl FromRef<AppState> for CustomKey {
-        fn from_ref(state: &AppState) -> CustomKey {
+        fn from_ref(state: &AppState) -> Self {
             state.custom_key.clone()
         }
     }

@@ -137,7 +137,7 @@ where
             key,
             _marker: _,
         } = PrivateCookieJar::from_headers(&parts.headers, key);
-        Ok(PrivateCookieJar {
+        Ok(Self {
             jar,
             key,
             _marker: PhantomData,

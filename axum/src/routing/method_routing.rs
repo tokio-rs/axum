@@ -571,14 +571,14 @@ enum AllowHeader {
 impl AllowHeader {
     fn merge(self, other: Self) -> Self {
         match (self, other) {
-            (AllowHeader::Skip, _) | (_, AllowHeader::Skip) => AllowHeader::Skip,
-            (AllowHeader::None, AllowHeader::None) => AllowHeader::None,
-            (AllowHeader::None, AllowHeader::Bytes(pick)) => AllowHeader::Bytes(pick),
-            (AllowHeader::Bytes(pick), AllowHeader::None) => AllowHeader::Bytes(pick),
-            (AllowHeader::Bytes(mut a), AllowHeader::Bytes(b)) => {
+            (Self::Skip, _) | (_, Self::Skip) => Self::Skip,
+            (Self::None, Self::None) => Self::None,
+            (Self::None, Self::Bytes(pick)) => Self::Bytes(pick),
+            (Self::Bytes(pick), Self::None) => Self::Bytes(pick),
+            (Self::Bytes(mut a), Self::Bytes(b)) => {
                 a.extend_from_slice(b",");
                 a.extend_from_slice(&b);
-                AllowHeader::Bytes(a)
+                Self::Bytes(a)
             }
         }
     }
@@ -994,7 +994,7 @@ where
 
     #[doc = include_str!("../docs/method_routing/route_layer.md")]
     #[track_caller]
-    pub fn route_layer<L>(mut self, layer: L) -> MethodRouter<S, E>
+    pub fn route_layer<L>(mut self, layer: L) -> Self
     where
         L: Layer<Route<E>> + Clone + Send + Sync + 'static,
         L::Service: Service<Request, Error = E> + Clone + Send + Sync + 'static,
@@ -1037,7 +1037,7 @@ where
     pub(crate) fn merge_for_path(
         mut self,
         path: Option<&str>,
-        other: MethodRouter<S, E>,
+        other: Self,
     ) -> Result<Self, Cow<'static, str>> {
         // written using inner functions to generate less IR
         fn merge_inner<S, E>(
@@ -1088,7 +1088,7 @@ where
 
     #[doc = include_str!("../docs/method_routing/merge.md")]
     #[track_caller]
-    pub fn merge(self, other: MethodRouter<S, E>) -> Self {
+    pub fn merge(self, other: Self) -> Self {
         match self.merge_for_path(None, other) {
             Ok(t) => t,
             // not using unwrap or unwrap_or_else to get a clean panic message + the right location
@@ -1256,11 +1256,9 @@ where
 
     fn with_state<S2>(self, state: &S) -> MethodEndpoint<S2, E> {
         match self {
-            MethodEndpoint::None => MethodEndpoint::None,
-            MethodEndpoint::Route(route) => MethodEndpoint::Route(route),
-            MethodEndpoint::BoxedHandler(handler) => {
-                MethodEndpoint::Route(handler.into_route(state.clone()))
-            }
+            Self::None => MethodEndpoint::None,
+            Self::Route(route) => MethodEndpoint::Route(route),
+            Self::BoxedHandler(handler) => MethodEndpoint::Route(handler.into_route(state.clone())),
         }
     }
 }
