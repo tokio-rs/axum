@@ -121,6 +121,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     }
 /// }
 /// ```
+#[must_use]
 pub struct SignedCookieJar<K = Key> {
     jar: cookie::CookieJar,
     key: Key,
@@ -170,7 +171,6 @@ impl SignedCookieJar {
     /// run extractors. Normally you should create `SignedCookieJar`s through [`FromRequestParts`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
-    #[must_use]
     pub fn from_headers(headers: &HeaderMap, key: Key) -> Self {
         let mut jar = cookie::CookieJar::new();
         let mut signed_jar = jar.signed_mut(&key);
@@ -193,7 +193,6 @@ impl SignedCookieJar {
     /// run extractors. Normally you should create `SignedCookieJar`s through [`FromRequestParts`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
-    #[must_use]
     pub fn new(key: Key) -> Self {
         Self {
             jar: Default::default(),
@@ -238,7 +237,6 @@ impl<K> SignedCookieJar<K> {
     ///     jar.remove(Cookie::from("foo"))
     /// }
     /// ```
-    #[must_use]
     pub fn remove<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.signed_jar_mut().remove(cookie);
         self
@@ -258,7 +256,6 @@ impl<K> SignedCookieJar<K> {
     ///     jar.add(Cookie::new("foo", "bar"))
     /// }
     /// ```
-    #[must_use]
     #[allow(clippy::should_implement_trait)]
     pub fn add<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.signed_jar_mut().add(cookie);
