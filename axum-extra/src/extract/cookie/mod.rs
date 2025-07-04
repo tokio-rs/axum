@@ -321,15 +321,13 @@ mod tests {
     }
 
     impl FromRef<AppState> for Key {
-        #[allow(clippy::use_self)]
-        fn from_ref(state: &AppState) -> Key {
+        fn from_ref(state: &AppState) -> Self {
             state.key.clone()
         }
     }
 
     impl FromRef<AppState> for CustomKey {
-        #[allow(clippy::use_self)]
-        fn from_ref(state: &AppState) -> CustomKey {
+        fn from_ref(state: &AppState) -> Self {
             state.custom_key.clone()
         }
     }
