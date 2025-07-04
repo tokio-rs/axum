@@ -77,6 +77,7 @@ macro_rules! vpath {
 }
 
 /// Extension trait that adds additional methods to [`Router`].
+#[allow(clippy::return_self_not_must_use)]
 pub trait RouterExt<S>: sealed::Sealed {
     /// Add a typed `GET` route to the router.
     ///
@@ -85,7 +86,6 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    #[must_use]
     fn typed_get<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -99,7 +99,6 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    #[must_use]
     fn typed_delete<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -113,7 +112,6 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    #[must_use]
     fn typed_head<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -127,7 +125,6 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    #[must_use]
     fn typed_options<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -141,7 +138,6 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    #[must_use]
     fn typed_patch<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -155,7 +151,6 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    #[must_use]
     fn typed_post<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -169,7 +164,6 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    #[must_use]
     fn typed_put<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -183,7 +177,6 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    #[must_use]
     fn typed_trace<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -197,7 +190,6 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    #[must_use]
     fn typed_connect<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
@@ -229,7 +221,6 @@ pub trait RouterExt<S>: sealed::Sealed {
     ///     .route_with_tsr("/bar/", get(|| async {}));
     /// # let _: Router = app;
     /// ```
-    #[must_use]
     fn route_with_tsr(self, path: &str, method_router: MethodRouter<S>) -> Self
     where
         Self: Sized;
@@ -237,7 +228,6 @@ pub trait RouterExt<S>: sealed::Sealed {
     /// Add another route to the router with an additional "trailing slash redirect" route.
     ///
     /// This works like [`RouterExt::route_with_tsr`] but accepts any [`Service`].
-    #[must_use]
     fn route_service_with_tsr<T>(self, path: &str, service: T) -> Self
     where
         T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
