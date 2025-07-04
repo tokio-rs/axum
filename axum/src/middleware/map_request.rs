@@ -380,8 +380,7 @@ where
 }
 
 impl<B> IntoMapRequestResult<B> for Request<B> {
-    #[allow(clippy::use_self)]
-    fn into_map_request_result(self) -> Result<Request<B>, Response> {
+    fn into_map_request_result(self) -> Result<Self, Response> {
         Ok(self)
     }
 }

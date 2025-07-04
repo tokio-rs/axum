@@ -105,9 +105,8 @@ const _: () = {
     }
 };
 
-#[allow(clippy::use_self)]
 impl Connected<SocketAddr> for SocketAddr {
-    fn connect_info(remote_addr: SocketAddr) -> Self {
+    fn connect_info(remote_addr: Self) -> Self {
         remote_addr
     }
 }
