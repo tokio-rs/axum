@@ -45,6 +45,7 @@ todo = "warn"
 uninlined_format_args = "warn"
 unnested_or_patterns = "warn"
 unused_self = "warn"
+use_self = "warn"
 verbose_file_reads = "warn"
 
 # configuration for https://github.com/crate-ci/typos

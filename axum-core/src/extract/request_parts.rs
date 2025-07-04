@@ -73,6 +73,7 @@ where
 
     async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
         let mut body = req.into_limited_body();
+        #[allow(clippy::use_self)]
         let mut bytes = BytesMut::new();
         body_to_bytes_mut(&mut body, &mut bytes).await?;
         Ok(bytes)
@@ -128,6 +129,7 @@ where
                 }
             })?;
 
+        #[allow(clippy::use_self)]
         let string = String::from_utf8(bytes.into()).map_err(InvalidUtf8::from_err)?;
 
         Ok(string)

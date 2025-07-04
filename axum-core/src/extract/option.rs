@@ -42,6 +42,7 @@ where
 {
     type Rejection = T::Rejection;
 
+    #[allow(clippy::use_self)]
     fn from_request_parts(
         parts: &mut Parts,
         state: &S,
@@ -57,6 +58,7 @@ where
 {
     type Rejection = T::Rejection;
 
+    #[allow(clippy::use_self)]
     async fn from_request(req: Request, state: &S) -> Result<Option<T>, Self::Rejection> {
         T::from_request(req, state).await
     }

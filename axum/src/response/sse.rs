@@ -63,7 +63,7 @@ impl<S> Sse<S> {
         S: TryStream<Ok = Event> + Send + 'static,
         S::Error: Into<BoxError>,
     {
-        Sse { stream }
+        Self { stream }
     }
 
     /// Configure the interval between keep-alive messages.
@@ -154,12 +154,12 @@ impl Buffer {
     /// a new active buffer with the previous contents.
     fn as_mut(&mut self) -> &mut BytesMut {
         match self {
-            Buffer::Active(bytes_mut) => bytes_mut,
-            Buffer::Finalized(bytes) => {
-                *self = Buffer::Active(BytesMut::from(mem::take(bytes)));
+            Self::Active(bytes_mut) => bytes_mut,
+            Self::Finalized(bytes) => {
+                *self = Self::Active(BytesMut::from(mem::take(bytes)));
                 match self {
-                    Buffer::Active(bytes_mut) => bytes_mut,
-                    Buffer::Finalized(_) => unreachable!(),
+                    Self::Active(bytes_mut) => bytes_mut,
+                    Self::Finalized(_) => unreachable!(),
                 }
             }
         }
@@ -199,7 +199,7 @@ impl Event {
     /// - Panics if `data` or `json_data` have already been called.
     ///
     /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
-    pub fn data<T>(mut self, data: T) -> Event
+    pub fn data<T>(mut self, data: T) -> Self
     where
         T: AsRef<str>,
     {
@@ -226,7 +226,7 @@ impl Event {
     ///
     /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
     #[cfg(feature = "json")]
-    pub fn json_data<T>(mut self, data: T) -> Result<Event, axum_core::Error>
+    pub fn json_data<T>(mut self, data: T) -> Result<Self, axum_core::Error>
     where
         T: serde::Serialize,
     {
@@ -271,7 +271,7 @@ impl Event {
     ///
     /// Panics if `comment` contains any newlines or carriage returns, as they are not allowed in
     /// comments.
-    pub fn comment<T>(mut self, comment: T) -> Event
+    pub fn comment<T>(mut self, comment: T) -> Self
     where
         T: AsRef<str>,
     {
@@ -293,7 +293,7 @@ impl Event {
     ///
     /// - Panics if `event` contains any newlines or carriage returns.
     /// - Panics if this function has already been called on this event.
-    pub fn event<T>(mut self, event: T) -> Event
+    pub fn event<T>(mut self, event: T) -> Self
     where
         T: AsRef<str>,
     {
@@ -316,7 +316,7 @@ impl Event {
     /// # Panics
     ///
     /// Panics if this function has already been called on this event.
-    pub fn retry(mut self, duration: Duration) -> Event {
+    pub fn retry(mut self, duration: Duration) -> Self {
         if self.flags.contains(EventFlags::HAS_RETRY) {
             panic!("Called `Event::retry` multiple times");
         }
@@ -360,7 +360,7 @@ impl Event {
     ///
     /// - Panics if `id` contains any newlines, carriage returns or null characters.
     /// - Panics if this function has already been called on this event.
-    pub fn id<T>(mut self, id: T) -> Event
+    pub fn id<T>(mut self, id: T) -> Self
     where
         T: AsRef<str>,
     {

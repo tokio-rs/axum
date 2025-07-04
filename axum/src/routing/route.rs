@@ -59,7 +59,7 @@ impl<E> Route<E> {
 
     pub(crate) fn layer<L, NewError>(self, layer: L) -> Route<NewError>
     where
-        L: Layer<Route<E>> + Clone + Send + 'static,
+        L: Layer<Self> + Clone + Send + 'static,
         L::Service: Service<Request> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Error: Into<NewError> + 'static,

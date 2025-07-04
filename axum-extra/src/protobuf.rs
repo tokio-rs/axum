@@ -109,7 +109,7 @@ where
             .aggregate();
 
         match T::decode(&mut buf) {
-            Ok(value) => Ok(Protobuf(value)),
+            Ok(value) => Ok(Self(value)),
             Err(err) => Err(ProtobufDecodeError::from_err(err).into()),
         }
     }

@@ -184,7 +184,7 @@ where
         let deserializer = &mut serde_json::Deserializer::from_slice(bytes);
 
         match serde_path_to_error::deserialize(deserializer) {
-            Ok(value) => Ok(Json(value)),
+            Ok(value) => Ok(Self(value)),
             Err(err) => Err(make_rejection(err)),
         }
     }
