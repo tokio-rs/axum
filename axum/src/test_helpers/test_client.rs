@@ -83,11 +83,13 @@ impl TestClient {
     }
 
     #[allow(dead_code)]
+    #[must_use]
     pub fn server_port(&self) -> u16 {
         self.addr.port()
     }
 }
 
+#[must_use]
 pub struct RequestBuilder {
     builder: reqwest::RequestBuilder,
 }

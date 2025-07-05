@@ -128,6 +128,7 @@ use tokio_tungstenite::{
 ///
 /// [`MethodFilter`]: crate::routing::MethodFilter
 #[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
+#[must_use]
 pub struct WebSocketUpgrade<F = DefaultOnFailedUpgrade> {
     config: WebSocketConfig,
     /// The chosen protocol sent in the `Sec-WebSocket-Protocol` header of the response.
@@ -580,6 +581,7 @@ pub struct Utf8Bytes(ts::Utf8Bytes);
 impl Utf8Bytes {
     /// Creates from a static str.
     #[inline]
+    #[must_use]
     pub const fn from_static(str: &'static str) -> Self {
         Self(ts::Utf8Bytes::from_static(str))
     }

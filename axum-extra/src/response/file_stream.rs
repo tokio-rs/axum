@@ -44,6 +44,7 @@ use tokio_util::io::ReaderStream;
 /// let app = Router::new().route("/file-stream", get(file_stream));
 /// # let _: Router = app;
 /// ```
+#[must_use]
 #[derive(Debug)]
 pub struct FileStream<S> {
     /// stream.

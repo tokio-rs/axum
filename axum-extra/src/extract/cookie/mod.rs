@@ -84,6 +84,7 @@ pub use cookie::Key;
 ///     .route("/me", get(me));
 /// # let app: Router = app;
 /// ```
+#[must_use = "`CookieJar` should be returned as part of a `Response`, otherwise it does nothing."]
 #[derive(Debug, Default, Clone)]
 pub struct CookieJar {
     jar: cookie::CookieJar,
@@ -153,6 +154,7 @@ impl CookieJar {
     ///         .map(|cookie| cookie.value().to_owned());
     /// }
     /// ```
+    #[must_use]
     pub fn get(&self, name: &str) -> Option<&Cookie<'static>> {
         self.jar.get(name)
     }
@@ -169,7 +171,6 @@ impl CookieJar {
     ///     jar.remove(Cookie::from("foo"))
     /// }
     /// ```
-    #[must_use]
     pub fn remove<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.jar.remove(cookie);
         self
@@ -189,7 +190,6 @@ impl CookieJar {
     ///     jar.add(Cookie::new("foo", "bar"))
     /// }
     /// ```
-    #[must_use]
     #[allow(clippy::should_implement_trait)]
     pub fn add<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.jar.add(cookie);

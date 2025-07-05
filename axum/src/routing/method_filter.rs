@@ -58,6 +58,7 @@ impl MethodFilter {
     }
 
     /// Performs the OR operation between the [`MethodFilter`] in `self` with `other`.
+    #[must_use]
     pub const fn or(self, other: Self) -> Self {
         Self(self.0 | other.0)
     }

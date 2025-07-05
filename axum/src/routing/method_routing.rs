@@ -703,6 +703,7 @@ impl MethodRouter<(), Infallible> {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
+    #[must_use]
     pub fn into_make_service(self) -> IntoMakeService<Self> {
         IntoMakeService::new(self.with_state(()))
     }
@@ -736,6 +737,7 @@ impl MethodRouter<(), Infallible> {
     /// [`MakeService`]: tower::make::MakeService
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
     #[cfg(feature = "tokio")]
+    #[must_use]
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self.with_state(()))
     }
