@@ -84,7 +84,7 @@ pub use cookie::Key;
 ///     .route("/me", get(me));
 /// # let app: Router = app;
 /// ```
-#[must_use]
+#[must_use = "`CookieJar` should be returned as part of a `Response`, otherwise it does nothing."]
 #[derive(Debug, Default, Clone)]
 pub struct CookieJar {
     jar: cookie::CookieJar,

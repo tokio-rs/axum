@@ -121,7 +121,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     }
 /// }
 /// ```
-#[must_use]
+#[must_use = "`SignedCookieJar` should be returned as part of a `Response`, otherwise it does nothing."]
 pub struct SignedCookieJar<K = Key> {
     jar: cookie::CookieJar,
     key: Key,
@@ -303,6 +303,7 @@ impl<K> IntoResponse for SignedCookieJar<K> {
     }
 }
 
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 struct SignedCookieJarIter<'a, K> {
     jar: &'a SignedCookieJar<K>,
     iter: cookie::Iter<'a>,

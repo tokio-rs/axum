@@ -104,7 +104,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     }
 /// }
 /// ```
-#[must_use]
+#[must_use = "`PrivateCookieJar` should be returned as part of a `Response`, otherwise it does nothing."]
 pub struct PrivateCookieJar<K = Key> {
     jar: cookie::CookieJar,
     key: Key,
@@ -285,6 +285,7 @@ impl<K> IntoResponse for PrivateCookieJar<K> {
     }
 }
 
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 struct PrivateCookieJarIter<'a, K> {
     jar: &'a PrivateCookieJar<K>,
     iter: cookie::Iter<'a>,
