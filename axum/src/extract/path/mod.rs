@@ -279,6 +279,7 @@ impl std::error::Error for PathDeserializationError {}
 /// This type is obtained through [`FailedToDeserializePathParams::kind`] or
 /// [`FailedToDeserializePathParams::into_kind`] and is useful for building
 /// more precise error messages.
+#[must_use]
 #[derive(Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ErrorKind {
@@ -417,6 +418,7 @@ impl FailedToDeserializePathParams {
     }
 
     /// Get the response body text used for this rejection.
+    #[must_use]
     pub fn body_text(&self) -> String {
         match self.0.kind {
             ErrorKind::Message(_)
@@ -432,6 +434,7 @@ impl FailedToDeserializePathParams {
     }
 
     /// Get the status code used for this rejection.
+    #[must_use]
     pub fn status(&self) -> StatusCode {
         match self.0.kind {
             ErrorKind::Message(_)
@@ -523,6 +526,7 @@ where
 
 impl RawPathParams {
     /// Get an iterator over the path parameters.
+    #[must_use]
     pub fn iter(&self) -> RawPathParamsIter<'_> {
         self.into_iter()
     }
@@ -561,11 +565,13 @@ pub struct InvalidUtf8InPathParam {
 
 impl InvalidUtf8InPathParam {
     /// Get the response body text used for this rejection.
+    #[must_use]
     pub fn body_text(&self) -> String {
         self.to_string()
     }
 
     /// Get the status code used for this rejection.
+    #[must_use]
     pub fn status(&self) -> StatusCode {
         StatusCode::BAD_REQUEST
     }

@@ -41,6 +41,7 @@ pub struct NestedPath(Arc<str>);
 
 impl NestedPath {
     /// Returns a `str` representation of the path.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }

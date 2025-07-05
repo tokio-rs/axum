@@ -104,6 +104,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     }
 /// }
 /// ```
+#[must_use = "`PrivateCookieJar` should be returned as part of a `Response`, otherwise it does nothing."]
 pub struct PrivateCookieJar<K = Key> {
     jar: cookie::CookieJar,
     key: Key,
@@ -201,6 +202,7 @@ impl<K> PrivateCookieJar<K> {
     ///         .map(|cookie| cookie.value().to_owned());
     /// }
     /// ```
+    #[must_use]
     pub fn get(&self, name: &str) -> Option<Cookie<'static>> {
         self.private_jar().get(name)
     }
@@ -217,7 +219,6 @@ impl<K> PrivateCookieJar<K> {
     ///     jar.remove(Cookie::from("foo"))
     /// }
     /// ```
-    #[must_use]
     pub fn remove<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.private_jar_mut().remove(cookie);
         self
@@ -237,7 +238,6 @@ impl<K> PrivateCookieJar<K> {
     ///     jar.add(Cookie::new("foo", "bar"))
     /// }
     /// ```
-    #[must_use]
     #[allow(clippy::should_implement_trait)]
     pub fn add<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.private_jar_mut().add(cookie);
@@ -246,6 +246,7 @@ impl<K> PrivateCookieJar<K> {
 
     /// Authenticates and decrypts `cookie`, returning the plaintext version if decryption succeeds
     /// or `None` otherwise.
+    #[must_use]
     pub fn decrypt(&self, cookie: Cookie<'static>) -> Option<Cookie<'static>> {
         self.private_jar().decrypt(cookie)
     }
@@ -284,6 +285,7 @@ impl<K> IntoResponse for PrivateCookieJar<K> {
     }
 }
 
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 struct PrivateCookieJarIter<'a, K> {
     jar: &'a PrivateCookieJar<K>,
     iter: cookie::Iter<'a>,

@@ -335,6 +335,7 @@ where
     }
 
     /// True if the router currently has at least one route added.
+    #[must_use]
     pub fn has_routes(&self) -> bool {
         self.inner.path_router.has_routes()
     }
@@ -495,6 +496,7 @@ where
     ///
     /// This is the same as [`Router::as_service`] instead it returns an owned [`Service`]. See
     /// that method for more details.
+    #[must_use]
     pub fn into_service<B>(self) -> RouterIntoService<B, S> {
         RouterIntoService {
             router: self,
@@ -522,6 +524,7 @@ impl Router {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
+    #[must_use]
     pub fn into_make_service(self) -> IntoMakeService<Self> {
         // call `Router::with_state` such that everything is turned into `Route` eagerly
         // rather than doing that per request
@@ -530,6 +533,7 @@ impl Router {
 
     #[doc = include_str!("../docs/routing/into_make_service_with_connect_info.md")]
     #[cfg(feature = "tokio")]
+    #[must_use]
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         // call `Router::with_state` such that everything is turned into `Route` eagerly
         // rather than doing that per request

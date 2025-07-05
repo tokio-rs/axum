@@ -16,6 +16,7 @@ impl Error {
     }
 
     /// Convert an `Error` back into the underlying boxed trait object.
+    #[must_use]
     pub fn into_inner(self) -> BoxError {
         self.inner
     }

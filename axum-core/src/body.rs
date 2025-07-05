@@ -34,6 +34,7 @@ where
 }
 
 /// The body type used in axum requests and responses.
+#[must_use]
 #[derive(Debug)]
 pub struct Body(BoxBody);
 
@@ -135,6 +136,7 @@ impl http_body::Body for Body {
 /// A stream of data frames.
 ///
 /// Created with [`Body::into_data_stream`].
+#[must_use]
 #[derive(Debug)]
 pub struct BodyDataStream {
     inner: Body,

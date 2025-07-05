@@ -137,11 +137,13 @@ pub struct TypedHeaderRejection {
 
 impl TypedHeaderRejection {
     /// Name of the header that caused the rejection
+    #[must_use]
     pub fn name(&self) -> &http::header::HeaderName {
         self.name
     }
 
     /// Reason why the header extraction has failed
+    #[must_use]
     pub fn reason(&self) -> &TypedHeaderRejectionReason {
         &self.reason
     }
