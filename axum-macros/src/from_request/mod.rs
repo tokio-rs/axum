@@ -144,7 +144,7 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                 }
             };
 
-            if let State::CannotInfer = state {
+            if matches!(state, State::CannotInfer) {
                 let attr_name = match tr {
                     Trait::FromRequest => "from_request",
                     Trait::FromRequestParts => "from_request_parts",
@@ -332,7 +332,7 @@ fn impl_struct_by_extracting_each_field(
     state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
-    let trait_fn_body = if let State::CannotInfer = state { quote! {
+    let trait_fn_body = if matches!(state, State::CannotInfer) { quote! {
         ::std::unimplemented!()
     } } else {
         let extract_fields = extract_fields(&fields, &rejection, tr)?;
