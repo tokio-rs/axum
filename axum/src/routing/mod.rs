@@ -256,15 +256,12 @@ where
 
         map_inner!(self, mut this => {
             match (this.default_fallback, default_fallback) {
-                // both have the default fallback
+                // other has a default fallback
                 // use the one from other
-                (true, true) => {}
+                (_, true) => {}
                 // this has default fallback, other has a custom fallback
                 (true, false) => {
                     this.default_fallback = false;
-                }
-                // this has a custom fallback, other has a default
-                (false, true) => {
                 }
                 // both have a custom fallback, not allowed
                 (false, false) => {
@@ -707,8 +704,9 @@ where
 {
     fn merge(self, other: Self) -> Option<Self> {
         match (self, other) {
-            (Self::Default(_), pick @ Self::Default(_)) => Some(pick),
+            // If either are `Default`, return the opposite one.
             (Self::Default(_), pick) | (pick, Self::Default(_)) => Some(pick),
+            // Otherwise, return None
             _ => None,
         }
     }
