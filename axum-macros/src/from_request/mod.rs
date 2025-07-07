@@ -111,23 +111,20 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                 state,
             } = parse_attrs("from_request", &attrs)?;
 
-            let state = match state {
-                Some((_, state)) => State::Custom(state),
-                None => {
-                    let mut inferred_state_types: HashSet<_> =
-                        infer_state_type_from_field_types(&fields)
-                            .chain(infer_state_type_from_field_attributes(&fields))
-                            .collect();
+            let state = if let Some((_, state)) = state { State::Custom(state) } else {
+                let mut inferred_state_types: HashSet<_> =
+                    infer_state_type_from_field_types(&fields)
+                        .chain(infer_state_type_from_field_attributes(&fields))
+                        .collect();
 
-                    if let Some((_, via)) = &via {
-                        inferred_state_types.extend(state_from_via(&ident, via));
-                    }
+                if let Some((_, via)) = &via {
+                    inferred_state_types.extend(state_from_via(&ident, via));
+                }
 
-                    match inferred_state_types.len() {
-                        0 => State::Default(syn::parse_quote!(S)),
-                        1 => State::Custom(inferred_state_types.iter().next().unwrap().to_owned()),
-                        _ => State::CannotInfer,
-                    }
+                match inferred_state_types.len() {
+                    0 => State::Default(syn::parse_quote!(S)),
+                    1 => State::Custom(inferred_state_types.iter().next().unwrap().to_owned()),
+                    _ => State::CannotInfer,
                 }
             };
 
@@ -335,17 +332,14 @@ fn impl_struct_by_extracting_each_field(
     state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
-    let trait_fn_body = match state {
-        State::CannotInfer => quote! {
-            ::std::unimplemented!()
-        },
-        _ => {
-            let extract_fields = extract_fields(&fields, &rejection, tr)?;
-            quote! {
-                ::std::result::Result::Ok(Self {
-                    #(#extract_fields)*
-                })
-            }
+    let trait_fn_body = if let State::CannotInfer = state { quote! {
+        ::std::unimplemented!()
+    } } else {
+        let extract_fields = extract_fields(&fields, &rejection, tr)?;
+        quote! {
+            ::std::result::Result::Ok(Self {
+                #(#extract_fields)*
+            })
         }
     };
 
@@ -417,15 +411,12 @@ fn extract_fields(
     tr: Trait,
 ) -> syn::Result<Vec<TokenStream>> {
     fn member(field: &syn::Field, index: usize) -> TokenStream {
-        match &field.ident {
-            Some(ident) => quote! { #ident },
-            _ => {
-                let member = syn::Member::Unnamed(syn::Index {
-                    index: index as u32,
-                    span: field.span(),
-                });
-                quote! { #member }
-            }
+        if let Some(ident) = &field.ident { quote! { #ident } } else {
+            let member = syn::Member::Unnamed(syn::Index {
+                index: index as u32,
+                span: field.span(),
+            });
+            quote! { #member }
         }
     }
 
