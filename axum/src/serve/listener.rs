@@ -1,4 +1,4 @@
-use std::{fmt, future::Future, time::Duration};
+use std::{fmt, future::Future, marker::PhantomData, time::Duration};
 
 use tokio::{
     io::{self, AsyncRead, AsyncWrite},
@@ -95,6 +95,24 @@ pub trait ListenerExt: Listener + Sized {
             tap_fn,
         }
     }
+
+    /// Add an async handshaking step to the listener.
+    ///
+    /// This is useful for implementing TLS. The handshaker closure is handed
+    /// ownership of the I/O object and is expected to return a new I/O
+    /// object, possibly of a different type.
+    fn handshake<F, H, HandshakeIo>(self, handshaker: F) -> Handshake<Self, F, H, HandshakeIo>
+    where
+        F: FnMut(Self::Io) -> H + Send + 'static,
+        H: Future<Output = Option<HandshakeIo>> + Send,
+        HandshakeIo: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    {
+        Handshake {
+            listener: self,
+            handshaker,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 impl<L: Listener> ListenerExt for L {}
@@ -130,6 +148,54 @@ where
         let (mut io, addr) = self.listener.accept().await;
         (self.tap_fn)(&mut io);
         (io, addr)
+    }
+
+    fn local_addr(&self) -> io::Result<Self::Addr> {
+        self.listener.local_addr()
+    }
+}
+
+/// Return type of [`ListenerExt::handshake`].
+///
+/// See that method for details.
+pub struct Handshake<L, F, H, HandshakeIo> {
+    listener: L,
+    handshaker: F,
+    _phantom: PhantomData<fn() -> (H, HandshakeIo)>,
+}
+
+impl<L, F, H, HandshakeIo> fmt::Debug for Handshake<L, F, H, HandshakeIo>
+where
+    L: Listener + fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Handshake")
+            .field("listener", &self.listener)
+            .finish_non_exhaustive()
+    }
+}
+
+impl<L, F, H, HandshakeIo> Listener for Handshake<L, F, H, HandshakeIo>
+where
+    L: Listener,
+    F: FnMut(L::Io) -> H + Send + 'static,
+    H: Future<Output = Option<HandshakeIo>> + Send + 'static,
+    HandshakeIo: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    type Io = HandshakeIo;
+    type Addr = L::Addr;
+
+    async fn accept(&mut self) -> (Self::Io, Self::Addr) {
+        loop {
+            let (io, addr) = self.listener.accept().await;
+            match (self.handshaker)(io).await {
+                Some(handshake_io) => return (handshake_io, addr),
+                None => {
+                    // If the handshaker returns None, we assume the handshake failed
+                    // and we will try to accept a new connection.
+                }
+            }
+        }
     }
 
     fn local_addr(&self) -> io::Result<Self::Addr> {
