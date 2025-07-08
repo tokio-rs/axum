@@ -307,7 +307,7 @@ impl Event {
         self
     }
 
-    /// Set the event's retry timeout field (`retry:<timeout>`).
+    /// Set the event's retry timeout field (`retry: <timeout>`).
     ///
     /// This sets how long clients will wait before reconnecting if they are disconnected from the
     /// SSE endpoint. Note that this is just a hint: clients are free to wait for longer if they
@@ -323,7 +323,7 @@ impl Event {
         self.flags.insert(EventFlags::HAS_RETRY);
 
         let buffer = self.buffer.as_mut();
-        buffer.extend_from_slice(b"retry:");
+        buffer.extend_from_slice(b"retry: ");
 
         let secs = duration.as_secs();
         let millis = duration.subsec_millis();
