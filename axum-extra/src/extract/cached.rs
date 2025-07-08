@@ -88,7 +88,11 @@ where
     type Rejection = T::Rejection;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        if let Ok(Extension(CachedEntry(value))) = Extension::<CachedEntry<T>>::from_request_parts(parts, state).await { Ok(Self(value)) } else {
+        if let Ok(Extension(CachedEntry(value))) =
+            Extension::<CachedEntry<T>>::from_request_parts(parts, state).await
+        {
+            Ok(Self(value))
+        } else {
             let value = T::from_request_parts(parts, state).await?;
             parts.extensions.insert(CachedEntry(value.clone()));
             Ok(Self(value))

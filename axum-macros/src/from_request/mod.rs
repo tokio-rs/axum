@@ -111,7 +111,9 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                 state,
             } = parse_attrs("from_request", &attrs)?;
 
-            let state = if let Some((_, state)) = state { State::Custom(state) } else {
+            let state = if let Some((_, state)) = state {
+                State::Custom(state)
+            } else {
                 let mut inferred_state_types: HashSet<_> =
                     infer_state_type_from_field_types(&fields)
                         .chain(infer_state_type_from_field_attributes(&fields))
@@ -332,9 +334,11 @@ fn impl_struct_by_extracting_each_field(
     state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
-    let trait_fn_body = if matches!(state, State::CannotInfer) { quote! {
-        ::std::unimplemented!()
-    } } else {
+    let trait_fn_body = if matches!(state, State::CannotInfer) {
+        quote! {
+            ::std::unimplemented!()
+        }
+    } else {
         let extract_fields = extract_fields(&fields, &rejection, tr)?;
         quote! {
             ::std::result::Result::Ok(Self {
@@ -411,7 +415,9 @@ fn extract_fields(
     tr: Trait,
 ) -> syn::Result<Vec<TokenStream>> {
     fn member(field: &syn::Field, index: usize) -> TokenStream {
-        if let Some(ident) = &field.ident { quote! { #ident } } else {
+        if let Some(ident) = &field.ident {
+            quote! { #ident }
+        } else {
             let member = syn::Member::Unnamed(syn::Index {
                 index: index as u32,
                 span: field.span(),
