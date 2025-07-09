@@ -187,14 +187,11 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        let service = match try_downcast::<Self, _>(service) {
-            Ok(_) => {
-                panic!(
-                    "Invalid route: `Router::route_service` cannot be used with `Router`s. \
-                     Use `Router::nest` instead"
-                );
-            }
-            Err(service) => service,
+        let Err(service) = try_downcast::<Self, _>(service) else {
+            panic!(
+                "Invalid route: `Router::route_service` cannot be used with `Router`s. \
+                Use `Router::nest` instead"
+            );
         };
 
         tap_inner!(self, mut this => {
@@ -256,15 +253,12 @@ where
 
         map_inner!(self, mut this => {
             match (this.default_fallback, default_fallback) {
-                // both have the default fallback
+                // other has a default fallback
                 // use the one from other
-                (true, true) => {}
+                (_, true) => {}
                 // this has default fallback, other has a custom fallback
                 (true, false) => {
                     this.default_fallback = false;
-                }
-                // this has a custom fallback, other has a default
-                (false, true) => {
                 }
                 // both have a custom fallback, not allowed
                 (false, false) => {
@@ -707,8 +701,9 @@ where
 {
     fn merge(self, other: Self) -> Option<Self> {
         match (self, other) {
-            (Self::Default(_), pick @ Self::Default(_)) => Some(pick),
+            // If either are `Default`, return the opposite one.
             (Self::Default(_), pick) | (pick, Self::Default(_)) => Some(pick),
+            // Otherwise, return None
             _ => None,
         }
     }

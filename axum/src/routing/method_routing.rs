@@ -573,8 +573,7 @@ impl AllowHeader {
         match (self, other) {
             (Self::Skip, _) | (_, Self::Skip) => Self::Skip,
             (Self::None, Self::None) => Self::None,
-            (Self::None, Self::Bytes(pick)) => Self::Bytes(pick),
-            (Self::Bytes(pick), Self::None) => Self::Bytes(pick),
+            (Self::None, Self::Bytes(pick)) | (Self::Bytes(pick), Self::None) => Self::Bytes(pick),
             (Self::Bytes(mut a), Self::Bytes(b)) => {
                 a.extend_from_slice(b",");
                 a.extend_from_slice(&b);
