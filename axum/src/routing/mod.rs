@@ -190,7 +190,7 @@ where
         let Err(service) = try_downcast::<Self, _>(service) else {
             panic!(
                 "Invalid route: `Router::route_service` cannot be used with `Router`s. \
-                      Use `Router::nest` instead"
+                Use `Router::nest` instead"
             );
         };
 
