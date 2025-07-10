@@ -229,9 +229,7 @@ mod tests {
 
         #[axum::debug_handler]
         async fn handler(Protobuf(input): Protobuf<Input>) -> Protobuf<Output> {
-            let output = Output {
-                result: input.foo,
-            };
+            let output = Output { result: input.foo };
 
             Protobuf(output)
         }
