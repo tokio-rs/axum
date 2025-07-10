@@ -337,7 +337,7 @@ async fn mna_fallback_with_existing_fallback() {
             get(|| async { "test" }).fallback(|| async { "index fallback" }),
         )
         .route("/path", get(|| async { "path" }))
-        .method_not_allowed_fallback(&|| async { "method not allowed fallback" });
+        .method_not_allowed_fallback(|| async { "method not allowed fallback" });
 
     let client = TestClient::new(app);
     let index_fallback = client.post("/").await;
@@ -354,7 +354,7 @@ async fn mna_fallback_with_existing_fallback() {
 async fn mna_fallback_with_state() {
     let app = Router::new()
         .route("/", get(|| async { "index" }))
-        .method_not_allowed_fallback(&|State(state): State<&'static str>| async move { state })
+        .method_not_allowed_fallback(|State(state): State<&'static str>| async move { state })
         .with_state("state");
 
     let client = TestClient::new(app);
@@ -367,7 +367,7 @@ async fn mna_fallback_with_unused_state() {
     let app = Router::new()
         .route("/", get(|| async { "index" }))
         .with_state(())
-        .method_not_allowed_fallback(&|| async move { "bla" });
+        .method_not_allowed_fallback(|| async move { "bla" });
 
     let client = TestClient::new(app);
     let res = client.post("/").await;
