@@ -36,7 +36,12 @@ pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
     match fields {
         syn::Fields::Named(_) => {
             let segments = parse_path(&path)?;
-            Ok(expand_named_fields(ident, &path, &segments, rejection.as_ref()))
+            Ok(expand_named_fields(
+                ident,
+                &path,
+                &segments,
+                rejection.as_ref(),
+            ))
         }
         syn::Fields::Unnamed(fields) => {
             let segments = parse_path(&path)?;
