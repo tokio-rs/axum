@@ -46,7 +46,7 @@ impl<E> Route<E> {
         self.oneshot_inner_owned(req).not_top_level()
     }
 
-    pub(crate) fn oneshot_inner(&mut self, req: Request) -> RouteFuture<E> {
+    pub(crate) fn oneshot_inner(&self, req: Request) -> RouteFuture<E> {
         let method = req.method().clone();
         RouteFuture::new(method, self.0.clone().oneshot(req))
     }
