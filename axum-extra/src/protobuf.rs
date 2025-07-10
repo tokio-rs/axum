@@ -172,7 +172,7 @@ mod tests {
 
         let app = Router::new().route(
             "/",
-            post(|input: Protobuf<Input>| async move { input.0.foo }),
+            post(|Protobuf(input): Protobuf<Input>| async move { input.foo }),
         );
 
         let input = Input {
@@ -228,9 +228,9 @@ mod tests {
         }
 
         #[axum::debug_handler]
-        async fn handler(input: Protobuf<Input>) -> Protobuf<Output> {
+        async fn handler(Protobuf(input): Protobuf<Input>) -> Protobuf<Output> {
             let output = Output {
-                result: input.0.foo,
+                result: input.foo,
             };
 
             Protobuf(output)
