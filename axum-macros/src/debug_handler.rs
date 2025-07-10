@@ -8,18 +8,16 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, ReturnType, Token, Type};
 
-// I'm not sure how to make [`ItemFn`] be passed by reference without causing errors...
-#[allow(clippy::needless_pass_by_value)]
-pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenStream {
+pub(crate) fn expand(attr: Attrs, item_fn: &ItemFn, kind: FunctionKind) -> TokenStream {
     let Attrs { state_ty } = attr;
 
     let mut state_ty = state_ty.map(second);
 
-    let check_extractor_count = check_extractor_count(&item_fn, kind);
-    let check_path_extractor = check_path_extractor(&item_fn, kind);
-    let check_output_tuples = check_output_tuples(&item_fn);
+    let check_extractor_count = check_extractor_count(item_fn, kind);
+    let check_path_extractor = check_path_extractor(item_fn, kind);
+    let check_output_tuples = check_output_tuples(item_fn);
     let check_output_impls_into_response = if check_output_tuples.is_empty() {
-        check_output_impls_into_response(&item_fn)
+        check_output_impls_into_response(item_fn)
     } else {
         check_output_tuples
     };
@@ -30,7 +28,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenS
         let mut err = None;
 
         if state_ty.is_none() {
-            let state_types_from_args = state_types_from_args(&item_fn);
+            let state_types_from_args = state_types_from_args(item_fn);
 
             #[allow(clippy::comparison_chain)]
             if state_types_from_args.len() == 1 {
@@ -52,16 +50,16 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenS
         err.unwrap_or_else(|| {
             let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
 
-            let check_future_send = check_future_send(&item_fn, kind);
+            let check_future_send = check_future_send(item_fn, kind);
 
-            if let Some(check_input_order) = check_input_order(&item_fn, kind) {
+            if let Some(check_input_order) = check_input_order(item_fn, kind) {
                 quote! {
                     #check_input_order
                     #check_future_send
                 }
             } else {
                 let check_inputs_impls_from_request =
-                    check_inputs_impls_from_request(&item_fn, &state_ty, kind);
+                    check_inputs_impls_from_request(item_fn, &state_ty, kind);
 
                 quote! {
                     #check_inputs_impls_from_request
@@ -78,7 +76,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenS
     };
 
     let middleware_takes_next_as_last_arg =
-        matches!(kind, FunctionKind::Middleware).then(|| next_is_last_input(&item_fn));
+        matches!(kind, FunctionKind::Middleware).then(|| next_is_last_input(item_fn));
 
     quote! {
         #item_fn

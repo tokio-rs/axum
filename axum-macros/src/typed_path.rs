@@ -4,16 +4,14 @@ use syn::{parse::Parse, ItemStruct, LitStr, Token};
 
 use crate::attr_parsing::{combine_attribute, parse_parenthesized_attribute, second, Combine};
 
-// I don't know how to make ItemStruct be passed by reference without causing errors
-#[allow(clippy::needless_pass_by_value)]
-pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
+pub(crate) fn expand(item_struct: &ItemStruct) -> syn::Result<TokenStream> {
     let ItemStruct {
         attrs,
         ident,
         generics,
         fields,
         ..
-    } = &item_struct;
+    } = item_struct;
 
     if !generics.params.is_empty() || generics.where_clause.is_some() {
         return Err(syn::Error::new_spanned(
