@@ -106,7 +106,7 @@ impl fmt::Display for FunctionKind {
 }
 
 impl FunctionKind {
-    fn name_uppercase_plural(&self) -> &'static str {
+    fn name_uppercase_plural(self) -> &'static str {
         match self {
             Self::Handler => "Handlers",
             Self::Middleware => "Middleware",

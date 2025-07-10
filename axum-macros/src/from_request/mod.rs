@@ -19,7 +19,7 @@ pub(crate) enum Trait {
 }
 
 impl Trait {
-    fn via_marker_type(&self) -> Option<Type> {
+    fn via_marker_type(self) -> Option<Type> {
         match self {
             Self::FromRequest => Some(parse_quote!(M)),
             Self::FromRequestParts => None,

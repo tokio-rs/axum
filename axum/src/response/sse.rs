@@ -425,7 +425,7 @@ impl EventFlags {
     const HAS_RETRY: Self = Self::from_bits(0b0100);
     const HAS_ID: Self = Self::from_bits(0b1000);
 
-    const fn bits(&self) -> u8 {
+    const fn bits(self) -> u8 {
         self.0
     }
 
@@ -433,7 +433,7 @@ impl EventFlags {
         Self(bits)
     }
 
-    const fn contains(&self, other: Self) -> bool {
+    const fn contains(self, other: Self) -> bool {
         self.bits() & other.bits() == other.bits()
     }
 

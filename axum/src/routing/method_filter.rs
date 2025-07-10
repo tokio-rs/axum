@@ -44,7 +44,7 @@ impl MethodFilter {
     /// Match `TRACE` requests.
     pub const TRACE: Self = Self::from_bits(0b1_0000_0000);
 
-    const fn bits(&self) -> u16 {
+    const fn bits(self) -> u16 {
         let bits = self;
         bits.0
     }
@@ -53,7 +53,7 @@ impl MethodFilter {
         Self(bits)
     }
 
-    pub(crate) const fn contains(&self, other: Self) -> bool {
+    pub(crate) const fn contains(self, other: Self) -> bool {
         self.bits() & other.bits() == other.bits()
     }
 
