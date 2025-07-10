@@ -734,7 +734,7 @@ where
         match self {
             Self::Default(route) | Self::Service(route) => route.oneshot_inner_owned(req),
             Self::BoxedHandler(handler) => {
-                let route = handler.clone().into_route(state);
+                let route = handler.into_route(state);
                 route.oneshot_inner_owned(req)
             }
         }
