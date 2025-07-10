@@ -23,7 +23,7 @@ async fn main() {
     let router = Router::new()
         .route("/", get(hello_world))
         .fallback(default_fallback)
-        .method_not_allowed_fallback(handle_405);
+        .method_not_allowed_fallback(&handle_405);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
