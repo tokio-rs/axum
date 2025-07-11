@@ -102,7 +102,7 @@ where
         H: Handler<T, S>,
         T: 'static,
     {
-        for (_, endpoint) in self.routes.iter_mut() {
+        for endpoint in self.routes.values_mut() {
             if let Endpoint::MethodRouter(rt) = endpoint {
                 *rt = rt.clone().default_fallback(handler.clone());
             }
