@@ -746,7 +746,7 @@ mod tests {
     fn parse_event(payload: &str) -> HashMap<String, String> {
         let mut fields = HashMap::new();
 
-        let mut lines = payload.lines().peekable();
+        let mut lines = payload.lines();
         while let Some(line) = lines.next() {
             if line.is_empty() {
                 assert!(lines.next().is_none());
