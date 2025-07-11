@@ -635,7 +635,7 @@ where
     {
         self.on_endpoint(
             filter,
-            MethodEndpoint::BoxedHandler(BoxedIntoRoute::from_handler(handler)),
+            &MethodEndpoint::BoxedHandler(BoxedIntoRoute::from_handler(handler)),
         )
     }
 
@@ -815,11 +815,11 @@ where
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
-        self.on_endpoint(filter, MethodEndpoint::Route(Route::new(svc)))
+        self.on_endpoint(filter, &MethodEndpoint::Route(Route::new(svc)))
     }
 
     #[track_caller]
-    fn on_endpoint(mut self, filter: MethodFilter, endpoint: MethodEndpoint<S, E>) -> Self {
+    fn on_endpoint(mut self, filter: MethodFilter, endpoint: &MethodEndpoint<S, E>) -> Self {
         // written as a separate function to generate less IR
         #[track_caller]
         fn set_endpoint<S, E>(
@@ -851,7 +851,7 @@ where
         set_endpoint(
             "GET",
             &mut self.get,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::GET,
             &mut self.allow_header,
@@ -861,7 +861,7 @@ where
         set_endpoint(
             "HEAD",
             &mut self.head,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::HEAD,
             &mut self.allow_header,
@@ -871,7 +871,7 @@ where
         set_endpoint(
             "TRACE",
             &mut self.trace,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::TRACE,
             &mut self.allow_header,
@@ -881,7 +881,7 @@ where
         set_endpoint(
             "PUT",
             &mut self.put,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::PUT,
             &mut self.allow_header,
@@ -891,7 +891,7 @@ where
         set_endpoint(
             "POST",
             &mut self.post,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::POST,
             &mut self.allow_header,
@@ -901,7 +901,7 @@ where
         set_endpoint(
             "PATCH",
             &mut self.patch,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::PATCH,
             &mut self.allow_header,
@@ -911,7 +911,7 @@ where
         set_endpoint(
             "OPTIONS",
             &mut self.options,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::OPTIONS,
             &mut self.allow_header,
@@ -921,7 +921,7 @@ where
         set_endpoint(
             "DELETE",
             &mut self.delete,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::DELETE,
             &mut self.allow_header,
@@ -931,7 +931,7 @@ where
         set_endpoint(
             "CONNECT",
             &mut self.options,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::CONNECT,
             &mut self.allow_header,

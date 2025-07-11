@@ -347,6 +347,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/method_not_allowed_fallback.md")]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn method_not_allowed_fallback<H, T>(self, handler: H) -> Self
     where
         H: Handler<T, S>,
@@ -354,7 +355,7 @@ where
     {
         tap_inner!(self, mut this => {
             this.path_router
-                .method_not_allowed_fallback(handler.clone());
+                .method_not_allowed_fallback(&handler);
         })
     }
 
@@ -734,7 +735,7 @@ where
         match self {
             Self::Default(route) | Self::Service(route) => route.oneshot_inner_owned(req),
             Self::BoxedHandler(handler) => {
-                let route = handler.clone().into_route(state);
+                let route = handler.into_route(state);
                 route.oneshot_inner_owned(req)
             }
         }

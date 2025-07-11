@@ -19,7 +19,7 @@ pub(crate) enum Trait {
 }
 
 impl Trait {
-    fn via_marker_type(&self) -> Option<Type> {
+    fn via_marker_type(self) -> Option<Type> {
         match self {
             Self::FromRequest => Some(parse_quote!(M)),
             Self::FromRequestParts => None,
@@ -132,17 +132,17 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
 
             let trait_impl = match (via.map(second), rejection.map(second)) {
                 (Some(via), rejection) => impl_struct_by_extracting_all_at_once(
-                    ident,
+                    &ident,
                     fields,
-                    via,
-                    rejection,
-                    generic_ident,
+                    &via,
+                    rejection.as_ref(),
+                    generic_ident.as_ref(),
                     &state,
                     tr,
                 )?,
                 (None, rejection) => {
                     error_on_generic_ident(generic_ident, tr)?;
-                    impl_struct_by_extracting_each_field(ident, fields, rejection, &state, tr)?
+                    impl_struct_by_extracting_each_field(&ident, &fields, rejection, &state, tr)?
                 }
             };
 
@@ -206,11 +206,11 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
 
             match (via.map(second), rejection) {
                 (Some(via), rejection) => impl_enum_by_extracting_all_at_once(
-                    ident,
+                    &ident,
                     variants,
-                    via,
-                    rejection.map(second),
-                    state,
+                    &via,
+                    rejection.map(second).as_ref(),
+                    &state,
                     tr,
                 ),
                 (None, Some((rejection_kw, _))) => Err(syn::Error::new_spanned(
@@ -328,8 +328,8 @@ fn error_on_generic_ident(generic_ident: Option<Ident>, tr: Trait) -> syn::Resul
 }
 
 fn impl_struct_by_extracting_each_field(
-    ident: syn::Ident,
-    fields: syn::Fields,
+    ident: &syn::Ident,
+    fields: &syn::Fields,
     rejection: Option<syn::Path>,
     state: &State,
     tr: Trait,
@@ -339,7 +339,7 @@ fn impl_struct_by_extracting_each_field(
             ::std::unimplemented!()
         }
     } else {
-        let extract_fields = extract_fields(&fields, &rejection, tr)?;
+        let extract_fields = extract_fields(fields, rejection.as_ref(), tr)?;
         quote! {
             ::std::result::Result::Ok(Self {
                 #(#extract_fields)*
@@ -349,7 +349,7 @@ fn impl_struct_by_extracting_each_field(
 
     let rejection_ident = if let Some(rejection) = rejection {
         quote!(#rejection)
-    } else if has_no_fields(&fields) {
+    } else if has_no_fields(fields) {
         quote!(::std::convert::Infallible)
     } else {
         quote!(::axum::response::Response)
@@ -411,7 +411,7 @@ fn has_no_fields(fields: &syn::Fields) -> bool {
 
 fn extract_fields(
     fields: &syn::Fields,
-    rejection: &Option<syn::Path>,
+    rejection: Option<&syn::Path>,
     tr: Trait,
 ) -> syn::Result<Vec<TokenStream>> {
     fn member(field: &syn::Field, index: usize) -> TokenStream {
@@ -426,7 +426,7 @@ fn extract_fields(
         }
     }
 
-    fn into_inner(via: &Option<(attr::kw::via, syn::Path)>, ty_span: Span) -> TokenStream {
+    fn into_inner(via: Option<&(attr::kw::via, syn::Path)>, ty_span: Span) -> TokenStream {
         if let Some((_, path)) = via {
             let span = path.span();
             quote_spanned! {span=>
@@ -440,7 +440,7 @@ fn extract_fields(
     }
 
     fn into_outer(
-        via: &Option<(attr::kw::via, syn::Path)>,
+        via: Option<&(attr::kw::via, syn::Path)>,
         ty_span: Span,
         field_ty: &Type,
     ) -> TokenStream {
@@ -472,10 +472,10 @@ fn extract_fields(
 
             let member = member(field, index);
             let ty_span = field.ty.span();
-            let into_inner = into_inner(&via, ty_span);
+            let into_inner = into_inner(via.as_ref(), ty_span);
 
             if peel_option(&field.ty).is_some() {
-                let field_ty = into_outer(&via, ty_span, peel_option(&field.ty).unwrap());
+                let field_ty = into_outer(via.as_ref(), ty_span, peel_option(&field.ty).unwrap());
                 let tokens = match tr {
                     Trait::FromRequest => {
                         quote_spanned! {ty_span=>
@@ -510,7 +510,7 @@ fn extract_fields(
                 };
                 Ok(tokens)
             } else if peel_result_ok(&field.ty).is_some() {
-                let field_ty = into_outer(&via,ty_span, peel_result_ok(&field.ty).unwrap());
+                let field_ty = into_outer(via.as_ref(), ty_span, peel_result_ok(&field.ty).unwrap());
                 let tokens = match tr {
                     Trait::FromRequest => {
                         quote_spanned! {ty_span=>
@@ -543,7 +543,7 @@ fn extract_fields(
                 };
                 Ok(tokens)
             } else {
-                let field_ty = into_outer(&via,ty_span,&field.ty);
+                let field_ty = into_outer(via.as_ref(), ty_span, &field.ty);
                 let map_err = if let Some(rejection) = rejection {
                     quote! { <#rejection as ::std::convert::From<_>>::from }
                 } else {
@@ -593,10 +593,10 @@ fn extract_fields(
 
         let member = member(field, fields.len() - 1);
         let ty_span = field.ty.span();
-        let into_inner = into_inner(&via, ty_span);
+        let into_inner = into_inner(via.as_ref(), ty_span);
 
         let item = if peel_option(&field.ty).is_some() {
-            let field_ty = into_outer(&via, ty_span, peel_option(&field.ty).unwrap());
+            let field_ty = into_outer(via.as_ref(), ty_span, peel_option(&field.ty).unwrap());
             quote_spanned! {ty_span=>
                 #member: {
                     <#field_ty as ::axum::extract::FromRequest<_, _>>::from_request(req, state)
@@ -606,7 +606,7 @@ fn extract_fields(
                 },
             }
         } else if peel_result_ok(&field.ty).is_some() {
-            let field_ty = into_outer(&via, ty_span, peel_result_ok(&field.ty).unwrap());
+            let field_ty = into_outer(via.as_ref(), ty_span, peel_result_ok(&field.ty).unwrap());
             quote_spanned! {ty_span=>
                 #member: {
                     <#field_ty as ::axum::extract::FromRequest<_, _>>::from_request(req, state)
@@ -615,7 +615,7 @@ fn extract_fields(
                 },
             }
         } else {
-            let field_ty = into_outer(&via, ty_span, &field.ty);
+            let field_ty = into_outer(via.as_ref(), ty_span, &field.ty);
             let map_err = if let Some(rejection) = rejection {
                 quote! { <#rejection as ::std::convert::From<_>>::from }
             } else {
@@ -697,11 +697,11 @@ fn peel_result_ok(ty: &syn::Type) -> Option<&syn::Type> {
 }
 
 fn impl_struct_by_extracting_all_at_once(
-    ident: syn::Ident,
+    ident: &syn::Ident,
     fields: syn::Fields,
-    via_path: syn::Path,
-    rejection: Option<syn::Path>,
-    generic_ident: Option<Ident>,
+    via_path: &syn::Path,
+    rejection: Option<&syn::Path>,
+    generic_ident: Option<&Ident>,
     state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
@@ -750,7 +750,7 @@ fn impl_struct_by_extracting_all_at_once(
     // - `State`, not other extractors
     //
     // honestly not sure why but the tests all pass
-    let via_marker_type = if path_ident_is_state(&via_path) {
+    let via_marker_type = if path_ident_is_state(via_path) {
         tr.via_marker_type()
     } else {
         None
@@ -868,11 +868,11 @@ fn impl_struct_by_extracting_all_at_once(
 }
 
 fn impl_enum_by_extracting_all_at_once(
-    ident: syn::Ident,
+    ident: &syn::Ident,
     variants: Punctuated<syn::Variant, Token![,]>,
-    path: syn::Path,
-    rejection: Option<syn::Path>,
-    state: State,
+    path: &syn::Path,
+    rejection: Option<&syn::Path>,
+    state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
     for variant in variants {
