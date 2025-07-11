@@ -83,7 +83,14 @@ impl<I: Iterator> Iterator for WithPosition<I> {
     fn next(&mut self) -> Option<Self::Item> {
         match self.peekable.next() {
             Some(item) => {
-                if !self.handled_first {
+                if self.handled_first {
+                    // Have seen the first item, and there's something left.
+                    // Peek to see if this is the last item.
+                    match self.peekable.peek() {
+                        Some(_) => Some(Position::Middle(item)),
+                        None => Some(Position::Last(item)),
+                    }
+                } else {
                     // Haven't seen the first item yet, and there is one to give.
                     self.handled_first = true;
                     // Peek to see if this is also the last item,
@@ -91,13 +98,6 @@ impl<I: Iterator> Iterator for WithPosition<I> {
                     match self.peekable.peek() {
                         Some(_) => Some(Position::First(item)),
                         None => Some(Position::Only(item)),
-                    }
-                } else {
-                    // Have seen the first item, and there's something left.
-                    // Peek to see if this is the last item.
-                    match self.peekable.peek() {
-                        Some(_) => Some(Position::Middle(item)),
-                        None => Some(Position::Last(item)),
                     }
                 }
             }
