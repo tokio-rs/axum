@@ -97,7 +97,7 @@ where
         Ok(())
     }
 
-    pub(super) fn method_not_allowed_fallback<H, T>(&mut self, handler: H)
+    pub(super) fn method_not_allowed_fallback<H, T>(&mut self, handler: &H)
     where
         H: Handler<T, S>,
         T: 'static,
@@ -143,8 +143,8 @@ where
             .map_err(|err| format!("Invalid route {path:?}: {err}"))
     }
 
-    pub(super) fn merge(&mut self, other: PathRouter<S>) -> Result<(), Cow<'static, str>> {
-        let PathRouter {
+    pub(super) fn merge(&mut self, other: Self) -> Result<(), Cow<'static, str>> {
+        let Self {
             routes,
             node,
             prev_route_id: _,
@@ -172,11 +172,11 @@ where
     pub(super) fn nest(
         &mut self,
         path_to_nest_at: &str,
-        router: PathRouter<S>,
+        router: Self,
     ) -> Result<(), Cow<'static, str>> {
         let prefix = validate_nest_path(self.v7_checks, path_to_nest_at);
 
-        let PathRouter {
+        let Self {
             routes,
             node,
             prev_route_id: _,
@@ -248,7 +248,7 @@ where
         Ok(())
     }
 
-    pub(super) fn layer<L>(self, layer: L) -> PathRouter<S>
+    pub(super) fn layer<L>(self, layer: L) -> Self
     where
         L: Layer<Route> + Clone + Send + Sync + 'static,
         L::Service: Service<Request> + Clone + Send + Sync + 'static,
@@ -265,7 +265,7 @@ where
             })
             .collect();
 
-        PathRouter {
+        Self {
             routes,
             node: self.node,
             prev_route_id: self.prev_route_id,
@@ -298,7 +298,7 @@ where
             })
             .collect();
 
-        PathRouter {
+        Self {
             routes,
             node: self.node,
             prev_route_id: self.prev_route_id,
@@ -362,7 +362,7 @@ where
                     &mut parts.extensions,
                 );
 
-                url_params::insert_url_params(&mut parts.extensions, match_.params);
+                url_params::insert_url_params(&mut parts.extensions, &match_.params);
 
                 let endpoint = self
                     .routes

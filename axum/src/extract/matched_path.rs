@@ -58,6 +58,7 @@ pub struct MatchedPath(pub(crate) Arc<str>);
 
 impl MatchedPath {
     /// Returns a `str` representation of the path.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -102,9 +103,7 @@ pub(crate) fn set_matched_path_for_request(
     route_id_to_path: &HashMap<RouteId, Arc<str>>,
     extensions: &mut http::Extensions,
 ) {
-    let matched_path = if let Some(matched_path) = route_id_to_path.get(&id) {
-        matched_path
-    } else {
+    let Some(matched_path) = route_id_to_path.get(&id) else {
         #[cfg(debug_assertions)]
         panic!("should always have a matched path for a route id");
         #[cfg(not(debug_assertions))]

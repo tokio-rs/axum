@@ -1,4 +1,5 @@
 use self::private::DefaultBodyLimitService;
+use http::Request;
 use tower_layer::Layer;
 
 /// Layer for configuring the default request body limit.
@@ -150,6 +151,36 @@ impl DefaultBodyLimit {
         Self {
             kind: DefaultBodyLimitKind::Limit(limit),
         }
+    }
+
+    /// Apply a request body limit to the given request.
+    ///
+    /// This can be used, for example, to modify the default body limit inside a specific
+    /// extractor.
+    ///
+    /// # Example
+    ///
+    /// An extractor similar to [`Bytes`](bytes::Bytes), but limiting the body to 1 KB.
+    ///
+    /// ```
+    /// use axum::{
+    ///     extract::{DefaultBodyLimit, FromRequest, rejection::BytesRejection, Request},
+    ///     body::Bytes,
+    /// };
+    ///
+    /// struct Bytes1KB(Bytes);
+    ///
+    /// impl<S: Sync> FromRequest<S> for Bytes1KB {
+    ///     type Rejection = BytesRejection;
+    ///
+    ///     async fn from_request(mut req: Request, _: &S) -> Result<Self, Self::Rejection> {
+    ///         DefaultBodyLimit::max(1024).apply(&mut req);
+    ///         Ok(Self(Bytes::from_request(req, &()).await?))
+    ///     }
+    /// }
+    /// ```
+    pub fn apply<B>(self, req: &mut Request<B>) {
+        req.extensions_mut().insert(self.kind);
     }
 }
 

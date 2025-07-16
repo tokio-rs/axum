@@ -44,7 +44,7 @@ impl MethodFilter {
     /// Match `TRACE` requests.
     pub const TRACE: Self = Self::from_bits(0b1_0000_0000);
 
-    const fn bits(&self) -> u16 {
+    const fn bits(self) -> u16 {
         let bits = self;
         bits.0
     }
@@ -53,11 +53,12 @@ impl MethodFilter {
         Self(bits)
     }
 
-    pub(crate) const fn contains(&self, other: Self) -> bool {
+    pub(crate) const fn contains(self, other: Self) -> bool {
         self.bits() & other.bits() == other.bits()
     }
 
     /// Performs the OR operation between the [`MethodFilter`] in `self` with `other`.
+    #[must_use]
     pub const fn or(self, other: Self) -> Self {
         Self(self.0 | other.0)
     }
@@ -89,15 +90,15 @@ impl TryFrom<Method> for MethodFilter {
 
     fn try_from(m: Method) -> Result<Self, NoMatchingMethodFilter> {
         match m {
-            Method::CONNECT => Ok(MethodFilter::CONNECT),
-            Method::DELETE => Ok(MethodFilter::DELETE),
-            Method::GET => Ok(MethodFilter::GET),
-            Method::HEAD => Ok(MethodFilter::HEAD),
-            Method::OPTIONS => Ok(MethodFilter::OPTIONS),
-            Method::PATCH => Ok(MethodFilter::PATCH),
-            Method::POST => Ok(MethodFilter::POST),
-            Method::PUT => Ok(MethodFilter::PUT),
-            Method::TRACE => Ok(MethodFilter::TRACE),
+            Method::CONNECT => Ok(Self::CONNECT),
+            Method::DELETE => Ok(Self::DELETE),
+            Method::GET => Ok(Self::GET),
+            Method::HEAD => Ok(Self::HEAD),
+            Method::OPTIONS => Ok(Self::OPTIONS),
+            Method::PATCH => Ok(Self::PATCH),
+            Method::POST => Ok(Self::POST),
+            Method::PUT => Ok(Self::PUT),
+            Method::TRACE => Ok(Self::TRACE),
             other => Err(NoMatchingMethodFilter { method: other }),
         }
     }

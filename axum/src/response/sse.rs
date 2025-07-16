@@ -34,7 +34,8 @@ use axum_core::{
     response::{IntoResponse, Response},
 };
 use bytes::{BufMut, BytesMut};
-use futures_util::stream::{Stream, TryStream};
+use futures_core::Stream;
+use futures_util::stream::TryStream;
 use http_body::Frame;
 use pin_project_lite::pin_project;
 use std::{
@@ -62,7 +63,7 @@ impl<S> Sse<S> {
         S: TryStream<Ok = Event> + Send + 'static,
         S::Error: Into<BoxError>,
     {
-        Sse { stream }
+        Self { stream }
     }
 
     /// Configure the interval between keep-alive messages.
@@ -153,12 +154,12 @@ impl Buffer {
     /// a new active buffer with the previous contents.
     fn as_mut(&mut self) -> &mut BytesMut {
         match self {
-            Buffer::Active(bytes_mut) => bytes_mut,
-            Buffer::Finalized(bytes) => {
-                *self = Buffer::Active(BytesMut::from(mem::take(bytes)));
+            Self::Active(bytes_mut) => bytes_mut,
+            Self::Finalized(bytes) => {
+                *self = Self::Active(BytesMut::from(mem::take(bytes)));
                 match self {
-                    Buffer::Active(bytes_mut) => bytes_mut,
-                    Buffer::Finalized(_) => unreachable!(),
+                    Self::Active(bytes_mut) => bytes_mut,
+                    Self::Finalized(_) => unreachable!(),
                 }
             }
         }
@@ -198,7 +199,7 @@ impl Event {
     /// - Panics if `data` or `json_data` have already been called.
     ///
     /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
-    pub fn data<T>(mut self, data: T) -> Event
+    pub fn data<T>(mut self, data: T) -> Self
     where
         T: AsRef<str>,
     {
@@ -225,7 +226,7 @@ impl Event {
     ///
     /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
     #[cfg(feature = "json")]
-    pub fn json_data<T>(mut self, data: T) -> Result<Event, axum_core::Error>
+    pub fn json_data<T>(mut self, data: T) -> Result<Self, axum_core::Error>
     where
         T: serde::Serialize,
     {
@@ -270,7 +271,7 @@ impl Event {
     ///
     /// Panics if `comment` contains any newlines or carriage returns, as they are not allowed in
     /// comments.
-    pub fn comment<T>(mut self, comment: T) -> Event
+    pub fn comment<T>(mut self, comment: T) -> Self
     where
         T: AsRef<str>,
     {
@@ -292,7 +293,7 @@ impl Event {
     ///
     /// - Panics if `event` contains any newlines or carriage returns.
     /// - Panics if this function has already been called on this event.
-    pub fn event<T>(mut self, event: T) -> Event
+    pub fn event<T>(mut self, event: T) -> Self
     where
         T: AsRef<str>,
     {
@@ -306,7 +307,7 @@ impl Event {
         self
     }
 
-    /// Set the event's retry timeout field (`retry:<timeout>`).
+    /// Set the event's retry timeout field (`retry: <timeout>`).
     ///
     /// This sets how long clients will wait before reconnecting if they are disconnected from the
     /// SSE endpoint. Note that this is just a hint: clients are free to wait for longer if they
@@ -315,14 +316,14 @@ impl Event {
     /// # Panics
     ///
     /// Panics if this function has already been called on this event.
-    pub fn retry(mut self, duration: Duration) -> Event {
+    pub fn retry(mut self, duration: Duration) -> Self {
         if self.flags.contains(EventFlags::HAS_RETRY) {
             panic!("Called `Event::retry` multiple times");
         }
         self.flags.insert(EventFlags::HAS_RETRY);
 
         let buffer = self.buffer.as_mut();
-        buffer.extend_from_slice(b"retry:");
+        buffer.extend_from_slice(b"retry: ");
 
         let secs = duration.as_secs();
         let millis = duration.subsec_millis();
@@ -359,7 +360,7 @@ impl Event {
     ///
     /// - Panics if `id` contains any newlines, carriage returns or null characters.
     /// - Panics if this function has already been called on this event.
-    pub fn id<T>(mut self, id: T) -> Event
+    pub fn id<T>(mut self, id: T) -> Self
     where
         T: AsRef<str>,
     {
@@ -424,7 +425,7 @@ impl EventFlags {
     const HAS_RETRY: Self = Self::from_bits(0b0100);
     const HAS_ID: Self = Self::from_bits(0b1000);
 
-    const fn bits(&self) -> u8 {
+    const fn bits(self) -> u8 {
         self.0
     }
 
@@ -432,7 +433,7 @@ impl EventFlags {
         Self(bits)
     }
 
-    const fn contains(&self, other: Self) -> bool {
+    const fn contains(self, other: Self) -> bool {
         self.bits() & other.bits() == other.bits()
     }
 

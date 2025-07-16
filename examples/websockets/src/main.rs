@@ -39,7 +39,7 @@ use axum::extract::connect_info::ConnectInfo;
 use axum::extract::ws::CloseFrame;
 
 //allows to split the websocket stream into separate TX and RX branches
-use futures::{sink::SinkExt, stream::StreamExt};
+use futures_util::{sink::SinkExt, stream::StreamExt};
 
 #[tokio::main]
 async fn main() {
@@ -220,13 +220,13 @@ fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), ()> {
             println!(">>> {who} sent str: {t:?}");
         }
         Message::Binary(d) => {
-            println!(">>> {} sent {} bytes: {:?}", who, d.len(), d);
+            println!(">>> {who} sent {} bytes: {d:?}", d.len());
         }
         Message::Close(c) => {
             if let Some(cf) = c {
                 println!(
-                    ">>> {} sent close with code {} and reason `{}`",
-                    who, cf.code, cf.reason
+                    ">>> {who} sent close with code {} and reason `{}`",
+                    cf.code, cf.reason
                 );
             } else {
                 println!(">>> {who} somehow sent close message without CloseFrame");

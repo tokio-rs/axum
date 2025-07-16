@@ -12,8 +12,8 @@ use axum::{
     routing::{get, post},
     BoxError, Router,
 };
-use futures::{Stream, TryStreamExt};
-use std::io;
+use futures_util::{Stream, TryStreamExt};
+use std::{io, pin::pin};
 use tokio::{fs::File, io::BufWriter};
 use tokio_util::io::StreamReader;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -112,8 +112,7 @@ where
     async {
         // Convert the stream into an `AsyncRead`.
         let body_with_io_error = stream.map_err(io::Error::other);
-        let body_reader = StreamReader::new(body_with_io_error);
-        futures::pin_mut!(body_reader);
+        let mut body_reader = pin!(StreamReader::new(body_with_io_error));
 
         // Create the file. `File` implements `AsyncWrite`.
         let path = std::path::Path::new(UPLOADS_DIRECTORY).join(path);

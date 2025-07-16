@@ -4,7 +4,7 @@ use axum::{
     BoxError,
 };
 use bytes::Bytes;
-use futures_util::TryStream;
+use futures_core::TryStream;
 use http::{header, StatusCode};
 use std::{io, path::Path};
 use tokio::{
@@ -44,6 +44,7 @@ use tokio_util::io::ReaderStream;
 /// let app = Router::new().route("/file-stream", get(file_stream));
 /// # let _: Router = app;
 /// ```
+#[must_use]
 #[derive(Debug)]
 pub struct FileStream<S> {
     /// stream.

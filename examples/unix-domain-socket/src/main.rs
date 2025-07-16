@@ -59,7 +59,7 @@ mod unix {
         let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
         tokio::task::spawn(async move {
             if let Err(err) = conn.await {
-                println!("Connection failed: {:?}", err);
+                println!("Connection failed: {err:?}");
             }
         });
 
@@ -79,7 +79,7 @@ mod unix {
     }
 
     async fn handler(ConnectInfo(info): ConnectInfo<UdsConnectInfo>) -> &'static str {
-        println!("new connection from `{:?}`", info);
+        println!("new connection from `{info:?}`");
 
         "Hello, World!"
     }

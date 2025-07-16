@@ -28,6 +28,7 @@ pub use self::typed::{SecondElementIs, TypedPath};
 // Validates a path at compile time, used with the vpath macro.
 #[rustversion::since(1.80)]
 #[doc(hidden)]
+#[must_use]
 pub const fn __private_validate_static_path(path: &'static str) -> &'static str {
     if path.is_empty() {
         panic!("Paths must start with a `/`. Use \"/\" for root routes")
@@ -76,6 +77,7 @@ macro_rules! vpath {
 }
 
 /// Extension trait that adds additional methods to [`Router`].
+#[allow(clippy::return_self_not_must_use)]
 pub trait RouterExt<S>: sealed::Sealed {
     /// Add a typed `GET` route to the router.
     ///

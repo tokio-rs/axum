@@ -1,5 +1,5 @@
 use axum_core::extract::{FromRequest, FromRequestParts, Request};
-use futures_util::future::BoxFuture;
+use futures_core::future::BoxFuture;
 use std::{
     any::type_name,
     convert::Infallible,

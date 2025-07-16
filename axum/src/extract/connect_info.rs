@@ -105,8 +105,8 @@ const _: () = {
     }
 };
 
-impl Connected<SocketAddr> for SocketAddr {
-    fn connect_info(remote_addr: SocketAddr) -> Self {
+impl Connected<Self> for SocketAddr {
+    fn connect_info(remote_addr: Self) -> Self {
         remote_addr
     }
 }

@@ -571,14 +571,13 @@ enum AllowHeader {
 impl AllowHeader {
     fn merge(self, other: Self) -> Self {
         match (self, other) {
-            (AllowHeader::Skip, _) | (_, AllowHeader::Skip) => AllowHeader::Skip,
-            (AllowHeader::None, AllowHeader::None) => AllowHeader::None,
-            (AllowHeader::None, AllowHeader::Bytes(pick)) => AllowHeader::Bytes(pick),
-            (AllowHeader::Bytes(pick), AllowHeader::None) => AllowHeader::Bytes(pick),
-            (AllowHeader::Bytes(mut a), AllowHeader::Bytes(b)) => {
+            (Self::Skip, _) | (_, Self::Skip) => Self::Skip,
+            (Self::None, Self::None) => Self::None,
+            (Self::None, Self::Bytes(pick)) | (Self::Bytes(pick), Self::None) => Self::Bytes(pick),
+            (Self::Bytes(mut a), Self::Bytes(b)) => {
                 a.extend_from_slice(b",");
                 a.extend_from_slice(&b);
-                AllowHeader::Bytes(a)
+                Self::Bytes(a)
             }
         }
     }
@@ -636,7 +635,7 @@ where
     {
         self.on_endpoint(
             filter,
-            MethodEndpoint::BoxedHandler(BoxedIntoRoute::from_handler(handler)),
+            &MethodEndpoint::BoxedHandler(BoxedIntoRoute::from_handler(handler)),
         )
     }
 
@@ -703,6 +702,7 @@ impl MethodRouter<(), Infallible> {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
+    #[must_use]
     pub fn into_make_service(self) -> IntoMakeService<Self> {
         IntoMakeService::new(self.with_state(()))
     }
@@ -736,6 +736,7 @@ impl MethodRouter<(), Infallible> {
     /// [`MakeService`]: tower::make::MakeService
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
     #[cfg(feature = "tokio")]
+    #[must_use]
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self.with_state(()))
     }
@@ -814,11 +815,11 @@ where
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
-        self.on_endpoint(filter, MethodEndpoint::Route(Route::new(svc)))
+        self.on_endpoint(filter, &MethodEndpoint::Route(Route::new(svc)))
     }
 
     #[track_caller]
-    fn on_endpoint(mut self, filter: MethodFilter, endpoint: MethodEndpoint<S, E>) -> Self {
+    fn on_endpoint(mut self, filter: MethodFilter, endpoint: &MethodEndpoint<S, E>) -> Self {
         // written as a separate function to generate less IR
         #[track_caller]
         fn set_endpoint<S, E>(
@@ -850,7 +851,7 @@ where
         set_endpoint(
             "GET",
             &mut self.get,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::GET,
             &mut self.allow_header,
@@ -860,7 +861,7 @@ where
         set_endpoint(
             "HEAD",
             &mut self.head,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::HEAD,
             &mut self.allow_header,
@@ -870,7 +871,7 @@ where
         set_endpoint(
             "TRACE",
             &mut self.trace,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::TRACE,
             &mut self.allow_header,
@@ -880,7 +881,7 @@ where
         set_endpoint(
             "PUT",
             &mut self.put,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::PUT,
             &mut self.allow_header,
@@ -890,7 +891,7 @@ where
         set_endpoint(
             "POST",
             &mut self.post,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::POST,
             &mut self.allow_header,
@@ -900,7 +901,7 @@ where
         set_endpoint(
             "PATCH",
             &mut self.patch,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::PATCH,
             &mut self.allow_header,
@@ -910,7 +911,7 @@ where
         set_endpoint(
             "OPTIONS",
             &mut self.options,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::OPTIONS,
             &mut self.allow_header,
@@ -920,7 +921,7 @@ where
         set_endpoint(
             "DELETE",
             &mut self.delete,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::DELETE,
             &mut self.allow_header,
@@ -930,7 +931,7 @@ where
         set_endpoint(
             "CONNECT",
             &mut self.options,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::CONNECT,
             &mut self.allow_header,
@@ -992,7 +993,7 @@ where
 
     #[doc = include_str!("../docs/method_routing/route_layer.md")]
     #[track_caller]
-    pub fn route_layer<L>(mut self, layer: L) -> MethodRouter<S, E>
+    pub fn route_layer<L>(mut self, layer: L) -> Self
     where
         L: Layer<Route<E>> + Clone + Send + Sync + 'static,
         L::Service: Service<Request, Error = E> + Clone + Send + Sync + 'static,
@@ -1035,7 +1036,7 @@ where
     pub(crate) fn merge_for_path(
         mut self,
         path: Option<&str>,
-        other: MethodRouter<S, E>,
+        other: Self,
     ) -> Result<Self, Cow<'static, str>> {
         // written using inner functions to generate less IR
         fn merge_inner<S, E>(
@@ -1086,7 +1087,7 @@ where
 
     #[doc = include_str!("../docs/method_routing/merge.md")]
     #[track_caller]
-    pub fn merge(self, other: MethodRouter<S, E>) -> Self {
+    pub fn merge(self, other: Self) -> Self {
         match self.merge_for_path(None, other) {
             Ok(t) => t,
             // not using unwrap or unwrap_or_else to get a clean panic message + the right location
@@ -1254,11 +1255,9 @@ where
 
     fn with_state<S2>(self, state: &S) -> MethodEndpoint<S2, E> {
         match self {
-            MethodEndpoint::None => MethodEndpoint::None,
-            MethodEndpoint::Route(route) => MethodEndpoint::Route(route),
-            MethodEndpoint::BoxedHandler(handler) => {
-                MethodEndpoint::Route(handler.into_route(state.clone()))
-            }
+            Self::None => MethodEndpoint::None,
+            Self::Route(route) => MethodEndpoint::Route(route),
+            Self::BoxedHandler(handler) => MethodEndpoint::Route(handler.into_route(state.clone())),
         }
     }
 }
