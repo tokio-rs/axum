@@ -1,6 +1,7 @@
-use axum::{
-    extract::{Extension, FromRequestParts},
-    response::Response,
+use axum::extract::{
+    rejection::ExtensionRejection,
+    Extension,
+    FromRequestParts,
 };
 
 #[derive(Clone, FromRequestParts)]
@@ -13,7 +14,7 @@ struct Extractor {
 
 fn assert_from_request()
 where
-    Extractor: FromRequestParts<(), Rejection = Response>,
+    Extractor: FromRequestParts<(), Rejection = ExtensionRejection>,
 {
 }
 

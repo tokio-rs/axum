@@ -8,11 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **breaking:** Router fallbacks are now properly merged for nested routers ([#3158])
+- **breaking:** `#[from_request(via(Extractor))]` now uses the extractor's
+  rejection type instead of `axum::response::Response` ([#3261])
 - **added:** Implement `OptionalFromRequest` for `Multipart` ([#3220])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
+[#3261]: https://github.com/tokio-rs/axum/pull/3261
 [#3205]: https://github.com/tokio-rs/axum/pull/3205
 [#3220]: https://github.com/tokio-rs/axum/pull/3220
 

@@ -725,18 +725,6 @@ fn impl_struct_by_extracting_all_at_once(
 
     let path_span = via_path.span();
 
-    let (associated_rejection_type, map_err) = if let Some(rejection) = &rejection {
-        let rejection = quote! { #rejection };
-        let map_err = quote! { ::std::convert::From::from };
-        (rejection, map_err)
-    } else {
-        let rejection = quote! {
-            ::axum::response::Response
-        };
-        let map_err = quote! { ::axum::response::IntoResponse::into_response };
-        (rejection, map_err)
-    };
-
     // for something like
     //
     // ```
@@ -805,6 +793,19 @@ fn impl_struct_by_extracting_all_at_once(
         quote! { Self }
     };
 
+    let associated_rejection_type = if let Some(rejection) = &rejection {
+        quote! { #rejection }
+    } else {
+        match tr {
+            Trait::FromRequest => quote! {
+                <#via_path<#via_type_generics> as ::axum::extract::FromRequest<#trait_generics>>::Rejection
+            },
+            Trait::FromRequestParts => quote! {
+                <#via_path<#via_type_generics> as ::axum::extract::FromRequestParts<#trait_generics>>::Rejection
+            },
+        }
+    };
+
     let value_to_self = if generic_ident.is_some() {
         quote! {
             #ident(value)
@@ -834,7 +835,7 @@ fn impl_struct_by_extracting_all_at_once(
                         <#via_path<#via_type_generics> as ::axum::extract::FromRequest<_, _>>::from_request(req, state)
                             .await
                             .map(|#via_path(value)| #value_to_self)
-                            .map_err(#map_err)
+                            .map_err(::std::convert::From::from)
                     }
                 }
             }
@@ -857,7 +858,7 @@ fn impl_struct_by_extracting_all_at_once(
                         <#via_path<#via_type_generics> as ::axum::extract::FromRequestParts<_>>::from_request_parts(parts, state)
                             .await
                             .map(|#via_path(value)| #value_to_self)
-                            .map_err(#map_err)
+                            .map_err(::std::convert::From::from)
                     }
                 }
             }
