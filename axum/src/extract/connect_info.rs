@@ -85,22 +85,13 @@ pub trait Connected<T>: Clone + Send + Sync + 'static {
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 const _: () = {
     use crate::serve;
-    use tokio::net::TcpListener;
 
-    impl Connected<serve::IncomingStream<'_, TcpListener>> for SocketAddr {
-        fn connect_info(stream: serve::IncomingStream<'_, TcpListener>) -> Self {
-            *stream.remote_addr()
-        }
-    }
-
-    impl<'a, L, F> Connected<serve::IncomingStream<'a, serve::TapIo<L, F>>> for L::Addr
+    impl<L> Connected<serve::IncomingStream<'_, L>> for SocketAddr
     where
-        L: serve::Listener,
-        L::Addr: Clone + Sync + 'static,
-        F: FnMut(&mut L::Io) + Send + 'static,
+        L: serve::Listener<Addr = SocketAddr>,
     {
-        fn connect_info(stream: serve::IncomingStream<'a, serve::TapIo<L, F>>) -> Self {
-            stream.remote_addr().clone()
+        fn connect_info(stream: serve::IncomingStream<'_, L>) -> Self {
+            *stream.remote_addr()
         }
     }
 };
