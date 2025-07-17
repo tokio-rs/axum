@@ -1562,7 +1562,6 @@ name = "example-low-level-native-tls"
 version = "0.1.0"
 dependencies = [
  "axum",
- "futures-util",
  "hyper 1.5.2",
  "hyper-util",
  "tokio",
@@ -1577,7 +1576,6 @@ name = "example-low-level-openssl"
 version = "0.1.0"
 dependencies = [
  "axum",
- "futures-util",
  "hyper 1.5.2",
  "hyper-util",
  "openssl",
@@ -1593,7 +1591,6 @@ name = "example-low-level-rustls"
 version = "0.1.0"
 dependencies = [
  "axum",
- "futures-util",
  "hyper 1.5.2",
  "hyper-util",
  "tokio",
