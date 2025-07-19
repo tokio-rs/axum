@@ -329,7 +329,6 @@ dependencies = [
  "quickcheck",
  "quickcheck_macros",
  "reqwest 0.12.12",
- "rustversion",
  "serde",
  "serde_json",
  "serde_path_to_error",

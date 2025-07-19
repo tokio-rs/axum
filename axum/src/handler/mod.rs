@@ -125,11 +125,8 @@ pub use self::service::HandlerService;
 ///     )));
 /// # let _: Router = app;
 /// ```
-#[rustversion::attr(
-    since(1.78),
-    diagnostic::on_unimplemented(
-        note = "Consider using `#[axum::debug_handler]` to improve the error message"
-    )
+#[diagnostic::on_unimplemented(
+    note = "Consider using `#[axum::debug_handler]` to improve the error message"
 )]
 pub trait Handler<T, S>: Clone + Send + Sync + Sized + 'static {
     /// The type of future calling this handler returns.
