@@ -7,7 +7,7 @@ exclude = ["examples/async-graphql"]
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.75"
+rust-version = "1.78"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
