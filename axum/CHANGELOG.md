@@ -13,11 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Implement `OptionalFromRequest` for `Multipart` ([#3220])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
+- **change:** Update minimum rust version to 1.78 ([#3412])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
 [#3205]: https://github.com/tokio-rs/axum/pull/3205
 [#3220]: https://github.com/tokio-rs/axum/pull/3220
+[#3412]: https://github.com/tokio-rs/axum/pull/3412
 
 # 0.8.4
 

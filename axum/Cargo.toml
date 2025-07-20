@@ -100,7 +100,6 @@ memchr = "2.4.1"
 mime = "0.3.16"
 percent-encoding = "2.1"
 pin-project-lite = "0.2.7"
-rustversion = "1.0.9"
 serde = "1.0"
 sync_wrapper = "1.0.0"
 tower = { version = "0.5.2", default-features = false, features = ["util"] }
