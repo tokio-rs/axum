@@ -15,6 +15,7 @@ use http::{
     header::{HeaderMap, CONTENT_TYPE},
     Request, StatusCode,
 };
+use http_body::{Body as HttpBody, Frame};
 use std::{
     error::Error,
     fmt,
@@ -143,6 +144,19 @@ impl Stream for Field {
         Pin::new(&mut self.inner)
             .poll_next(cx)
             .map_err(MultipartError::from_multer)
+    }
+}
+
+impl HttpBody for Field {
+    type Data = Bytes;
+
+    type Error = MultipartError;
+
+    fn poll_frame(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
+        self.poll_next(cx).map_ok(Frame::data)
     }
 }
 
