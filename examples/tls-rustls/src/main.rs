@@ -11,11 +11,18 @@ use axum::{
     http::{uri::Authority, StatusCode, Uri},
     response::Redirect,
     routing::get,
+    serve::ListenerExt,
     BoxError, Router,
 };
 use axum_extra::extract::Host;
-use axum_server::tls_rustls::RustlsConfig;
-use std::{net::SocketAddr, path::PathBuf};
+use std::{net::SocketAddr, path::PathBuf, sync::Arc};
+use tokio_rustls::{
+    rustls::{
+        self,
+        pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer},
+    },
+    TlsAcceptor,
+};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[allow(dead_code)]
@@ -43,26 +50,50 @@ async fn main() {
     tokio::spawn(redirect_http_to_https(ports));
 
     // configure certificate and private key used by https
-    let config = RustlsConfig::from_pem_file(
+    let certs = CertificateDer::pem_file_iter(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("self_signed_certs")
             .join("cert.pem"),
+    )
+    .unwrap()
+    .collect::<Result<Vec<_>, _>>()
+    .unwrap();
+
+    let key = PrivateKeyDer::from_pem_file(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("self_signed_certs")
             .join("key.pem"),
     )
-    .await
     .unwrap();
+
+    let config = rustls::ServerConfig::builder()
+        .with_no_client_auth()
+        .with_single_cert(certs, key)
+        .unwrap();
+
+    let acceptor = TlsAcceptor::from(Arc::new(config));
 
     let app = Router::new().route("/", get(handler));
 
-    // run https server
     let addr = SocketAddr::from(([127, 0, 0, 1], ports.https));
-    tracing::debug!("listening on {}", addr);
-    axum_server::bind_rustls(addr, config)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+
+    // Use the `handshake` adapter to apply TLS to incoming connections
+    let listener = listener.handshake(move |stream| {
+        let acceptor = acceptor.clone();
+        async move {
+            match acceptor.accept(stream).await {
+                Ok(stream) => Some(stream),
+                Err(err) => {
+                    tracing::error!(%err, "TLS handshake failed");
+                    None
+                }
+            }
+        }
+    });
+
+    axum::serve(listener, app).await.unwrap();
 }
 
 #[allow(dead_code)]
