@@ -230,9 +230,7 @@ fn install_rewrk() {
     let status = cmd
         .status()
         .unwrap_or_else(|_| panic!("failed to install rewrk"));
-    if !status.success() {
-        panic!("failed to install rewrk");
-    }
+    assert!(status.success(), "failed to install rewrk");
 }
 
 fn ensure_rewrk_is_installed() {
