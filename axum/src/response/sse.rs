@@ -39,7 +39,9 @@ use futures_util::stream::TryStream;
 use http_body::Frame;
 use pin_project_lite::pin_project;
 use std::{
-    fmt, mem,
+    fmt,
+    io::Write,
+    mem,
     pin::Pin,
     task::{ready, Context, Poll},
     time::Duration,
@@ -174,6 +176,23 @@ pub struct Event {
     flags: EventFlags,
 }
 
+#[derive(Debug)]
+#[must_use]
+/// Expose [`Event`] as a [`std::io::Write`]
+/// such that any form of data can be written as data safely.
+///
+/// This also ensures that newline characters `\r` and `\n`
+/// correctly trigger a split with a new `data: ` prefix.
+///
+/// # Panics
+///
+/// Panics if any `data` has already been written prior to the first write
+/// of this [`EventDataWrite`] instance.
+pub struct EventDataWrite<'a> {
+    buffer: bytes::buf::Writer<&'a mut BytesMut>,
+    flags: Option<&'a mut EventFlags>,
+}
+
 impl Event {
     /// Default keep-alive event
     pub const DEFAULT_KEEP_ALIVE: Self = Self::finalized(Bytes::from_static(b":\n\n"));
@@ -182,6 +201,17 @@ impl Event {
         Self {
             buffer: Buffer::Finalized(bytes),
             flags: EventFlags::from_bits(0),
+        }
+    }
+
+    /// Use this [`Event`] as a [`EventDataWrite`] to write custom data.
+    ///
+    /// - [`Self::data`] can be used as a shortcut to write `str` data
+    /// - [`Self::json_data`] can be used as a shortcut to write `json` data
+    pub fn data_writer(&mut self) -> EventDataWrite<'_> {
+        EventDataWrite {
+            buffer: self.buffer.as_mut().writer(),
+            flags: Some(&mut self.flags),
         }
     }
 
@@ -195,23 +225,19 @@ impl Event {
     ///
     /// # Panics
     ///
-    /// - Panics if `data` contains any carriage returns, as they cannot be transmitted over SSE.
-    /// - Panics if `data` or `json_data` have already been called.
+    /// Panics if any `data` has already been written before.
     ///
     /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
     pub fn data<T>(mut self, data: T) -> Self
     where
         T: AsRef<str>,
     {
-        if self.flags.contains(EventFlags::HAS_DATA) {
-            panic!("Called `Event::data` multiple times");
-        }
+        {
+            use std::io::Write;
 
-        for line in memchr_split(b'\n', data.as_ref().as_bytes()) {
-            self.field("data", line);
+            let mut write = self.data_writer();
+            let _ = write!(write, "{}", data.as_ref());
         }
-
-        self.flags.insert(EventFlags::HAS_DATA);
 
         self
     }
@@ -222,7 +248,7 @@ impl Event {
     ///
     /// # Panics
     ///
-    /// Panics if `data` or `json_data` have already been called.
+    /// Panics if any `data` has already been written before.
     ///
     /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
     #[cfg(feature = "json")]
@@ -230,34 +256,7 @@ impl Event {
     where
         T: serde::Serialize,
     {
-        struct IgnoreNewLines<'a>(bytes::buf::Writer<&'a mut BytesMut>);
-        impl std::io::Write for IgnoreNewLines<'_> {
-            fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-                let mut last_split = 0;
-                for delimiter in memchr::memchr2_iter(b'\n', b'\r', buf) {
-                    self.0.write_all(&buf[last_split..delimiter])?;
-                    last_split = delimiter + 1;
-                }
-                self.0.write_all(&buf[last_split..])?;
-                Ok(buf.len())
-            }
-
-            fn flush(&mut self) -> std::io::Result<()> {
-                self.0.flush()
-            }
-        }
-        if self.flags.contains(EventFlags::HAS_DATA) {
-            panic!("Called `Event::json_data` multiple times");
-        }
-
-        let buffer = self.buffer.as_mut();
-        buffer.extend_from_slice(b"data: ");
-        serde_json::to_writer(IgnoreNewLines(buffer.writer()), &data)
-            .map_err(axum_core::Error::new)?;
-        buffer.put_u8(b'\n');
-
-        self.flags.insert(EventFlags::HAS_DATA);
-
+        serde_json::to_writer(self.data_writer(), &data).map_err(axum_core::Error::new)?;
         Ok(self)
     }
 
@@ -403,6 +402,48 @@ impl Event {
                 bytes_mut.put_u8(b'\n');
                 bytes_mut.freeze()
             }
+        }
+    }
+}
+
+impl std::io::Write for EventDataWrite<'_> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if buf.is_empty() {
+            return Ok(0);
+        }
+
+        if let Some(flags) = self.flags.take() {
+            if flags.contains(EventFlags::HAS_DATA) {
+                panic!("Called `Event::data*` multiple times");
+            }
+
+            self.buffer.write_all(b"data: ")?;
+
+            flags.insert(EventFlags::HAS_DATA);
+        }
+
+        let mut last_split = 0;
+        for delimiter in memchr::memchr2_iter(b'\n', b'\r', buf) {
+            self.buffer.write_all(&buf[last_split..=delimiter])?;
+            self.buffer.write_all(b"data: ")?;
+            last_split = delimiter + 1;
+        }
+        self.buffer.write_all(&buf[last_split..])?;
+
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.buffer.flush()
+    }
+}
+
+impl Drop for EventDataWrite<'_> {
+    fn drop(&mut self) {
+        // ASSUMPTION: data has been written if flags is None
+        // (see impl of `std::io::Write` for `EventDataWrite`)
+        if self.flags.is_none() {
+            let _ = self.buffer.write_all(b"\n");
         }
     }
 }
@@ -566,32 +607,6 @@ where
     }
 }
 
-fn memchr_split(needle: u8, haystack: &[u8]) -> MemchrSplit<'_> {
-    MemchrSplit {
-        needle,
-        haystack: Some(haystack),
-    }
-}
-
-struct MemchrSplit<'a> {
-    needle: u8,
-    haystack: Option<&'a [u8]>,
-}
-
-impl<'a> Iterator for MemchrSplit<'a> {
-    type Item = &'a [u8];
-    fn next(&mut self) -> Option<Self::Item> {
-        let haystack = self.haystack?;
-        if let Some(pos) = memchr::memchr(self.needle, haystack) {
-            let (front, back) = haystack.split_at(pos);
-            self.haystack = Some(&back[1..]);
-            Some(front)
-        } else {
-            self.haystack.take()
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -611,14 +626,14 @@ mod tests {
     }
 
     #[test]
-    fn valid_json_raw_value_chars_stripped() {
+    fn valid_json_raw_value_chars_handled() {
         let json_string = "{\r\"foo\":  \n\r\r   \"bar\\n\"\n}";
         let json_raw_value_event = Event::default()
             .json_data(serde_json::from_str::<&RawValue>(json_string).unwrap())
             .unwrap();
         assert_eq!(
             &*json_raw_value_event.finalize(),
-            format!("data: {}\n\n", json_string.replace(['\n', '\r'], "")).as_bytes()
+            b"data: {\rdata: \"foo\":  \ndata: \rdata: \rdata:    \"bar\\n\"\ndata: }\n\n"
         );
     }
 
@@ -762,33 +777,5 @@ mod tests {
         }
 
         fields
-    }
-
-    #[test]
-    fn memchr_splitting() {
-        assert_eq!(
-            memchr_split(2, &[]).collect::<Vec<_>>(),
-            [&[]] as [&[u8]; 1]
-        );
-        assert_eq!(
-            memchr_split(2, &[2]).collect::<Vec<_>>(),
-            [&[], &[]] as [&[u8]; 2]
-        );
-        assert_eq!(
-            memchr_split(2, &[1]).collect::<Vec<_>>(),
-            [&[1]] as [&[u8]; 1]
-        );
-        assert_eq!(
-            memchr_split(2, &[1, 2]).collect::<Vec<_>>(),
-            [&[1], &[]] as [&[u8]; 2]
-        );
-        assert_eq!(
-            memchr_split(2, &[2, 1]).collect::<Vec<_>>(),
-            [&[], &[1]] as [&[u8]; 2]
-        );
-        assert_eq!(
-            memchr_split(2, &[1, 2, 2, 1]).collect::<Vec<_>>(),
-            [&[1], &[], &[1]] as [&[u8]; 3]
-        );
     }
 }
