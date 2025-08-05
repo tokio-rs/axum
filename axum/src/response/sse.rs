@@ -626,6 +626,23 @@ mod tests {
     }
 
     #[test]
+    fn write_data_writer_multiple() {
+        let mut event = Event::default();
+
+        let mut writer = event.data_writer();
+        writer.write_all(b"line ").unwrap();
+        writer.write_all(b"1\nl").unwrap();
+        writer.write_all(b"ine").unwrap();
+        writer.write_all(b" 2\r").unwrap();
+        core::mem::drop(writer);
+
+        assert_eq!(
+            &*event.finalize(),
+            b"data: line 1\ndata: line 2\rdata: \n\n"
+        );
+    }
+
+    #[test]
     fn valid_json_raw_value_chars_handled() {
         let json_string = "{\r\"foo\":  \n\r\r   \"bar\\n\"\n}";
         let json_raw_value_event = Event::default()
