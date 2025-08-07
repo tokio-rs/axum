@@ -191,7 +191,7 @@ pub struct EventDataWriter {
     event: Event,
 
     // Indicates if _this_ EventDataWriter has written data,
-    // this does not say anything about wether or not `event` contains
+    // this does not say anything about whether or not `event` contains
     // data or not.
     data_written: bool,
 }
@@ -422,7 +422,10 @@ impl Event {
 }
 
 impl EventDataWriter {
-    /// Consume the [`EventDataWriter]
+    /// Consume the [`EventDataWriter`] and return the [`Event`] once again.
+    ///
+    /// In case any data was written by this instance
+    /// it will also write the trailing `\n` character.
     pub fn into_event(self) -> Event {
         let mut event = self.event;
         if self.data_written {
@@ -479,9 +482,8 @@ impl std::fmt::Write for EventDataWriter {
         let buffer = self.event.buffer.as_mut();
 
         let mut iter = s.split_inclusive(['\n', '\r']);
-        let mut last_part = match iter.next() {
-            Some(part) => part,
-            None => return Ok(()),
+        let Some(mut last_part) = iter.next() else {
+            return Ok(());
         };
 
         for part in iter {
@@ -686,18 +688,18 @@ mod tests {
         let mut writer = writer.into_event().into_data_writer();
 
         writer.write_str("").unwrap();
-        writer.write_str("line ").unwrap();
-        writer.write_str("1\nl").unwrap();
+        writer.write_str("moon ").unwrap();
+        writer.write_str("star\nsun").unwrap();
         writer.write_str("").unwrap();
-        writer.write_str("ine").unwrap();
+        writer.write_str("set").unwrap();
         writer.write_str("").unwrap();
-        writer.write_str(" 2\r").unwrap();
+        writer.write_str(" bye\r").unwrap();
 
         let event = writer.into_event();
 
         assert_eq!(
             &*event.finalize(),
-            b"data: line 1\ndata: line 2\rdata: \n\n"
+            b"data: moon star\ndata: sunset bye\rdata: \n\n"
         );
     }
 
