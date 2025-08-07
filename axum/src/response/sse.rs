@@ -39,8 +39,7 @@ use futures_util::stream::TryStream;
 use http_body::Frame;
 use pin_project_lite::pin_project;
 use std::{
-    fmt,
-    io::Write,
+    fmt::{self, Write as _},
     mem,
     pin::Pin,
     task::{ready, Context, Poll},
@@ -187,10 +186,14 @@ pub struct Event {
 /// # Panics
 ///
 /// Panics if any `data` has already been written prior to the first write
-/// of this [`EventDataWrite`] instance.
-pub struct EventDataWrite<'a> {
-    buffer: bytes::buf::Writer<&'a mut BytesMut>,
-    flags: Option<&'a mut EventFlags>,
+/// of this [`EventDataWriter`] instance.
+pub struct EventDataWriter {
+    event: Event,
+
+    // Indicates if _this_ EventDataWriter has written data,
+    // this does not say anything about wether or not `event` contains
+    // data or not.
+    data_written: bool,
 }
 
 impl Event {
@@ -204,14 +207,16 @@ impl Event {
         }
     }
 
-    /// Use this [`Event`] as a [`EventDataWrite`] to write custom data.
+    /// Use this [`Event`] as a [`EventDataWriter`] to write custom data.
     ///
     /// - [`Self::data`] can be used as a shortcut to write `str` data
     /// - [`Self::json_data`] can be used as a shortcut to write `json` data
-    pub fn data_writer(&mut self) -> EventDataWrite<'_> {
-        EventDataWrite {
-            buffer: self.buffer.as_mut().writer(),
-            flags: Some(&mut self.flags),
+    ///
+    /// Turn it into an [`Event`] again using [`EventDataWriter::into_event`].
+    pub fn into_data_writer(self) -> EventDataWriter {
+        EventDataWriter {
+            event: self,
+            data_written: false,
         }
     }
 
@@ -228,18 +233,13 @@ impl Event {
     /// Panics if any `data` has already been written before.
     ///
     /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
-    pub fn data<T>(mut self, data: T) -> Self
+    pub fn data<T>(self, data: T) -> Self
     where
         T: AsRef<str>,
     {
-        {
-            use std::io::Write;
-
-            let mut write = self.data_writer();
-            let _ = write!(write, "{}", data.as_ref());
-        }
-
-        self
+        let mut writer = self.into_data_writer();
+        let _ = writer.write_str(data.as_ref());
+        writer.into_event()
     }
 
     /// Set the event's data field to a value serialized as unformatted JSON (`data: <content>`).
@@ -252,12 +252,27 @@ impl Event {
     ///
     /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
     #[cfg(feature = "json")]
-    pub fn json_data<T>(mut self, data: T) -> Result<Self, axum_core::Error>
+    pub fn json_data<T>(self, data: T) -> Result<Self, axum_core::Error>
     where
         T: serde::Serialize,
     {
-        serde_json::to_writer(self.data_writer(), &data).map_err(axum_core::Error::new)?;
-        Ok(self)
+        struct JsonWriter<'a>(&'a mut EventDataWriter);
+        impl std::io::Write for JsonWriter<'_> {
+            #[inline]
+            fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+                self.0.write_buf(buf)
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+
+        let mut writer = self.into_data_writer();
+
+        let json_writer = JsonWriter(&mut writer);
+        serde_json::to_writer(json_writer, &data).map_err(axum_core::Error::new)?;
+
+        Ok(writer.into_event())
     }
 
     /// Set the event's comment field (`:<comment-text>`).
@@ -406,45 +421,80 @@ impl Event {
     }
 }
 
-impl std::io::Write for EventDataWrite<'_> {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        if buf.is_empty() {
-            return Ok(0);
+impl EventDataWriter {
+    /// Consume the [`EventDataWriter]
+    pub fn into_event(self) -> Event {
+        let mut event = self.event;
+        if self.data_written {
+            let _ = event.buffer.as_mut().write_char('\n');
         }
-
-        if let Some(flags) = self.flags.take() {
-            if flags.contains(EventFlags::HAS_DATA) {
-                panic!("Called `Event::data*` multiple times");
-            }
-
-            self.buffer.write_all(b"data: ")?;
-
-            flags.insert(EventFlags::HAS_DATA);
-        }
-
-        let mut last_split = 0;
-        for delimiter in memchr::memchr2_iter(b'\n', b'\r', buf) {
-            self.buffer.write_all(&buf[last_split..=delimiter])?;
-            self.buffer.write_all(b"data: ")?;
-            last_split = delimiter + 1;
-        }
-        self.buffer.write_all(&buf[last_split..])?;
-
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.buffer.flush()
+        event
     }
 }
 
-impl Drop for EventDataWrite<'_> {
-    fn drop(&mut self) {
-        // ASSUMPTION: data has been written if flags is None
-        // (see impl of `std::io::Write` for `EventDataWrite`)
-        if self.flags.is_none() {
-            let _ = self.buffer.write_all(b"\n");
+impl EventDataWriter {
+    fn data_write_pre_check(&mut self) {
+        if std::mem::replace(&mut self.data_written, true) {
+            return;
         }
+
+        if self.event.flags.contains(EventFlags::HAS_DATA) {
+            panic!("Called `Event::data*` multiple times");
+        }
+
+        let _ = self.event.buffer.as_mut().write_str("data: ");
+        self.event.flags.insert(EventFlags::HAS_DATA)
+    }
+
+    #[cfg(feature = "json")]
+    fn write_buf(&mut self, buf: &[u8]) -> Result<usize, std::io::Error> {
+        use std::io::Write;
+
+        if buf.is_empty() {
+            return Ok(0);
+        }
+        self.data_write_pre_check();
+
+        let mut writer = self.event.buffer.as_mut().writer();
+
+        let mut last_split = 0;
+        for delimiter in memchr::memchr2_iter(b'\n', b'\r', buf) {
+            writer.write_all(&buf[last_split..=delimiter])?;
+            writer.write_all(b"data: ")?;
+            last_split = delimiter + 1;
+        }
+        writer.write_all(&buf[last_split..])?;
+
+        Ok(buf.len())
+    }
+}
+
+impl std::fmt::Write for EventDataWriter {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        if s.is_empty() {
+            return Ok(());
+        }
+        self.data_write_pre_check();
+
+        let buffer = self.event.buffer.as_mut();
+
+        let mut iter = s.split_inclusive(['\n', '\r']);
+        let mut last_part = match iter.next() {
+            Some(part) => part,
+            None => return Ok(()),
+        };
+
+        for part in iter {
+            buffer.write_str(last_part)?; // already contains the newline at the end
+            buffer.write_str("data: ")?;
+            last_part = part;
+        }
+        buffer.write_str(last_part)?;
+        if last_part.ends_with(['\n', '\r']) {
+            buffer.write_str("data: ")?;
+        }
+
+        Ok(())
     }
 }
 
@@ -626,15 +676,24 @@ mod tests {
     }
 
     #[test]
-    fn write_data_writer_multiple() {
-        let mut event = Event::default();
+    fn write_data_writer_str() {
+        // also confirm that nop writers do nothing :)
+        let mut writer = Event::default()
+            .into_data_writer()
+            .into_event()
+            .into_data_writer();
+        writer.write_str("").unwrap();
+        let mut writer = writer.into_event().into_data_writer();
 
-        let mut writer = event.data_writer();
-        writer.write_all(b"line ").unwrap();
-        writer.write_all(b"1\nl").unwrap();
-        writer.write_all(b"ine").unwrap();
-        writer.write_all(b" 2\r").unwrap();
-        core::mem::drop(writer);
+        writer.write_str("").unwrap();
+        writer.write_str("line ").unwrap();
+        writer.write_str("1\nl").unwrap();
+        writer.write_str("").unwrap();
+        writer.write_str("ine").unwrap();
+        writer.write_str("").unwrap();
+        writer.write_str(" 2\r").unwrap();
+
+        let event = writer.into_event();
 
         assert_eq!(
             &*event.finalize(),
