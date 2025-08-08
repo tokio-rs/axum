@@ -40,6 +40,7 @@ use http_body::Frame;
 use pin_project_lite::pin_project;
 use std::{
     fmt::{self, Write as _},
+    io::Write as _,
     mem,
     pin::Pin,
     task::{ready, Context, Poll},
@@ -177,7 +178,7 @@ pub struct Event {
 
 #[derive(Debug)]
 #[must_use]
-/// Expose [`Event`] as a [`std::io::Write`]
+/// Expose [`Event`] as a [`std::fmt::Write`]
 /// such that any form of data can be written as data safely.
 ///
 /// This also ensures that newline characters `\r` and `\n`
@@ -260,7 +261,7 @@ impl Event {
         impl std::io::Write for JsonWriter<'_> {
             #[inline]
             fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-                self.0.write_buf(buf)
+                Ok(self.0.write_buf(buf))
             }
             fn flush(&mut self) -> std::io::Result<()> {
                 Ok(())
@@ -436,66 +437,41 @@ impl EventDataWriter {
 }
 
 impl EventDataWriter {
-    fn data_write_pre_check(&mut self) {
-        if std::mem::replace(&mut self.data_written, true) {
-            return;
-        }
-
-        if self.event.flags.contains(EventFlags::HAS_DATA) {
-            panic!("Called `Event::data*` multiple times");
-        }
-
-        let _ = self.event.buffer.as_mut().write_str("data: ");
-        self.event.flags.insert(EventFlags::HAS_DATA)
-    }
-
-    #[cfg(feature = "json")]
-    fn write_buf(&mut self, buf: &[u8]) -> Result<usize, std::io::Error> {
-        use std::io::Write;
-
+    // Assumption: underlying writer never returns an error:
+    // <https://docs.rs/bytes/latest/src/bytes/buf/writer.rs.html#79-82>
+    fn write_buf(&mut self, buf: &[u8]) -> usize {
         if buf.is_empty() {
-            return Ok(0);
+            return 0;
         }
-        self.data_write_pre_check();
 
-        let mut writer = self.event.buffer.as_mut().writer();
+        let buffer = self.event.buffer.as_mut();
+
+        if !std::mem::replace(&mut self.data_written, true) {
+            if self.event.flags.contains(EventFlags::HAS_DATA) {
+                panic!("Called `Event::data*` multiple times");
+            }
+
+            let _ = buffer.write_str("data: ");
+            self.event.flags.insert(EventFlags::HAS_DATA);
+        }
+
+        let mut writer = buffer.writer();
 
         let mut last_split = 0;
         for delimiter in memchr::memchr2_iter(b'\n', b'\r', buf) {
-            writer.write_all(&buf[last_split..=delimiter])?;
-            writer.write_all(b"data: ")?;
+            let _ = writer.write_all(&buf[last_split..=delimiter]);
+            let _ = writer.write_all(b"data: ");
             last_split = delimiter + 1;
         }
-        writer.write_all(&buf[last_split..])?;
+        let _ = writer.write_all(&buf[last_split..]);
 
-        Ok(buf.len())
+        buf.len()
     }
 }
 
 impl std::fmt::Write for EventDataWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        if s.is_empty() {
-            return Ok(());
-        }
-        self.data_write_pre_check();
-
-        let buffer = self.event.buffer.as_mut();
-
-        let mut iter = s.split_inclusive(['\n', '\r']);
-        let Some(mut last_part) = iter.next() else {
-            return Ok(());
-        };
-
-        for part in iter {
-            buffer.write_str(last_part)?; // already contains the newline at the end
-            buffer.write_str("data: ")?;
-            last_part = part;
-        }
-        buffer.write_str(last_part)?;
-        if last_part.ends_with(['\n', '\r']) {
-            buffer.write_str("data: ")?;
-        }
-
+        let _ = self.write_buf(s.as_bytes());
         Ok(())
     }
 }
