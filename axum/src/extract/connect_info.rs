@@ -102,6 +102,86 @@ impl Connected<SocketAddr> for SocketAddr {
     }
 }
 
+#[allow(dead_code)]
+#[test]
+fn connected_traits() {
+    // Test that the `Connected` trait can be used with custom address and listener types.
+
+    use tokio::net::{TcpListener, TcpStream};
+
+    use crate::extract::connect_info::Connected;
+    use crate::serve::{IncomingStream, Listener};
+    use crate::Router;
+
+    fn create_router() -> Router {
+        todo!()
+    }
+
+    fn tcp_listener() -> TcpListener {
+        todo!()
+    }
+
+    #[derive(Clone)]
+    #[allow(dead_code)]
+    struct CustomAddr(SocketAddr);
+
+    impl Connected<IncomingStream<'_, TcpListener>> for CustomAddr {
+        fn connect_info(_stream: IncomingStream<'_, TcpListener>) -> Self {
+            todo!()
+        }
+    }
+
+    impl Connected<IncomingStream<'_, CustomListener>> for CustomAddr {
+        fn connect_info(_stream: IncomingStream<'_, CustomListener>) -> Self {
+            todo!()
+        }
+    }
+
+    struct CustomListener {}
+
+    impl Listener for CustomListener {
+        type Io = TcpStream;
+        type Addr = SocketAddr;
+
+        async fn accept(&mut self) -> (Self::Io, Self::Addr) {
+            todo!()
+        }
+
+        fn local_addr(&self) -> tokio::io::Result<Self::Addr> {
+            todo!()
+        }
+    }
+
+    fn custom_connected() {
+        let router = create_router();
+        let _ = crate::serve(
+            tcp_listener(),
+            router.into_make_service_with_connect_info::<CustomAddr>(),
+        );
+    }
+
+    fn custom_listener() {
+        let router = create_router();
+        let _ = crate::serve(CustomListener {}, router.into_make_service());
+    }
+
+    fn custom_listener_with_connect() {
+        let router = create_router();
+        let _ = crate::serve(
+            CustomListener {},
+            router.into_make_service_with_connect_info::<SocketAddr>(),
+        );
+    }
+
+    fn custom_listener_with_custom_connect() {
+        let router = create_router();
+        let _ = crate::serve(
+            CustomListener {},
+            router.into_make_service_with_connect_info::<CustomAddr>(),
+        );
+    }
+}
+
 impl<S, C, T> Service<T> for IntoMakeServiceWithConnectInfo<S, C>
 where
     S: Clone,
