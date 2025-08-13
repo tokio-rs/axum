@@ -134,13 +134,13 @@
 //! it is simple to convert errors into responses and you are guaranteed that
 //! all errors are handled.
 //!
-//! See [`error_handling`](crate::error_handling) for more details on axum's
+//! See [`error_handling`] for more details on axum's
 //! error handling model and how to handle errors gracefully.
 //!
 //! # Middleware
 //!
 //! There are several different ways to write middleware for axum. See
-//! [`middleware`](crate::middleware) for more details.
+//! [`middleware`] for more details.
 //!
 //! # Sharing state with handlers
 //!
@@ -190,7 +190,7 @@
 //!
 //! ## Using request extensions
 //!
-//! Another way to share state with handlers is using [`Extension`](crate::extract::Extension) as
+//! Another way to share state with handlers is using [`Extension`] as
 //! layer and extractor:
 //!
 //! ```rust,no_run
