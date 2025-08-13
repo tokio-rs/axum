@@ -176,8 +176,6 @@ pub struct Event {
     flags: EventFlags,
 }
 
-#[derive(Debug)]
-#[must_use]
 /// Expose [`Event`] as a [`std::fmt::Write`]
 /// such that any form of data can be written as data safely.
 ///
@@ -188,6 +186,8 @@ pub struct Event {
 ///
 /// Panics if any `data` has already been written prior to the first write
 /// of this [`EventDataWriter`] instance.
+#[derive(Debug)]
+#[must_use]
 pub struct EventDataWriter {
     event: Event,
 
@@ -469,7 +469,7 @@ impl EventDataWriter {
     }
 }
 
-impl std::fmt::Write for EventDataWriter {
+impl fmt::Write for EventDataWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         let _ = self.write_buf(s.as_bytes());
         Ok(())
