@@ -212,7 +212,7 @@ mod time_library {
             static COUNTER: AtomicU64 = AtomicU64::new(0);
 
             // Fail on every third call just to simulate errors
-            if COUNTER.fetch_add(1, Ordering::SeqCst) % 3 == 0 {
+            if COUNTER.fetch_add(1, Ordering::SeqCst).is_multiple_of(3) {
                 Err(Error::FailedToGetTime)
             } else {
                 Ok(Self(1337))
