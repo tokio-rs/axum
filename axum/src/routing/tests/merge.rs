@@ -62,11 +62,11 @@ async fn multiple_ors_balanced_differently() {
     async fn test(name: &str, app: Router) {
         let client = TestClient::new(app);
 
-        for n in ["one", "two", "three", "four"].iter() {
+        for n in ["one", "two", "three", "four"] {
             println!("running: {name} / {n}");
             let res = client.get(&format!("/{n}")).await;
             assert_eq!(res.status(), StatusCode::OK);
-            assert_eq!(res.text().await, *n);
+            assert_eq!(res.text().await, n);
         }
     }
 }

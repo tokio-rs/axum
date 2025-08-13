@@ -522,7 +522,7 @@ fn check_input_order(item_fn: &ItemFn, kind: FunctionKind) -> Option<TokenStream
 
     if types_that_consume_the_request.is_empty() {
         return None;
-    };
+    }
 
     // exactly one type that consumes the request
     if types_that_consume_the_request.len() == 1 {
@@ -536,9 +536,8 @@ fn check_input_order(item_fn: &ItemFn, kind: FunctionKind) -> Option<TokenStream
             return Some(quote_spanned! {*span=>
                 compile_error!(#error);
             });
-        } else {
-            return None;
         }
+        return None;
     }
 
     if types_that_consume_the_request.len() == 2 {

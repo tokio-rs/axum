@@ -101,7 +101,7 @@ where
         } else {
             req.extensions_mut()
                 .insert(NestedPath(Arc::clone(&self.path)));
-        };
+        }
 
         self.inner.call(req)
     }

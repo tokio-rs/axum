@@ -460,7 +460,7 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
                         ));
                     }
                     None => {}
-                };
+                }
 
                 self.value
                     .take()

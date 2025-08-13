@@ -102,7 +102,7 @@ where
         H: Handler<T, S>,
         T: 'static,
     {
-        for (_, endpoint) in self.routes.iter_mut() {
+        for endpoint in self.routes.values_mut() {
             if let Endpoint::MethodRouter(rt) = endpoint {
                 *rt = rt.clone().default_fallback(handler.clone());
             }
@@ -282,12 +282,11 @@ where
         <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
     {
-        if self.routes.is_empty() {
-            panic!(
-                "Adding a route_layer before any routes is a no-op. \
+        assert!(
+            !self.routes.is_empty(),
+            "Adding a route_layer before any routes is a no-op. \
                  Add the routes you want the layer to apply to first."
-            );
-        }
+        );
 
         let routes = self
             .routes
