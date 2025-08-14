@@ -232,7 +232,7 @@ mod tests {
     }
 
     #[allow(dead_code)]
-    #[test]
+    #[allow(clippy::todo)]
     fn connected_traits() {
         // Test that the `Connected` trait can be used with custom address and listener types.
 
