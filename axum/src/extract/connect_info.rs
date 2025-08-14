@@ -245,7 +245,6 @@ mod tests {
         }
 
         #[derive(Clone)]
-        #[allow(dead_code)]
         struct CustomAddr(SocketAddr);
 
         impl Connected<IncomingStream<'_, TcpListener>> for CustomAddr {
