@@ -30,12 +30,6 @@ pub struct IntoMakeServiceWithConnectInfo<S, C> {
     _connect_info: PhantomData<fn() -> C>,
 }
 
-#[test]
-fn traits() {
-    use crate::test_helpers::*;
-    assert_send::<IntoMakeServiceWithConnectInfo<(), NotSendSync>>();
-}
-
 impl<S, C> IntoMakeServiceWithConnectInfo<S, C> {
     pub(crate) fn new(svc: S) -> Self {
         Self {
@@ -85,22 +79,13 @@ pub trait Connected<T>: Clone + Send + Sync + 'static {
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 const _: () = {
     use crate::serve;
-    use tokio::net::TcpListener;
 
-    impl Connected<serve::IncomingStream<'_, TcpListener>> for SocketAddr {
-        fn connect_info(stream: serve::IncomingStream<'_, TcpListener>) -> Self {
-            *stream.remote_addr()
-        }
-    }
-
-    impl<'a, L, F> Connected<serve::IncomingStream<'a, serve::TapIo<L, F>>> for L::Addr
+    impl<L> Connected<serve::IncomingStream<'_, L>> for SocketAddr
     where
-        L: serve::Listener,
-        L::Addr: Clone + Sync + 'static,
-        F: FnMut(&mut L::Io) + Send + 'static,
+        L: serve::Listener<Addr = Self>,
     {
-        fn connect_info(stream: serve::IncomingStream<'a, serve::TapIo<L, F>>) -> Self {
-            stream.remote_addr().clone()
+        fn connect_info(stream: serve::IncomingStream<'_, L>) -> Self {
+            *stream.remote_addr()
         }
     }
 };
@@ -234,8 +219,90 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{routing::get, serve::IncomingStream, test_helpers::TestClient, Router};
-    use tokio::net::TcpListener;
+    use crate::{
+        extract::connect_info::Connected, routing::get, serve::IncomingStream, serve::Listener,
+        test_helpers::TestClient, Router,
+    };
+    use tokio::net::{TcpListener, TcpStream};
+
+    #[test]
+    fn into_make_service_traits() {
+        use crate::test_helpers::*;
+        assert_send::<IntoMakeServiceWithConnectInfo<(), NotSendSync>>();
+    }
+
+    #[allow(dead_code)]
+    #[allow(clippy::todo)]
+    fn connected_traits() {
+        // Test that the `Connected` trait can be used with custom address and listener types.
+
+        fn create_router() -> Router {
+            todo!()
+        }
+
+        fn tcp_listener() -> TcpListener {
+            todo!()
+        }
+
+        #[derive(Clone)]
+        struct CustomAddr(SocketAddr);
+
+        impl Connected<IncomingStream<'_, TcpListener>> for CustomAddr {
+            fn connect_info(_stream: IncomingStream<'_, TcpListener>) -> Self {
+                todo!()
+            }
+        }
+
+        impl Connected<IncomingStream<'_, CustomListener>> for CustomAddr {
+            fn connect_info(_stream: IncomingStream<'_, CustomListener>) -> Self {
+                todo!()
+            }
+        }
+
+        struct CustomListener {}
+
+        impl Listener for CustomListener {
+            type Io = TcpStream;
+            type Addr = SocketAddr;
+
+            async fn accept(&mut self) -> (Self::Io, Self::Addr) {
+                todo!()
+            }
+
+            fn local_addr(&self) -> tokio::io::Result<Self::Addr> {
+                todo!()
+            }
+        }
+
+        fn custom_connected() {
+            let router = create_router();
+            let _ = crate::serve(
+                tcp_listener(),
+                router.into_make_service_with_connect_info::<CustomAddr>(),
+            );
+        }
+
+        fn custom_listener() {
+            let router = create_router();
+            let _ = crate::serve(CustomListener {}, router.into_make_service());
+        }
+
+        fn custom_listener_with_connect() {
+            let router = create_router();
+            let _ = crate::serve(
+                CustomListener {},
+                router.into_make_service_with_connect_info::<SocketAddr>(),
+            );
+        }
+
+        fn custom_listener_with_custom_connect() {
+            let router = create_router();
+            let _ = crate::serve(
+                CustomListener {},
+                router.into_make_service_with_connect_info::<CustomAddr>(),
+            );
+        }
+    }
 
     #[crate::test]
     async fn socket_addr() {
