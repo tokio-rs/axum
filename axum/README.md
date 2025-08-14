@@ -23,6 +23,13 @@ In particular the last point is what sets `axum` apart from other frameworks.
 authorization, and more, for free. It also enables you to share middleware with
 applications written using [`hyper`] or [`tonic`].
 
+## ⚠ Breaking changes ⚠
+
+We are currently working towards axum 0.9 so the `main` branch contains breaking
+changes. See the [`0.8.x`] branch for what's released to crates.io.
+
+[`0.8.x`]: https://github.com/tokio-rs/axum/tree/v0.8.x
+
 ## Usage example
 
 ```rust
@@ -104,7 +111,7 @@ This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in
 
 ## Minimum supported Rust version
 
-axum's MSRV is 1.75.
+axum's MSRV is 1.78.
 
 ## Examples
 

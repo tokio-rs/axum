@@ -125,11 +125,25 @@ pub use self::service::HandlerService;
 ///     )));
 /// # let _: Router = app;
 /// ```
-#[rustversion::attr(
-    since(1.78),
-    diagnostic::on_unimplemented(
-        note = "Consider using `#[axum::debug_handler]` to improve the error message"
-    )
+///
+/// # About type parameter `T`
+///
+/// **Generally you shouldn't need to worry about `T`**; when calling methods such as
+/// [`post`](crate::routing::method_routing::post) it will be automatically inferred and this is
+/// the intended way for this parameter to be provided in application code.
+///
+/// If you are implementing your own methods that accept implementations of `Handler` as
+/// arguments, then the following may be useful:
+///
+/// The type parameter `T` is a workaround for trait coherence rules, allowing us to
+/// write blanket implementations of `Handler` over many types of handler functions
+/// with different numbers of arguments, without the compiler forbidding us from doing
+/// so because one type `F` can in theory implement both `Fn(A) -> X` and `Fn(A, B) -> Y`.
+/// `T` is a placeholder taking on a representation of the parameters of the handler function,
+/// as well as other similar 'coherence rule workaround' discriminators,
+/// allowing us to select one function signature to use as a `Handler`.
+#[diagnostic::on_unimplemented(
+    note = "Consider using `#[axum::debug_handler]` to improve the error message"
 )]
 pub trait Handler<T, S>: Clone + Send + Sync + Sized + 'static {
     /// The type of future calling this handler returns.

@@ -109,7 +109,7 @@ where
             .aggregate();
 
         match T::decode(&mut buf) {
-            Ok(value) => Ok(Protobuf(value)),
+            Ok(value) => Ok(Self(value)),
             Err(err) => Err(ProtobufDecodeError::from_err(err).into()),
         }
     }
@@ -128,7 +128,7 @@ where
     T: Message + Default,
 {
     fn into_response(self) -> Response {
-        let mut buf = BytesMut::with_capacity(128);
+        let mut buf = BytesMut::with_capacity(self.0.encoded_len());
         match &self.0.encode(&mut buf) {
             Ok(()) => buf.into_response(),
             Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
@@ -172,7 +172,7 @@ mod tests {
 
         let app = Router::new().route(
             "/",
-            post(|input: Protobuf<Input>| async move { input.foo.to_owned() }),
+            post(|Protobuf(input): Protobuf<Input>| async move { input.foo }),
         );
 
         let input = Input {
@@ -228,10 +228,8 @@ mod tests {
         }
 
         #[axum::debug_handler]
-        async fn handler(input: Protobuf<Input>) -> Protobuf<Output> {
-            let output = Output {
-                result: input.foo.to_owned(),
-            };
+        async fn handler(Protobuf(input): Protobuf<Input>) -> Protobuf<Output> {
+            let output = Output { result: input.foo };
 
             Protobuf(output)
         }

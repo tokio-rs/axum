@@ -15,6 +15,7 @@ use crate::{
 use axum_core::{extract::Request, response::IntoResponse, BoxError};
 use bytes::BytesMut;
 use std::{
+    borrow::Cow,
     convert::Infallible,
     fmt,
     task::{Context, Poll},
@@ -570,14 +571,13 @@ enum AllowHeader {
 impl AllowHeader {
     fn merge(self, other: Self) -> Self {
         match (self, other) {
-            (AllowHeader::Skip, _) | (_, AllowHeader::Skip) => AllowHeader::Skip,
-            (AllowHeader::None, AllowHeader::None) => AllowHeader::None,
-            (AllowHeader::None, AllowHeader::Bytes(pick)) => AllowHeader::Bytes(pick),
-            (AllowHeader::Bytes(pick), AllowHeader::None) => AllowHeader::Bytes(pick),
-            (AllowHeader::Bytes(mut a), AllowHeader::Bytes(b)) => {
+            (Self::Skip, _) | (_, Self::Skip) => Self::Skip,
+            (Self::None, Self::None) => Self::None,
+            (Self::None, Self::Bytes(pick)) | (Self::Bytes(pick), Self::None) => Self::Bytes(pick),
+            (Self::Bytes(mut a), Self::Bytes(b)) => {
                 a.extend_from_slice(b",");
                 a.extend_from_slice(&b);
-                AllowHeader::Bytes(a)
+                Self::Bytes(a)
             }
         }
     }
@@ -635,7 +635,7 @@ where
     {
         self.on_endpoint(
             filter,
-            MethodEndpoint::BoxedHandler(BoxedIntoRoute::from_handler(handler)),
+            &MethodEndpoint::BoxedHandler(BoxedIntoRoute::from_handler(handler)),
         )
     }
 
@@ -702,6 +702,7 @@ impl MethodRouter<(), Infallible> {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
+    #[must_use]
     pub fn into_make_service(self) -> IntoMakeService<Self> {
         IntoMakeService::new(self.with_state(()))
     }
@@ -735,6 +736,7 @@ impl MethodRouter<(), Infallible> {
     /// [`MakeService`]: tower::make::MakeService
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
     #[cfg(feature = "tokio")]
+    #[must_use]
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self.with_state(()))
     }
@@ -813,11 +815,11 @@ where
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
-        self.on_endpoint(filter, MethodEndpoint::Route(Route::new(svc)))
+        self.on_endpoint(filter, &MethodEndpoint::Route(Route::new(svc)))
     }
 
     #[track_caller]
-    fn on_endpoint(mut self, filter: MethodFilter, endpoint: MethodEndpoint<S, E>) -> Self {
+    fn on_endpoint(mut self, filter: MethodFilter, endpoint: &MethodEndpoint<S, E>) -> Self {
         // written as a separate function to generate less IR
         #[track_caller]
         fn set_endpoint<S, E>(
@@ -849,7 +851,7 @@ where
         set_endpoint(
             "GET",
             &mut self.get,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::GET,
             &mut self.allow_header,
@@ -859,7 +861,7 @@ where
         set_endpoint(
             "HEAD",
             &mut self.head,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::HEAD,
             &mut self.allow_header,
@@ -869,7 +871,7 @@ where
         set_endpoint(
             "TRACE",
             &mut self.trace,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::TRACE,
             &mut self.allow_header,
@@ -879,7 +881,7 @@ where
         set_endpoint(
             "PUT",
             &mut self.put,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::PUT,
             &mut self.allow_header,
@@ -889,7 +891,7 @@ where
         set_endpoint(
             "POST",
             &mut self.post,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::POST,
             &mut self.allow_header,
@@ -899,7 +901,7 @@ where
         set_endpoint(
             "PATCH",
             &mut self.patch,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::PATCH,
             &mut self.allow_header,
@@ -909,7 +911,7 @@ where
         set_endpoint(
             "OPTIONS",
             &mut self.options,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::OPTIONS,
             &mut self.allow_header,
@@ -919,7 +921,7 @@ where
         set_endpoint(
             "DELETE",
             &mut self.delete,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::DELETE,
             &mut self.allow_header,
@@ -929,7 +931,7 @@ where
         set_endpoint(
             "CONNECT",
             &mut self.options,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::CONNECT,
             &mut self.allow_header,
@@ -991,7 +993,7 @@ where
 
     #[doc = include_str!("../docs/method_routing/route_layer.md")]
     #[track_caller]
-    pub fn route_layer<L>(mut self, layer: L) -> MethodRouter<S, E>
+    pub fn route_layer<L>(mut self, layer: L) -> Self
     where
         L: Layer<Route<E>> + Clone + Send + Sync + 'static,
         L::Service: Service<Request, Error = E> + Clone + Send + Sync + 'static,
@@ -1031,58 +1033,66 @@ where
         self
     }
 
-    #[track_caller]
-    pub(crate) fn merge_for_path(mut self, path: Option<&str>, other: MethodRouter<S, E>) -> Self {
+    pub(crate) fn merge_for_path(
+        mut self,
+        path: Option<&str>,
+        other: Self,
+    ) -> Result<Self, Cow<'static, str>> {
         // written using inner functions to generate less IR
-        #[track_caller]
         fn merge_inner<S, E>(
             path: Option<&str>,
             name: &str,
             first: MethodEndpoint<S, E>,
             second: MethodEndpoint<S, E>,
-        ) -> MethodEndpoint<S, E> {
+        ) -> Result<MethodEndpoint<S, E>, Cow<'static, str>> {
             match (first, second) {
-                (MethodEndpoint::None, MethodEndpoint::None) => MethodEndpoint::None,
-                (pick, MethodEndpoint::None) | (MethodEndpoint::None, pick) => pick,
+                (MethodEndpoint::None, MethodEndpoint::None) => Ok(MethodEndpoint::None),
+                (pick, MethodEndpoint::None) | (MethodEndpoint::None, pick) => Ok(pick),
                 _ => {
                     if let Some(path) = path {
-                        panic!(
+                        Err(format!(
                             "Overlapping method route. Handler for `{name} {path}` already exists"
-                        );
+                        )
+                        .into())
                     } else {
-                        panic!(
+                        Err(format!(
                             "Overlapping method route. Cannot merge two method routes that both \
                              define `{name}`"
-                        );
+                        )
+                        .into())
                     }
                 }
             }
         }
 
-        self.get = merge_inner(path, "GET", self.get, other.get);
-        self.head = merge_inner(path, "HEAD", self.head, other.head);
-        self.delete = merge_inner(path, "DELETE", self.delete, other.delete);
-        self.options = merge_inner(path, "OPTIONS", self.options, other.options);
-        self.patch = merge_inner(path, "PATCH", self.patch, other.patch);
-        self.post = merge_inner(path, "POST", self.post, other.post);
-        self.put = merge_inner(path, "PUT", self.put, other.put);
-        self.trace = merge_inner(path, "TRACE", self.trace, other.trace);
-        self.connect = merge_inner(path, "CONNECT", self.connect, other.connect);
+        self.get = merge_inner(path, "GET", self.get, other.get)?;
+        self.head = merge_inner(path, "HEAD", self.head, other.head)?;
+        self.delete = merge_inner(path, "DELETE", self.delete, other.delete)?;
+        self.options = merge_inner(path, "OPTIONS", self.options, other.options)?;
+        self.patch = merge_inner(path, "PATCH", self.patch, other.patch)?;
+        self.post = merge_inner(path, "POST", self.post, other.post)?;
+        self.put = merge_inner(path, "PUT", self.put, other.put)?;
+        self.trace = merge_inner(path, "TRACE", self.trace, other.trace)?;
+        self.connect = merge_inner(path, "CONNECT", self.connect, other.connect)?;
 
         self.fallback = self
             .fallback
             .merge(other.fallback)
-            .expect("Cannot merge two `MethodRouter`s that both have a fallback");
+            .ok_or("Cannot merge two `MethodRouter`s that both have a fallback")?;
 
         self.allow_header = self.allow_header.merge(other.allow_header);
 
-        self
+        Ok(self)
     }
 
     #[doc = include_str!("../docs/method_routing/merge.md")]
     #[track_caller]
-    pub fn merge(self, other: MethodRouter<S, E>) -> Self {
-        self.merge_for_path(None, other)
+    pub fn merge(self, other: Self) -> Self {
+        match self.merge_for_path(None, other) {
+            Ok(t) => t,
+            // not using unwrap or unwrap_or_else to get a clean panic message + the right location
+            Err(e) => panic!("{e}"),
+        }
     }
 
     /// Apply a [`HandleErrorLayer`].
@@ -1245,11 +1255,9 @@ where
 
     fn with_state<S2>(self, state: &S) -> MethodEndpoint<S2, E> {
         match self {
-            MethodEndpoint::None => MethodEndpoint::None,
-            MethodEndpoint::Route(route) => MethodEndpoint::Route(route),
-            MethodEndpoint::BoxedHandler(handler) => {
-                MethodEndpoint::Route(handler.into_route(state.clone()))
-            }
+            Self::None => MethodEndpoint::None,
+            Self::Route(route) => MethodEndpoint::Route(route),
+            Self::BoxedHandler(handler) => MethodEndpoint::Route(handler.into_route(state.clone())),
         }
     }
 }

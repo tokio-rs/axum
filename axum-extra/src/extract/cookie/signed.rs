@@ -121,6 +121,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     }
 /// }
 /// ```
+#[must_use = "`SignedCookieJar` should be returned as part of a `Response`, otherwise it does nothing."]
 pub struct SignedCookieJar<K = Key> {
     jar: cookie::CookieJar,
     key: Key,
@@ -153,7 +154,7 @@ where
             key,
             _marker: _,
         } = SignedCookieJar::from_headers(&parts.headers, key);
-        Ok(SignedCookieJar {
+        Ok(Self {
             jar,
             key,
             _marker: PhantomData,
@@ -219,6 +220,7 @@ impl<K> SignedCookieJar<K> {
     ///         .map(|cookie| cookie.value().to_owned());
     /// }
     /// ```
+    #[must_use]
     pub fn get(&self, name: &str) -> Option<Cookie<'static>> {
         self.signed_jar().get(name)
     }
@@ -235,7 +237,6 @@ impl<K> SignedCookieJar<K> {
     ///     jar.remove(Cookie::from("foo"))
     /// }
     /// ```
-    #[must_use]
     pub fn remove<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.signed_jar_mut().remove(cookie);
         self
@@ -255,7 +256,6 @@ impl<K> SignedCookieJar<K> {
     ///     jar.add(Cookie::new("foo", "bar"))
     /// }
     /// ```
-    #[must_use]
     #[allow(clippy::should_implement_trait)]
     pub fn add<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.signed_jar_mut().add(cookie);
@@ -264,6 +264,7 @@ impl<K> SignedCookieJar<K> {
 
     /// Verifies the authenticity and integrity of `cookie`, returning the plaintext version if
     /// verification succeeds or `None` otherwise.
+    #[must_use]
     pub fn verify(&self, cookie: Cookie<'static>) -> Option<Cookie<'static>> {
         self.signed_jar().verify(cookie)
     }
@@ -291,7 +292,7 @@ impl<K> IntoResponseParts for SignedCookieJar<K> {
     type Error = Infallible;
 
     fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
-        set_cookies(self.jar, res.headers_mut());
+        set_cookies(&self.jar, res.headers_mut());
         Ok(res)
     }
 }
@@ -302,6 +303,7 @@ impl<K> IntoResponse for SignedCookieJar<K> {
     }
 }
 
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 struct SignedCookieJarIter<'a, K> {
     jar: &'a SignedCookieJar<K>,
     iter: cookie::Iter<'a>,

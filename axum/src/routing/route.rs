@@ -46,7 +46,7 @@ impl<E> Route<E> {
         self.oneshot_inner_owned(req).not_top_level()
     }
 
-    pub(crate) fn oneshot_inner(&mut self, req: Request) -> RouteFuture<E> {
+    pub(crate) fn oneshot_inner(&self, req: Request) -> RouteFuture<E> {
         let method = req.method().clone();
         RouteFuture::new(method, self.0.clone().oneshot(req))
     }
@@ -59,7 +59,7 @@ impl<E> Route<E> {
 
     pub(crate) fn layer<L, NewError>(self, layer: L) -> Route<NewError>
     where
-        L: Layer<Route<E>> + Clone + Send + 'static,
+        L: Layer<Self> + Clone + Send + 'static,
         L::Service: Service<Request> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Error: Into<NewError> + 'static,
@@ -164,7 +164,7 @@ impl<E> Future for RouteFuture<E> {
             set_allow_header(res.headers_mut(), this.allow_header);
 
             // make sure to set content-length before removing the body
-            set_content_length(res.size_hint(), res.headers_mut());
+            set_content_length(&res.size_hint(), res.headers_mut());
 
             if *this.method == Method::HEAD {
                 *res.body_mut() = Body::empty();
@@ -187,7 +187,7 @@ fn set_allow_header(headers: &mut HeaderMap, allow_header: &mut Option<Bytes>) {
     }
 }
 
-fn set_content_length(size_hint: http_body::SizeHint, headers: &mut HeaderMap) {
+fn set_content_length(size_hint: &http_body::SizeHint, headers: &mut HeaderMap) {
     if headers.contains_key(CONTENT_LENGTH) {
         return;
     }

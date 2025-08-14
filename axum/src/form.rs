@@ -95,7 +95,7 @@ where
                         }
                     },
                 )?;
-                Ok(Form(value))
+                Ok(Self(value))
             }
             Err(RawFormRejection::BytesRejection(r)) => Err(FormRejection::BytesRejection(r)),
             Err(RawFormRejection::InvalidFormContentType(r)) => {

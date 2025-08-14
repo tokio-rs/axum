@@ -8,16 +8,16 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, ReturnType, Token, Type};
 
-pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenStream {
+pub(crate) fn expand(attr: Attrs, item_fn: &ItemFn, kind: FunctionKind) -> TokenStream {
     let Attrs { state_ty } = attr;
 
     let mut state_ty = state_ty.map(second);
 
-    let check_extractor_count = check_extractor_count(&item_fn, kind);
-    let check_path_extractor = check_path_extractor(&item_fn, kind);
-    let check_output_tuples = check_output_tuples(&item_fn);
+    let check_extractor_count = check_extractor_count(item_fn, kind);
+    let check_path_extractor = check_path_extractor(item_fn, kind);
+    let check_output_tuples = check_output_tuples(item_fn);
     let check_output_impls_into_response = if check_output_tuples.is_empty() {
-        check_output_impls_into_response(&item_fn)
+        check_output_impls_into_response(item_fn)
     } else {
         check_output_tuples
     };
@@ -28,7 +28,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenS
         let mut err = None;
 
         if state_ty.is_none() {
-            let state_types_from_args = state_types_from_args(&item_fn);
+            let state_types_from_args = state_types_from_args(item_fn);
 
             #[allow(clippy::comparison_chain)]
             if state_types_from_args.len() == 1 {
@@ -50,16 +50,16 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenS
         err.unwrap_or_else(|| {
             let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
 
-            let check_future_send = check_future_send(&item_fn, kind);
+            let check_future_send = check_future_send(item_fn, kind);
 
-            if let Some(check_input_order) = check_input_order(&item_fn, kind) {
+            if let Some(check_input_order) = check_input_order(item_fn, kind) {
                 quote! {
                     #check_input_order
                     #check_future_send
                 }
             } else {
                 let check_inputs_impls_from_request =
-                    check_inputs_impls_from_request(&item_fn, state_ty, kind);
+                    check_inputs_impls_from_request(item_fn, &state_ty, kind);
 
                 quote! {
                     #check_inputs_impls_from_request
@@ -76,7 +76,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenS
     };
 
     let middleware_takes_next_as_last_arg =
-        matches!(kind, FunctionKind::Middleware).then(|| next_is_last_input(&item_fn));
+        matches!(kind, FunctionKind::Middleware).then(|| next_is_last_input(item_fn));
 
     quote! {
         #item_fn
@@ -97,17 +97,17 @@ pub(crate) enum FunctionKind {
 impl fmt::Display for FunctionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FunctionKind::Handler => f.write_str("handler"),
-            FunctionKind::Middleware => f.write_str("middleware"),
+            Self::Handler => f.write_str("handler"),
+            Self::Middleware => f.write_str("middleware"),
         }
     }
 }
 
 impl FunctionKind {
-    fn name_uppercase_plural(&self) -> &'static str {
+    fn name_uppercase_plural(self) -> &'static str {
         match self {
-            FunctionKind::Handler => "Handlers",
-            FunctionKind::Middleware => "Middleware",
+            Self::Handler => "Handlers",
+            Self::Middleware => "Middleware",
         }
     }
 }
@@ -222,7 +222,7 @@ fn is_self_pat_type(typed: &syn::PatType) -> bool {
 
 fn check_inputs_impls_from_request(
     item_fn: &ItemFn,
-    state_ty: Type,
+    state_ty: &Type,
     kind: FunctionKind,
 ) -> TokenStream {
     let takes_self = item_fn.sig.inputs.first().is_some_and(|arg| match arg {
@@ -681,10 +681,10 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
             #[allow(unreachable_code)]
             #[doc(hidden)]
             async fn #name() {
-                let value = #receiver #make_value_name().await;
                 fn check<T>(_: T)
                     where T: ::axum::response::IntoResponse
                 {}
+                let value = #receiver #make_value_name().await;
                 check(value);
             }
         }
@@ -696,11 +696,11 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
             async fn #name() {
                 #make
 
-                let value = #make_value_name().await;
-
                 fn check<T>(_: T)
                 where T: ::axum::response::IntoResponse
                 {}
+
+                let value = #make_value_name().await;
 
                 check(value);
             }
@@ -732,10 +732,13 @@ fn check_future_send(item_fn: &ItemFn, kind: FunctionKind) -> TokenStream {
 
     let name = format_ident!("__axum_macros_check_{}_future", item_fn.sig.ident);
 
-    let do_check = quote! {
+    let define_check = quote! {
         fn check<T>(_: T)
             where T: ::std::future::Future + Send
         {}
+    };
+
+    let do_check = quote! {
         check(future);
     };
 
@@ -745,6 +748,7 @@ fn check_future_send(item_fn: &ItemFn, kind: FunctionKind) -> TokenStream {
             #[allow(unreachable_code)]
             #[doc(hidden)]
             fn #name() {
+                #define_check
                 let future = #receiver #handler_name(#(#args),*);
                 #do_check
             }
@@ -756,6 +760,7 @@ fn check_future_send(item_fn: &ItemFn, kind: FunctionKind) -> TokenStream {
             #[doc(hidden)]
             fn #name() {
                 #item_fn
+                #define_check
                 let future = #handler_name(#(#args),*);
                 #do_check
             }

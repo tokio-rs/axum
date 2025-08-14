@@ -21,7 +21,7 @@ use http::{header::LOCATION, HeaderValue, StatusCode};
 #[derive(Debug, Clone)]
 pub struct Redirect {
     status_code: StatusCode,
-    location: HeaderValue,
+    location: String,
 }
 
 impl Redirect {
@@ -33,10 +33,6 @@ impl Redirect {
     /// body (if non-empty). If you want to preserve the request method and body,
     /// [`Redirect::temporary`] should be used instead.
     ///
-    /// # Panics
-    ///
-    /// If `uri` isn't a valid [`HeaderValue`].
-    ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/303
     pub fn to(uri: &str) -> Self {
         Self::with_status_code(StatusCode::SEE_OTHER, uri)
@@ -47,10 +43,6 @@ impl Redirect {
     /// This has the same behavior as [`Redirect::to`], except it will preserve the original HTTP
     /// method and body.
     ///
-    /// # Panics
-    ///
-    /// If `uri` isn't a valid [`HeaderValue`].
-    ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
     pub fn temporary(uri: &str) -> Self {
         Self::with_status_code(StatusCode::TEMPORARY_REDIRECT, uri)
@@ -58,13 +50,21 @@ impl Redirect {
 
     /// Create a new [`Redirect`] that uses a [`308 Permanent Redirect`][mdn] status code.
     ///
-    /// # Panics
-    ///
-    /// If `uri` isn't a valid [`HeaderValue`].
-    ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/308
     pub fn permanent(uri: &str) -> Self {
         Self::with_status_code(StatusCode::PERMANENT_REDIRECT, uri)
+    }
+
+    /// Returns the HTTP status code of the `Redirect`.
+    #[must_use]
+    pub fn status_code(&self) -> StatusCode {
+        self.status_code
+    }
+
+    /// Returns the `Redirect`'s URI.
+    #[must_use]
+    pub fn location(&self) -> &str {
+        &self.location
     }
 
     // This is intentionally not public since other kinds of redirects might not
@@ -79,13 +79,60 @@ impl Redirect {
 
         Self {
             status_code,
-            location: HeaderValue::try_from(uri).expect("URI isn't a valid header value"),
+            location: uri.to_owned(),
         }
     }
 }
 
 impl IntoResponse for Redirect {
     fn into_response(self) -> Response {
-        (self.status_code, [(LOCATION, self.location)]).into_response()
+        match HeaderValue::try_from(self.location) {
+            Ok(location) => (self.status_code, [(LOCATION, location)]).into_response(),
+            Err(error) => (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()).into_response(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Redirect;
+    use axum_core::response::IntoResponse;
+    use http::StatusCode;
+
+    const EXAMPLE_URL: &str = "https://example.com";
+
+    // Tests to make sure Redirect has the correct status codes
+    // based on the way it was constructed.
+    #[test]
+    fn correct_status() {
+        assert_eq!(
+            StatusCode::SEE_OTHER,
+            Redirect::to(EXAMPLE_URL).status_code()
+        );
+
+        assert_eq!(
+            StatusCode::TEMPORARY_REDIRECT,
+            Redirect::temporary(EXAMPLE_URL).status_code()
+        );
+
+        assert_eq!(
+            StatusCode::PERMANENT_REDIRECT,
+            Redirect::permanent(EXAMPLE_URL).status_code()
+        );
+    }
+
+    #[test]
+    fn correct_location() {
+        assert_eq!(EXAMPLE_URL, Redirect::permanent(EXAMPLE_URL).location());
+
+        assert_eq!("/redirect", Redirect::permanent("/redirect").location())
+    }
+
+    #[test]
+    fn test_internal_error() {
+        let response = Redirect::permanent("Axum is awesome, \n but newlines aren't allowed :(")
+            .into_response();
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 }

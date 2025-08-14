@@ -38,6 +38,8 @@ skip-tree = [
     { name = "tower" },
     # tower hasn't upgraded to 1.0 yet
     { name = "sync_wrapper" },
+    # pulled in by quickcheck and cookie
+    { name = "rand" },
 ]
 
 [sources]

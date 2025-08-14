@@ -183,7 +183,7 @@ where
         }
 
         match T::deserialize(de::PathDeserializer::new(get_params(parts)?)) {
-            Ok(val) => Ok(Path(val)),
+            Ok(val) => Ok(Self(val)),
             Err(e) => Err(failed_to_deserialize_path_params(e)),
         }
     }
@@ -279,6 +279,7 @@ impl std::error::Error for PathDeserializationError {}
 /// This type is obtained through [`FailedToDeserializePathParams::kind`] or
 /// [`FailedToDeserializePathParams::into_kind`] and is useful for building
 /// more precise error messages.
+#[must_use]
 #[derive(Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ErrorKind {
@@ -356,9 +357,9 @@ pub enum ErrorKind {
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ErrorKind::Message(error) => error.fmt(f),
-            ErrorKind::InvalidUtf8InPathParam { key } => write!(f, "Invalid UTF-8 in `{key}`"),
-            ErrorKind::WrongNumberOfParameters { got, expected } => {
+            Self::Message(error) => error.fmt(f),
+            Self::InvalidUtf8InPathParam { key } => write!(f, "Invalid UTF-8 in `{key}`"),
+            Self::WrongNumberOfParameters { got, expected } => {
                 write!(
                     f,
                     "Wrong number of path arguments for `Path`. Expected {expected} but got {got}"
@@ -370,8 +371,8 @@ impl fmt::Display for ErrorKind {
 
                 Ok(())
             }
-            ErrorKind::UnsupportedType { name } => write!(f, "Unsupported type `{name}`"),
-            ErrorKind::ParseErrorAtKey {
+            Self::UnsupportedType { name } => write!(f, "Unsupported type `{name}`"),
+            Self::ParseErrorAtKey {
                 key,
                 value,
                 expected_type,
@@ -379,11 +380,11 @@ impl fmt::Display for ErrorKind {
                 f,
                 "Cannot parse `{key}` with value `{value}` to a `{expected_type}`"
             ),
-            ErrorKind::ParseError {
+            Self::ParseError {
                 value,
                 expected_type,
             } => write!(f, "Cannot parse `{value}` to a `{expected_type}`"),
-            ErrorKind::ParseErrorAtIndex {
+            Self::ParseErrorAtIndex {
                 index,
                 value,
                 expected_type,
@@ -391,7 +392,7 @@ impl fmt::Display for ErrorKind {
                 f,
                 "Cannot parse value at index {index} with value `{value}` to a `{expected_type}`"
             ),
-            ErrorKind::DeserializeError {
+            Self::DeserializeError {
                 key,
                 value,
                 message,
@@ -417,6 +418,7 @@ impl FailedToDeserializePathParams {
     }
 
     /// Get the response body text used for this rejection.
+    #[must_use]
     pub fn body_text(&self) -> String {
         match self.0.kind {
             ErrorKind::Message(_)
@@ -432,6 +434,7 @@ impl FailedToDeserializePathParams {
     }
 
     /// Get the status code used for this rejection.
+    #[must_use]
     pub fn status(&self) -> StatusCode {
         match self.0.kind {
             ErrorKind::Message(_)
@@ -523,6 +526,7 @@ where
 
 impl RawPathParams {
     /// Get an iterator over the path parameters.
+    #[must_use]
     pub fn iter(&self) -> RawPathParamsIter<'_> {
         self.into_iter()
     }
@@ -561,11 +565,13 @@ pub struct InvalidUtf8InPathParam {
 
 impl InvalidUtf8InPathParam {
     /// Get the response body text used for this rejection.
+    #[must_use]
     pub fn body_text(&self) -> String {
         self.to_string()
     }
 
     /// Get the status code used for this rejection.
+    #[must_use]
     pub fn status(&self) -> StatusCode {
         StatusCode::BAD_REQUEST
     }
@@ -766,7 +772,7 @@ mod tests {
                 D: serde::Deserializer<'de>,
             {
                 let s = <&str as serde::Deserialize>::deserialize(deserializer)?;
-                Ok(Param(s.to_owned()))
+                Ok(Self(s.to_owned()))
             }
         }
 

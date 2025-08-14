@@ -19,10 +19,10 @@ pub(crate) enum Trait {
 }
 
 impl Trait {
-    fn via_marker_type(&self) -> Option<Type> {
+    fn via_marker_type(self) -> Option<Type> {
         match self {
-            Trait::FromRequest => Some(parse_quote!(M)),
-            Trait::FromRequestParts => None,
+            Self::FromRequest => Some(parse_quote!(M)),
+            Self::FromRequestParts => None,
         }
     }
 }
@@ -30,8 +30,8 @@ impl Trait {
 impl fmt::Display for Trait {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Trait::FromRequest => f.write_str("FromRequest"),
-            Trait::FromRequestParts => f.write_str("FromRequestParts"),
+            Self::FromRequest => f.write_str("FromRequest"),
+            Self::FromRequestParts => f.write_str("FromRequestParts"),
         }
     }
 }
@@ -50,9 +50,9 @@ impl State {
     /// ```
     fn impl_generics(&self) -> impl Iterator<Item = Type> {
         match self {
-            State::Default(inner) => Some(inner.clone()),
-            State::Custom(_) => None,
-            State::CannotInfer => Some(parse_quote!(S)),
+            Self::Default(inner) => Some(inner.clone()),
+            Self::Custom(_) => None,
+            Self::CannotInfer => Some(parse_quote!(S)),
         }
         .into_iter()
     }
@@ -63,18 +63,18 @@ impl State {
     /// ```
     fn trait_generics(&self) -> impl Iterator<Item = Type> {
         match self {
-            State::Default(inner) | State::Custom(inner) => iter::once(inner.clone()),
-            State::CannotInfer => iter::once(parse_quote!(S)),
+            Self::Default(inner) | Self::Custom(inner) => iter::once(inner.clone()),
+            Self::CannotInfer => iter::once(parse_quote!(S)),
         }
     }
 
     fn bounds(&self) -> TokenStream {
         match self {
-            State::Custom(_) => quote! {},
-            State::Default(inner) => quote! {
+            Self::Custom(_) => quote! {},
+            Self::Default(inner) => quote! {
                 #inner: ::std::marker::Send + ::std::marker::Sync,
             },
-            State::CannotInfer => quote! {
+            Self::CannotInfer => quote! {
                 S: ::std::marker::Send + ::std::marker::Sync,
             },
         }
@@ -84,8 +84,8 @@ impl State {
 impl ToTokens for State {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            State::Custom(inner) | State::Default(inner) => inner.to_tokens(tokens),
-            State::CannotInfer => quote! { S }.to_tokens(tokens),
+            Self::Custom(inner) | Self::Default(inner) => inner.to_tokens(tokens),
+            Self::CannotInfer => quote! { S }.to_tokens(tokens),
         }
     }
 }
@@ -111,43 +111,42 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                 state,
             } = parse_attrs("from_request", &attrs)?;
 
-            let state = match state {
-                Some((_, state)) => State::Custom(state),
-                None => {
-                    let mut inferred_state_types: HashSet<_> =
-                        infer_state_type_from_field_types(&fields)
-                            .chain(infer_state_type_from_field_attributes(&fields))
-                            .collect();
+            let state = if let Some((_, state)) = state {
+                State::Custom(state)
+            } else {
+                let mut inferred_state_types: HashSet<_> =
+                    infer_state_type_from_field_types(&fields)
+                        .chain(infer_state_type_from_field_attributes(&fields))
+                        .collect();
 
-                    if let Some((_, via)) = &via {
-                        inferred_state_types.extend(state_from_via(&ident, via));
-                    }
+                if let Some((_, via)) = &via {
+                    inferred_state_types.extend(state_from_via(&ident, via));
+                }
 
-                    match inferred_state_types.len() {
-                        0 => State::Default(syn::parse_quote!(S)),
-                        1 => State::Custom(inferred_state_types.iter().next().unwrap().to_owned()),
-                        _ => State::CannotInfer,
-                    }
+                match inferred_state_types.len() {
+                    0 => State::Default(syn::parse_quote!(S)),
+                    1 => State::Custom(inferred_state_types.iter().next().unwrap().to_owned()),
+                    _ => State::CannotInfer,
                 }
             };
 
             let trait_impl = match (via.map(second), rejection.map(second)) {
                 (Some(via), rejection) => impl_struct_by_extracting_all_at_once(
-                    ident,
+                    &ident,
                     fields,
-                    via,
-                    rejection,
-                    generic_ident,
+                    &via,
+                    rejection.as_ref(),
+                    generic_ident.as_ref(),
                     &state,
                     tr,
                 )?,
                 (None, rejection) => {
                     error_on_generic_ident(generic_ident, tr)?;
-                    impl_struct_by_extracting_each_field(ident, fields, rejection, &state, tr)?
+                    impl_struct_by_extracting_each_field(&ident, &fields, rejection, &state, tr)?
                 }
             };
 
-            if let State::CannotInfer = state {
+            if matches!(state, State::CannotInfer) {
                 let attr_name = match tr {
                     Trait::FromRequest => "from_request",
                     Trait::FromRequestParts => "from_request_parts",
@@ -207,11 +206,11 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
 
             match (via.map(second), rejection) {
                 (Some(via), rejection) => impl_enum_by_extracting_all_at_once(
-                    ident,
+                    &ident,
                     variants,
-                    via,
-                    rejection.map(second),
-                    state,
+                    &via,
+                    rejection.map(second).as_ref(),
+                    &state,
                     tr,
                 ),
                 (None, Some((rejection_kw, _))) => Err(syn::Error::new_spanned(
@@ -329,29 +328,28 @@ fn error_on_generic_ident(generic_ident: Option<Ident>, tr: Trait) -> syn::Resul
 }
 
 fn impl_struct_by_extracting_each_field(
-    ident: syn::Ident,
-    fields: syn::Fields,
+    ident: &syn::Ident,
+    fields: &syn::Fields,
     rejection: Option<syn::Path>,
     state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
-    let trait_fn_body = match state {
-        State::CannotInfer => quote! {
+    let trait_fn_body = if matches!(state, State::CannotInfer) {
+        quote! {
             ::std::unimplemented!()
-        },
-        _ => {
-            let extract_fields = extract_fields(&fields, &rejection, tr)?;
-            quote! {
-                ::std::result::Result::Ok(Self {
-                    #(#extract_fields)*
-                })
-            }
+        }
+    } else {
+        let extract_fields = extract_fields(fields, rejection.as_ref(), tr)?;
+        quote! {
+            ::std::result::Result::Ok(Self {
+                #(#extract_fields)*
+            })
         }
     };
 
     let rejection_ident = if let Some(rejection) = rejection {
         quote!(#rejection)
-    } else if has_no_fields(&fields) {
+    } else if has_no_fields(fields) {
         quote!(::std::convert::Infallible)
     } else {
         quote!(::axum::response::Response)
@@ -413,23 +411,22 @@ fn has_no_fields(fields: &syn::Fields) -> bool {
 
 fn extract_fields(
     fields: &syn::Fields,
-    rejection: &Option<syn::Path>,
+    rejection: Option<&syn::Path>,
     tr: Trait,
 ) -> syn::Result<Vec<TokenStream>> {
     fn member(field: &syn::Field, index: usize) -> TokenStream {
-        match &field.ident {
-            Some(ident) => quote! { #ident },
-            _ => {
-                let member = syn::Member::Unnamed(syn::Index {
-                    index: index as u32,
-                    span: field.span(),
-                });
-                quote! { #member }
-            }
+        if let Some(ident) = &field.ident {
+            quote! { #ident }
+        } else {
+            let member = syn::Member::Unnamed(syn::Index {
+                index: index as u32,
+                span: field.span(),
+            });
+            quote! { #member }
         }
     }
 
-    fn into_inner(via: &Option<(attr::kw::via, syn::Path)>, ty_span: Span) -> TokenStream {
+    fn into_inner(via: Option<&(attr::kw::via, syn::Path)>, ty_span: Span) -> TokenStream {
         if let Some((_, path)) = via {
             let span = path.span();
             quote_spanned! {span=>
@@ -443,7 +440,7 @@ fn extract_fields(
     }
 
     fn into_outer(
-        via: &Option<(attr::kw::via, syn::Path)>,
+        via: Option<&(attr::kw::via, syn::Path)>,
         ty_span: Span,
         field_ty: &Type,
     ) -> TokenStream {
@@ -475,10 +472,10 @@ fn extract_fields(
 
             let member = member(field, index);
             let ty_span = field.ty.span();
-            let into_inner = into_inner(&via, ty_span);
+            let into_inner = into_inner(via.as_ref(), ty_span);
 
             if peel_option(&field.ty).is_some() {
-                let field_ty = into_outer(&via, ty_span, peel_option(&field.ty).unwrap());
+                let field_ty = into_outer(via.as_ref(), ty_span, peel_option(&field.ty).unwrap());
                 let tokens = match tr {
                     Trait::FromRequest => {
                         quote_spanned! {ty_span=>
@@ -513,7 +510,7 @@ fn extract_fields(
                 };
                 Ok(tokens)
             } else if peel_result_ok(&field.ty).is_some() {
-                let field_ty = into_outer(&via,ty_span, peel_result_ok(&field.ty).unwrap());
+                let field_ty = into_outer(via.as_ref(), ty_span, peel_result_ok(&field.ty).unwrap());
                 let tokens = match tr {
                     Trait::FromRequest => {
                         quote_spanned! {ty_span=>
@@ -546,7 +543,7 @@ fn extract_fields(
                 };
                 Ok(tokens)
             } else {
-                let field_ty = into_outer(&via,ty_span,&field.ty);
+                let field_ty = into_outer(via.as_ref(), ty_span, &field.ty);
                 let map_err = if let Some(rejection) = rejection {
                     quote! { <#rejection as ::std::convert::From<_>>::from }
                 } else {
@@ -596,10 +593,10 @@ fn extract_fields(
 
         let member = member(field, fields.len() - 1);
         let ty_span = field.ty.span();
-        let into_inner = into_inner(&via, ty_span);
+        let into_inner = into_inner(via.as_ref(), ty_span);
 
         let item = if peel_option(&field.ty).is_some() {
-            let field_ty = into_outer(&via, ty_span, peel_option(&field.ty).unwrap());
+            let field_ty = into_outer(via.as_ref(), ty_span, peel_option(&field.ty).unwrap());
             quote_spanned! {ty_span=>
                 #member: {
                     <#field_ty as ::axum::extract::FromRequest<_, _>>::from_request(req, state)
@@ -609,7 +606,7 @@ fn extract_fields(
                 },
             }
         } else if peel_result_ok(&field.ty).is_some() {
-            let field_ty = into_outer(&via, ty_span, peel_result_ok(&field.ty).unwrap());
+            let field_ty = into_outer(via.as_ref(), ty_span, peel_result_ok(&field.ty).unwrap());
             quote_spanned! {ty_span=>
                 #member: {
                     <#field_ty as ::axum::extract::FromRequest<_, _>>::from_request(req, state)
@@ -618,7 +615,7 @@ fn extract_fields(
                 },
             }
         } else {
-            let field_ty = into_outer(&via, ty_span, &field.ty);
+            let field_ty = into_outer(via.as_ref(), ty_span, &field.ty);
             let map_err = if let Some(rejection) = rejection {
                 quote! { <#rejection as ::std::convert::From<_>>::from }
             } else {
@@ -642,9 +639,7 @@ fn extract_fields(
 }
 
 fn peel_option(ty: &syn::Type) -> Option<&syn::Type> {
-    let type_path = if let syn::Type::Path(type_path) = ty {
-        type_path
-    } else {
+    let syn::Type::Path(type_path) = ty else {
         return None;
     };
 
@@ -673,9 +668,7 @@ fn peel_option(ty: &syn::Type) -> Option<&syn::Type> {
 }
 
 fn peel_result_ok(ty: &syn::Type) -> Option<&syn::Type> {
-    let type_path = if let syn::Type::Path(type_path) = ty {
-        type_path
-    } else {
+    let syn::Type::Path(type_path) = ty else {
         return None;
     };
 
@@ -704,11 +697,11 @@ fn peel_result_ok(ty: &syn::Type) -> Option<&syn::Type> {
 }
 
 fn impl_struct_by_extracting_all_at_once(
-    ident: syn::Ident,
+    ident: &syn::Ident,
     fields: syn::Fields,
-    via_path: syn::Path,
-    rejection: Option<syn::Path>,
-    generic_ident: Option<Ident>,
+    via_path: &syn::Path,
+    rejection: Option<&syn::Path>,
+    generic_ident: Option<&Ident>,
     state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
@@ -732,18 +725,6 @@ fn impl_struct_by_extracting_all_at_once(
 
     let path_span = via_path.span();
 
-    let (associated_rejection_type, map_err) = if let Some(rejection) = &rejection {
-        let rejection = quote! { #rejection };
-        let map_err = quote! { ::std::convert::From::from };
-        (rejection, map_err)
-    } else {
-        let rejection = quote! {
-            ::axum::response::Response
-        };
-        let map_err = quote! { ::axum::response::IntoResponse::into_response };
-        (rejection, map_err)
-    };
-
     // for something like
     //
     // ```
@@ -757,7 +738,7 @@ fn impl_struct_by_extracting_all_at_once(
     // - `State`, not other extractors
     //
     // honestly not sure why but the tests all pass
-    let via_marker_type = if path_ident_is_state(&via_path) {
+    let via_marker_type = if path_ident_is_state(via_path) {
         tr.via_marker_type()
     } else {
         None
@@ -775,10 +756,11 @@ fn impl_struct_by_extracting_all_at_once(
         .chain(via_marker_type)
         .collect::<Punctuated<Type, Token![,]>>();
 
-    let ident_generics = generic_ident
-        .is_some()
-        .then(|| quote! { <T> })
-        .unwrap_or_default();
+    let ident_generics = if generic_ident.is_some() {
+        quote! { <T> }
+    } else {
+        TokenStream::new()
+    };
 
     let rejection_bound = rejection.as_ref().map(|rejection| {
         match (tr, generic_ident.is_some()) {
@@ -811,6 +793,19 @@ fn impl_struct_by_extracting_all_at_once(
         quote! { Self }
     };
 
+    let associated_rejection_type = if let Some(rejection) = &rejection {
+        quote! { #rejection }
+    } else {
+        match tr {
+            Trait::FromRequest => quote! {
+                <#via_path<#via_type_generics> as ::axum::extract::FromRequest<#trait_generics>>::Rejection
+            },
+            Trait::FromRequestParts => quote! {
+                <#via_path<#via_type_generics> as ::axum::extract::FromRequestParts<#trait_generics>>::Rejection
+            },
+        }
+    };
+
     let value_to_self = if generic_ident.is_some() {
         quote! {
             #ident(value)
@@ -840,7 +835,7 @@ fn impl_struct_by_extracting_all_at_once(
                         <#via_path<#via_type_generics> as ::axum::extract::FromRequest<_, _>>::from_request(req, state)
                             .await
                             .map(|#via_path(value)| #value_to_self)
-                            .map_err(#map_err)
+                            .map_err(::std::convert::From::from)
                     }
                 }
             }
@@ -863,7 +858,7 @@ fn impl_struct_by_extracting_all_at_once(
                         <#via_path<#via_type_generics> as ::axum::extract::FromRequestParts<_>>::from_request_parts(parts, state)
                             .await
                             .map(|#via_path(value)| #value_to_self)
-                            .map_err(#map_err)
+                            .map_err(::std::convert::From::from)
                     }
                 }
             }
@@ -874,11 +869,11 @@ fn impl_struct_by_extracting_all_at_once(
 }
 
 fn impl_enum_by_extracting_all_at_once(
-    ident: syn::Ident,
+    ident: &syn::Ident,
     variants: Punctuated<syn::Variant, Token![,]>,
-    path: syn::Path,
-    rejection: Option<syn::Path>,
-    state: State,
+    path: &syn::Path,
+    rejection: Option<&syn::Path>,
+    state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
     for variant in variants {

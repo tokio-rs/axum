@@ -1,10 +1,14 @@
 use super::rejection::{FailedToResolveHost, HostRejection};
-use axum::extract::FromRequestParts;
+use axum::{
+    extract::{FromRequestParts, OptionalFromRequestParts},
+    RequestPartsExt,
+};
 use http::{
     header::{HeaderMap, FORWARDED},
     request::Parts,
     uri::Authority,
 };
+use std::convert::Infallible;
 
 const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 
@@ -31,8 +35,27 @@ where
     type Rejection = HostRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        parts
+            .extract::<Option<Self>>()
+            .await
+            .ok()
+            .flatten()
+            .ok_or(HostRejection::FailedToResolveHost(FailedToResolveHost))
+    }
+}
+
+impl<S> OptionalFromRequestParts<S> for Host
+where
+    S: Send + Sync,
+{
+    type Rejection = Infallible;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> Result<Option<Self>, Self::Rejection> {
         if let Some(host) = parse_forwarded(&parts.headers) {
-            return Ok(Host(host.to_owned()));
+            return Ok(Some(Self(host.to_owned())));
         }
 
         if let Some(host) = parts
@@ -40,7 +63,7 @@ where
             .get(X_FORWARDED_HOST_HEADER_KEY)
             .and_then(|host| host.to_str().ok())
         {
-            return Ok(Host(host.to_owned()));
+            return Ok(Some(Self(host.to_owned())));
         }
 
         if let Some(host) = parts
@@ -48,14 +71,14 @@ where
             .get(http::header::HOST)
             .and_then(|host| host.to_str().ok())
         {
-            return Ok(Host(host.to_owned()));
+            return Ok(Some(Self(host.to_owned())));
         }
 
         if let Some(authority) = parts.uri.authority() {
-            return Ok(Host(parse_authority(authority).to_owned()));
+            return Ok(Some(Self(parse_authority(authority).to_owned())));
         }
 
-        Err(HostRejection::FailedToResolveHost(FailedToResolveHost))
+        Ok(None)
     }
 }
 
@@ -148,7 +171,7 @@ mod tests {
     async fn ip4_uri_host() {
         let mut parts = Request::new(()).into_parts().0;
         parts.uri = "https://127.0.0.1:1234/image.jpg".parse().unwrap();
-        let host = Host::from_request_parts(&mut parts, &()).await.unwrap();
+        let host = parts.extract::<Host>().await.unwrap();
         assert_eq!(host.0, "127.0.0.1:1234");
     }
 
@@ -156,8 +179,30 @@ mod tests {
     async fn ip6_uri_host() {
         let mut parts = Request::new(()).into_parts().0;
         parts.uri = "http://cool:user@[::1]:456/file.txt".parse().unwrap();
-        let host = Host::from_request_parts(&mut parts, &()).await.unwrap();
+        let host = parts.extract::<Host>().await.unwrap();
         assert_eq!(host.0, "[::1]:456");
+    }
+
+    #[crate::test]
+    async fn missing_host() {
+        let mut parts = Request::new(()).into_parts().0;
+        let host = parts.extract::<Host>().await.unwrap_err();
+        assert!(matches!(host, HostRejection::FailedToResolveHost(_)));
+    }
+
+    #[crate::test]
+    async fn optional_extractor() {
+        let mut parts = Request::new(()).into_parts().0;
+        parts.uri = "https://127.0.0.1:1234/image.jpg".parse().unwrap();
+        let host = parts.extract::<Option<Host>>().await.unwrap();
+        assert!(host.is_some());
+    }
+
+    #[crate::test]
+    async fn optional_extractor_none() {
+        let mut parts = Request::new(()).into_parts().0;
+        let host = parts.extract::<Option<Host>>().await.unwrap();
+        assert!(host.is_none());
     }
 
     #[test]

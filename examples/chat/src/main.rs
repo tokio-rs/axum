@@ -15,7 +15,7 @@ use axum::{
     routing::get,
     Router,
 };
-use futures::{sink::SinkExt, stream::StreamExt};
+use futures_util::{sink::SinkExt, stream::StreamExt};
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex},

@@ -18,7 +18,7 @@ impl CountingCloneableState {
             setup_done: AtomicBool::new(false),
             count: AtomicUsize::new(0),
         };
-        CountingCloneableState {
+        Self {
             state: Arc::new(inner_state),
         }
     }
@@ -47,6 +47,6 @@ impl Clone for CountingCloneableState {
             state.count.fetch_add(1, Ordering::SeqCst);
         }
 
-        CountingCloneableState { state }
+        Self { state }
     }
 }

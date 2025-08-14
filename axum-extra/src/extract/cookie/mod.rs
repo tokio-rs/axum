@@ -84,6 +84,7 @@ pub use cookie::Key;
 ///     .route("/me", get(me));
 /// # let app: Router = app;
 /// ```
+#[must_use = "`CookieJar` should be returned as part of a `Response`, otherwise it does nothing."]
 #[derive(Debug, Default, Clone)]
 pub struct CookieJar {
     jar: cookie::CookieJar,
@@ -153,6 +154,7 @@ impl CookieJar {
     ///         .map(|cookie| cookie.value().to_owned());
     /// }
     /// ```
+    #[must_use]
     pub fn get(&self, name: &str) -> Option<&Cookie<'static>> {
         self.jar.get(name)
     }
@@ -169,7 +171,6 @@ impl CookieJar {
     ///     jar.remove(Cookie::from("foo"))
     /// }
     /// ```
-    #[must_use]
     pub fn remove<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.jar.remove(cookie);
         self
@@ -189,7 +190,6 @@ impl CookieJar {
     ///     jar.add(Cookie::new("foo", "bar"))
     /// }
     /// ```
-    #[must_use]
     #[allow(clippy::should_implement_trait)]
     pub fn add<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.jar.add(cookie);
@@ -206,7 +206,7 @@ impl IntoResponseParts for CookieJar {
     type Error = Infallible;
 
     fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
-        set_cookies(self.jar, res.headers_mut());
+        set_cookies(&self.jar, res.headers_mut());
         Ok(res)
     }
 }
@@ -217,7 +217,7 @@ impl IntoResponse for CookieJar {
     }
 }
 
-fn set_cookies(jar: cookie::CookieJar, headers: &mut HeaderMap) {
+fn set_cookies(jar: &cookie::CookieJar, headers: &mut HeaderMap) {
     for cookie in jar.delta() {
         if let Ok(header_value) = cookie.encoded().to_string().parse() {
             headers.append(SET_COOKIE, header_value);
@@ -321,13 +321,13 @@ mod tests {
     }
 
     impl FromRef<AppState> for Key {
-        fn from_ref(state: &AppState) -> Key {
+        fn from_ref(state: &AppState) -> Self {
             state.key.clone()
         }
     }
 
     impl FromRef<AppState> for CustomKey {
-        fn from_ref(state: &AppState) -> CustomKey {
+        fn from_ref(state: &AppState) -> Self {
             state.custom_key.clone()
         }
     }

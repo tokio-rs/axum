@@ -60,7 +60,7 @@ impl<H, T, S> HandlerService<H, T, S> {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    pub fn into_make_service(self) -> IntoMakeService<HandlerService<H, T, S>> {
+    pub fn into_make_service(self) -> IntoMakeService<Self> {
         IntoMakeService::new(self)
     }
 
@@ -101,9 +101,7 @@ impl<H, T, S> HandlerService<H, T, S> {
     /// [`MakeService`]: tower::make::MakeService
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
     #[cfg(feature = "tokio")]
-    pub fn into_make_service_with_connect_info<C>(
-        self,
-    ) -> IntoMakeServiceWithConnectInfo<HandlerService<H, T, S>, C> {
+    pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self)
     }
 }
