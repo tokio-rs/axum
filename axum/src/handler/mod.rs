@@ -138,7 +138,7 @@ pub use self::service::HandlerService;
 /// The type parameter `T` is a workaround for trait coherence rules, allowing us to
 /// write blanket implementations of `Handler` over many types of handler functions
 /// with different numbers of arguments, without the compiler forbidding us from doing
-/// so because one type `F` can in theory implement both `Fn(T1)` and `Fn(T1, T2)`.
+/// so because one type `F` can in theory implement both `Fn(A) -> X` and `Fn(A, B) -> Y`.
 /// `T` is a placeholder taking on a representation of the parameters of the handler function,
 /// as well as other similar 'coherence rule workaround' discriminators,
 /// allowing us to select one function signature to use as a `Handler`.
