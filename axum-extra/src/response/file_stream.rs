@@ -70,52 +70,6 @@ where
         }
     }
 
-    /// Create a [`FileStream`] from a file path.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use axum::{
-    ///     http::StatusCode,
-    ///     response::IntoResponse,
-    ///     Router,
-    ///     routing::get
-    /// };
-    /// use axum_extra::response::file_stream::FileStream;
-    /// use tokio::fs::File;
-    /// use tokio_util::io::ReaderStream;
-    ///
-    /// async fn file_stream() -> impl IntoResponse {
-    ///     FileStream::<ReaderStream<File>>::from_path("test.txt")
-    ///         .await
-    ///         .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))
-    /// }
-    ///
-    /// let app = Router::new().route("/file-stream", get(file_stream));
-    /// # let _: Router = app;
-    /// ```
-    pub async fn from_path(path: impl AsRef<Path>) -> io::Result<FileStream<ReaderStream<File>>> {
-        let file = File::open(&path).await?;
-        let mut content_size = None;
-        let mut file_name = None;
-
-        if let Ok(metadata) = file.metadata().await {
-            content_size = Some(metadata.len());
-        }
-
-        if let Some(file_name_os) = path.as_ref().file_name() {
-            if let Some(file_name_str) = file_name_os.to_str() {
-                file_name = Some(file_name_str.to_owned());
-            }
-        }
-
-        Ok(FileStream {
-            stream: ReaderStream::new(file),
-            file_name,
-            content_size,
-        })
-    }
-
     /// Set the file name of the [`FileStream`].
     ///
     /// This adds the attachment `Content-Disposition` header with the given `file_name`.
@@ -256,6 +210,53 @@ where
         let stream = ReaderStream::new(file.take(end - start + 1));
 
         Ok(FileStream::new(stream).into_range_response(start, end, total_size))
+    }
+}
+
+// Split because the general impl requires to specify `S` and this one does not.
+impl FileStream<ReaderStream<File>> {
+    /// Create a [`FileStream`] from a file path.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use axum::{
+    ///     http::StatusCode,
+    ///     response::IntoResponse,
+    ///     Router,
+    ///     routing::get
+    /// };
+    /// use axum_extra::response::file_stream::FileStream;
+    ///
+    /// async fn file_stream() -> impl IntoResponse {
+    ///     FileStream::from_path("test.txt")
+    ///         .await
+    ///         .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))
+    /// }
+    ///
+    /// let app = Router::new().route("/file-stream", get(file_stream));
+    /// # let _: Router = app;
+    /// ```
+    pub async fn from_path(path: impl AsRef<Path>) -> io::Result<Self> {
+        let file = File::open(&path).await?;
+        let mut content_size = None;
+        let mut file_name = None;
+
+        if let Ok(metadata) = file.metadata().await {
+            content_size = Some(metadata.len());
+        }
+
+        if let Some(file_name_os) = path.as_ref().file_name() {
+            if let Some(file_name_str) = file_name_os.to_str() {
+                file_name = Some(file_name_str.to_owned());
+            }
+        }
+
+        Ok(Self {
+            stream: ReaderStream::new(file),
+            file_name,
+            content_size,
+        })
     }
 }
 
@@ -474,7 +475,7 @@ mod tests {
         let app = Router::new().route(
             "/from_path",
             get(move || async move {
-                FileStream::<ReaderStream<File>>::from_path(Path::new("CHANGELOG.md"))
+                FileStream::from_path(Path::new("CHANGELOG.md"))
                     .await
                     .unwrap()
                     .into_response()
