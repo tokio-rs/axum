@@ -17,6 +17,7 @@ use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 #[cfg(any(feature = "http1", feature = "http2"))]
 use hyper_util::{server::conn::auto::Builder, service::TowerToHyperService};
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::watch;
 use tower::ServiceExt as _;
 use tower_service::Service;
@@ -24,6 +25,24 @@ use tower_service::Service;
 mod listener;
 
 pub use self::listener::{Listener, ListenerExt, TapIo};
+
+/// A connection handshaker to wrap/upgrade newly accepted IOs (for example, TLS).
+///
+/// The handshaker is cloned and used for each incoming connection.
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+pub trait Handshaker<L: Listener>: Clone + Send + 'static {
+    /// The handshaken IO type to serve HTTP on.
+    type Io: AsyncRead + AsyncWrite + Unpin + Send + 'static;
+    /// Error type from performing the handshake.
+    type Error: StdError + Send + Sync + 'static;
+    /// Future returned by [`Handshaker::handshake`]. Must be Send so it can be awaited in a spawned task.
+    type Future: Future<Output = Result<Self::Io, Self::Error>> + Send;
+
+    /// Perform the handshake on a newly accepted socket.
+    ///
+    /// Implementations may wrap the socket (for example, into a TLS stream).
+    fn handshake(&self, io: L::Io) -> Self::Future;
+}
 
 /// Serve the service with the supplied listener.
 ///
@@ -169,6 +188,23 @@ where
     pub fn local_addr(&self) -> io::Result<L::Addr> {
         self.listener.local_addr()
     }
+
+    /// Configures a handshaker that will be applied to each new incoming connection
+    /// before serving HTTP on it (for example, to enable TLS).
+    ///
+    /// The provided `handshaker` will be cloned for each connection.
+    #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+    pub fn with_handshaker<H>(self, handshaker: H) -> WithHandshaker<L, M, S, H, B>
+    where
+        H: Handshaker<L>,
+    {
+        WithHandshaker {
+            listener: self.listener,
+            make_service: self.make_service,
+            handshaker,
+            _marker: PhantomData,
+        }
+    }
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
@@ -261,6 +297,113 @@ where
     /// Returns the local address this server is bound to.
     pub fn local_addr(&self) -> io::Result<L::Addr> {
         self.listener.local_addr()
+    }
+}
+
+/// Serve future with a handshaker applied to each new connection.
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+#[must_use = "futures must be awaited or polled"]
+pub struct WithHandshaker<L, M, S, H, B> {
+    listener: L,
+    make_service: M,
+    handshaker: H,
+    _marker: PhantomData<(S, B)>,
+}
+
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl<L, M, S, H, B> WithHandshaker<L, M, S, H, B>
+where
+    L: Listener,
+{
+    /// Returns the local address this server is bound to.
+    pub fn local_addr(&self) -> io::Result<L::Addr> {
+        self.listener.local_addr()
+    }
+}
+
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl<L, M, S, H, B> WithHandshaker<L, M, S, H, B>
+where
+    L: Listener,
+    L::Addr: Debug,
+    M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
+    for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
+    S: Service<Request, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
+    S::Future: Send,
+    H: Handshaker<L>,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<Box<dyn StdError + Send + Sync>>,
+{
+    async fn run(self) -> ! {
+        let Self {
+            mut listener,
+            mut make_service,
+            handshaker,
+            _marker,
+        } = self;
+
+        let (signal_tx, _signal_rx) = watch::channel(());
+        let (_close_tx, close_rx) = watch::channel(());
+
+        loop {
+            let (io, remote_addr) = listener.accept().await;
+            handle_connection_with_handshaker(
+                &mut make_service,
+                &signal_tx,
+                &close_rx,
+                io,
+                remote_addr,
+                handshaker.clone(),
+            )
+            .await;
+        }
+    }
+}
+
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl<L, M, S, H, B> Debug for WithHandshaker<L, M, S, H, B>
+where
+    L: Debug + 'static,
+    M: Debug,
+    S: Debug,
+    H: Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            listener,
+            make_service,
+            handshaker,
+            _marker: _,
+        } = self;
+
+        f.debug_struct("WithHandshaker")
+            .field("listener", listener)
+            .field("make_service", make_service)
+            .field("handshaker", handshaker)
+            .finish()
+    }
+}
+
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl<L, M, S, H, B> IntoFuture for WithHandshaker<L, M, S, H, B>
+where
+    L: Listener,
+    L::Addr: Debug,
+    M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
+    for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
+    S: Service<Request, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
+    S::Future: Send,
+    H: Handshaker<L>,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<Box<dyn StdError + Send + Sync>>,
+{
+    type Output = io::Result<()>;
+    type IntoFuture = private::ServeFuture;
+
+    fn into_future(self) -> Self::IntoFuture {
+        private::ServeFuture(Box::pin(async move { self.run().await }))
     }
 }
 
@@ -405,6 +548,88 @@ async fn handle_connection<L, M, S, B>(
     let hyper_service = TowerToHyperService::new(tower_service);
     let signal_tx = signal_tx.clone();
     let close_rx = close_rx.clone();
+
+    tokio::spawn(async move {
+        #[allow(unused_mut)]
+        let mut builder = Builder::new(TokioExecutor::new());
+        // CONNECT protocol needed for HTTP/2 websockets
+        #[cfg(feature = "http2")]
+        builder.http2().enable_connect_protocol();
+
+        let mut conn = pin!(builder.serve_connection_with_upgrades(io, hyper_service));
+        let mut signal_closed = pin!(signal_tx.closed().fuse());
+
+        loop {
+            tokio::select! {
+                result = conn.as_mut() => {
+                    if let Err(_err) = result {
+                        trace!("failed to serve connection: {_err:#}");
+                    }
+                    break;
+                }
+                _ = &mut signal_closed => {
+                    trace!("signal received in task, starting graceful shutdown");
+                    conn.as_mut().graceful_shutdown();
+                }
+            }
+        }
+
+        drop(close_rx);
+    });
+}
+
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+async fn handle_connection_with_handshaker<L, M, S, H, B>(
+    make_service: &mut M,
+    signal_tx: &watch::Sender<()>,
+    close_rx: &watch::Receiver<()>,
+    io: <L as Listener>::Io,
+    remote_addr: <L as Listener>::Addr,
+    handshaker: H,
+) where
+    L: Listener,
+    L::Addr: Debug,
+    M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
+    for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
+    S: Service<Request, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
+    S::Future: Send,
+    H: Handshaker<L>,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<Box<dyn StdError + Send + Sync>>,
+{
+    // Build a TokioIo for connect info and make_service, then consume it for handshake.
+    let io_for_info = TokioIo::new(io);
+
+    trace!("connection {remote_addr:?} accepted");
+
+    make_service
+        .ready()
+        .await
+        .unwrap_or_else(|err| match err {});
+
+    let tower_service = make_service
+        .call(IncomingStream {
+            io: &io_for_info,
+            remote_addr,
+        })
+        .await
+        .unwrap_or_else(|err| match err {})
+        .map_request(|req: Request<Incoming>| req.map(Body::new));
+
+    let hyper_service = TowerToHyperService::new(tower_service);
+    let signal_tx = signal_tx.clone();
+    let close_rx = close_rx.clone();
+
+    let raw = io_for_info.into_inner();
+    let handshake_result = handshaker.handshake(raw).await;
+    let io = match handshake_result {
+        Ok(io) => TokioIo::new(io),
+        Err(err) => {
+            trace!("failed to handshake connection: {err:#}");
+            return;
+        }
+    };
 
     tokio::spawn(async move {
         #[allow(unused_mut)]
