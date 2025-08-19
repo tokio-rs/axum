@@ -620,18 +620,17 @@ async fn handle_connection_with_handshaker<L, M, S, H, B>(
     let hyper_service = TowerToHyperService::new(tower_service);
     let signal_tx = signal_tx.clone();
     let close_rx = close_rx.clone();
-
     let raw = io_for_info.into_inner();
-    let handshake_result = handshaker.handshake(raw).await;
-    let io = match handshake_result {
-        Ok(io) => TokioIo::new(io),
-        Err(err) => {
-            trace!("failed to handshake connection: {err:#}");
-            return;
-        }
-    };
-
     tokio::spawn(async move {
+        // Not again: Perform handshake inside the spawned task so slow/bad clients don't block accept loop
+        let io = match handshaker.handshake(raw).await {
+            Ok(io) => TokioIo::new(io),
+            Err(err) => {
+                trace!("failed to handshake connection: {err:#}");
+                return;
+            }
+        };
+
         #[allow(unused_mut)]
         let mut builder = Builder::new(TokioExecutor::new());
         // CONNECT protocol needed for HTTP/2 websockets
