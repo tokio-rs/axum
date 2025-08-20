@@ -529,6 +529,7 @@ impl WebSocket {
         self.protocol.as_ref()
     }
 
+    /// Returns true if the websocket has been terminated.
     pub fn is_terminated(&self) -> bool {
         self.inner.is_terminated()
     }
