@@ -710,7 +710,7 @@ mod tests {
     async fn captures_match_empty_inner_segments() {
         let app = Router::new().route(
             "/{key}/method",
-            get(|Path(param): Path<String>| async move { param.to_string() }),
+            get(|Path(param): Path<String>| async move { param.clone() }),
         );
 
         let client = TestClient::new(app);
@@ -726,7 +726,7 @@ mod tests {
     async fn captures_match_empty_inner_segments_near_end() {
         let app = Router::new().route(
             "/method/{key}/",
-            get(|Path(param): Path<String>| async move { param.to_string() }),
+            get(|Path(param): Path<String>| async move { param.clone() }),
         );
 
         let client = TestClient::new(app);
@@ -745,7 +745,7 @@ mod tests {
     async fn captures_match_empty_trailing_segment() {
         let app = Router::new().route(
             "/method/{key}",
-            get(|Path(param): Path<String>| async move { param.to_string() }),
+            get(|Path(param): Path<String>| async move { param.clone() }),
         );
 
         let client = TestClient::new(app);

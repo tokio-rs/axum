@@ -6,6 +6,6 @@ publish = false
 
 [dependencies]
 axum = { path = "../../axum" }
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

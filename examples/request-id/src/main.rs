@@ -15,7 +15,6 @@ use tower_http::{
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
     trace::TraceLayer,
 };
-use tracing::{error, info, info_span};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 const REQUEST_ID_HEADER: &str = "x-request-id";
@@ -50,13 +49,13 @@ async fn main() {
                 let request_id = request.headers().get(REQUEST_ID_HEADER);
 
                 match request_id {
-                    Some(request_id) => info_span!(
+                    Some(request_id) => tracing::info_span!(
                         "http_request",
                         request_id = ?request_id,
                     ),
                     None => {
-                        error!("could not extract request_id");
-                        info_span!("http_request")
+                        tracing::error!("could not extract request_id");
+                        tracing::info_span!("http_request")
                     }
                 }
             }),
@@ -76,6 +75,6 @@ async fn main() {
 }
 
 async fn handler() -> Html<&'static str> {
-    info!("Hello world!");
+    tracing::info!("Hello world!");
     Html("<h1>Hello, World!</h1>")
 }

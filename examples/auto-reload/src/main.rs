@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p auto-reload
+//! cargo run -p example-auto-reload
 //! ```
 
 use axum::{response::Html, routing::get, Router};

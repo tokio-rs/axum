@@ -1,6 +1,7 @@
 # compression
 
 This example shows how to:
+
 - automatically decompress request bodies when necessary
 - compress response bodies based on the `accept` header.
 

@@ -20,12 +20,16 @@ use axum::{
 use axum_extra::{headers, typed_header::TypedHeaderRejectionReason, TypedHeader};
 use http::{header, request::Parts, StatusCode};
 use oauth2::{
-    basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
-    ClientSecret, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,
+    basic::BasicClient, AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken,
+    EndpointNotSet, EndpointSet, RedirectUrl, Scope, TokenResponse, TokenUrl,
 };
 use serde::{Deserialize, Serialize};
 use std::{convert::Infallible, env};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+// Use `AppClient` to simplify type annotation of `BasicClient`.
+type AppClient =
+    BasicClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointSet>;
 
 static COOKIE_NAME: &str = "SESSION";
 static CSRF_TOKEN: &str = "csrf_token";
@@ -75,7 +79,7 @@ async fn main() {
 #[derive(Clone)]
 struct AppState {
     store: MemoryStore,
-    oauth_client: BasicClient,
+    oauth_client: AppClient,
 }
 
 impl FromRef<AppState> for MemoryStore {
@@ -84,13 +88,13 @@ impl FromRef<AppState> for MemoryStore {
     }
 }
 
-impl FromRef<AppState> for BasicClient {
+impl FromRef<AppState> for AppClient {
     fn from_ref(state: &AppState) -> Self {
         state.oauth_client.clone()
     }
 }
 
-fn oauth_client() -> Result<BasicClient, AppError> {
+fn oauth_client() -> Result<AppClient, AppError> {
     // Environment variables (* = required):
     // *"CLIENT_ID"     "REPLACE_ME";
     // *"CLIENT_SECRET" "REPLACE_ME";
@@ -110,15 +114,15 @@ fn oauth_client() -> Result<BasicClient, AppError> {
     let token_url = env::var("TOKEN_URL")
         .unwrap_or_else(|_| "https://discord.com/api/oauth2/token".to_string());
 
-    Ok(BasicClient::new(
-        ClientId::new(client_id),
-        Some(ClientSecret::new(client_secret)),
-        AuthUrl::new(auth_url).context("failed to create new authorization server URL")?,
-        Some(TokenUrl::new(token_url).context("failed to create new token endpoint URL")?),
-    )
-    .set_redirect_uri(
-        RedirectUrl::new(redirect_url).context("failed to create new redirection URL")?,
-    ))
+    Ok(BasicClient::new(ClientId::new(client_id))
+        .set_client_secret(ClientSecret::new(client_secret))
+        .set_auth_uri(
+            AuthUrl::new(auth_url).context("failed to create new authorization server URL")?,
+        )
+        .set_token_uri(TokenUrl::new(token_url).context("failed to create new token endpoint URL")?)
+        .set_redirect_uri(
+            RedirectUrl::new(redirect_url).context("failed to create new redirection URL")?,
+        ))
 }
 
 // The user data we'll get back from Discord.
@@ -143,7 +147,7 @@ async fn index(user: Option<User>) -> impl IntoResponse {
 }
 
 async fn discord_auth(
-    State(client): State<BasicClient>,
+    State(client): State<AppClient>,
     State(store): State<MemoryStore>,
 ) -> Result<impl IntoResponse, AppError> {
     let (auth_url, csrf_token) = client
@@ -247,7 +251,7 @@ async fn csrf_token_validation_workflow(
         .context("Failed to destroy old session")?;
 
     // Validate CSRF token is the same as the one in the auth request
-    if *stored_csrf_token.secret() != auth_request.state {
+    if stored_csrf_token.secret() != auth_request.state.as_str() {
         return Err(anyhow!("CSRF token mismatch").into());
     }
 
@@ -257,7 +261,7 @@ async fn csrf_token_validation_workflow(
 async fn login_authorized(
     Query(query): Query<AuthRequest>,
     State(store): State<MemoryStore>,
-    State(oauth_client): State<BasicClient>,
+    State(oauth_client): State<AppClient>,
     TypedHeader(cookies): TypedHeader<headers::Cookie>,
 ) -> Result<impl IntoResponse, AppError> {
     csrf_token_validation_workflow(&query, &cookies, &store).await?;
@@ -265,7 +269,11 @@ async fn login_authorized(
     // Get an auth token
     let token = oauth_client
         .exchange_code(AuthorizationCode::new(query.code.clone()))
-        .request_async(async_http_client)
+        .request_async(
+            &reqwest::ClientBuilder::new()
+                .redirect(reqwest::redirect::Policy::none())
+                .build()?,
+        )
         .await
         .context("failed in sending request request to authorization server")?;
 
@@ -273,7 +281,7 @@ async fn login_authorized(
     let client = reqwest::Client::new();
     let user_data: User = client
         // https://discord.com/developers/docs/resources/user#get-current-user
-        .get("https://discordapp.com/api/users/@me")
+        .get("https://discord.com/api/users/@me")
         .bearer_auth(token.access_token().secret())
         .send()
         .await

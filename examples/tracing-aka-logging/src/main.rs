@@ -15,7 +15,6 @@ use axum::{
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tower_http::{classify::ServerErrorsFailureClass, trace::TraceLayer};
-use tracing::{info_span, Span};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -54,31 +53,39 @@ async fn main() {
                         .get::<MatchedPath>()
                         .map(MatchedPath::as_str);
 
-                    info_span!(
+                    tracing::info_span!(
                         "http_request",
                         method = ?request.method(),
                         matched_path,
                         some_other_field = tracing::field::Empty,
                     )
                 })
-                .on_request(|_request: &Request<_>, _span: &Span| {
+                .on_request(|_request: &Request<_>, _span: &tracing::Span| {
                     // You can use `_span.record("some_other_field", value)` in one of these
                     // closures to attach a value to the initially empty field in the info_span
                     // created above.
                 })
-                .on_response(|_response: &Response, _latency: Duration, _span: &Span| {
-                    // ...
-                })
-                .on_body_chunk(|_chunk: &Bytes, _latency: Duration, _span: &Span| {
-                    // ...
-                })
+                .on_response(
+                    |_response: &Response, _latency: Duration, _span: &tracing::Span| {
+                        // ...
+                    },
+                )
+                .on_body_chunk(
+                    |_chunk: &Bytes, _latency: Duration, _span: &tracing::Span| {
+                        // ...
+                    },
+                )
                 .on_eos(
-                    |_trailers: Option<&HeaderMap>, _stream_duration: Duration, _span: &Span| {
+                    |_trailers: Option<&HeaderMap>,
+                     _stream_duration: Duration,
+                     _span: &tracing::Span| {
                         // ...
                     },
                 )
                 .on_failure(
-                    |_error: ServerErrorsFailureClass, _latency: Duration, _span: &Span| {
+                    |_error: ServerErrorsFailureClass,
+                     _latency: Duration,
+                     _span: &tracing::Span| {
                         // ...
                     },
                 ),

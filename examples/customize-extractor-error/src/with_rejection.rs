@@ -9,14 +9,13 @@
 //! - Verbose types: types become much larger, which makes them difficult to
 //!   read. Current limitations on type aliasing makes impossible to destructure
 //!   a type alias. See [#1116]
-//!   
+//!
 //! [`thiserror`]: https://crates.io/crates/thiserror
 //! [#1116]: https://github.com/tokio-rs/axum/issues/1116#issuecomment-1186197684
 
 use axum::{extract::rejection::JsonRejection, response::IntoResponse, Json};
 use axum_extra::extract::WithRejection;
 use serde_json::{json, Value};
-use thiserror::Error;
 
 pub async fn handler(
     // `WithRejection` will extract `Json<Value>` from the request. If it fails,
@@ -30,7 +29,7 @@ pub async fn handler(
 }
 
 // We derive `thiserror::Error`
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum ApiError {
     // The `#[from]` attribute generates `From<JsonRejection> for ApiError`
     // implementation. See `thiserror` docs for more information

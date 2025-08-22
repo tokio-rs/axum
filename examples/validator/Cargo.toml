@@ -8,7 +8,7 @@ version = "0.1.0"
 axum = { path = "../../axum" }
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0.29"
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 validator = { version = "0.20.0", features = ["derive"] }

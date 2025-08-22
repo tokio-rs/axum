@@ -18,7 +18,6 @@ use tokio_rustls::{
     TlsAcceptor,
 };
 use tower_service::Service;
-use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -43,7 +42,7 @@ async fn main() {
     let tls_acceptor = TlsAcceptor::from(rustls_config);
     let bind = "[::1]:3000";
     let tcp_listener = TcpListener::bind(bind).await.unwrap();
-    info!("HTTPS server listening on {bind}. To contact curl -k https://localhost:3000");
+    tracing::info!("HTTPS server listening on {bind}. To contact curl -k https://localhost:3000");
     let app = Router::new().route("/", get(handler));
 
     loop {
@@ -56,7 +55,7 @@ async fn main() {
         tokio::spawn(async move {
             // Wait for tls handshake to happen
             let Ok(stream) = tls_acceptor.accept(cnx).await else {
-                error!("error during tls handshake connection from {}", addr);
+                tracing::error!("error during tls handshake connection from {}", addr);
                 return;
             };
 
@@ -80,7 +79,7 @@ async fn main() {
                 .await;
 
             if let Err(err) = ret {
-                warn!("error serving connection from {}: {}", addr, err);
+                tracing::warn!("error serving connection from {}: {}", addr, err);
             }
         });
     }

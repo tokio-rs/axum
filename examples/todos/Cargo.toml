@@ -7,9 +7,9 @@ publish = false
 [dependencies]
 axum = { path = "../../axum" }
 serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 tower = { version = "0.5.2", features = ["util", "timeout"] }
-tower-http = { version = "0.6.1", features = ["add-extension", "trace"] }
+tower-http = { version = "0.6.6", features = ["add-extension", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-uuid = { version = "1.0", features = ["serde", "v4"] }
+uuid = { version = "1.18", features = ["serde", "v4"] }
