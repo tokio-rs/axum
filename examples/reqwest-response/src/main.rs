@@ -16,7 +16,6 @@ use reqwest::Client;
 use std::{convert::Infallible, time::Duration};
 use tokio_stream::StreamExt;
 use tower_http::trace::TraceLayer;
-use tracing::Span;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -37,7 +36,7 @@ async fn main() {
         .route("/stream", get(stream_some_data))
         // Add some logging so we can see the streams going through
         .layer(TraceLayer::new_for_http().on_body_chunk(
-            |chunk: &Bytes, _latency: Duration, _span: &Span| {
+            |chunk: &Bytes, _latency: Duration, _span: &tracing::Span| {
                 tracing::debug!("streaming {} bytes", chunk.len());
             },
         ))

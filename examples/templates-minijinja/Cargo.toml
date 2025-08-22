@@ -6,5 +6,5 @@ publish = false
 
 [dependencies]
 axum = { path = "../../axum" }
-minijinja = "2.3.1"
-tokio = { version = "1.0", features = ["full"] }
+minijinja = "2.11.0"
+tokio = { version = "1", features = ["full"] }

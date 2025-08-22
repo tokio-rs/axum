@@ -5,6 +5,6 @@ edition = "2021"
 
 [dependencies]
 axum = { path = "../../axum" }
-hyper = { version = "1.0.0", features = ["full"] }
-hyper-util = { version = "0.1.1", features = ["client-legacy"] }
+hyper = { version = "1", features = ["full"] }
+hyper-util = { version = "0.1", features = ["client-legacy"] }
 tokio = { version = "1", features = ["full"] }

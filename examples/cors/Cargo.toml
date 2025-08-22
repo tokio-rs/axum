@@ -6,5 +6,5 @@ publish = false
 
 [dependencies]
 axum = { path = "../../axum" }
-tokio = { version = "1.0", features = ["full"] }
-tower-http = { version = "0.6.1", features = ["cors"] }
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.6.6", features = ["cors"] }

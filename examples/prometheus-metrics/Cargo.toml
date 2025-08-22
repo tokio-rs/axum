@@ -8,6 +8,6 @@ publish = false
 axum = { path = "../../axum" }
 metrics = { version = "0.23", default-features = false }
 metrics-exporter-prometheus = { version = "0.15", default-features = false }
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

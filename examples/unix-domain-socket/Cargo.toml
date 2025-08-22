@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 axum = { path = "../../axum" }
 http-body-util = "0.1"
-hyper = { version = "1.0.0", features = ["full"] }
+hyper = { version = "1", features = ["full"] }
 hyper-util = { version = "0.1", features = ["tokio", "server-auto", "http1"] }
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

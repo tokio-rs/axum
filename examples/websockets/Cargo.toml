@@ -15,10 +15,13 @@ path = "src/client.rs"
 [dependencies]
 axum = { path = "../../axum", features = ["ws"] }
 axum-extra = { path = "../../axum-extra", features = ["typed-header"] }
-futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+futures-util = { version = "0.3", default-features = false, features = [
+    "sink",
+    "std",
+] }
 headers = "0.4"
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 tokio-tungstenite = "0.27.0"
-tower-http = { version = "0.6.1", features = ["fs", "trace"] }
+tower-http = { version = "0.6.6", features = ["fs", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

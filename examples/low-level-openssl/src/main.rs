@@ -12,7 +12,6 @@ use std::{path::PathBuf, pin::Pin};
 use tokio::net::TcpListener;
 use tokio_openssl::SslStream;
 use tower::Service;
-use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -51,7 +50,7 @@ async fn main() {
 
     let bind = "[::1]:3000";
     let tcp_listener = TcpListener::bind(bind).await.unwrap();
-    info!("HTTPS server listening on {bind}. To contact curl -k https://localhost:3000");
+    tracing::info!("HTTPS server listening on {bind}. To contact curl -k https://localhost:3000");
     let app = Router::new().route("/", get(handler));
 
     loop {
@@ -65,9 +64,10 @@ async fn main() {
             let ssl = Ssl::new(tls_acceptor.context()).unwrap();
             let mut tls_stream = SslStream::new(ssl, cnx).unwrap();
             if let Err(err) = SslStream::accept(Pin::new(&mut tls_stream)).await {
-                error!(
+                tracing::error!(
                     "error during tls handshake connection from {}: {}",
-                    addr, err
+                    addr,
+                    err
                 );
                 return;
             }
@@ -92,7 +92,7 @@ async fn main() {
                 .await;
 
             if let Err(err) = ret {
-                warn!("error serving connection from {}: {}", addr, err);
+                tracing::warn!("error serving connection from {}: {}", addr, err);
             }
         });
     }

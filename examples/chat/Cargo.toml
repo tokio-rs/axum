@@ -6,7 +6,10 @@ publish = false
 
 [dependencies]
 axum = { path = "../../axum", features = ["ws"] }
-futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+futures-util = { version = "0.3.31", default-features = false, features = [
+    "sink",
+    "std",
+] }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
