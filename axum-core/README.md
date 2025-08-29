@@ -1,6 +1,6 @@
 # axum-core
 
-[![Build status](https://github.com/tokio-rs/axum/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/tokio-rs/axum-core/actions/workflows/CI.yml)
+[![Build status](https://github.com/tokio-rs/axum/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/tokio-rs/axum/blob/main/.github/workflows/CI.yml)
 [![Crates.io](https://img.shields.io/crates/v/axum-core)](https://crates.io/crates/axum-core)
 [![Documentation](https://docs.rs/axum-core/badge.svg)](https://docs.rs/axum-core)
 
