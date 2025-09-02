@@ -189,12 +189,16 @@ where
             }
         }
 
-        let deserializer = &mut serde_json::Deserializer::from_slice(bytes);
+        let mut deserializer = serde_json::Deserializer::from_slice(bytes);
 
-        match serde_path_to_error::deserialize(deserializer) {
-            Ok(value) => Ok(Json(value)),
-            Err(err) => Err(make_rejection(err)),
-        }
+        serde_path_to_error::deserialize(&mut deserializer)
+            .map_err(make_rejection)
+            .and_then(|value| {
+                deserializer
+                    .end()
+                    .map(|()| Self(value))
+                    .map_err(|err| JsonSyntaxError::from_err(err).into())
+            })
     }
 }
 
@@ -309,6 +313,30 @@ mod tests {
             .await;
 
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[crate::test]
+    async fn extra_chars_after_valid_json_syntax() {
+        #[derive(Debug, Deserialize)]
+        struct Input {
+            foo: String,
+        }
+
+        let app = Router::new().route("/", post(|input: Json<Input>| async { input.0.foo }));
+
+        let client = TestClient::new(app);
+        let res = client
+            .post("/")
+            .body(r#"{ "foo": "bar" } baz "#)
+            .header("content-type", "application/json")
+            .await;
+
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        let body_text = res.text().await;
+        assert_eq!(
+            body_text,
+            "Failed to parse the request body as JSON: trailing characters at line 1 column 18"
+        );
     }
 
     #[derive(Deserialize)]
