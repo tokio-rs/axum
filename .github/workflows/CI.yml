@@ -229,19 +229,13 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v5
-    - uses: dtolnay/rust-toolchain@beta
-    - uses: Swatinem/rust-cache@v2
-      with:
-        save-if: ${{ github.ref == 'refs/heads/main' }}
     - name: Install cargo-sort
-      run: |
-        cargo install cargo-sort
-    # Work around cargo-sort not honoring workspace.exclude
-    - name: Remove non-crate folder
-      run: rm -rf examples/async-graphql
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-sort@2.0.2
     - name: Check dependency tables
       run: |
-        cargo sort --workspace --grouped --check
+        cargo-sort --workspace --grouped --check
 
   typos:
     name: Spell Check with Typos
