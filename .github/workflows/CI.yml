@@ -230,8 +230,9 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Install cargo-sort
-      run: |
-        curl -LsSf https://github.com/DevinR528/cargo-sort/releases/latest/download/cargo-sort-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-sort@2.0.2
     - name: Check dependency tables
       run: |
         cargo-sort --workspace --grouped --check
