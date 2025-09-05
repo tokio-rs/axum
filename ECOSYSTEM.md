@@ -58,6 +58,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-html-minifier](https://crates.io/crates/axum_html_minifier): This middleware minify the html body content of a axum response.
 - [static-serve](https://crates.io/crates/static-serve): A helper macro for compressing and embedding static assets in an axum webserver.
 - [datastar](https://crates.io/crates/datastar): Rust implementation of the Datastar SDK specification with Axum support
+- [axum-governor](https://crates.io/crates/axum-governor): An independent Axum middleware for rate limiting, powered by [lazy-limit](https://github.com/canmi21/lazy-limit) (not related to tower-governor).
 
 ## Project showcase
 
