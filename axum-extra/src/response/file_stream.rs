@@ -284,7 +284,7 @@ where
             .unwrap_or_else(|e| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("build FileStream responsec error: {e}"),
+                    format!("build FileStream response error: {e}"),
                 )
                     .into_response()
             })
