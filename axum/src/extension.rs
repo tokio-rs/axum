@@ -157,6 +157,9 @@ where
 /// for more details.
 ///
 /// [request extensions]: https://docs.rs/http/latest/http/struct.Extensions.html
+///
+/// If you need a layer to add an extension to every request,
+/// use the `Layer` implementation of `Extension`.
 #[derive(Clone, Copy, Debug)]
 pub struct AddExtension<S, T> {
     pub(crate) inner: S,
