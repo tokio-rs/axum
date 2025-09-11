@@ -392,6 +392,7 @@ dependencies = [
  "hyper",
  "mime",
  "multer",
+ "paste",
  "percent-encoding",
  "pin-project-lite",
  "prost",
