@@ -20,8 +20,8 @@ use axum::{
 use axum_extra::{headers, typed_header::TypedHeaderRejectionReason, TypedHeader};
 use http::{header, request::Parts, StatusCode};
 use oauth2::{
-    basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
-    ClientSecret, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,
+    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, EndpointNotSet, EndpointSet,
+    RedirectUrl, Scope, TokenResponse, TokenUrl,
 };
 use serde::{Deserialize, Serialize};
 use std::{convert::Infallible, env};
@@ -29,6 +29,14 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 static COOKIE_NAME: &str = "SESSION";
 static CSRF_TOKEN: &str = "csrf_token";
+
+type BasicClient = oauth2::basic::BasicClient<
+    EndpointSet,
+    EndpointNotSet,
+    EndpointNotSet,
+    EndpointNotSet,
+    EndpointSet,
+>;
 
 #[tokio::main]
 async fn main() {
@@ -110,15 +118,15 @@ fn oauth_client() -> Result<BasicClient, AppError> {
     let token_url = env::var("TOKEN_URL")
         .unwrap_or_else(|_| "https://discord.com/api/oauth2/token".to_string());
 
-    Ok(BasicClient::new(
-        ClientId::new(client_id),
-        Some(ClientSecret::new(client_secret)),
-        AuthUrl::new(auth_url).context("failed to create new authorization server URL")?,
-        Some(TokenUrl::new(token_url).context("failed to create new token endpoint URL")?),
-    )
-    .set_redirect_uri(
-        RedirectUrl::new(redirect_url).context("failed to create new redirection URL")?,
-    ))
+    Ok(oauth2::basic::BasicClient::new(ClientId::new(client_id))
+        .set_client_secret(ClientSecret::new(client_secret))
+        .set_auth_uri(
+            AuthUrl::new(auth_url).context("failed to create new authorization server URL")?,
+        )
+        .set_token_uri(TokenUrl::new(token_url).context("failed to create new token endpoint URL")?)
+        .set_redirect_uri(
+            RedirectUrl::new(redirect_url).context("failed to create new redirection URL")?,
+        ))
 }
 
 // The user data we'll get back from Discord.
@@ -265,7 +273,7 @@ async fn login_authorized(
     // Get an auth token
     let token = oauth_client
         .exchange_code(AuthorizationCode::new(query.code.clone()))
-        .request_async(async_http_client)
+        .request_async(&reqwest::Client::new())
         .await
         .context("failed in sending request request to authorization server")?;
 
