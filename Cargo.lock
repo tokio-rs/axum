@@ -1881,8 +1881,8 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "axum-extra",
- "axum-server 0.7.1",
  "tokio",
+ "tokio-rustls 0.26.1",
  "tracing",
  "tracing-subscriber",
 ]

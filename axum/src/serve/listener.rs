@@ -1,7 +1,14 @@
-use std::{fmt, future::Future, time::Duration};
+use std::{
+    fmt,
+    future::Future,
+    marker::PhantomData,
+    pin::Pin,
+    task::{Context, Poll},
+    time::Duration,
+};
 
 use tokio::{
-    io::{self, AsyncRead, AsyncWrite},
+    io::{self, AsyncRead, AsyncWrite, ReadBuf},
     net::{TcpListener, TcpStream},
 };
 
@@ -95,6 +102,24 @@ pub trait ListenerExt: Listener + Sized {
             tap_fn,
         }
     }
+
+    /// Add an async handshaking step to the listener.
+    ///
+    /// This is useful for implementing TLS. The handshaker closure is handed
+    /// ownership of the I/O object and is expected to return a new I/O
+    /// object, possibly of a different type.
+    fn handshake<F, H, HandshakeIo>(self, handshaker: F) -> Handshake<Self, F, H, HandshakeIo>
+    where
+        F: FnMut(Self::Io) -> H + Send + 'static,
+        H: Future<Output = Option<HandshakeIo>> + Send,
+        HandshakeIo: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    {
+        Handshake {
+            listener: self,
+            handshaker,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 impl<L: Listener> ListenerExt for L {}
@@ -134,6 +159,199 @@ where
 
     fn local_addr(&self) -> io::Result<Self::Addr> {
         self.listener.local_addr()
+    }
+}
+
+/// Return type of [`ListenerExt::handshake`].
+///
+/// See that method for details.
+pub struct Handshake<L, F, H, HandshakeIo> {
+    listener: L,
+    handshaker: F,
+    _phantom: PhantomData<fn() -> (H, HandshakeIo)>,
+}
+
+impl<L, F, H, HandshakeIo> fmt::Debug for Handshake<L, F, H, HandshakeIo>
+where
+    L: Listener + fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Handshake")
+            .field("listener", &self.listener)
+            .finish_non_exhaustive()
+    }
+}
+
+impl<L, F, H, HandshakeIo> Listener for Handshake<L, F, H, HandshakeIo>
+where
+    L: Listener,
+    F: FnMut(L::Io) -> H + Send + 'static,
+    H: Future<Output = Option<HandshakeIo>> + Send + 'static,
+    HandshakeIo: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    type Io = HandshakeFuture<Pin<Box<H>>, HandshakeIo>;
+    type Addr = L::Addr;
+
+    async fn accept(&mut self) -> (Self::Io, Self::Addr) {
+        let (io, addr) = self.listener.accept().await;
+        let handshake_fut = (self.handshaker)(io);
+
+        (HandshakeFuture::new(Box::pin(handshake_fut)), addr)
+    }
+
+    fn local_addr(&self) -> io::Result<Self::Addr> {
+        self.listener.local_addr()
+    }
+}
+
+pin_project_lite::pin_project! {
+    pub struct HandshakeFuture<F, T>
+    where
+        F: Future,
+    {
+        #[pin]
+        state: State<F, T>,
+    }
+}
+
+pin_project_lite::pin_project! {
+    #[project = StateProj]
+    enum State<F, T> {
+        Handshaking { #[pin] fut: F },
+        Ready { stream: T },
+    }
+}
+
+impl<F, T> HandshakeFuture<F, T>
+where
+    F: Future<Output = Option<T>>,
+    T: AsyncRead + AsyncWrite,
+{
+    fn new(future: F) -> Self {
+        Self {
+            state: State::Handshaking { fut: future },
+        }
+    }
+}
+
+impl<F, T> AsyncRead for HandshakeFuture<F, T>
+where
+    F: Future<Output = Option<T>>,
+    T: AsyncRead + AsyncWrite + Unpin,
+{
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<io::Result<()>> {
+        let mut this = self.project();
+
+        loop {
+            match this.state.as_mut().project() {
+                StateProj::Handshaking { fut } => {
+                    // Poll the handshake future
+                    let stream = match fut.poll(cx) {
+                        Poll::Ready(Some(stream)) => stream,
+                        Poll::Ready(None) => {
+                            return Poll::Ready(Err(io::Error::new(
+                                io::ErrorKind::ConnectionAborted,
+                                "handshake failed",
+                            )));
+                        }
+                        Poll::Pending => return Poll::Pending,
+                    };
+
+                    // Handshake is complete, transition state to Ready and loop
+                    // to poll the read on the new stream immediately.
+                    this.state.set(State::Ready { stream });
+                }
+                StateProj::Ready { stream } => {
+                    return Pin::new(stream).poll_read(cx, buf);
+                }
+            }
+        }
+    }
+}
+
+impl<F, T> AsyncWrite for HandshakeFuture<F, T>
+where
+    F: Future<Output = Option<T>>,
+    T: AsyncRead + AsyncWrite + Unpin,
+{
+    fn poll_write(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<io::Result<usize>> {
+        let mut this = self.project();
+        loop {
+            match this.state.as_mut().project() {
+                StateProj::Handshaking { fut } => {
+                    let stream = match fut.poll(cx) {
+                        Poll::Ready(Some(stream)) => stream,
+                        Poll::Ready(None) => {
+                            return Poll::Ready(Err(io::Error::new(
+                                io::ErrorKind::ConnectionAborted,
+                                "handshake failed",
+                            )))
+                        }
+                        Poll::Pending => return Poll::Pending,
+                    };
+                    this.state.set(State::Ready { stream });
+                }
+                StateProj::Ready { stream } => {
+                    return Pin::new(stream).poll_write(cx, buf);
+                }
+            }
+        }
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        let mut this = self.project();
+        loop {
+            match this.state.as_mut().project() {
+                StateProj::Handshaking { fut } => {
+                    let stream = match fut.poll(cx) {
+                        Poll::Ready(Some(stream)) => stream,
+                        Poll::Ready(None) => {
+                            return Poll::Ready(Err(io::Error::new(
+                                io::ErrorKind::ConnectionAborted,
+                                "handshake failed",
+                            )))
+                        }
+                        Poll::Pending => return Poll::Pending,
+                    };
+                    this.state.set(State::Ready { stream });
+                }
+                StateProj::Ready { stream } => {
+                    return Pin::new(stream).poll_flush(cx);
+                }
+            }
+        }
+    }
+
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        let mut this = self.project();
+        loop {
+            match this.state.as_mut().project() {
+                StateProj::Handshaking { fut } => {
+                    let stream = match fut.poll(cx) {
+                        Poll::Ready(Some(stream)) => stream,
+                        Poll::Ready(None) => {
+                            return Poll::Ready(Err(io::Error::new(
+                                io::ErrorKind::ConnectionAborted,
+                                "handshake failed",
+                            )))
+                        }
+                        Poll::Pending => return Poll::Pending,
+                    };
+                    this.state.set(State::Ready { stream });
+                }
+                StateProj::Ready { stream } => {
+                    return Pin::new(stream).poll_shutdown(cx);
+                }
+            }
+        }
     }
 }
 
