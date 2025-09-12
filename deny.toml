@@ -31,9 +31,6 @@ skip-tree = [
     { name = "regex-automata" },
     # pulled in by hyper
     { name = "socket2" },
-    # hyper-util hasn't upgraded to 0.5 yet, but it's the same service / layer
-    # crates beneath
-    { name = "tower" },
     # pulled in by quickcheck and cookie
     { name = "rand" },
 ]
