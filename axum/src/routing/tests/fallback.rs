@@ -330,6 +330,17 @@ async fn merge_router_with_fallback_into_empty() {
 }
 
 #[crate::test]
+async fn mna_fallback() {
+    let app = Router::new()
+        .route("/", get(|| async { "index" }))
+        .method_not_allowed_fallback(|| async move { "method not allowed fallback" });
+
+    let client = TestClient::new(app);
+    let res = client.post("/").await;
+    assert_eq!(res.headers().get(ALLOW), None);
+}
+
+#[crate::test]
 async fn mna_fallback_with_existing_fallback() {
     let app = Router::new()
         .route(
