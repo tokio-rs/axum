@@ -21,7 +21,8 @@ use axum::{
 };
 use diesel::prelude::*;
 use diesel_async::{
-    pooled_connection::AsyncDieselConnectionManager, AsyncPgConnection, RunQueryDsl,
+    pooled_connection::{bb8, AsyncDieselConnectionManager},
+    AsyncPgConnection, RunQueryDsl,
 };
 use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -49,7 +50,7 @@ struct NewUser {
     hair_color: Option<String>,
 }
 
-type Pool = bb8::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
+type Pool = bb8::Pool<AsyncPgConnection>;
 
 #[tokio::main]
 async fn main() {
@@ -97,9 +98,7 @@ async fn create_user(
 
 // we can also write a custom extractor that grabs a connection from the pool
 // which setup is appropriate depends on your application
-struct DatabaseConnection(
-    bb8::PooledConnection<'static, AsyncDieselConnectionManager<AsyncPgConnection>>,
-);
+struct DatabaseConnection(bb8::PooledConnection<'static, AsyncPgConnection>);
 
 impl<S> FromRequestParts<S> for DatabaseConnection
 where

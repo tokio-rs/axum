@@ -1404,7 +1404,6 @@ name = "example-diesel-async-postgres"
 version = "0.1.0"
 dependencies = [
  "axum",
- "bb8 0.8.6",
  "diesel",
  "diesel-async",
  "serde",
