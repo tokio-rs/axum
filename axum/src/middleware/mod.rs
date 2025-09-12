@@ -6,6 +6,7 @@ mod from_extractor;
 mod from_fn;
 mod map_request;
 mod map_response;
+mod response_axum_body;
 
 pub use self::from_extractor::{
     from_extractor, from_extractor_with_state, FromExtractor, FromExtractorLayer,
@@ -16,6 +17,9 @@ pub use self::map_request::{
 };
 pub use self::map_response::{
     map_response, map_response_with_state, MapResponse, MapResponseLayer,
+};
+pub use self::response_axum_body::{
+    ResponseAxumBody, ResponseAxumBodyFuture, ResponseAxumBodyLayer,
 };
 pub use crate::extension::AddExtension;
 
