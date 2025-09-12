@@ -340,7 +340,7 @@ dependencies = [
  "tokio-stream",
  "tokio-tungstenite",
  "tower 0.5.2",
- "tower-http 0.6.2",
+ "tower-http",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -366,7 +366,7 @@ dependencies = [
  "rustversion",
  "sync_wrapper",
  "tokio",
- "tower-http 0.6.2",
+ "tower-http",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -405,7 +405,7 @@ dependencies = [
  "tokio-stream",
  "tokio-util",
  "tower 0.5.2",
- "tower-http 0.6.2",
+ "tower-http",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -1361,7 +1361,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tower 0.5.2",
- "tower-http 0.6.2",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
  "zstd",
@@ -1384,7 +1384,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "tokio",
- "tower-http 0.6.2",
+ "tower-http",
 ]
 
 [[package]]
@@ -1459,7 +1459,7 @@ dependencies = [
  "axum",
  "serde",
  "tokio",
- "tower-http 0.6.2",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1494,7 +1494,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "tokio",
- "tower-http 0.6.2",
+ "tower-http",
  "tracing-subscriber",
 ]
 
@@ -1551,7 +1551,7 @@ dependencies = [
  "axum",
  "tokio",
  "tower 0.5.2",
- "tower-http 0.6.2",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1607,7 +1607,7 @@ dependencies = [
  "mongodb",
  "serde",
  "tokio",
- "tower-http 0.6.2",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1618,7 +1618,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "tokio",
- "tower-http 0.6.2",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1703,7 +1703,7 @@ dependencies = [
  "axum",
  "tokio",
  "tower 0.5.2",
- "tower-http 0.5.2",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1716,7 +1716,7 @@ dependencies = [
  "reqwest",
  "tokio",
  "tokio-stream",
- "tower-http 0.6.2",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1785,7 +1785,7 @@ dependencies = [
  "reqwest-eventsource",
  "tokio",
  "tokio-stream",
- "tower-http 0.6.2",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1797,7 +1797,7 @@ dependencies = [
  "axum",
  "tokio",
  "tower 0.5.2",
- "tower-http 0.6.2",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1847,7 +1847,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tower 0.5.2",
- "tower-http 0.6.2",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1895,7 +1895,7 @@ dependencies = [
  "serde",
  "tokio",
  "tower 0.5.2",
- "tower-http 0.6.2",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -1933,7 +1933,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "tokio",
- "tower-http 0.6.2",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1987,7 +1987,7 @@ dependencies = [
  "headers",
  "tokio",
  "tokio-tungstenite",
- "tower-http 0.6.2",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1999,7 +1999,7 @@ dependencies = [
  "axum",
  "axum-server 0.6.0",
  "tokio",
- "tower-http 0.5.2",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
 ]
@@ -5120,32 +5120,6 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
-]
-
-[[package]]
-name = "tower-http"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e9cd434a998747dd2c4276bc96ee2e0c7a2eadf3cae88e52be55a05fa9053f5"
-dependencies = [
- "bitflags 2.6.0",
- "bytes",
- "futures-util",
- "http",
- "http-body",
- "http-body-util",
- "http-range-header",
- "httpdate",
- "mime",
- "mime_guess",
- "percent-encoding",
- "pin-project-lite",
- "tokio",
- "tokio-util",
- "tower-layer",
- "tower-service",
- "tracing",
- "uuid",
 ]
 
 [[package]]
