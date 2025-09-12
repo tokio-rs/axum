@@ -1111,7 +1111,7 @@ where
         self.layer(HandleErrorLayer::new(f))
     }
 
-    fn skip_allow_header(mut self) -> Self {
+    pub fn skip_allow_header(mut self) -> Self {
         self.allow_header = AllowHeader::Skip;
         self
     }
