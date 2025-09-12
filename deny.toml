@@ -25,10 +25,6 @@ skip-tree = [
     { name = "spin" },
     # lots still pulls in syn 1.x
     { name = "syn" },
-    # pulled in by tracing-subscriber
-    { name = "regex-syntax" },
-    # pulled in by tracing-subscriber
-    { name = "regex-automata" },
     # pulled in by hyper
     { name = "socket2" },
     # pulled in by quickcheck and cookie
