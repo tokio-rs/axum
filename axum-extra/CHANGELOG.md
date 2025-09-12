@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning].
 - **breaking:** Remove unused `async-stream` feature, which was accidentally
   introduced as an implicit feature through an optional dependency which was no
   longer being used ([#3298])
+- **breaking:** `option_layer` now maps the `Response` body type to `axum::body::Body` ([#3469])
 
 [#3298]: https://github.com/tokio-rs/axum/pull/3298
 
