@@ -1111,6 +1111,7 @@ where
         self.layer(HandleErrorLayer::new(f))
     }
 
+    #[doc = include_str!("../docs/method_routing/skip_allow_header.md")]
     pub fn skip_allow_header(mut self) -> Self {
         self.allow_header = AllowHeader::Skip;
         self
@@ -1467,6 +1468,14 @@ mod tests {
         let (status, headers, _) = call(Method::PUT, &mut svc).await;
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
         assert_eq!(headers[ALLOW], "GET,HEAD");
+    }
+
+    #[crate::test]
+    async fn skips_allow_header() {
+        let mut svc = MethodRouter::new().get(ok).skip_allow_header();
+        let (status, headers, _) = call(Method::POST, &mut svc).await;
+        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(headers.get(ALLOW), None);
     }
 
     #[crate::test]
