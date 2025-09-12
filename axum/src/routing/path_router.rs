@@ -104,7 +104,10 @@ where
     {
         for (_, endpoint) in self.routes.iter_mut() {
             if let Endpoint::MethodRouter(rt) = endpoint {
-                *rt = rt.clone().default_fallback(handler.clone());
+                *rt = rt
+                    .clone()
+                    .skip_allow_header()
+                    .default_fallback(handler.clone());
             }
         }
     }
