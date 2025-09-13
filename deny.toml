@@ -1,16 +1,18 @@
+[graph]
+exclude-unpublished = true
+
 [advisories]
-vulnerability = "deny"
-unmaintained = "warn"
-notice = "warn"
+unmaintained = "none"
 ignore = []
 
 [licenses]
-unlicensed = "warn"
-allow = []
-deny = []
-copyleft = "warn"
-allow-osi-fsf-free = "either"
 confidence-threshold = 0.8
+allow = [
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "MIT",
+    "Unicode-3.0",
+]
 
 [bans]
 multiple-versions = "deny"
@@ -21,12 +23,6 @@ skip-tree = [
     { name = "base64" },
     # parking_lot pulls in old versions of windows-sys
     { name = "windows-sys" },
-    # old version pulled in by rustls via ring
-    { name = "spin" },
-    # lots still pulls in syn 1.x
-    { name = "syn" },
-    # pulled in by hyper
-    { name = "socket2" },
     # pulled in by quickcheck and cookie
     { name = "rand" },
 ]
