@@ -1893,9 +1893,7 @@ name = "example-tokio-redis"
 version = "0.1.0"
 dependencies = [
  "axum",
- "bb8 0.8.6",
  "bb8-redis",
- "redis",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -3807,8 +3805,6 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "ryu",
- "sha1_smol",
- "socket2",
  "tokio",
  "tokio-util",
  "url",
@@ -4303,12 +4299,6 @@ dependencies = [
  "cpufeatures",
  "digest 0.10.7",
 ]
-
-[[package]]
-name = "sha1_smol"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbfa15b3dddfee50a0fff136974b3e1bde555604ba463834a7eb7deb6417705d"
 
 [[package]]
 name = "sha2"
