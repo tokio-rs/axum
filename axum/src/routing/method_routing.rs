@@ -1188,7 +1188,7 @@ fn append_allow_header(allow_header: &mut AllowHeader, method: &'static str) {
                 }
             } else {
                 #[cfg(debug_assertions)]
-                panic!("`allow_header` contained invalid uft-8. This should never happen")
+                panic!("`allow_header` contained invalid utf-8. This should never happen")
             }
         }
     }
