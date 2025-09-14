@@ -1,6 +1,6 @@
 use super::{ErrorKind, PathDeserializationError};
 use crate::util::PercentDecodedStr;
-use serde::{
+use serde_core::{
     de::{self, DeserializeSeed, EnumAccess, Error, MapAccess, SeqAccess, VariantAccess, Visitor},
     forward_to_deserialize_any, Deserializer,
 };

@@ -7,7 +7,7 @@ use http::{
     header::{self, HeaderMap, HeaderValue},
     StatusCode,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde_core::{de::DeserializeOwned, Serialize};
 
 /// JSON Extractor / Response.
 ///

@@ -29,7 +29,7 @@ allowed = [
     "http_body",
     "pin_project_lite",
     "prost",
-    "serde",
+    "serde_core",
     "tokio",
     "tokio_util",
     "tower_layer",
@@ -78,10 +78,8 @@ typed-routing = [
 ]
 
 # Enabled by docs.rs because it uses all-features
-__private_docs = [
-    # Required for the ErasedJson docs to be able to link to axum::Json
-    "axum/json",
-]
+# Enables upstream things linked to in docs
+__private_docs = ["axum/json", "dep:serde"]
 
 [dependencies]
 axum = { path = "../axum", version = "0.8.4", default-features = false, features = ["original-uri"] }
@@ -95,7 +93,7 @@ http-body-util = "0.1.0"
 mime = "0.3"
 pin-project-lite = "0.2"
 rustversion = "1.0.9"
-serde = "1.0"
+serde_core = "1.0.221"
 tower = { version = "0.5.2", default-features = false, features = ["util"] }
 tower-layer = "0.3"
 tower-service = "0.3"
@@ -118,12 +116,15 @@ tokio-util = { version = "0.7", optional = true }
 tracing = { version = "0.1.37", default-features = false, optional = true }
 typed-json = { version = "0.1.1", optional = true }
 
+# doc dependencies
+serde = { version = "1.0.221", optional = true }
+
 [dev-dependencies]
 axum = { path = "../axum", features = ["macros", "__private"] }
 axum-macros = { path = "../axum-macros", features = ["__private"] }
 hyper = "1.0.0"
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "multipart"] }
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0.221", features = ["derive"] }
 serde_json = "1.0.71"
 tokio = { version = "1.14", features = ["full"] }
 tower = { version = "0.5.2", features = ["util"] }

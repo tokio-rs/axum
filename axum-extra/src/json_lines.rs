@@ -10,7 +10,7 @@ use bytes::{BufMut, BytesMut};
 use futures_core::{stream::BoxStream, Stream, TryStream};
 use futures_util::stream::TryStreamExt;
 use pin_project_lite::pin_project;
-use serde::{de::DeserializeOwned, Serialize};
+use serde_core::{de::DeserializeOwned, Serialize};
 use std::{
     convert::Infallible,
     io::{self, Write},
@@ -174,7 +174,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::JsonLines;
     use crate::test_helpers::*;
     use axum::{
         routing::{get, post},
@@ -182,8 +182,8 @@ mod tests {
     };
     use futures_util::StreamExt;
     use http::StatusCode;
-    use serde::Deserialize;
-    use std::error::Error;
+    use serde::{Deserialize, Serialize};
+    use std::{convert::Infallible, error::Error};
 
     #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
     struct User {

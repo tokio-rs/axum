@@ -1,12 +1,12 @@
-error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is not satisfied
+error[E0277]: the trait bound `Struct: serde::Deserialize<'de>` is not satisfied
  --> tests/debug_handler/fail/json_not_deserialize.rs:7:24
   |
 7 | async fn handler(_foo: Json<Struct>) {}
-  |                        ^^^^^^^^^^^^ the trait `for<'de> serde::de::Deserialize<'de>` is not implemented for `Struct`, which is required by `Json<Struct>: FromRequest<()>`
+  |                        ^^^^^^^^^^^^ the trait `for<'de> serde_core::de::Deserialize<'de>` is not implemented for `Struct`, which is required by `Json<Struct>: FromRequest<()>`
   |
   = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `Struct` type
   = note: for types from other crates check whether the crate offers a `serde` feature flag
-  = help: the following other types implement trait `serde::de::Deserialize<'de>`:
+  = help: the following other types implement trait `serde_core::de::Deserialize<'de>`:
             &'a [u8]
             &'a serde_json::raw::RawValue
             &'a std::path::Path
@@ -16,7 +16,7 @@ error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is 
             (T0, T1)
             (T0, T1, T2)
           and $N others
-  = note: required for `Struct` to implement `serde::de::DeserializeOwned`
+  = note: required for `Struct` to implement `serde_core::de::DeserializeOwned`
   = note: required for `Json<Struct>` to implement `FromRequest<()>`
   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
@@ -24,15 +24,15 @@ help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 1 + #![feature(trivial_bounds)]
   |
 
-error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is not satisfied
+error[E0277]: the trait bound `Struct: serde::Deserialize<'de>` is not satisfied
  --> tests/debug_handler/fail/json_not_deserialize.rs:7:24
   |
 7 | async fn handler(_foo: Json<Struct>) {}
-  |                        ^^^^^^^^^^^^ the trait `for<'de> serde::de::Deserialize<'de>` is not implemented for `Struct`, which is required by `Json<Struct>: FromRequest<()>`
+  |                        ^^^^^^^^^^^^ the trait `for<'de> serde_core::de::Deserialize<'de>` is not implemented for `Struct`, which is required by `Json<Struct>: FromRequest<()>`
   |
   = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `Struct` type
   = note: for types from other crates check whether the crate offers a `serde` feature flag
-  = help: the following other types implement trait `serde::de::Deserialize<'de>`:
+  = help: the following other types implement trait `serde_core::de::Deserialize<'de>`:
             &'a [u8]
             &'a serde_json::raw::RawValue
             &'a std::path::Path
@@ -42,7 +42,7 @@ error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is 
             (T0, T1)
             (T0, T1, T2)
           and $N others
-  = note: required for `Struct` to implement `serde::de::DeserializeOwned`
+  = note: required for `Struct` to implement `serde_core::de::DeserializeOwned`
   = note: required for `Json<Struct>` to implement `FromRequest<()>`
 note: required by a bound in `__axum_macros_check_handler_0_from_request_check`
  --> tests/debug_handler/fail/json_not_deserialize.rs:7:24
