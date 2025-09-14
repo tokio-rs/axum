@@ -33,7 +33,7 @@ allowed = [
     "bytes",
     "http",
     "http_body",
-    "serde",
+    "serde_core",
     "tokio",
     # for the `__private` feature
     "reqwest",
@@ -78,6 +78,7 @@ __private_docs = [
     "axum-core/__private_docs",
     # Enables upstream things linked to in docs
     "tower/full",
+    "dep:serde",
     "dep:tower-http",
 ]
 
@@ -121,6 +122,9 @@ sha1 = { version = "0.10", optional = true }
 tokio = { package = "tokio", version = "1.44", features = ["time"], optional = true }
 tokio-tungstenite = { version = "0.27.0", optional = true }
 tracing = { version = "0.1", default-features = false, optional = true }
+
+# doc dependencies
+serde = { version = "1.0.211", optional = true }
 
 [dependencies.tower-http]
 version = "0.6.0"

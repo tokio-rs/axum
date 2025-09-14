@@ -29,7 +29,7 @@ allowed = [
     "http_body",
     "pin_project_lite",
     "prost",
-    "serde",
+    "serde_core",
     "tokio",
     "tokio_util",
     "tower_layer",
