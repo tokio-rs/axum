@@ -715,10 +715,15 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn test_with_graceful_shutdown_request_header_timeout() {
-        for req in [
-            "",                           // don't send a request
-            "GET / HT",                   // stall during request line
-            "GET / HTTP/1.0\r\nAccept: ", // stall during request headers
+        for (timeout, req) in [
+            // Idle connections (between requests) are closed immediately
+            // when a graceful shutdown is triggered.
+            (0, ""),                       // idle before request sent
+            (0, "GET / HTTP/1.1\r\n\r\n"), // idle after complete exchange
+            // hyper times stalled request lines/headers out after 30 sec,
+            // after which the graceful shutdown can be completed.
+            (30, "GET / HT"),                   // stall during request line
+            (30, "GET / HTTP/1.0\r\nAccept: "), // stall during request headers
         ] {
             let (mut client, server) = io::duplex(1024);
             client.write_all(req.as_bytes()).await.unwrap();
@@ -730,9 +735,7 @@ mod tests {
                     .unwrap();
             };
 
-            // Hyper's default request header timeout is 30 secs as of this writing, but
-            // may change in the future, so accommodate a potentially higher timeout.
-            tokio::time::timeout(Duration::from_secs(305), server_task)
+            tokio::time::timeout(Duration::from_secs(timeout + 2), server_task)
                 .await
                 .expect("server_task didn't exit in time");
         }
