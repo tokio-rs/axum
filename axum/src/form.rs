@@ -4,8 +4,7 @@ use axum_core::response::{IntoResponse, Response};
 use axum_core::RequestExt;
 use http::header::CONTENT_TYPE;
 use http::StatusCode;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde_core::{de::DeserializeOwned, Serialize};
 
 /// URL encoded extractor and response.
 ///

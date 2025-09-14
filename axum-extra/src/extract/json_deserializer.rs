@@ -4,7 +4,7 @@ use axum_core::__define_rejection as define_rejection;
 use axum_core::extract::rejection::BytesRejection;
 use bytes::Bytes;
 use http::{header, HeaderMap};
-use serde::Deserialize;
+use serde_core::Deserialize;
 use std::marker::PhantomData;
 
 /// JSON Extractor for zero-copy deserialization.

@@ -1,6 +1,6 @@
 use super::{rejection::*, FromRequestParts};
 use http::{request::Parts, Uri};
-use serde::de::DeserializeOwned;
+use serde_core::de::DeserializeOwned;
 
 /// Extractor that deserializes query strings into some type.
 ///

@@ -42,7 +42,9 @@ __private_docs = [
     # but they need the same sort of treatment as below to be complete
     "axum-core/__private_docs",
     # Enables upstream things linked to in docs
-    "tower/full", "dep:tower-http",
+    "tower/full",
+    "dep:serde",
+    "dep:tower-http",
 ]
 
 # This feature is used to enable private test helper usage
@@ -62,7 +64,7 @@ memchr = "2.4.1"
 mime = "0.3.16"
 percent-encoding = "2.1"
 pin-project-lite = "0.2.7"
-serde = "1.0"
+serde_core = "1.0.221"
 sync_wrapper = "1.0.0"
 tower = { version = "0.5.2", default-features = false, features = ["util"] }
 tower-layer = "0.3.2"
@@ -83,6 +85,9 @@ sha1 = { version = "0.10", optional = true }
 tokio = { package = "tokio", version = "1.44", features = ["time"], optional = true }
 tokio-tungstenite = { version = "0.27.0", optional = true }
 tracing = { version = "0.1", default-features = false, optional = true }
+
+# doc dependencies
+serde = { version = "1.0.211", optional = true }
 
 [dependencies.tower-http]
 version = "0.6.0"
@@ -127,7 +132,7 @@ hyper = { version = "1.1.0", features = ["client"] }
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "multipart"] }
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0.221", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
 time = { version = "0.3", features = ["serde-human-readable"] }
 tokio = { package = "tokio", version = "1.44.2", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
@@ -216,7 +221,7 @@ allowed = [
     "bytes",
     "http",
     "http_body",
-    "serde",
+    "serde_core",
     "tokio",
 
     # for the `__private` feature

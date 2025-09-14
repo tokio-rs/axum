@@ -2,7 +2,7 @@ use axum::extract::FromRequestParts;
 use axum_core::__composite_rejection as composite_rejection;
 use axum_core::__define_rejection as define_rejection;
 use http::{request::Parts, Uri};
-use serde::de::DeserializeOwned;
+use serde_core::de::DeserializeOwned;
 
 /// Extractor that deserializes query strings into some type.
 ///

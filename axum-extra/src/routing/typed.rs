@@ -2,7 +2,7 @@ use std::{any::type_name, fmt};
 
 use super::sealed::Sealed;
 use http::Uri;
-use serde::Serialize;
+use serde_core::Serialize;
 
 /// A type safe path.
 ///
@@ -384,7 +384,6 @@ impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{
         extract::WithRejection,
         routing::{RouterExt, TypedPath},
@@ -394,7 +393,7 @@ mod tests {
         response::{IntoResponse, Response},
         Router,
     };
-    use serde::Deserialize;
+    use serde::{Deserialize, Serialize};
 
     #[derive(TypedPath, Deserialize)]
     #[typed_path("/users/{id}")]
