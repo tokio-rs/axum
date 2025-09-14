@@ -100,7 +100,7 @@ memchr = "2.4.1"
 mime = "0.3.16"
 percent-encoding = "2.1"
 pin-project-lite = "0.2.7"
-serde = "1.0"
+serde_core = "1.0.221"
 sync_wrapper = "1.0.0"
 tower = { version = "0.5.2", default-features = false, features = ["util"] }
 tower-layer = "0.3.2"
@@ -165,7 +165,7 @@ hyper = { version = "1.1.0", features = ["client"] }
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "multipart"] }
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0.221", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
 time = { version = "0.3", features = ["serde-human-readable"] }
 tokio = { package = "tokio", version = "1.44.2", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }

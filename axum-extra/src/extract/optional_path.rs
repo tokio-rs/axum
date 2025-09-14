@@ -2,7 +2,7 @@ use axum::{
     extract::{rejection::PathRejection, FromRequestParts, Path},
     RequestPartsExt,
 };
-use serde::de::DeserializeOwned;
+use serde_core::de::DeserializeOwned;
 
 /// Extractor that extracts path arguments the same way as [`Path`], except if there aren't any.
 ///

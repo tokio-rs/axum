@@ -5,7 +5,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use bytes::{BufMut, Bytes, BytesMut};
-use serde::Serialize;
+use serde_core::Serialize;
 
 /// A response type that holds a JSON in serialized form.
 ///

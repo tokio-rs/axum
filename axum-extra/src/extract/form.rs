@@ -5,7 +5,7 @@ use axum::{
 };
 use axum_core::__composite_rejection as composite_rejection;
 use axum_core::__define_rejection as define_rejection;
-use serde::de::DeserializeOwned;
+use serde_core::de::DeserializeOwned;
 
 /// Extractor that deserializes `application/x-www-form-urlencoded` requests
 /// into some type.

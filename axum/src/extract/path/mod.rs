@@ -14,7 +14,7 @@ use axum_core::{
     RequestPartsExt as _,
 };
 use http::{request::Parts, StatusCode};
-use serde::de::DeserializeOwned;
+use serde_core::de::DeserializeOwned;
 use std::{fmt, sync::Arc};
 
 /// Extractor that will get captures from the URL and parse them using
@@ -254,7 +254,7 @@ impl WrongNumberOfParameters<usize> {
     }
 }
 
-impl serde::de::Error for PathDeserializationError {
+impl serde_core::de::Error for PathDeserializationError {
     #[inline]
     fn custom<T>(msg: T) -> Self
     where
