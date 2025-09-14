@@ -28,7 +28,8 @@ pub use self::listener::{Listener, ListenerExt, TapIo};
 /// Serve the service with the supplied listener.
 ///
 /// This method of running a service is intentionally simple and doesn't support any configuration.
-/// Use hyper or hyper-util if you need configuration.
+/// hyper's default configuration applies (including [timeouts]); use hyper or hyper-util if you
+/// need configuration.
 ///
 /// It supports both HTTP/1 as well as HTTP/2.
 ///
@@ -88,6 +89,7 @@ pub use self::listener::{Listener, ListenerExt, TapIo};
 /// error. Errors on the TCP socket will be handled by sleeping for a short while (currently, one
 /// second).
 ///
+/// [timeouts]: hyper::server::conn::http1::Builder::header_read_timeout
 /// [`Router`]: crate::Router
 /// [`Router::into_make_service_with_connect_info`]: crate::Router::into_make_service_with_connect_info
 /// [`MethodRouter`]: crate::routing::MethodRouter
