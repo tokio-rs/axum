@@ -14,7 +14,7 @@ use axum_core::{body::Body, extract::Request, response::Response};
 use futures_util::FutureExt;
 use http_body::Body as HttpBody;
 use hyper::body::Incoming;
-use hyper_util::rt::{TokioExecutor, TokioIo};
+use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
 #[cfg(any(feature = "http1", feature = "http2"))]
 use hyper_util::{server::conn::auto::Builder, service::TowerToHyperService};
 use tokio::sync::watch;
@@ -409,6 +409,11 @@ async fn handle_connection<L, M, S, B>(
     tokio::spawn(async move {
         #[allow(unused_mut)]
         let mut builder = Builder::new(TokioExecutor::new());
+
+        // Enable Hyper's default HTTP/1 request header timeout.
+        #[cfg(feature = "http1")]
+        builder.http1().timer(TokioTimer::new());
+
         // CONNECT protocol needed for HTTP/2 websockets
         #[cfg(feature = "http2")]
         builder.http2().enable_connect_protocol();
@@ -495,6 +500,7 @@ mod tests {
     use std::{
         future::{pending, IntoFuture as _},
         net::{IpAddr, Ipv4Addr},
+        time::Duration,
     };
 
     use axum_core::{body::Body, extract::Request};
@@ -503,7 +509,7 @@ mod tests {
     #[cfg(unix)]
     use tokio::net::UnixListener;
     use tokio::{
-        io::{self, AsyncRead, AsyncWrite},
+        io::{self, AsyncRead, AsyncWrite, AsyncWriteExt},
         net::TcpListener,
     };
     use tower::ServiceBuilder;
@@ -520,6 +526,27 @@ mod tests {
         serve::ListenerExt,
         Router, ServiceExt,
     };
+
+    struct ReadyListener<T>(Option<T>);
+
+    impl<T> Listener for ReadyListener<T>
+    where
+        T: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    {
+        type Io = T;
+        type Addr = ();
+
+        async fn accept(&mut self) -> (Self::Io, Self::Addr) {
+            match self.0.take() {
+                Some(server) => (server, ()),
+                None => std::future::pending().await,
+            }
+        }
+
+        fn local_addr(&self) -> io::Result<Self::Addr> {
+            Ok(())
+        }
+    }
 
     #[allow(dead_code, unused_must_use)]
     async fn if_it_compiles_it_works() {
@@ -686,6 +713,31 @@ mod tests {
         assert_ne!(address.port(), 0);
     }
 
+    #[tokio::test(start_paused = true)]
+    async fn test_with_graceful_shutdown_request_header_timeout() {
+        for req in [
+            "",                           // don't send a request
+            "GET / HT",                   // stall during request line
+            "GET / HTTP/1.0\r\nAccept: ", // stall during request headers
+        ] {
+            let (mut client, server) = io::duplex(1024);
+            client.write_all(req.as_bytes()).await.unwrap();
+
+            let server_task = async {
+                serve(ReadyListener(Some(server)), Router::new())
+                    .with_graceful_shutdown(tokio::time::sleep(Duration::from_secs(1)))
+                    .await
+                    .unwrap();
+            };
+
+            // Hyper's default request header timeout is 30 secs as of this writing, but
+            // may change in the future, so accommodate a potentially higher timeout.
+            tokio::time::timeout(Duration::from_secs(305), server_task)
+                .await
+                .expect("server_task didn't exit in time");
+        }
+    }
+
     #[test]
     fn into_future_outside_tokio() {
         let router: Router = Router::new();
@@ -704,27 +756,6 @@ mod tests {
 
     #[crate::test]
     async fn serving_on_custom_io_type() {
-        struct ReadyListener<T>(Option<T>);
-
-        impl<T> Listener for ReadyListener<T>
-        where
-            T: AsyncRead + AsyncWrite + Unpin + Send + 'static,
-        {
-            type Io = T;
-            type Addr = ();
-
-            async fn accept(&mut self) -> (Self::Io, Self::Addr) {
-                match self.0.take() {
-                    Some(server) => (server, ()),
-                    None => std::future::pending().await,
-                }
-            }
-
-            fn local_addr(&self) -> io::Result<Self::Addr> {
-                Ok(())
-            }
-        }
-
         let (client, server) = io::duplex(1024);
         let listener = ReadyListener(Some(server));
 
