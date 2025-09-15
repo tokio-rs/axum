@@ -330,6 +330,23 @@ async fn merge_router_with_fallback_into_empty() {
 }
 
 #[crate::test]
+async fn mna_fallback_not_405() {
+    let app = Router::new()
+        .route("/path", get(|| async { "path" }))
+        .method_not_allowed_fallback(|| async { (http::StatusCode::NOT_FOUND, "Not Found") });
+
+    let client = TestClient::new(app);
+    let method_not_allowed_fallback = client.post("/path").await;
+
+    assert_eq!(
+        method_not_allowed_fallback.status(),
+        http::StatusCode::NOT_FOUND
+    );
+    assert_eq!(method_not_allowed_fallback.headers().get(ALLOW), None);
+    assert_eq!(method_not_allowed_fallback.text().await, "Not Found");
+}
+
+#[crate::test]
 async fn mna_fallback_with_existing_fallback() {
     let app = Router::new()
         .route(
