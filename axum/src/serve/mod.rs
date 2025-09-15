@@ -511,7 +511,7 @@ mod tests {
     #[cfg(unix)]
     use tokio::net::UnixListener;
     use tokio::{
-        io::{self, AsyncRead, AsyncWrite, AsyncWriteExt},
+        io::{self, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
         net::TcpListener,
     };
     use tower::ServiceBuilder;
@@ -740,6 +740,39 @@ mod tests {
             tokio::time::timeout(Duration::from_secs(timeout + 2), server_task)
                 .await
                 .expect("server_task didn't exit in time");
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_hyper_header_read_timeout_is_enabled() {
+        let header_read_timeout_default = 30;
+        for req in [
+            "GET / HT",                   // stall during request line
+            "GET / HTTP/1.0\r\nAccept: ", // stall during request headers
+        ] {
+            let (mut client, server) = io::duplex(1024);
+            client.write_all(req.as_bytes()).await.unwrap();
+
+            let server_task = async {
+                serve(ReadyListener(Some(server)), Router::new())
+                    .await
+                    .unwrap();
+            };
+
+            let wait_for_server_to_close_conn = async {
+                tokio::time::timeout(
+                    Duration::from_secs(header_read_timeout_default + 1),
+                    client.read_to_end(&mut Vec::new()),
+                )
+                .await
+                .expect("timeout: server didn't close connection in time")
+                .expect("read_to_end");
+            };
+
+            tokio::select! {
+                _ = server_task => unreachable!(),
+                _ = wait_for_server_to_close_conn => (),
+            };
         }
     }
 
