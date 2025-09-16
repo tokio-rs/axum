@@ -165,14 +165,211 @@ where
         }
     }
 
-    #[doc = include_str!("../docs/routing/without_v07_checks.md")]
+    /// Turn off checks for compatibility with route matching syntax from 0.7.
+    ///
+    /// This allows usage of paths starting with a colon `:` or an asterisk `*` which are otherwise prohibited.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     routing::get,
+    ///     Router,
+    /// };
+    ///
+    /// let app = Router::<()>::new()
+    ///     .without_v07_checks()
+    ///     .route("/:colon", get(|| async {}))
+    ///     .route("/*asterisk", get(|| async {}));
+    ///
+    /// // Our app now accepts
+    /// // - GET /:colon
+    /// // - GET /*asterisk
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// Adding such routes without calling this method first will panic.
+    ///
+    /// ```rust,should_panic
+    /// use axum::{
+    ///     routing::get,
+    ///     Router,
+    /// };
+    ///
+    /// // This panics...
+    /// let app = Router::<()>::new()
+    ///     .route("/:colon", get(|| async {}));
+    /// ```
+    ///
+    /// # Merging
+    ///
+    /// When two routers are merged, v0.7 checks are disabled for route registrations on the resulting router if both of the two routers had them also disabled.
+    ///
+    /// # Nesting
+    ///
+    /// Each router needs to have the checks explicitly disabled. Nesting a router with the checks either enabled or disabled has no effect on the outer router.
     pub fn without_v07_checks(self) -> Self {
         tap_inner!(self, mut this => {
             this.path_router.without_v07_checks();
         })
     }
 
-    #[doc = include_str!("../docs/routing/route.md")]
+    /// Add another route to the router.
+    ///
+    /// `path` is a string of path segments separated by `/`. Each segment
+    /// can be either static, a capture, or a wildcard.
+    ///
+    /// `method_router` is the [`MethodRouter`] that should receive the request if the
+    /// path matches `path`. Usually, `method_router` will be a handler wrapped in a method
+    /// router like [`get`]. See [`handler`](crate::handler) for more details on handlers.
+    ///
+    /// # Static paths
+    ///
+    /// Examples:
+    ///
+    /// - `/`
+    /// - `/foo`
+    /// - `/users/123`
+    ///
+    /// If the incoming request matches the path exactly the corresponding service will
+    /// be called.
+    ///
+    /// # Captures
+    ///
+    /// Paths can contain segments like `/{key}` which matches any single segment and
+    /// will store the value captured at `key`. The value captured can be zero-length
+    /// except for in the invalid path `//`.
+    ///
+    /// Examples:
+    ///
+    /// - `/{key}`
+    /// - `/users/{id}`
+    /// - `/users/{id}/tweets`
+    ///
+    /// Captures can be extracted using [`Path`](crate::extract::Path). See its
+    /// documentation for more details.
+    ///
+    /// It is not possible to create segments that only match some types like numbers or
+    /// regular expression. You must handle that manually in your handlers.
+    ///
+    /// [`MatchedPath`] can be used to extract the matched path rather than the actual path.
+    ///
+    /// # Wildcards
+    ///
+    /// Paths can end in `/{*key}` which matches all segments and will store the segments
+    /// captured at `key`.
+    ///
+    /// Examples:
+    ///
+    /// - `/{*key}`
+    /// - `/assets/{*path}`
+    /// - `/{id}/{repo}/{*tree}`
+    ///
+    /// Note that `/{*key}` doesn't match empty segments. Thus:
+    ///
+    /// - `/{*key}` doesn't match `/` but does match `/a`, `/a/`, etc.
+    /// - `/x/{*key}` doesn't match `/x` or `/x/` but does match `/x/a`, `/x/a/`, etc.
+    ///
+    /// Wildcard captures can also be extracted using [`Path`](crate::extract::Path):
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     Router,
+    ///     routing::get,
+    ///     extract::Path,
+    /// };
+    ///
+    /// let app: Router = Router::new().route("/{*key}", get(handler));
+    ///
+    /// async fn handler(Path(path): Path<String>) -> String {
+    ///     path
+    /// }
+    /// ```
+    ///
+    /// Note that the leading slash is not included, i.e. for the route `/foo/{*rest}` and
+    /// the path `/foo/bar/baz` the value of `rest` will be `bar/baz`.
+    ///
+    /// # Accepting multiple methods
+    ///
+    /// To accept multiple methods for the same route you can add all handlers at the
+    /// same time:
+    ///
+    /// ```rust
+    /// use axum::{Router, routing::{get, delete}, extract::Path};
+    ///
+    /// let app = Router::new().route(
+    ///     "/",
+    ///     get(get_root).post(post_root).delete(delete_root),
+    /// );
+    ///
+    /// async fn get_root() {}
+    ///
+    /// async fn post_root() {}
+    ///
+    /// async fn delete_root() {}
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// Or you can add them one by one:
+    ///
+    /// ```rust
+    /// # use axum::Router;
+    /// # use axum::routing::{get, post, delete};
+    /// #
+    /// let app = Router::new()
+    ///     .route("/", get(get_root))
+    ///     .route("/", post(post_root))
+    ///     .route("/", delete(delete_root));
+    /// #
+    /// # let _: Router = app;
+    /// # async fn get_root() {}
+    /// # async fn post_root() {}
+    /// # async fn delete_root() {}
+    /// ```
+    ///
+    /// # More examples
+    ///
+    /// ```rust
+    /// use axum::{Router, routing::{get, delete}, extract::Path};
+    ///
+    /// let app = Router::new()
+    ///     .route("/", get(root))
+    ///     .route("/users", get(list_users).post(create_user))
+    ///     .route("/users/{id}", get(show_user))
+    ///     .route("/api/{version}/users/{id}/action", delete(do_users_action))
+    ///     .route("/assets/{*path}", get(serve_asset));
+    ///
+    /// async fn root() {}
+    ///
+    /// async fn list_users() {}
+    ///
+    /// async fn create_user() {}
+    ///
+    /// async fn show_user(Path(id): Path<u64>) {}
+    ///
+    /// async fn do_users_action(Path((version, id)): Path<(String, u64)>) {}
+    ///
+    /// async fn serve_asset(Path(path): Path<String>) {}
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if the route overlaps with another route:
+    ///
+    /// ```rust,should_panic
+    /// use axum::{routing::get, Router};
+    ///
+    /// let app = Router::new()
+    ///     .route("/", get(|| async {}))
+    ///     .route("/", get(|| async {}));
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// The static route `/foo` and the dynamic route `/{key}` are not considered to
+    /// overlap and `/foo` will take precedence.
+    ///
+    /// Also panics if `path` is empty.
     #[track_caller]
     pub fn route(self, path: &str, method_router: MethodRouter<S>) -> Self {
         tap_inner!(self, mut this => {
@@ -180,7 +377,76 @@ where
         })
     }
 
-    #[doc = include_str!("../docs/routing/route_service.md")]
+    /// Add another route to the router that calls a [`Service`].
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use axum::{
+    ///     Router,
+    ///     body::Body,
+    ///     routing::{any_service, get_service},
+    ///     extract::Request,
+    ///     http::StatusCode,
+    ///     error_handling::HandleErrorLayer,
+    /// };
+    /// use tower_http::services::ServeFile;
+    /// use http::Response;
+    /// use std::{convert::Infallible, io};
+    /// use tower::service_fn;
+    ///
+    /// let app = Router::new()
+    ///     .route(
+    ///         // Any request to `/` goes to a service
+    ///         "/",
+    ///         // Services whose response body is not `axum::body::BoxBody`
+    ///         // can be wrapped in `axum::routing::any_service` (or one of the other routing filters)
+    ///         // to have the response body mapped
+    ///         any_service(service_fn(|_: Request| async {
+    ///             let res = Response::new(Body::from("Hi from `GET /`"));
+    ///             Ok::<_, Infallible>(res)
+    ///         }))
+    ///     )
+    ///     .route_service(
+    ///         "/foo",
+    ///         // This service's response body is `axum::body::BoxBody` so
+    ///         // it can be routed to directly.
+    ///         service_fn(|req: Request| async move {
+    ///             let body = Body::from(format!("Hi from `{} /foo`", req.method()));
+    ///             let res = Response::new(body);
+    ///             Ok::<_, Infallible>(res)
+    ///         })
+    ///     )
+    ///     .route_service(
+    ///         // GET `/static/Cargo.toml` goes to a service from tower-http
+    ///         "/static/Cargo.toml",
+    ///         ServeFile::new("Cargo.toml"),
+    ///     );
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// Routing to arbitrary services in this way has complications for backpressure
+    /// ([`Service::poll_ready`]). See the [Routing to services and backpressure] module
+    /// for more details.
+    ///
+    /// # Panics
+    ///
+    /// Panics for the same reasons as [`Router::route`] or if you attempt to route to a
+    /// `Router`:
+    ///
+    /// ```rust,should_panic
+    /// use axum::{routing::get, Router};
+    ///
+    /// let app = Router::new().route_service(
+    ///     "/",
+    ///     Router::new().route("/foo", get(|| async {})),
+    /// );
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// Use [`Router::nest`] instead.
+    ///
+    /// [Routing to services and backpressure]: middleware/index.html#routing-to-servicesmiddleware-and-backpressure
     pub fn route_service<T>(self, path: &str, service: T) -> Self
     where
         T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
@@ -199,7 +465,200 @@ where
         })
     }
 
-    #[doc = include_str!("../docs/routing/nest.md")]
+    /// Nest a [`Router`] at some path.
+    ///
+    /// This allows you to break your application into smaller pieces and compose
+    /// them together.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     routing::{get, post},
+    ///     Router,
+    /// };
+    ///
+    /// let user_routes = Router::new().route("/{id}", get(|| async {}));
+    ///
+    /// let team_routes = Router::new().route("/", post(|| async {}));
+    ///
+    /// let api_routes = Router::new()
+    ///     .nest("/users", user_routes)
+    ///     .nest("/teams", team_routes);
+    ///
+    /// let app = Router::new().nest("/api", api_routes);
+    ///
+    /// // Our app now accepts
+    /// // - GET /api/users/{id}
+    /// // - POST /api/teams
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// # How the URI changes
+    ///
+    /// Note that nested routes will not see the original request URI but instead
+    /// have the matched prefix stripped. This is necessary for services like static
+    /// file serving to work. Use [`OriginalUri`] if you need the original request
+    /// URI.
+    ///
+    /// # Captures from outer routes
+    ///
+    /// Take care when using `nest` together with dynamic routes as nesting also
+    /// captures from the outer routes:
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     extract::Path,
+    ///     routing::get,
+    ///     Router,
+    /// };
+    /// use std::collections::HashMap;
+    ///
+    /// async fn users_get(Path(params): Path<HashMap<String, String>>) {
+    ///     // Both `version` and `id` were captured even though `users_api` only
+    ///     // explicitly captures `id`.
+    ///     let version = params.get("version");
+    ///     let id = params.get("id");
+    /// }
+    ///
+    /// let users_api = Router::new().route("/users/{id}", get(users_get));
+    ///
+    /// let app = Router::new().nest("/{version}/api", users_api);
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// # Differences from wildcard routes
+    ///
+    /// Nested routes are similar to wildcard routes. The difference is that
+    /// wildcard routes still see the whole URI whereas nested routes will have
+    /// the prefix stripped:
+    ///
+    /// ```rust
+    /// use axum::{routing::get, http::Uri, Router};
+    ///
+    /// let nested_router = Router::new()
+    ///     .route("/", get(|uri: Uri| async {
+    ///         // `uri` will _not_ contain `/bar`
+    ///     }));
+    ///
+    /// let app = Router::new()
+    ///     .route("/foo/{*rest}", get(|uri: Uri| async {
+    ///         // `uri` will contain `/foo`
+    ///     }))
+    ///     .nest("/bar", nested_router);
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// Additionally, while the wildcard route `/foo/*rest` will not match the
+    /// paths `/foo` or `/foo/`, a nested router at `/foo` will match the path `/foo`
+    /// (but not `/foo/`), and a nested router at `/foo/` will match the path `/foo/`
+    /// (but not `/foo`).
+    ///
+    /// # Fallbacks
+    ///
+    /// If a nested router doesn't have its own fallback then it will inherit the
+    /// fallback from the outer router:
+    ///
+    /// ```rust
+    /// use axum::{routing::get, http::StatusCode, handler::Handler, Router};
+    ///
+    /// async fn fallback() -> (StatusCode, &'static str) {
+    ///     (StatusCode::NOT_FOUND, "Not Found")
+    /// }
+    ///
+    /// let api_routes = Router::new().route("/users", get(|| async {}));
+    ///
+    /// let app = Router::new()
+    ///     .nest("/api", api_routes)
+    ///     .fallback(fallback);
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// Here requests like `GET /api/not-found` will go into `api_routes` but because
+    /// it doesn't have a matching route and doesn't have its own fallback it will call
+    /// the fallback from the outer router, i.e. the `fallback` function.
+    ///
+    /// If the nested router has its own fallback then the outer fallback will not be
+    /// inherited:
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     routing::get,
+    ///     http::StatusCode,
+    ///     handler::Handler,
+    ///     Json,
+    ///     Router,
+    /// };
+    ///
+    /// async fn fallback() -> (StatusCode, &'static str) {
+    ///     (StatusCode::NOT_FOUND, "Not Found")
+    /// }
+    ///
+    /// async fn api_fallback() -> (StatusCode, Json<serde_json::Value>) {
+    ///     (
+    ///         StatusCode::NOT_FOUND,
+    ///         Json(serde_json::json!({ "status": "Not Found" })),
+    ///     )
+    /// }
+    ///
+    /// let api_routes = Router::new()
+    ///     .route("/users", get(|| async {}))
+    ///     .fallback(api_fallback);
+    ///
+    /// let app = Router::new()
+    ///     .nest("/api", api_routes)
+    ///     .fallback(fallback);
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// Here requests like `GET /api/not-found` will go to `api_fallback`.
+    ///
+    /// # Nesting routers with state
+    ///
+    /// When combining [`Router`]s with this method, each [`Router`] must have the
+    /// same type of state. If your routers have different types you can use
+    /// [`Router::with_state`] to provide the state and make the types match:
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     Router,
+    ///     routing::get,
+    ///     extract::State,
+    /// };
+    ///
+    /// #[derive(Clone)]
+    /// struct InnerState {}
+    ///
+    /// #[derive(Clone)]
+    /// struct OuterState {}
+    ///
+    /// async fn inner_handler(state: State<InnerState>) {}
+    ///
+    /// let inner_router = Router::new()
+    ///     .route("/bar", get(inner_handler))
+    ///     .with_state(InnerState {});
+    ///
+    /// async fn outer_handler(state: State<OuterState>) {}
+    ///
+    /// let app = Router::new()
+    ///     .route("/", get(outer_handler))
+    ///     .nest("/foo", inner_router)
+    ///     .with_state(OuterState {});
+    /// # let _: axum::Router = app;
+    /// ```
+    ///
+    /// Note that the inner router will still inherit the fallback from the outer
+    /// router.
+    ///
+    /// # Panics
+    ///
+    /// - If the route overlaps with another route. See [`Router::route`]
+    ///   for more details.
+    /// - If the route contains a wildcard (`*`).
+    /// - If `path` is empty.
+    ///
+    /// [`OriginalUri`]: crate::extract::OriginalUri
+    /// [fallbacks]: Router::fallback
     #[doc(alias = "scope")] // Some web frameworks like actix-web use this term
     #[track_caller]
     pub fn nest(self, path: &str, router: Self) -> Self {
@@ -238,7 +697,86 @@ where
         })
     }
 
-    #[doc = include_str!("../docs/routing/merge.md")]
+    /// Merge the paths and fallbacks of two routers into a single [`Router`].
+    ///
+    /// This is useful for breaking apps into smaller pieces and combining them
+    /// into one.
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     routing::get,
+    ///     Router,
+    /// };
+    /// #
+    /// # async fn users_list() {}
+    /// # async fn users_show() {}
+    /// # async fn teams_list() {}
+    ///
+    /// // define some routes separately
+    /// let user_routes = Router::new()
+    ///     .route("/users", get(users_list))
+    ///     .route("/users/{id}", get(users_show));
+    ///
+    /// let team_routes = Router::new()
+    ///     .route("/teams", get(teams_list));
+    ///
+    /// // combine them into one
+    /// let app = Router::new()
+    ///     .merge(user_routes)
+    ///     .merge(team_routes);
+    ///
+    /// // could also do `user_routes.merge(team_routes)`
+    ///
+    /// // Our app now accepts
+    /// // - GET /users
+    /// // - GET /users/{id}
+    /// // - GET /teams
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// # Merging routers with state
+    ///
+    /// When combining [`Router`]s with this method, each [`Router`] must have the
+    /// same type of state. If your routers have different types you can use
+    /// [`Router::with_state`] to provide the state and make the types match:
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     Router,
+    ///     routing::get,
+    ///     extract::State,
+    /// };
+    ///
+    /// #[derive(Clone)]
+    /// struct InnerState {}
+    ///
+    /// #[derive(Clone)]
+    /// struct OuterState {}
+    ///
+    /// async fn inner_handler(state: State<InnerState>) {}
+    ///
+    /// let inner_router = Router::new()
+    ///     .route("/bar", get(inner_handler))
+    ///     .with_state(InnerState {});
+    ///
+    /// async fn outer_handler(state: State<OuterState>) {}
+    ///
+    /// let app = Router::new()
+    ///     .route("/", get(outer_handler))
+    ///     .merge(inner_router)
+    ///     .with_state(OuterState {});
+    /// # let _: axum::Router = app;
+    /// ```
+    ///
+    /// # Merging routers with fallbacks
+    ///
+    /// When combining [`Router`]s with this method, the [fallback](Router::fallback) is also merged.
+    /// However only one of the routers can have a fallback.
+    ///
+    /// # Panics
+    ///
+    /// - If two routers that each have a [fallback](Router::fallback) are merged. This
+    ///   is because `Router` only allows a single fallback.
     #[track_caller]
     pub fn merge<R>(self, other: R) -> Self
     where
@@ -277,7 +815,73 @@ where
         })
     }
 
-    #[doc = include_str!("../docs/routing/layer.md")]
+    /// Apply a [`tower::Layer`] to all routes in the router.
+    ///
+    /// This can be used to add additional processing to a request for a group
+    /// of routes.
+    ///
+    /// Note that the middleware is only applied to existing routes. So you have to
+    /// first add your routes (and / or fallback) and then call `layer` afterwards. Additional
+    /// routes added after `layer` is called will not have the middleware added.
+    ///
+    /// If you want to add middleware to a single handler you can either use
+    /// [`MethodRouter::layer`] or [`Handler::layer`].
+    ///
+    /// # Example
+    ///
+    /// Adding the [`tower_http::trace::TraceLayer`]:
+    ///
+    /// ```rust
+    /// use axum::{routing::get, Router};
+    /// use tower_http::trace::TraceLayer;
+    ///
+    /// let app = Router::new()
+    ///     .route("/foo", get(|| async {}))
+    ///     .route("/bar", get(|| async {}))
+    ///     .layer(TraceLayer::new_for_http());
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// If you need to write your own middleware see ["Writing
+    /// middleware"](crate::middleware#writing-middleware) for the different options.
+    ///
+    /// If you only want middleware on some routes you can use [`Router::merge`]:
+    ///
+    /// ```rust
+    /// use axum::{routing::get, Router};
+    /// use tower_http::{trace::TraceLayer, compression::CompressionLayer};
+    ///
+    /// let with_tracing = Router::new()
+    ///     .route("/foo", get(|| async {}))
+    ///     .layer(TraceLayer::new_for_http());
+    ///
+    /// let with_compression = Router::new()
+    ///     .route("/bar", get(|| async {}))
+    ///     .layer(CompressionLayer::new());
+    ///
+    /// // Merge everything into one `Router`
+    /// let app = Router::new()
+    ///     .merge(with_tracing)
+    ///     .merge(with_compression);
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// # Multiple middleware
+    ///
+    /// It's recommended to use [`tower::ServiceBuilder`] when applying multiple
+    /// middleware. See [`middleware`](crate::middleware) for more details.
+    ///
+    /// # Runs after routing
+    ///
+    /// Middleware added with this method will run _after_ routing and thus cannot be
+    /// used to rewrite the request URI. See ["Rewriting request URI in
+    /// middleware"](crate::middleware#rewriting-request-uri-in-middleware) for more
+    /// details and a workaround.
+    ///
+    /// # Error handling
+    ///
+    /// See [`middleware`](crate::middleware) for details on how error handling impacts
+    /// middleware.
     pub fn layer<L>(self, layer: L) -> Self
     where
         L: Layer<Route> + Clone + Send + Sync + 'static,
@@ -293,7 +897,41 @@ where
         })
     }
 
-    #[doc = include_str!("../docs/routing/route_layer.md")]
+    /// Apply a [`tower::Layer`] to the router that will only run if the request matches
+    /// a route.
+    ///
+    /// Note that the middleware is only applied to existing routes. So you have to
+    /// first add your routes (and / or fallback) and then call `route_layer`
+    /// afterwards. Additional routes added after `route_layer` is called will not have
+    /// the middleware added.
+    ///
+    /// This works similarly to [`Router::layer`] except the middleware will only run if
+    /// the request matches a route. This is useful for middleware that return early
+    /// (such as authorization) which might otherwise convert a `404 Not Found` into a
+    /// `401 Unauthorized`.
+    ///
+    /// This function will panic if no routes have been declared yet on the router,
+    /// since the new layer will have no effect, and this is typically a bug.
+    /// In generic code, you can test if that is the case first, by calling [`Router::has_routes`].
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     routing::get,
+    ///     Router,
+    /// };
+    /// use tower_http::validate_request::ValidateRequestHeaderLayer;
+    ///
+    /// let app = Router::new()
+    ///     .route("/foo", get(|| async {}))
+    ///     .route_layer(ValidateRequestHeaderLayer::bearer("password"));
+    ///
+    /// // `GET /foo` with a valid token will receive `200 OK`
+    /// // `GET /foo` with a invalid token will receive `401 Unauthorized`
+    /// // `GET /not-found` with a invalid token will receive `404 Not Found`
+    /// # let _: Router = app;
+    /// ```
     #[track_caller]
     pub fn route_layer<L>(self, layer: L) -> Self
     where
@@ -316,8 +954,68 @@ where
         self.inner.path_router.has_routes()
     }
 
+    /// Add a fallback [`Handler`] to the router.
+    ///
+    /// This service will be called if no routes matches the incoming request.
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     Router,
+    ///     routing::get,
+    ///     handler::Handler,
+    ///     response::IntoResponse,
+    ///     http::{StatusCode, Uri},
+    /// };
+    ///
+    /// let app = Router::new()
+    ///     .route("/foo", get(|| async { /* ... */ }))
+    ///     .fallback(fallback);
+    ///
+    /// async fn fallback(uri: Uri) -> (StatusCode, String) {
+    ///     (StatusCode::NOT_FOUND, format!("No route for {uri}"))
+    /// }
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// Fallbacks only apply to routes that aren't matched by anything in the
+    /// router. If a handler is matched by a request but returns 404 the
+    /// fallback is not called. Note that this applies to [`MethodRouter`]s too: if the
+    /// request hits a valid path but the [`MethodRouter`] does not have an appropriate
+    /// method handler installed, the fallback is not called (use
+    /// [`MethodRouter::fallback`] for this purpose instead).
+    ///
+    ///
+    /// # Handling all requests without other routes
+    ///
+    /// Using `Router::new().fallback(...)` to accept all request regardless of path or
+    /// method, if you don't have other routes, isn't optimal:
+    ///
+    /// ```rust
+    /// use axum::Router;
+    ///
+    /// async fn handler() {}
+    ///
+    /// let app = Router::new().fallback(handler);
+    ///
+    /// # async {
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, app).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// Running the handler directly is faster since it avoids the overhead of routing:
+    ///
+    /// ```rust
+    /// use axum::handler::HandlerWithoutStateExt;
+    ///
+    /// async fn handler() {}
+    ///
+    /// # async {
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, handler.into_make_service()).await.unwrap();
+    /// # };
+    /// ```
     #[track_caller]
-    #[doc = include_str!("../docs/routing/fallback.md")]
     pub fn fallback<H, T>(self, handler: H) -> Self
     where
         H: Handler<T, S>,
@@ -346,7 +1044,44 @@ where
         .fallback_endpoint(Endpoint::Route(route))
     }
 
-    #[doc = include_str!("../docs/routing/method_not_allowed_fallback.md")]
+    /// Add a fallback [`Handler`] for the case where a route exists, but the method of the request is not supported.
+    ///
+    /// Sets a fallback on all previously registered [`MethodRouter`]s,
+    /// to be called when no matching method handler is set.
+    ///
+    /// ```rust,no_run
+    /// use axum::{response::IntoResponse, routing::get, Router};
+    ///
+    /// async fn hello_world() -> impl IntoResponse {
+    ///     "Hello, world!\n"
+    /// }
+    ///
+    /// async fn default_fallback() -> impl IntoResponse {
+    ///     "Default fallback\n"
+    /// }
+    ///
+    /// async fn handle_405() -> impl IntoResponse {
+    ///     "Method not allowed fallback"
+    /// }
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let router = Router::new()
+    ///         .route("/", get(hello_world))
+    ///         .fallback(default_fallback)
+    ///         .method_not_allowed_fallback(handle_405);
+    ///
+    ///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    ///
+    ///     axum::serve(listener, router).await.unwrap();
+    /// }
+    /// ```
+    ///
+    /// The fallback only applies if there is a `MethodRouter` registered for a given path,
+    /// but the method used in the request is not specified. In the example, a `GET` on
+    /// `http://localhost:3000` causes the `hello_world` handler to react, while issuing a
+    /// `POST` triggers `handle_405`. Calling an entirely different route, like `http://localhost:3000/hello`
+    /// causes `default_fallback` to run.
     #[allow(clippy::needless_pass_by_value)]
     pub fn method_not_allowed_fallback<H, T>(self, handler: H) -> Self
     where
@@ -423,7 +1158,237 @@ where
         })
     }
 
-    #[doc = include_str!("../docs/routing/with_state.md")]
+    /// Provide the state for the router. State passed to this method is global and will be used
+    /// for all requests this router receives. That means it is not suitable for holding state derived from a request, such as authorization data extracted in a middleware. Use [`Extension`] instead for such data.
+    ///
+    /// ```rust
+    /// use axum::{Router, routing::get, extract::State};
+    ///
+    /// #[derive(Clone)]
+    /// struct AppState {}
+    ///
+    /// let routes = Router::new()
+    ///     .route("/", get(|State(state): State<AppState>| async {
+    ///         // use state
+    ///     }))
+    ///     .with_state(AppState {});
+    ///
+    /// # async {
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, routes).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// # Returning routers with states from functions
+    ///
+    /// When returning `Router`s from functions, it is generally recommended not to set the
+    /// state directly:
+    ///
+    /// ```rust
+    /// use axum::{Router, routing::get, extract::State};
+    ///
+    /// #[derive(Clone)]
+    /// struct AppState {}
+    ///
+    /// // Don't call `Router::with_state` here
+    /// fn routes() -> Router<AppState> {
+    ///     Router::new()
+    ///         .route("/", get(|_: State<AppState>| async {}))
+    /// }
+    ///
+    /// // Instead do it before you run the server
+    /// let routes = routes().with_state(AppState {});
+    ///
+    /// # async {
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, routes).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// If you do need to provide the state, and you're _not_ nesting/merging the router
+    /// into another router, then return `Router` without any type parameters:
+    ///
+    /// ```rust
+    /// # use axum::{Router, routing::get, extract::State};
+    /// # #[derive(Clone)]
+    /// # struct AppState {}
+    /// #
+    /// // Don't return `Router<AppState>`
+    /// fn routes(state: AppState) -> Router {
+    ///     Router::new()
+    ///         .route("/", get(|_: State<AppState>| async {}))
+    ///         .with_state(state)
+    /// }
+    ///
+    /// let routes = routes(AppState {});
+    ///
+    /// # async {
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, routes).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// This is because we can only call `Router::into_make_service` on `Router<()>`,
+    /// not `Router<AppState>`. See below for more details about why that is.
+    ///
+    /// Note that the state defaults to `()` so `Router` and `Router<()>` is the same.
+    ///
+    /// If you are nesting/merging the router it is recommended to use a generic state
+    /// type on the resulting router:
+    ///
+    /// ```rust
+    /// # use axum::{Router, routing::get, extract::State};
+    /// # #[derive(Clone)]
+    /// # struct AppState {}
+    /// #
+    /// fn routes<S>(state: AppState) -> Router<S> {
+    ///     Router::new()
+    ///         .route("/", get(|_: State<AppState>| async {}))
+    ///         .with_state(state)
+    /// }
+    ///
+    /// let routes = Router::new().nest("/api", routes(AppState {}));
+    ///
+    /// # async {
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, routes).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// # What `S` in `Router<S>` means
+    ///
+    /// `Router<S>` means a router that is _missing_ a state of type `S` to be able to
+    /// handle requests. It does _not_ mean a `Router` that _has_ a state of type `S`.
+    ///
+    /// For example:
+    ///
+    /// ```rust
+    /// # use axum::{Router, routing::get, extract::State};
+    /// # #[derive(Clone)]
+    /// # struct AppState {}
+    /// #
+    /// // A router that _needs_ an `AppState` to handle requests
+    /// let router: Router<AppState> = Router::new()
+    ///     .route("/", get(|_: State<AppState>| async {}));
+    ///
+    /// // Once we call `Router::with_state` the router isn't missing
+    /// // the state anymore, because we just provided it
+    /// //
+    /// // Therefore the router type becomes `Router<()>`, i.e a router
+    /// // that is not missing any state
+    /// let router: Router<()> = router.with_state(AppState {});
+    ///
+    /// // Only `Router<()>` has the `into_make_service` method.
+    /// //
+    /// // You cannot call `into_make_service` on a `Router<AppState>`
+    /// // because it is still missing an `AppState`.
+    /// # async {
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, router).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// Perhaps a little counter intuitively, `Router::with_state` doesn't always return a
+    /// `Router<()>`. Instead you get to pick what the new missing state type is:
+    ///
+    /// ```rust
+    /// # use axum::{Router, routing::get, extract::State};
+    /// # #[derive(Clone)]
+    /// # struct AppState {}
+    /// #
+    /// let router: Router<AppState> = Router::new()
+    ///     .route("/", get(|_: State<AppState>| async {}));
+    ///
+    /// // When we call `with_state` we're able to pick what the next missing state type is.
+    /// // Here we pick `String`.
+    /// let string_router: Router<String> = router.with_state(AppState {});
+    ///
+    /// // That allows us to add new routes that uses `String` as the state type
+    /// let string_router = string_router
+    ///     .route("/needs-string", get(|_: State<String>| async {}));
+    ///
+    /// // Provide the `String` and choose `()` as the new missing state.
+    /// let final_router: Router<()> = string_router.with_state("foo".to_owned());
+    ///
+    /// // Since we have a `Router<()>` we can run it.
+    /// # async {
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, final_router).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// This why this returning `Router<AppState>` after calling `with_state` doesn't
+    /// work:
+    ///
+    /// ```rust,compile_fail
+    /// # use axum::{Router, routing::get, extract::State};
+    /// # #[derive(Clone)]
+    /// # struct AppState {}
+    /// #
+    /// // This won't work because we're returning a `Router<AppState>`
+    /// // i.e. we're saying we're still missing an `AppState`
+    /// fn routes(state: AppState) -> Router<AppState> {
+    ///     Router::new()
+    ///         .route("/", get(|_: State<AppState>| async {}))
+    ///         .with_state(state)
+    /// }
+    ///
+    /// let app = routes(AppState {});
+    ///
+    /// // We can only call `Router::into_make_service` on a `Router<()>`
+    /// // but `app` is a `Router<AppState>`
+    /// # async {
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, app).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// Instead return `Router<()>` since we have provided all the state needed:
+    ///
+    /// ```rust
+    /// # use axum::{Router, routing::get, extract::State};
+    /// # #[derive(Clone)]
+    /// # struct AppState {}
+    /// #
+    /// // We've provided all the state necessary so return `Router<()>`
+    /// fn routes(state: AppState) -> Router<()> {
+    ///     Router::new()
+    ///         .route("/", get(|_: State<AppState>| async {}))
+    ///         .with_state(state)
+    /// }
+    ///
+    /// let app = routes(AppState {});
+    ///
+    /// // We can now call `Router::into_make_service`
+    /// # async {
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, app).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// # A note about performance
+    ///
+    /// If you need a `Router` that implements `Service` but you don't need any state (perhaps
+    /// you're making a library that uses axum internally) then it is recommended to call this
+    /// method before you start serving requests:
+    ///
+    /// ```rust
+    /// use axum::{Router, routing::get};
+    ///
+    /// let app = Router::new()
+    ///     .route("/", get(|| async { /* ... */ }))
+    ///     // even though we don't need any state, call `with_state(())` anyway
+    ///     .with_state(());
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// This is not required but it gives axum a chance to update some internals in the router
+    /// which may impact performance and reduce allocations.
+    ///
+    /// Note that [`Router::into_make_service`] and [`Router::into_make_service_with_connect_info`]
+    /// do this automatically.
+    ///
+    /// [`Extension`]: crate::Extension
     pub fn with_state<S2>(self, state: S) -> Router<S2> {
         map_inner!(self, this => RouterInner {
             path_router: this.path_router.with_state(state.clone()),
@@ -544,7 +1509,79 @@ impl Router {
         IntoMakeService::new(self.with_state(()))
     }
 
-    #[doc = include_str!("../docs/routing/into_make_service_with_connect_info.md")]
+    /// Convert this router into a [`MakeService`], that will store `C`'s
+    /// associated `ConnectInfo` in a request extension such that [`ConnectInfo`]
+    /// can extract it.
+    ///
+    /// This enables extracting things like the client's remote address.
+    ///
+    /// Extracting [`std::net::SocketAddr`] is supported out of the box:
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     extract::ConnectInfo,
+    ///     routing::get,
+    ///     Router,
+    /// };
+    /// use std::net::SocketAddr;
+    ///
+    /// let app = Router::new().route("/", get(handler));
+    ///
+    /// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
+    ///     format!("Hello {addr}")
+    /// }
+    ///
+    /// # async {
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// You can implement custom a [`Connected`] like so:
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     extract::connect_info::{ConnectInfo, Connected},
+    ///     routing::get,
+    ///     serve::IncomingStream,
+    ///     Router,
+    /// };
+    /// use tokio::net::TcpListener;
+    ///
+    /// let app = Router::new().route("/", get(handler));
+    ///
+    /// async fn handler(
+    ///     ConnectInfo(my_connect_info): ConnectInfo<MyConnectInfo>,
+    /// ) -> String {
+    ///     format!("Hello {my_connect_info:?}")
+    /// }
+    ///
+    /// #[derive(Clone, Debug)]
+    /// struct MyConnectInfo {
+    ///     // ...
+    /// }
+    ///
+    /// impl Connected<IncomingStream<'_, TcpListener>> for MyConnectInfo {
+    ///     fn connect_info(target: IncomingStream<'_, TcpListener>) -> Self {
+    ///         MyConnectInfo {
+    ///             // ...
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// # async {
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, app.into_make_service_with_connect_info::<MyConnectInfo>()).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// See the [unix domain socket example][uds] for an example of how to use
+    /// this to collect UDS connection info.
+    ///
+    /// [`MakeService`]: tower::make::MakeService
+    /// [`Connected`]: crate::extract::connect_info::Connected
+    /// [`ConnectInfo`]: crate::extract::connect_info::ConnectInfo
+    /// [uds]: https://github.com/tokio-rs/axum/blob/main/examples/unix-domain-socket/src/main.rs
     #[cfg(feature = "tokio")]
     #[must_use]
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
