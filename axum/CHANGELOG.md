@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Router fallbacks are now properly merged for nested routers ([#3158])
 - **breaking:** `#[from_request(via(Extractor))]` now uses the extractor's
   rejection type instead of `axum::response::Response` ([#3261])
+- **breaking:** `axum::serve` now applies hyper's default `header_read_timeout` ([#3478])
 - **added:** Implement `OptionalFromRequest` for `Multipart` ([#3220])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
@@ -20,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3205]: https://github.com/tokio-rs/axum/pull/3205
 [#3220]: https://github.com/tokio-rs/axum/pull/3220
 [#3412]: https://github.com/tokio-rs/axum/pull/3412
+[#3478]: https://github.com/tokio-rs/axum/pull/3478
 
 # 0.8.4
 
