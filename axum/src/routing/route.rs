@@ -161,7 +161,11 @@ impl<E> Future for RouteFuture<E> {
                 res = res.map(|_| Body::empty());
             }
         } else if *this.top_level {
-            set_allow_header(res.headers_mut(), this.allow_header);
+            if res.status() == http::StatusCode::METHOD_NOT_ALLOWED {
+                // From https://httpwg.org/specs/rfc9110.html#field.allow:
+                // An origin server MUST generate an `Allow` header field in a 405 (Method Not Allowed) response and MAY do so in any other response.
+                set_allow_header(res.headers_mut(), this.allow_header);
+            }
 
             // make sure to set content-length before removing the body
             set_content_length(&res.size_hint(), res.headers_mut());
