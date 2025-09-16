@@ -531,12 +531,10 @@ impl WebSocket {
 }
 
 impl FusedStream for WebSocket {
-
     /// Returns true if the websocket has been terminated.
     fn is_terminated(&self) -> bool {
         self.inner.is_terminated()
     }
-
 }
 
 impl Stream for WebSocket {
