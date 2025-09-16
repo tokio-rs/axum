@@ -528,11 +528,15 @@ impl WebSocket {
     pub fn protocol(&self) -> Option<&HeaderValue> {
         self.protocol.as_ref()
     }
+}
+
+impl FusedStream for WebSocket {
 
     /// Returns true if the websocket has been terminated.
-    pub fn is_terminated(&self) -> bool {
+    fn is_terminated(&self) -> bool {
         self.inner.is_terminated()
     }
+
 }
 
 impl Stream for WebSocket {
