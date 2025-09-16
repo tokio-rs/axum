@@ -94,7 +94,7 @@ use self::rejection::*;
 use super::FromRequestParts;
 use crate::{body::Bytes, response::Response, Error};
 use axum_core::body::Body;
-use futures_core::Stream;
+use futures_core::{FusedStream, Stream};
 use futures_sink::Sink;
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use http::{
@@ -527,6 +527,13 @@ impl WebSocket {
     /// Return the selected WebSocket subprotocol, if one has been chosen.
     pub fn protocol(&self) -> Option<&HeaderValue> {
         self.protocol.as_ref()
+    }
+}
+
+impl FusedStream for WebSocket {
+    /// Returns true if the websocket has been terminated.
+    fn is_terminated(&self) -> bool {
+        self.inner.is_terminated()
     }
 }
 
