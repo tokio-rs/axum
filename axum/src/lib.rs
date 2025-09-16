@@ -275,7 +275,7 @@
 //! # let _: Router = app;
 //! ```
 //!
-//! The downside to this approach is that it's a the most verbose approach.
+//! The downside to this approach is that it's the most verbose approach.
 //!
 //! ## Using task-local variables
 //!
