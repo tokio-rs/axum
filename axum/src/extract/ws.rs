@@ -96,7 +96,7 @@ use crate::{body::Bytes, response::Response, Error};
 use axum_core::body::Body;
 use futures_util::{
     sink::{Sink, SinkExt},
-    stream::{Stream, StreamExt},
+    stream::{FusedStream, Stream, StreamExt},
 };
 use http::{
     header::{self, HeaderMap, HeaderName, HeaderValue},
@@ -530,6 +530,13 @@ impl WebSocket {
     /// Return the selected WebSocket subprotocol, if one has been chosen.
     pub fn protocol(&self) -> Option<&HeaderValue> {
         self.protocol.as_ref()
+    }
+}
+
+impl FusedStream for WebSocket {
+    /// Returns true if the websocket has been terminated.
+    fn is_terminated(&self) -> bool {
+        self.inner.is_terminated()
     }
 }
 
