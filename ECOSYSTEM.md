@@ -31,6 +31,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-login](https://docs.rs/axum-login): Session-based user authentication for axum.
 - [axum-csrf-sync-pattern](https://crates.io/crates/axum-csrf-sync-pattern): A middleware implementing CSRF STP for AJAX backends and API endpoints.
 - [axum-otel-metrics](https://github.com/ttys3/axum-otel-metrics/): A axum OpenTelemetry Metrics middleware with prometheus exporter supported.
+- [tower-otel](https://github.com/mattiapenati/tower-otel): OpenTelemetry layer for HTTP/gRPC services with optional axum integration.
 - [jwt-authorizer](https://crates.io/crates/jwt-authorizer): JWT authorization layer for axum (oidc discovery, validation options, claims extraction, etc.)
 - [axum-typed-multipart](https://crates.io/crates/axum_typed_multipart): Type safe wrapper for `axum::extract::Multipart`.
 - [tower-governor](https://crates.io/crates/tower_governor): A Tower service and layer that provides a rate-limiting backend by [governor](https://crates.io/crates/governor)
