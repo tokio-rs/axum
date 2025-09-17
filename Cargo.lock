@@ -1970,6 +1970,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-with-handshaker-rustls"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "tokio",
+ "tokio-rustls 0.26.1",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "fallible-iterator"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
