@@ -1,7 +1,7 @@
-use axum::extract::{FromRequest, Request};
 use axum_core::__composite_rejection as composite_rejection;
 use axum_core::__define_rejection as define_rejection;
 use axum_core::extract::rejection::BytesRejection;
+use axum_core::extract::{FromRequest, Request};
 use bytes::Bytes;
 use http::{header, HeaderMap};
 use serde_core::Deserialize;

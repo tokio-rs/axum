@@ -1,5 +1,5 @@
 use super::rejection::{FailedToResolveHost, HostRejection};
-use axum::{
+use axum_core::{
     extract::{FromRequestParts, OptionalFromRequestParts},
     RequestPartsExt,
 };

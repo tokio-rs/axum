@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
-use axum::{
-    http::{header, HeaderValue, StatusCode},
-    response::{IntoResponse, Response},
-};
+use axum_core::response::{IntoResponse, Response};
 use bytes::{BufMut, Bytes, BytesMut};
+use http::{header, HeaderValue, StatusCode};
 use serde_core::Serialize;
 
 /// A response type that holds a JSON in serialized form.

@@ -1,4 +1,4 @@
-use axum::response::IntoResponse;
+use axum_core::response::IntoResponse;
 use http::{header, HeaderMap, HeaderValue};
 use tracing::error;
 
@@ -79,7 +79,7 @@ impl<T> IntoResponse for Attachment<T>
 where
     T: IntoResponse,
 {
-    fn into_response(self) -> axum::response::Response {
+    fn into_response(self) -> axum_core::response::Response {
         let mut headers = HeaderMap::new();
 
         if let Some(content_type) = self.content_type {

@@ -1,6 +1,6 @@
 //! Extractor and response for typed headers.
 
-use axum::{
+use axum_core::{
     extract::{FromRequestParts, OptionalFromRequestParts},
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };

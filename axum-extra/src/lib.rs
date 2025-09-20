@@ -11,6 +11,7 @@
 //! ---|---|---
 //! `async-read-body` | Enables the [`AsyncReadBody`](crate::body::AsyncReadBody) body | No
 //! `attachment` | Enables the [`Attachment`](crate::response::Attachment) response | No
+//! `cached` | Enables the [`Cached`](crate::extract::Cached) extractor | No
 //! `cookie` | Enables the [`CookieJar`](crate::extract::CookieJar) extractor | No
 //! `cookie-private` | Enables the [`PrivateCookieJar`](crate::extract::PrivateCookieJar) extractor | No
 //! `cookie-signed` | Enables the [`SignedCookieJar`](crate::extract::SignedCookieJar) extractor | No
@@ -18,15 +19,20 @@
 //! `erased-json` | Enables the [`ErasedJson`](crate::response::ErasedJson) response | No
 //! `error-response` | Enables the [`InternalServerError`](crate::response::InternalServerError) response | No
 //! `form` | Enables the [`Form`](crate::extract::Form) extractor | No
+//! `handler` | Enables the [handler] utilities | No
 //! `json-deserializer` | Enables the [`JsonDeserializer`](crate::extract::JsonDeserializer) extractor | No
 //! `json-lines` | Enables the [`JsonLines`](crate::extract::JsonLines) extractor and response | No
+//! `middleware` | Enables the [middleware] utilities | No
 //! `multipart` | Enables the [`Multipart`](crate::extract::Multipart) extractor | No
+//! `optional-path` | Enables the [`OptionalPath`](crate::extract::OptionalPath) extractor | No
 //! `protobuf` | Enables the [`Protobuf`](crate::protobuf::Protobuf) extractor and response | No
 //! `query` | Enables the [`Query`](crate::extract::Query) extractor | No
+//! `routing` | Enables the [routing] utilities | No
 //! `tracing` | Log rejections from built-in extractors | Yes
 //! `typed-routing` | Enables the [`TypedPath`](crate::routing::TypedPath) routing utilities | No
 //! `typed-header` | Enables the [`TypedHeader`] extractor and response | No
 //! `file-stream` | Enables the [`FileStream`](crate::response::FileStream) response | No
+//! `with-rejection` | Enables the [`WithRejection`](crate::extract::WithRejection) extractor | No
 //!
 //! [`axum`]: https://crates.io/crates/axum
 
@@ -40,10 +46,16 @@ extern crate self as axum_extra;
 pub mod body;
 pub mod either;
 pub mod extract;
-pub mod handler;
-pub mod middleware;
 pub mod response;
+
+#[cfg(feature = "routing")]
 pub mod routing;
+
+#[cfg(feature = "middleware")]
+pub mod middleware;
+
+#[cfg(feature = "handler")]
+pub mod handler;
 
 #[cfg(feature = "json-lines")]
 pub mod json_lines;

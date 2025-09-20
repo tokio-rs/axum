@@ -2,14 +2,14 @@
 //!
 //! See [`Multipart`] for more details.
 
-use axum::{
-    body::{Body, Bytes},
+use axum_core::{
+    RequestExt, __composite_rejection as composite_rejection,
+    __define_rejection as define_rejection,
+    body::Body,
     extract::FromRequest,
     response::{IntoResponse, Response},
-    RequestExt,
 };
-use axum_core::__composite_rejection as composite_rejection;
-use axum_core::__define_rejection as define_rejection;
+use bytes::Bytes;
 use futures_core::stream::Stream;
 use http::{
     header::{HeaderMap, CONTENT_TYPE},
@@ -284,7 +284,7 @@ fn status_code_from_multer_error(err: &multer::Error) -> StatusCode {
             }
 
             if err
-                .downcast_ref::<axum::Error>()
+                .downcast_ref::<axum_core::Error>()
                 .and_then(|err| err.source())
                 .and_then(|err| err.downcast_ref::<http_body_util::LengthLimitError>())
                 .is_some()

@@ -92,7 +92,7 @@
 
 use std::task::{Context, Poll};
 
-use axum::{
+use axum_core::{
     extract::FromRequestParts,
     response::{IntoResponse, Response},
 };

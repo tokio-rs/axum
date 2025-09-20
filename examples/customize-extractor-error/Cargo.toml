@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 axum = { path = "../../axum", features = ["macros"] }
-axum-extra = { path = "../../axum-extra" }
+axum-extra = { path = "../../axum-extra", features = ["with-rejection"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"

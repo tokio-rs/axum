@@ -60,11 +60,11 @@ macro_rules! mime_response {
         #[must_use]
         pub struct $ident<T>(pub T);
 
-        impl<T> axum::response::IntoResponse for $ident<T>
+        impl<T> axum_core::response::IntoResponse for $ident<T>
         where
-            T: axum::response::IntoResponse,
+            T: axum_core::response::IntoResponse,
         {
-            fn into_response(self) -> axum::response::Response {
+            fn into_response(self) -> axum_core::response::Response {
                 (
                     [(
                         http::header::CONTENT_TYPE,

@@ -1,8 +1,7 @@
 //! Extractor that parses the scheme of a request.
 //! See [`Scheme`] for more details.
 
-use axum::extract::FromRequestParts;
-use axum_core::__define_rejection as define_rejection;
+use axum_core::{__define_rejection as define_rejection, extract::FromRequestParts};
 use http::{
     header::{HeaderMap, FORWARDED},
     request::Parts,

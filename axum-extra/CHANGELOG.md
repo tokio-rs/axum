@@ -9,8 +9,16 @@ and this project adheres to [Semantic Versioning].
   introduced as an implicit feature through an optional dependency which was no
   longer being used ([#3298])
 - **breaking:** `option_layer` now maps the `Response` body type to `axum::body::Body` ([#3469])
+- **breaking:** Some new features are added which need to be opted in ([#3485]).
+  - `Cached` extractor requires `cached` feature.
+  - The handler utilities require `handler` feature.
+  - The middleware utilities require `middleware` feature.
+  - `OptionalPath` extractor requires `optional-path` feature.
+  - The routing utilities require `routing` feature.
+  - `WithRejection` extractor requires `with-rejection` feature.
 
 [#3298]: https://github.com/tokio-rs/axum/pull/3298
+[#3485]: https://github.com/tokio-rs/axum/pull/3485
 
 # 0.11.0
 
