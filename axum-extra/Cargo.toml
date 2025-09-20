@@ -65,7 +65,7 @@ with-rejection = ["dep:axum"]
 
 # Enabled by docs.rs because it uses all-features
 # Enables upstream things linked to in docs
-__private_docs = ["axum/json", "dep:serde"]
+__private_docs = ["axum/json", "dep:serde", "dep:tower"]
 
 [dependencies]
 axum-core = { path = "../axum-core", version = "0.5.2" }
@@ -79,7 +79,6 @@ mime = "0.3"
 pin-project-lite = "0.2"
 rustversion = "1.0.9"
 serde_core = "1.0.221"
-tower = { version = "0.5.2", default-features = false, features = ["util"] }
 tower-layer = "0.3"
 tower-service = "0.3"
 
@@ -104,6 +103,7 @@ typed-json = { version = "0.1.1", optional = true }
 
 # doc dependencies
 serde = { version = "1.0.221", optional = true }
+tower = { version = "0.5.2", default-features = false, features = ["util"], optional = true }
 
 [dev-dependencies]
 axum = { path = "../axum", features = ["macros", "__private"] }
