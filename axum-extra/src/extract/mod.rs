@@ -1,9 +1,15 @@
 //! Additional extractors.
 
-mod cached;
 mod host;
-mod optional_path;
 pub mod rejection;
+
+#[cfg(feature = "optional-path")]
+mod optional_path;
+
+#[cfg(feature = "cached")]
+mod cached;
+
+#[cfg(feature = "with-rejection")]
 mod with_rejection;
 
 #[cfg(feature = "form")]
@@ -25,8 +31,16 @@ pub mod multipart;
 mod scheme;
 
 #[allow(deprecated)]
+#[cfg(feature = "optional-path")]
 pub use self::optional_path::OptionalPath;
-pub use self::{cached::Cached, host::Host, with_rejection::WithRejection};
+
+pub use self::host::Host;
+
+#[cfg(feature = "cached")]
+pub use self::cached::Cached;
+
+#[cfg(feature = "with-rejection")]
+pub use self::with_rejection::WithRejection;
 
 #[cfg(feature = "cookie")]
 pub use self::cookie::CookieJar;

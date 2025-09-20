@@ -2,7 +2,7 @@
 //!
 //! See [`CookieJar`], [`SignedCookieJar`], and [`PrivateCookieJar`] for more details.
 
-use axum::{
+use axum_core::{
     extract::FromRequestParts,
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };

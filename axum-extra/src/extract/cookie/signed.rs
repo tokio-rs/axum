@@ -1,5 +1,5 @@
 use super::{cookies_from_request, set_cookies};
-use axum::{
+use axum_core::{
     extract::{FromRef, FromRequestParts},
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
