@@ -1,8 +1,10 @@
-use axum::{
-    body::{Body, Bytes, HttpBody},
+use axum_core::{
+    body::Body,
     response::{IntoResponse, Response},
     Error,
 };
+use bytes::Bytes;
+use http_body::Body as HttpBody;
 use pin_project_lite::pin_project;
 use std::{
     pin::Pin,

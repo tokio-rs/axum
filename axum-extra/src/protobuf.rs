@@ -1,12 +1,12 @@
 //! Protocol Buffer extractor and response.
 
-use axum::{
+use axum_core::__composite_rejection as composite_rejection;
+use axum_core::__define_rejection as define_rejection;
+use axum_core::{
     extract::{rejection::BytesRejection, FromRequest, Request},
     response::{IntoResponse, Response},
     RequestExt,
 };
-use axum_core::__composite_rejection as composite_rejection;
-use axum_core::__define_rejection as define_rejection;
 use bytes::BytesMut;
 use http::StatusCode;
 use http_body_util::BodyExt;

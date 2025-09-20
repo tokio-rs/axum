@@ -371,6 +371,7 @@ dependencies = [
  "cookie",
  "fastrand",
  "form_urlencoded",
+ "futures-core",
  "futures-util",
  "headers",
  "http 1.3.1",

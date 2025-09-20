@@ -15,7 +15,14 @@ version = "0.10.3"
 default = ["tracing"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
-file-stream = ["dep:tokio-util", "tokio-util?/io", "dep:tokio", "tokio?/fs", "tokio?/io-util"]
+cached = ["dep:axum"]
+file-stream = [
+    "dep:tokio-util",
+    "tokio-util?/io",
+    "dep:tokio",
+    "tokio?/fs",
+    "tokio?/io-util",
+]
 attachment = ["dep:tracing"]
 error-response = ["dep:tracing", "tracing/std"]
 cookie = ["dep:cookie"]
@@ -23,7 +30,13 @@ cookie-private = ["cookie", "cookie?/private"]
 cookie-signed = ["cookie", "cookie?/signed"]
 cookie-key-expansion = ["cookie", "cookie?/key-expansion"]
 erased-json = ["dep:serde_json", "dep:typed-json"]
-form = ["dep:form_urlencoded", "dep:serde_html_form", "dep:serde_path_to_error"]
+form = [
+    "dep:axum",
+    "dep:form_urlencoded",
+    "dep:serde_html_form",
+    "dep:serde_path_to_error",
+]
+handler = ["dep:axum"]
 json-deserializer = ["dep:serde_json", "dep:serde_path_to_error"]
 json-lines = [
     "dep:serde_json",
@@ -33,22 +46,31 @@ json-lines = [
     "tokio-stream?/io-util",
     "dep:tokio",
 ]
+middleware = ["dep:axum"]
 multipart = ["dep:multer", "dep:fastrand"]
+optional-path = ["dep:axum"]
 protobuf = ["dep:prost"]
+routing = ["axum/original-uri"]
 scheme = []
 query = ["dep:form_urlencoded", "dep:serde_html_form", "dep:serde_path_to_error"]
 tracing = ["axum-core/tracing", "axum/tracing", "dep:tracing"]
 typed-header = ["dep:headers"]
-typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
+typed-routing = [
+    "dep:axum-macros",
+    "dep:percent-encoding",
+    "dep:serde_html_form",
+    "dep:form_urlencoded",
+]
+with-rejection = ["dep:axum"]
 
 # Enabled by docs.rs because it uses all-features
 # Enables upstream things linked to in docs
-__private_docs = ["axum/json", "dep:serde", "dep:tower"]
+__private_docs = ["axum/json", "dep:serde"]
 
 [dependencies]
-axum = { path = "../axum", version = "0.8.6", default-features = false, features = ["original-uri"] }
-axum-core = { path = "../axum-core", version = "0.5.5" }
+axum-core = { path = "../axum-core", version = "0.5.2" }
 bytes = "1.1.0"
+futures-core = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "1.0.0"
 http-body = "1.0.0"
@@ -57,10 +79,12 @@ mime = "0.3"
 pin-project-lite = "0.2"
 rustversion = "1.0.9"
 serde_core = "1.0.221"
+tower = { version = "0.5.2", default-features = false, features = ["util"] }
 tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
+axum = { path = "../axum", version = "0.8.4", default-features = false, optional = true }
 axum-macros = { path = "../axum-macros", version = "0.5.0", optional = true }
 cookie = { package = "cookie", version = "0.18.0", features = ["percent-encode"], optional = true }
 fastrand = { version = "2.1.0", optional = true }
@@ -80,7 +104,6 @@ typed-json = { version = "0.1.1", optional = true }
 
 # doc dependencies
 serde = { version = "1.0.221", optional = true }
-tower = { version = "0.5.2", default-features = false, features = ["util"], optional = true }
 
 [dev-dependencies]
 axum = { path = "../axum", features = ["macros", "__private"] }
@@ -96,28 +119,3 @@ tracing-subscriber = "0.3.19"
 
 [lints]
 workspace = true
-
-[package.metadata.docs.rs]
-all-features = true
-
-[package.metadata.cargo-public-api-crates]
-allowed = [
-    "axum",
-    "axum_core",
-    "axum_macros",
-    "bytes",
-    "cookie",
-    "futures_core",
-    "futures_util",
-    "headers",
-    "headers_core",
-    "http",
-    "http_body",
-    "pin_project_lite",
-    "prost",
-    "serde_core",
-    "tokio",
-    "tokio_util",
-    "tower_layer",
-    "tower_service",
-]

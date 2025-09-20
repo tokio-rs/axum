@@ -1,6 +1,6 @@
 //! Generate forms to use in responses.
 
-use axum::response::{IntoResponse, Response};
+use axum_core::response::{IntoResponse, Response};
 use fastrand;
 use http::{header, HeaderMap, StatusCode};
 use mime::Mime;

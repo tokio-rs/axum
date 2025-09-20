@@ -1,4 +1,4 @@
-use axum::{
+use axum_core::{
     body,
     response::{IntoResponse, Response},
     BoxError,
