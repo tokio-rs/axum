@@ -30,6 +30,7 @@ use tower_layer::Identity;
 /// `axum_extra::middleware::option_layer` makes sure that the output `Body` is [`axum::body::Body`].
 ///
 /// [`Layer`]: tower_layer::Layer
+/// [`tower::util::option_layer`]: https://docs.rs/tower/latest/tower/util/fn.option_layer.html
 pub fn option_layer<L>(layer: Option<L>) -> Either<(ResponseAxumBodyLayer, L), Identity> {
     layer
         .map(|layer| Either::E1((ResponseAxumBodyLayer, layer)))
