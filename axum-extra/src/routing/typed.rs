@@ -384,10 +384,7 @@ impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, 
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        extract::WithRejection,
-        routing::{RouterExt, TypedPath},
-    };
+    use crate::routing::{RouterExt, TypedPath};
     use axum::{
         extract::rejection::PathRejection,
         response::{IntoResponse, Response},
@@ -441,9 +438,10 @@ mod tests {
         assert_eq!(uri, "/users/1?&foo=foo&bar=123&baz=true&qux=1337");
     }
 
+    #[cfg(feature = "with-rejection")]
     #[allow(dead_code)] // just needs to compile
     fn supports_with_rejection() {
-        async fn handler(_: WithRejection<UsersShow, MyRejection>) {}
+        async fn handler(_: crate::extract::WithRejection<UsersShow, MyRejection>) {}
 
         struct MyRejection {}
 
