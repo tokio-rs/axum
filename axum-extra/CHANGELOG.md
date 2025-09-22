@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning].
   - `WithRejection` extractor requires `with-rejection` feature.
 
 [#3298]: https://github.com/tokio-rs/axum/pull/3298
+[#3469]: https://github.com/tokio-rs/axum/pull/3469
 [#3485]: https://github.com/tokio-rs/axum/pull/3485
 
 # 0.11.0
