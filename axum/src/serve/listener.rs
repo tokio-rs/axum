@@ -75,9 +75,9 @@ impl Listener for tokio::net::UnixListener {
 pub trait ListenerExt: Listener + Sized {
     /// Limit the number of concurrent connections. Once the limit has
     /// been reached, no additional connections will be accepted until
-    /// an existing connection is closed. (Listener implementations will
+    /// an existing connection is closed. Listener implementations will
     /// typically continue to queue incoming connections, up to an OS
-    /// and implementation-specific listener backlog limit.)
+    /// and implementation-specific listener backlog limit.
     ///
     /// Compare [`tower::limit::concurrency`], which provides ways to
     /// limit concurrent in-flight requests, but does not limit connections
@@ -154,6 +154,7 @@ pin_project! {
     /// A connection counted by [`ConnLimiter`].
     ///
     /// See [`ListenerExt::limit_connections`] for details.
+    #[derive(Debug)]
     pub struct ConnLimiterIo<T> {
         #[pin]
         io: T,
@@ -308,8 +309,7 @@ mod tests {
 
         time::timeout(time::Duration::from_secs(1), listener.accept())
             .await
-            .err()
-            .expect("Second 'accept' should time out.");
+            .expect_err("Second 'accept' should time out.");
         // It never reaches MyListener::accept to be counted.
         assert_eq!(COUNT.load(Ordering::SeqCst), 1);
 
