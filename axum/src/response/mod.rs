@@ -82,6 +82,47 @@ impl IntoResponse for NoContent {
     }
 }
 
+/// A response with a 201 CREATED status
+///
+/// As 201 is recommended to come with a `Location` header referring to the location of the created
+/// object according to the RFC7231, using this struct can remind a user to do so.
+/// Remember that any IntoResponse struct used as an `inner` here may override the headers and status
+/// code set by this struct.
+#[derive(Clone, Debug)]
+pub struct Created<T: IntoResponse = ()> {
+    /// The value set for the `Location` header.
+    /// Existing location headers are not overwritten
+    pub location: HeaderValue,
+    #[allow(missing_docs)]
+    pub inner: T,
+}
+impl Created {
+    /// Creates a new `Created` with an empty body
+    pub fn new(location: HeaderValue) -> Self {
+        Self {
+            location,
+            inner: (),
+        }
+    }
+}
+impl<T: IntoResponse> Created<T> {
+    /// Sets status and `Location` header along with the inner type's `IntoResponse` implementation.
+    /// Remember that the inner type may override headers and the status code.
+    pub fn new_with(location: HeaderValue, inner: T) -> Self {
+        Self { location, inner }
+    }
+}
+impl IntoResponse for Created {
+    fn into_response(self) -> Response {
+        (
+            StatusCode::CREATED,
+            AppendHeaders(std::iter::once((http::header::LOCATION, self.location))),
+            self.inner,
+        )
+            .into_response()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::extract::Extension;
