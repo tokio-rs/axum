@@ -105,6 +105,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [clean_axum_demo](https://github.com/sukjaelee/clean_axum_demo): A modern, clean-architecture Rust API server template built with Axum and SQLx. It incorporates domain-driven design, repository patterns, JWT authentication, file uploads, Swagger documentation, OpenTelemetry.
 - [qiluo-admin](https://github.com/chelunfu/qiluo_admin) | Axum + SeaORM + JWT + Scheduled + Tasks + SnowId + Redis + Memory + VUE3 | DB: MySQL, Postgres, SQLite
 - [openapi-rs](https://github.com/baerwang/openapi-rs/tree/main/examples/axum) | This project adds a middleware layer to axum using openapi-rs, enabling automatic request validation and processing based on OpenAPI 3.1 specifications. It helps ensure that the server behavior strictly follows the OpenAPI contract.
+- [axum-rest-api-example](https://github.com/sheroz/axum-rest-api-sample): REST API Web service in Rust using axum, JSON Web Tokens (JWT), SQLx, PostgreSQL, Redis, Docker, structured error handling, and end-to-end API tests.
 
 [Realworld]: https://github.com/gothinkster/realworld
 [SQLx]: https://github.com/launchbadge/sqlx
@@ -121,6 +122,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [Rust Axum Full Course]: YouTube video
 - [Deploying Axum projects with Shuttle]
 - [API Development with Rust](https://rust-api.dev/docs/front-matter/preface/): REST APIs based on axum
+- [axum-rest-api-postgres-redis-jwt-docker]: Getting started with REST API Web Services in Rust using Axum, PostgreSQL, Redis, and JWT
 
 [axum-tutorial]: https://github.com/programatik29/axum-tutorial
 [axum-tutorial-website]: https://programatik29.github.io/axum-tutorial/
@@ -131,5 +133,6 @@ If your project isn't listed here and you would like it to be, please feel free 
 [Introduction to axum]: https://www.youtube.com/playlist?list=PLrmY5pVcnuE-_CP7XZ_44HN-mDrLQV4nS
 [Rust Axum Full Course]: https://www.youtube.com/watch?v=XZtlD_m59sM
 [Deploying Axum projects with Shuttle]: https://docs.shuttle.rs/examples/axum
+[axum-rest-api-postgres-redis-jwt-docker]: https://sheroz.com/pages/blog/rust-axum-rest-api-postgres-redis-jwt-docker.html
 
 [Building a SaaS with Rust & Next.js](https://joshmo.bearblog.dev/lets-build-a-saas-with-rust/) A tutorial for combining Next.js with Rust via axum to make a SaaS.
