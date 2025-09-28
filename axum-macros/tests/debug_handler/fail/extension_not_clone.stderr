@@ -2,7 +2,7 @@ error[E0277]: the trait bound `NonCloneType: Clone` is not satisfied
  --> tests/debug_handler/fail/extension_not_clone.rs:7:38
   |
 7 | async fn test_extension_non_clone(_: Extension<NonCloneType>) {}
-  |                                      ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `NonCloneType`, which is required by `Extension<NonCloneType>: FromRequest<(), _>`
+  |                                      ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `NonCloneType`
   |
   = help: the following other types implement trait `FromRequest<S, M>`:
             (T1, T2)

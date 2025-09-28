@@ -8,8 +8,13 @@ error[E0277]: the trait bound `CustomIntoResponse: IntoResponseParts` is not sat
   --> tests/debug_handler/fail/wrong_return_tuple.rs:21:5
    |
 21 |     CustomIntoResponse,
-   |     ^^^^^^^^^^^^^^^^^^ the trait `IntoResponseParts` is not implemented for `CustomIntoResponse`
+   |     ^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `IntoResponseParts` is not implemented for `CustomIntoResponse`
+  --> tests/debug_handler/fail/wrong_return_tuple.rs:12:1
+   |
+12 | struct CustomIntoResponse {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: the following other types implement trait `IntoResponseParts`:
              ()
              (T1, T2)
@@ -23,15 +28,20 @@ error[E0277]: the trait bound `CustomIntoResponse: IntoResponseParts` is not sat
    = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
-3  + #![feature(trivial_bounds)]
+ 3 + #![feature(trivial_bounds)]
    |
 
 error[E0277]: the trait bound `CustomIntoResponse: IntoResponseParts` is not satisfied
   --> tests/debug_handler/fail/wrong_return_tuple.rs:21:5
    |
 21 |     CustomIntoResponse,
-   |     ^^^^^^^^^^^^^^^^^^ the trait `IntoResponseParts` is not implemented for `CustomIntoResponse`
+   |     ^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `IntoResponseParts` is not implemented for `CustomIntoResponse`
+  --> tests/debug_handler/fail/wrong_return_tuple.rs:12:1
+   |
+12 | struct CustomIntoResponse {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: the following other types implement trait `IntoResponseParts`:
              ()
              (T1, T2)

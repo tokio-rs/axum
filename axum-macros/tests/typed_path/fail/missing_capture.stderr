@@ -10,5 +10,9 @@ help: include the missing field in the pattern
   |                       ++++++
 help: if you don't care about this missing field, you can explicitly ignore it
   |
+5 | #[typed_path("/users" { id: _ })]
+  |                       +++++++++
+help: or always ignore missing fields here
+  |
 5 | #[typed_path("/users" { .. })]
   |                       ++++++
