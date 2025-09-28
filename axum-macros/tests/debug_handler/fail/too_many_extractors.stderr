@@ -1,10 +1,10 @@
 error: Handlers cannot take more than 16 arguments. Use `(a, b): (ExtractorA, ExtractorA)` to further nest extractors
-  --> tests/debug_handler/fail/too_many_extractors.rs:6:5
-   |
-6  | /     _e1: Uri,
-7  | |     _e2: Uri,
-8  | |     _e3: Uri,
-9  | |     _e4: Uri,
+ --> tests/debug_handler/fail/too_many_extractors.rs:6:5
+  |
+ 6 | /     _e1: Uri,
+ 7 | |     _e2: Uri,
+ 8 | |     _e3: Uri,
+ 9 | |     _e4: Uri,
 ...  |
 21 | |     _e16: Uri,
 22 | |     _e17: Uri,
