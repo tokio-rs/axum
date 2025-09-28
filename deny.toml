@@ -23,6 +23,23 @@ skip-tree = [
     { name = "base64" },
     # parking_lot pulls in old versions of windows-sys
     { name = "windows-sys" },
+    # old version pulled in by rustls via ring
+    { name = "spin" },
+    # lots still pulls in syn 1.x
+    { name = "syn" },
+    # until 1.0 is out we're pulling in both 0.14 and 1.0-rc.x
+    { name = "hyper" },
+    # pulled in by tracing-subscriber
+    { name = "regex-syntax" },
+    # pulled in by tracing-subscriber
+    { name = "regex-automata" },
+    # pulled in by hyper
+    { name = "socket2" },
+    # hyper-util hasn't upgraded to 0.5 yet, but it's the same service / layer
+    # crates beneath
+    { name = "tower" },
+    # tower hasn't upgraded to 1.0 yet
+    { name = "sync_wrapper" },
     # pulled in by quickcheck and cookie
     { name = "rand" },
 ]

@@ -1,6 +1,6 @@
 [package]
 name = "axum"
-version = "0.8.4" # remember to bump the version that axum-extra depends on
+version = "0.8.5" # remember to bump the version that axum-extra depends on
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "Web framework that focuses on ergonomics and modularity"
 edition = "2021"
@@ -94,7 +94,7 @@ __private_docs = [
 __private = ["tokio", "http1", "dep:reqwest"]
 
 [dependencies]
-axum-core = { path = "../axum-core", version = "0.5.2" }
+axum-core = { path = "../axum-core", version = "0.5.3" }
 bytes = "1.0"
 futures-core = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }

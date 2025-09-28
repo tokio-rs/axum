@@ -27,6 +27,12 @@ Yanked from crates.io due to unforeseen breaking change, see [#3190] for details
 
 [#3190]: https://github.com/tokio-rs/axum/pull/3190
 
+# 0.10.2
+
+- **added:** Implement `OptionalFromRequest` for `Host` ([#3177])
+
+[#3177]: https://github.com/tokio-rs/axum/pull/3177
+
 # 0.10.1
 
 - **fixed:** Fix a broken link in the documentation of `ErasedJson` ([#3186])

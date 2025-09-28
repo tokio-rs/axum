@@ -11,19 +11,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** `#[from_request(via(Extractor))]` now uses the extractor's
   rejection type instead of `axum::response::Response` ([#3261])
 - **breaking:** `axum::serve` now applies hyper's default `header_read_timeout` ([#3478])
-- **added:** Implement `OptionalFromRequest` for `Multipart` ([#3220])
 - **added:** New `ListenerExt::limit_connections` allows limiting concurrent `axum::serve` connections ([#3489])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
-- **change:** Update minimum rust version to 1.78 ([#3412])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
 [#3205]: https://github.com/tokio-rs/axum/pull/3205
-[#3220]: https://github.com/tokio-rs/axum/pull/3220
-[#3412]: https://github.com/tokio-rs/axum/pull/3412
 [#3478]: https://github.com/tokio-rs/axum/pull/3478
 [#3489]: https://github.com/tokio-rs/axum/pull/3489
+
+# 0.8.5
+
+- **fixed:** Reject JSON request bodies with trailing characters after the JSON document ([#3453])
+- **added:** Implement `OptionalFromRequest` for `Multipart` ([#3220])
+- **added:** Getter methods `Location::{status_code, location}`
+- **added:** Support for writing arbitrary binary data into server-sent events ([#3425])]
+- **added:** `middleware::ResponseAxumBodyLayer` for mapping response body to `axum::body::Body` ([#3469])
+- **added:** `impl FusedStream for WebSocket` ([#3443])
+- **changed:** The `sse` module and `Sse` type no longer depend on the `tokio` feature ([#3154])
+- **changed:** If the location given to one of `Redirect`s constructors is not a valid
+  header value, instead of panicking on construction, the `IntoResponse` impl now returns
+  an HTTP 500, just like `Json` does when serialization fails ([#3377])
+- **changed:** Update minimum rust version to 1.78 ([#3412])
+
+[#3154]: https://github.com/tokio-rs/axum/pull/3154
+[#3220]: https://github.com/tokio-rs/axum/pull/3220
+[#3377]: https://github.com/tokio-rs/axum/pull/3377
+[#3412]: https://github.com/tokio-rs/axum/pull/3412
+[#3425]: https://github.com/tokio-rs/axum/pull/3425
+[#3443]: https://github.com/tokio-rs/axum/pull/3443
+[#3453]: https://github.com/tokio-rs/axum/pull/3453
+[#3469]: https://github.com/tokio-rs/axum/pull/3469
 
 # 0.8.4
 
