@@ -359,7 +359,6 @@ dependencies = [
  "hyper",
  "mime",
  "pin-project-lite",
- "rustversion",
  "sync_wrapper",
  "tokio",
  "tower-http",
