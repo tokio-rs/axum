@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Unreleased
+
+- **fixed:** Reject JSON request bodies with trailing characters after the JSON document ([#3453])
+- **added:** Implement `OptionalFromRequest` for `Multipart` ([#3220])
+- **added:** Getter methods `Location::{status_code, location}`
+- **added:** Support for writing arbitrary binary data into server-sent events ([#3425])]
+- **added:** `middleware::ResponseAxumBodyLayer` for mapping response body to `axum::body::Body` ([#3469])
+- **added:** `impl FusedStream for WebSocket` ([#3443])
+- **changed:** The `sse` module and `Sse` type no longer depend on the `tokio` feature ([#3154])
+- **changed:** If the location given to one of `Redirect`s constructors is not a valid
+  header value, instead of panicking on construction, the `IntoResponse` impl now returns
+  an HTTP 500, just like `Json` does when serialization fails ([#3377])
+- **changed:** Update minimum rust version to 1.78 ([#3412])
+
+[#3154]: https://github.com/tokio-rs/axum/pull/3154
+[#3220]: https://github.com/tokio-rs/axum/pull/3220
+[#3377]: https://github.com/tokio-rs/axum/pull/3377
+[#3412]: https://github.com/tokio-rs/axum/pull/3412
+[#3425]: https://github.com/tokio-rs/axum/pull/3425
+[#3443]: https://github.com/tokio-rs/axum/pull/3443
+[#3453]: https://github.com/tokio-rs/axum/pull/3453
+[#3469]: https://github.com/tokio-rs/axum/pull/3469
+
 # 0.8.4
 
 - **added:** `Router::reset_fallback` ([#3320])
