@@ -686,5 +686,4 @@ logs, enable the `tracing` feature for axum (enabled by default) and the
 [customize-extractor-error]: https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/main.rs
 [`HeaderMap`]: https://docs.rs/http/latest/http/header/struct.HeaderMap.html
 [`Request`]: https://docs.rs/http/latest/http/struct.Request.html
-[`RequestParts::body_mut`]: crate::extract::RequestParts::body_mut
 [`JsonRejection::JsonDataError`]: rejection::JsonRejection::JsonDataError
