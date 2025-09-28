@@ -5,17 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
-# Unreleased
-
-- **added:** Implement `OptionalFromRequest` for `Host` ([#3177])
-
-[#3177]: https://github.com/tokio-rs/axum/pull/3177
-
 # 0.11.0
 
 Yanked from crates.io due to unforeseen breaking change, see [#3190] for details.
 
 [#3190]: https://github.com/tokio-rs/axum/pull/3190
+
+# 0.10.2
+
+- **added:** Implement `OptionalFromRequest` for `Host` ([#3177])
+
+[#3177]: https://github.com/tokio-rs/axum/pull/3177
 
 # 0.10.1
 
