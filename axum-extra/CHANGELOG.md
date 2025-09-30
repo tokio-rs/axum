@@ -27,6 +27,10 @@ Yanked from crates.io due to unforeseen breaking change, see [#3190] for details
 
 [#3190]: https://github.com/tokio-rs/axum/pull/3190
 
+# 0.10.3
+
+Released without changes to fix docs.rs build.
+
 # 0.10.2
 
 - **added:** Implement `OptionalFromRequest` for `Host` ([#3177])
