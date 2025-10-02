@@ -29,7 +29,7 @@
 //! `query` | Enables the [`Query`](crate::extract::Query) extractor | No
 //! `routing` | Enables the [routing] utilities | No
 //! `tracing` | Log rejections from built-in extractors | Yes
-//! `typed-routing` | Enables the [`TypedPath`](crate::routing::TypedPath) routing utilities | No
+//! `typed-routing` | Enables the [`TypedPath`](crate::routing::TypedPath) routing utilities and the `routing` feature. | No
 //! `typed-header` | Enables the [`TypedHeader`] extractor and response | No
 //! `file-stream` | Enables the [`FileStream`](crate::response::FileStream) response | No
 //! `with-rejection` | Enables the [`WithRejection`](crate::extract::WithRejection) extractor | No
