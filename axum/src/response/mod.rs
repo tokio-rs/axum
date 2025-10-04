@@ -92,34 +92,58 @@ impl IntoResponse for NoContent {
 pub struct Created<T: IntoResponse = ()> {
     /// The value set for the `Location` header.
     /// Existing location headers are not overwritten
-    pub location: HeaderValue,
-    #[allow(missing_docs)]
-    pub inner: T,
+    location: Option<HeaderValue>,
+    inner: T,
 }
 impl Created {
-    /// Creates a new `Created` with an empty body
-    pub fn new(location: HeaderValue) -> Self {
+    #[must_use]
+    /// Creates a CREATED response with an empty body and no `Location` header
+    pub fn empty() -> Self {
         Self {
+            location: None,
+            inner: (),
+        }
+    }
+    /// Creates a new `Created` with an empty body
+    pub fn empty_with_location(location: HeaderValue) -> Self {
+        Self {
+            location: Some(location),
+            inner: (),
+        }
+    }
+    /// Attaches a body to an empty `Created` response
+    pub fn with_body<T: IntoResponse>(self, body: T) -> Created<T> {
+        let Self {
             location,
             inner: (),
+        } = self;
+        Created {
+            location,
+            inner: body,
         }
     }
 }
 impl<T: IntoResponse> Created<T> {
     /// Sets status and `Location` header along with the inner type's `IntoResponse` implementation.
     /// Remember that the inner type may override headers and the status code.
-    pub fn new_with(location: HeaderValue, inner: T) -> Self {
-        Self { location, inner }
+    pub fn new_with_location_header(body: T, location: HeaderValue) -> Self {
+        Self {
+            location: Some(location),
+            inner: body,
+        }
     }
 }
-impl IntoResponse for Created {
+impl<T: IntoResponse> IntoResponse for Created<T> {
     fn into_response(self) -> Response {
-        (
-            StatusCode::CREATED,
-            AppendHeaders(std::iter::once((http::header::LOCATION, self.location))),
-            self.inner,
-        )
-            .into_response()
+        match self.location {
+            Some(l) => (
+                StatusCode::CREATED,
+                AppendHeaders([(http::header::LOCATION, l)]),
+                self.inner,
+            )
+                .into_response(),
+            None => (StatusCode::CREATED, self.inner).into_response(),
+        }
     }
 }
 
