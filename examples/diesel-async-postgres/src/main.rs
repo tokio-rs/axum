@@ -2,7 +2,6 @@
 //!
 //! ```sh
 //! export DATABASE_URL=postgres://localhost/your_db
-//! diesel migration run
 //! cargo run -p example-diesel-async-postgres
 //! ```
 //!
@@ -22,10 +21,13 @@ use axum::{
 use diesel::prelude::*;
 use diesel_async::{
     pooled_connection::{bb8, AsyncDieselConnectionManager},
-    AsyncPgConnection, RunQueryDsl,
+    AsyncMigrationHarness, AsyncPgConnection, RunQueryDsl,
 };
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
 // normally part of your generated schema.rs file
 table! {
@@ -67,6 +69,9 @@ async fn main() {
     // set up connection pool
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(db_url);
     let pool = bb8::Pool::builder().build(config).await.unwrap();
+
+    let mut harness = AsyncMigrationHarness::new(pool.get_owned().await.unwrap());
+    harness.run_pending_migrations(MIGRATIONS).unwrap();
 
     // build our application with some routes
     let app = Router::new()
