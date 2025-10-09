@@ -16,10 +16,12 @@ and this project adheres to [Semantic Versioning].
   - `OptionalPath` extractor requires `optional-path` feature.
   - The routing utilities require `routing` feature.
   - `WithRejection` extractor requires `with-rejection` feature.
+- **breaking:** Upgraded `prost` dependency to v0.14. ([#3517])
 
 [#3298]: https://github.com/tokio-rs/axum/pull/3298
 [#3469]: https://github.com/tokio-rs/axum/pull/3469
 [#3485]: https://github.com/tokio-rs/axum/pull/3485
+[#3517]: https://github.com/tokio-rs/axum/pull/3517
 
 # 0.11.0
 
