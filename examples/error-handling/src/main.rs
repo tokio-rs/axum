@@ -206,12 +206,12 @@ impl From<time_library::Error> for AppError {
     }
 }
 
-// Our middleware is responsable for logging error details internally
+// Our middleware is responsible for logging error details internally
 async fn log_app_errors(request: Request, next: Next) -> Response {
     let response = next.run(request).await;
     // If the response contains an AppError Extension, log it.
     if let Some(err) = response.extensions().get::<AppError>() {
-        tracing::error!(?err, "an unexpected error occured inside a handler");
+        tracing::error!(?err, "an unexpected error occurred inside a handler");
     }
     response
 }
