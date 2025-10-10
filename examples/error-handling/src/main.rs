@@ -32,7 +32,7 @@ use std::{
 use axum::{
     extract::{rejection::JsonRejection, FromRequest, MatchedPath, Request, State},
     http::StatusCode,
-    middleware::{self, Next},
+    middleware::{from_fn, Next},
     response::{IntoResponse, Response},
     routing::post,
     Router,
@@ -78,7 +78,7 @@ async fn main() {
                 // logging of errors so disable that
                 .on_failure(()),
         )
-        .layer(middleware::from_fn(log_app_errors))
+        .layer(from_fn(log_app_errors))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
@@ -166,7 +166,7 @@ impl IntoResponse for AppError {
             message: String,
         }
 
-        let (status, message, err) = match self.clone() {
+        let (status, message, err) = match &self {
             AppError::JsonRejection(rejection) => {
                 // This error is caused by bad user input so don't log it
                 (rejection.status(), rejection.body_text(), None)
