@@ -248,13 +248,11 @@ impl<F> WebSocketUpgrade<F> {
         {
             self.protocol = protocols
                 .into_iter()
-                // FIXME: This will often allocate a new `String` and so is less efficient than it
-                // could be. But that can't be fixed without breaking changes to the public API.
                 .map(Into::into)
                 .find(|protocol| {
                     req_protocols
                         .split(',')
-                        .any(|req_protocol| req_protocol.trim() == protocol)
+                        .any(|req_protocol| protocol.as_ref() == req_protocol.trim())
                 })
                 .map(|protocol| match protocol {
                     Cow::Owned(s) => HeaderValue::from_str(&s).unwrap(),
