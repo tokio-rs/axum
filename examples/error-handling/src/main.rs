@@ -32,6 +32,7 @@ use std::{
 use axum::{
     extract::{rejection::JsonRejection, FromRequest, MatchedPath, Request, State},
     http::StatusCode,
+    middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::post,
     Router,
@@ -77,6 +78,7 @@ async fn main() {
                 // logging of errors so disable that
                 .on_failure(()),
         )
+        .layer(middleware::from_fn(log_app_errors))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
@@ -145,9 +147,10 @@ where
 }
 
 // The kinds of errors we can hit in our application.
+#[derive(Debug, Clone)]
 enum AppError {
     // The request body contained invalid JSON
-    JsonRejection(JsonRejection),
+    JsonRejection(Arc<JsonRejection>),
     // Some error from a third party library we're using
     TimeError(time_library::Error),
 }
@@ -163,31 +166,37 @@ impl IntoResponse for AppError {
             message: String,
         }
 
-        let (status, message) = match self {
+        let (status, message, err) = match self.clone() {
             AppError::JsonRejection(rejection) => {
                 // This error is caused by bad user input so don't log it
-                (rejection.status(), rejection.body_text())
+                (rejection.status(), rejection.body_text(), None)
             }
-            AppError::TimeError(err) => {
-                // Because `TraceLayer` wraps each request in a span that contains the request
-                // method, uri, etc we don't need to include those details here
-                tracing::error!(%err, "error from time_library");
-
+            AppError::TimeError(_err) => {
+                // While we could simply log the error here we would introduce
+                // a side-effect to our conversion, instead add the AppError to
+                // the Response as an Extension
                 // Don't expose any details about the error to the client
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Something went wrong".to_owned(),
+                    Some(self),
                 )
             }
         };
 
-        (status, AppJson(ErrorResponse { message })).into_response()
+        let mut response = (status, AppJson(ErrorResponse { message })).into_response();
+        if let Some(err) = err {
+            // Insert our error into the response, our logging middleware will use this.
+            response.extensions_mut().insert(err);
+        }
+        response
     }
 }
 
 impl From<JsonRejection> for AppError {
     fn from(rejection: JsonRejection) -> Self {
-        Self::JsonRejection(rejection)
+        // Arc enables cloning of a JsonRejection
+        Self::JsonRejection(Arc::new(rejection))
     }
 }
 
@@ -195,6 +204,16 @@ impl From<time_library::Error> for AppError {
     fn from(error: time_library::Error) -> Self {
         Self::TimeError(error)
     }
+}
+
+// Our middleware is responsable for logging error details internally
+async fn log_app_errors(request: Request, next: Next) -> Response {
+    let response = next.run(request).await;
+    // If the response contains an AppError Extension, log it.
+    if let Some(err) = response.extensions().get::<AppError>() {
+        tracing::error!(?err, "an unexpected error occured inside a handler");
+    }
+    response
 }
 
 // Imagine this is some third party library that we're using. It sometimes returns errors which we
@@ -220,7 +239,7 @@ mod time_library {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum Error {
         FailedToGetTime,
     }
