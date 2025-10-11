@@ -185,6 +185,7 @@ impl IntoResponse for AppError {
         let mut response = (status, AppJson(ErrorResponse { message })).into_response();
         if let Some(err) = err {
             // Insert our error into the response, our logging middleware will use this.
+            // By wrapping the error in an Arc we can use it as an Extension regardless of any inner types not deriving Clone.
             response.extensions_mut().insert(Arc::new(err));
         }
         response
@@ -193,7 +194,6 @@ impl IntoResponse for AppError {
 
 impl From<JsonRejection> for AppError {
     fn from(rejection: JsonRejection) -> Self {
-        // Arc enables cloning of a JsonRejection
         Self::JsonRejection(rejection)
     }
 }
