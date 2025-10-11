@@ -147,17 +147,15 @@ where
 }
 
 // The kinds of errors we can hit in our application.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 enum AppError {
     // The request body contained invalid JSON
-    JsonRejection(Arc<JsonRejection>),
+    JsonRejection(JsonRejection),
     // Some error from a third party library we're using
     TimeError(time_library::Error),
 }
 
 // Tell axum how `AppError` should be converted into a response.
-//
-// This is also a convenient place to log errors.
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         // How we want errors responses to be serialized
@@ -187,7 +185,7 @@ impl IntoResponse for AppError {
         let mut response = (status, AppJson(ErrorResponse { message })).into_response();
         if let Some(err) = err {
             // Insert our error into the response, our logging middleware will use this.
-            response.extensions_mut().insert(err);
+            response.extensions_mut().insert(Arc::new(err));
         }
         response
     }
@@ -196,7 +194,7 @@ impl IntoResponse for AppError {
 impl From<JsonRejection> for AppError {
     fn from(rejection: JsonRejection) -> Self {
         // Arc enables cloning of a JsonRejection
-        Self::JsonRejection(Arc::new(rejection))
+        Self::JsonRejection(rejection)
     }
 }
 
@@ -210,7 +208,7 @@ impl From<time_library::Error> for AppError {
 async fn log_app_errors(request: Request, next: Next) -> Response {
     let response = next.run(request).await;
     // If the response contains an AppError Extension, log it.
-    if let Some(err) = response.extensions().get::<AppError>() {
+    if let Some(err) = response.extensions().get::<Arc<AppError>>() {
         tracing::error!(?err, "an unexpected error occurred inside a handler");
     }
     response
