@@ -63,6 +63,7 @@ query = [
 tracing = ["axum-core/tracing", "axum/tracing", "dep:tracing"]
 typed-header = ["dep:headers"]
 typed-routing = [
+    "routing",
     "dep:axum-macros",
     "dep:percent-encoding",
     "dep:serde_core",
