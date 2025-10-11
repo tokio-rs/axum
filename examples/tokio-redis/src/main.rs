@@ -10,11 +10,7 @@ use axum::{
     routing::get,
     Router,
 };
-use bb8_redis::{
-    bb8::{self, Pool, PooledConnection},
-    redis::AsyncCommands,
-    RedisConnectionManager,
-};
+use redis::AsyncCommands;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -28,8 +24,8 @@ async fn main() {
         .init();
 
     tracing::debug!("connecting to redis");
-    let manager = RedisConnectionManager::new("redis://localhost").unwrap();
-    let pool = bb8::Pool::builder().build(manager).await.unwrap();
+    let client = redis::Client::open("redis://localhost").unwrap();
+    let pool = bb8::Pool::builder().build(client).await.unwrap();
 
     {
         // ping the database before starting
@@ -56,7 +52,7 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-type ConnectionPool = Pool<RedisConnectionManager>;
+type ConnectionPool = bb8::Pool<redis::Client>;
 
 async fn using_connection_pool_extractor(
     State(pool): State<ConnectionPool>,
@@ -68,7 +64,7 @@ async fn using_connection_pool_extractor(
 
 // we can also write a custom extractor that grabs a connection from the pool
 // which setup is appropriate depends on your application
-struct DatabaseConnection(PooledConnection<'static, RedisConnectionManager>);
+struct DatabaseConnection(bb8::PooledConnection<'static, redis::Client>);
 
 impl<S> FromRequestParts<S> for DatabaseConnection
 where
