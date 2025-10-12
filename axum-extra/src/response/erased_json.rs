@@ -57,7 +57,10 @@ impl ErasedJson {
     pub fn pretty<T: Serialize>(val: T) -> Self {
         let mut bytes = BytesMut::with_capacity(128);
         let result = match serde_json::to_writer_pretty((&mut bytes).writer(), &val) {
-            Ok(()) => Ok(bytes.freeze()),
+            Ok(()) => {
+                bytes.put_u8(b'\n');
+                Ok(bytes.freeze())
+            }
             Err(e) => Err(Arc::new(e)),
         };
         Self(result)
