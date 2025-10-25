@@ -58,7 +58,7 @@ macro_rules! panic_on_err {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct RouteId(u32);
+pub(crate) struct RouteId(usize);
 
 /// The router type for composing handlers and services.
 ///
