@@ -157,7 +157,7 @@ axum::serve(listener, final_router).await.unwrap();
 # };
 ```
 
-This why this returning `Router<AppState>` after calling `with_state` doesn't
+This is why returning `Router<AppState>` after calling `with_state` doesn't
 work:
 
 ```rust,compile_fail
