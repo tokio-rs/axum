@@ -15,7 +15,7 @@ jobs:
   check:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dtolnay/rust-toolchain@beta
       with:
         components: clippy, rustfmt
@@ -30,7 +30,7 @@ jobs:
   check-docs:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
       with:
@@ -50,14 +50,12 @@ jobs:
       # Fail the build if there are any warnings
       RUSTFLAGS: "-D warnings"
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
-    - name: Install cargo-hack
-      run: |
-        curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
+    - uses: taiki-e/install-action@cargo-hack
     - name: cargo hack check
       run: cargo hack check --each-feature --no-dev-deps --all
 
@@ -67,7 +65,7 @@ jobs:
       matrix:
         crate: [axum, axum-core, axum-extra, axum-macros]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dtolnay/rust-toolchain@nightly
     - uses: Swatinem/rust-cache@v2
       with:
@@ -85,7 +83,7 @@ jobs:
       matrix:
         rust: [stable, beta]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ matrix.rust }}
@@ -100,7 +98,7 @@ jobs:
     needs: check
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Get rust-toolchain version
       id: rust-toolchain
       run: echo "version=$(cat axum-macros/rust-toolchain)" >> $GITHUB_OUTPUT
@@ -120,7 +118,7 @@ jobs:
     needs: check
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ env.MSRV }}
@@ -158,7 +156,7 @@ jobs:
     needs: check
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
       with:
@@ -176,7 +174,7 @@ jobs:
           - advisories
           - bans licenses sources
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check ${{ matrix.checks }}
@@ -186,7 +184,7 @@ jobs:
     needs: check
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dtolnay/rust-toolchain@stable
       with:
         target: armv5te-unknown-linux-musleabi
@@ -212,7 +210,7 @@ jobs:
     needs: check
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dtolnay/rust-toolchain@stable
       with:
         target: wasm32-unknown-unknown
@@ -229,20 +227,14 @@ jobs:
   dependencies-are-sorted:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@beta
-    - uses: Swatinem/rust-cache@v2
-      with:
-        save-if: ${{ github.ref == 'refs/heads/main' }}
+    - uses: actions/checkout@v5
     - name: Install cargo-sort
-      run: |
-        cargo install cargo-sort
-    # Work around cargo-sort not honoring workspace.exclude
-    - name: Remove non-crate folder
-      run: rm -rf examples/async-graphql
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-sort@2.0.2
     - name: Check dependency tables
       run: |
-        cargo sort --workspace --grouped --check
+        cargo-sort --workspace --grouped --check
 
   typos:
     name: Spell Check with Typos
@@ -250,7 +242,7 @@ jobs:
 
     steps:
       - name: Checkout Actions Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check the spelling of the files in our repo
         uses: crate-ci/typos@v1.29.4

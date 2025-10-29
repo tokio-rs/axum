@@ -7,7 +7,8 @@ use axum_core::{
     BoxError,
 };
 use bytes::{BufMut, BytesMut};
-use futures_util::stream::{BoxStream, Stream, TryStream, TryStreamExt};
+use futures_core::{stream::BoxStream, Stream, TryStream};
+use futures_util::stream::TryStreamExt;
 use pin_project_lite::pin_project;
 use serde_core::{de::DeserializeOwned, Serialize};
 use std::{
@@ -44,7 +45,7 @@ pin_project! {
     /// ```rust
     /// use axum::{BoxError, response::{IntoResponse, Response}};
     /// use axum_extra::json_lines::JsonLines;
-    /// use futures_util::stream::Stream;
+    /// use futures_core::stream::Stream;
     ///
     /// fn stream_of_values() -> impl Stream<Item = Result<serde_json::Value, BoxError>> {
     ///     # futures_util::stream::empty()

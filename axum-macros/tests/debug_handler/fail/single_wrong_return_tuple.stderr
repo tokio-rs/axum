@@ -2,8 +2,13 @@ error[E0277]: the trait bound `NotIntoResponse: IntoResponse` is not satisfied
  --> tests/debug_handler/fail/single_wrong_return_tuple.rs:6:23
   |
 6 | async fn handler() -> (NotIntoResponse) {
-  |                       ^^^^^^^^^^^^^^^^^ the trait `IntoResponse` is not implemented for `NotIntoResponse`
+  |                       ^^^^^^^^^^^^^^^^^ unsatisfied trait bound
   |
+help: the trait `IntoResponse` is not implemented for `NotIntoResponse`
+ --> tests/debug_handler/fail/single_wrong_return_tuple.rs:3:1
+  |
+3 | struct NotIntoResponse;
+  | ^^^^^^^^^^^^^^^^^^^^^^
   = help: the following other types implement trait `IntoResponse`:
             &'static [u8; N]
             &'static [u8]

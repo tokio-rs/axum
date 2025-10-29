@@ -29,8 +29,10 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-typed-routing](https://docs.rs/axum-typed-routing/latest/axum_typed_routing/): Statically typed routing macros with OpenAPI generation using aide.
 - [axum-jsonschema](https://docs.rs/axum-jsonschema/): A `Json<T>` extractor that does JSON schema validation of requests.
 - [axum-login](https://docs.rs/axum-login): Session-based user authentication for axum.
+- [axum-gate](https://docs.rs/axum-gate): JWT-based authentication and role-based authorization for axum (Cookie and Bearer, for monolithic and distributed applications).
 - [axum-csrf-sync-pattern](https://crates.io/crates/axum-csrf-sync-pattern): A middleware implementing CSRF STP for AJAX backends and API endpoints.
 - [axum-otel-metrics](https://github.com/ttys3/axum-otel-metrics/): A axum OpenTelemetry Metrics middleware with prometheus exporter supported.
+- [tower-otel](https://github.com/mattiapenati/tower-otel): OpenTelemetry layer for HTTP/gRPC services with optional axum integration.
 - [jwt-authorizer](https://crates.io/crates/jwt-authorizer): JWT authorization layer for axum (oidc discovery, validation options, claims extraction, etc.)
 - [axum-typed-multipart](https://crates.io/crates/axum_typed_multipart): Type safe wrapper for `axum::extract::Multipart`.
 - [tower-governor](https://crates.io/crates/tower_governor): A Tower service and layer that provides a rate-limiting backend by [governor](https://crates.io/crates/governor)
@@ -57,6 +59,8 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [baxe](https://github.com/zyphelabs/baxe): Simple macro for defining backend errors once and automatically generate standardized JSON error responses, saving time and reducing complexity
 - [axum-html-minifier](https://crates.io/crates/axum_html_minifier): This middleware minify the html body content of a axum response.
 - [static-serve](https://crates.io/crates/static-serve): A helper macro for compressing and embedding static assets in an axum webserver.
+- [datastar](https://crates.io/crates/datastar): Rust implementation of the Datastar SDK specification with Axum support
+- [axum-governor](https://crates.io/crates/axum-governor): An independent Axum middleware for rate limiting, powered by [lazy-limit](https://github.com/canmi21/lazy-limit) (not related to tower-governor).
 
 ## Project showcase
 
@@ -98,6 +102,11 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [sero](https://github.com/clowzed/sero): Host static sites with custom subdomains as surge.sh does. But with full control and cool new features. (axum, sea-orm, postgresql)
 - [Hatsu](https://github.com/importantimport/hatsu): 🩵 Self-hosted & Fully-automated ActivityPub Bridge for Static Sites.
 - [Mini RPS](https://github.com/marcodpt/minirps): Mini reverse proxy server, HTTPS, CORS, static file hosting and template engine (minijinja).
+- [fx](https://github.com/rikhuijzer/fx): A (micro)blogging server that you can self-host.
+- [clean_axum_demo](https://github.com/sukjaelee/clean_axum_demo): A modern, clean-architecture Rust API server template built with Axum and SQLx. It incorporates domain-driven design, repository patterns, JWT authentication, file uploads, Swagger documentation, OpenTelemetry.
+- [qiluo-admin](https://github.com/chelunfu/qiluo_admin) | Axum + SeaORM + JWT + Scheduled + Tasks + SnowId + Redis + Memory + VUE3 | DB: MySQL, Postgres, SQLite
+- [openapi-rs](https://github.com/baerwang/openapi-rs/tree/main/examples/axum) | This project adds a middleware layer to axum using openapi-rs, enabling automatic request validation and processing based on OpenAPI 3.1 specifications. It helps ensure that the server behavior strictly follows the OpenAPI contract.
+- [axum-rest-api-example](https://github.com/sheroz/axum-rest-api-sample): REST API Web service in Rust using axum, JSON Web Tokens (JWT), SQLx, PostgreSQL, Redis, Docker, structured error handling, and end-to-end API tests.
 
 [Realworld]: https://github.com/gothinkster/realworld
 [SQLx]: https://github.com/launchbadge/sqlx
@@ -114,6 +123,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [Rust Axum Full Course]: YouTube video
 - [Deploying Axum projects with Shuttle]
 - [API Development with Rust](https://rust-api.dev/docs/front-matter/preface/): REST APIs based on axum
+- [axum-rest-api-postgres-redis-jwt-docker]: Getting started with REST API Web Services in Rust using Axum, PostgreSQL, Redis, and JWT
 
 [axum-tutorial]: https://github.com/programatik29/axum-tutorial
 [axum-tutorial-website]: https://programatik29.github.io/axum-tutorial/
@@ -124,5 +134,6 @@ If your project isn't listed here and you would like it to be, please feel free 
 [Introduction to axum]: https://www.youtube.com/playlist?list=PLrmY5pVcnuE-_CP7XZ_44HN-mDrLQV4nS
 [Rust Axum Full Course]: https://www.youtube.com/watch?v=XZtlD_m59sM
 [Deploying Axum projects with Shuttle]: https://docs.shuttle.rs/examples/axum
+[axum-rest-api-postgres-redis-jwt-docker]: https://sheroz.com/pages/blog/rust-axum-rest-api-postgres-redis-jwt-docker.html
 
 [Building a SaaS with Rust & Next.js](https://joshmo.bearblog.dev/lets-build-a-saas-with-rust/) A tutorial for combining Next.js with Rust via axum to make a SaaS.

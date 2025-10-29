@@ -4,7 +4,7 @@ use axum_core::{
     BoxError,
 };
 use bytes::Bytes;
-use futures_util::TryStream;
+use futures_core::TryStream;
 use http::{header, StatusCode};
 use std::{io, path::Path};
 use tokio::{
@@ -284,7 +284,7 @@ where
             .unwrap_or_else(|e| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("build FileStream responsec error: {e}"),
+                    format!("build FileStream response error: {e}"),
                 )
                     .into_response()
             })

@@ -170,7 +170,7 @@ impl Keys {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Claims {
     sub: String,
     company: String,

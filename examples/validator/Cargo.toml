@@ -7,11 +7,11 @@ version = "0.1.0"
 [dependencies]
 axum = { path = "../../axum" }
 serde = { version = "1.0", features = ["derive"] }
-thiserror = "1.0.29"
+thiserror = "2"
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-validator = { version = "0.18.1", features = ["derive"] }
+validator = { version = "0.20.0", features = ["derive"] }
 
 [dev-dependencies]
 http-body-util = "0.1.0"

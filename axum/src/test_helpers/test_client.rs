@@ -1,6 +1,6 @@
 use super::{serve, Request, Response};
 use bytes::Bytes;
-use futures_util::future::BoxFuture;
+use futures_core::future::BoxFuture;
 use http::header::{HeaderName, HeaderValue};
 use std::ops::Deref;
 use std::{convert::Infallible, future::IntoFuture, net::SocketAddr};
@@ -47,7 +47,7 @@ impl TestClient {
             .build()
             .unwrap();
 
-        TestClient { client, addr }
+        Self { client, addr }
     }
 
     pub fn get(&self, url: &str) -> RequestBuilder {

@@ -10,7 +10,7 @@ use axum_core::{
     response::{IntoResponse, Response},
     RequestExt,
 };
-use futures_util::stream::Stream;
+use futures_core::Stream;
 use http::{
     header::{HeaderMap, CONTENT_TYPE},
     StatusCode,

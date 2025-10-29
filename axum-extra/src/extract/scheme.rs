@@ -37,7 +37,7 @@ where
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         // Within Forwarded header
         if let Some(scheme) = parse_forwarded(&parts.headers) {
-            return Ok(Scheme(scheme.to_owned()));
+            return Ok(Self(scheme.to_owned()));
         }
 
         // X-Forwarded-Proto
@@ -46,12 +46,12 @@ where
             .get(X_FORWARDED_PROTO_HEADER_KEY)
             .and_then(|scheme| scheme.to_str().ok())
         {
-            return Ok(Scheme(scheme.to_owned()));
+            return Ok(Self(scheme.to_owned()));
         }
 
         // From parts of an HTTP/2 request
         if let Some(scheme) = parts.uri.scheme_str() {
-            return Ok(Scheme(scheme.to_owned()));
+            return Ok(Self(scheme.to_owned()));
         }
 
         Err(SchemeMissing)

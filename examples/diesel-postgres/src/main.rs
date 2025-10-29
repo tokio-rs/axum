@@ -35,7 +35,7 @@ table! {
     }
 }
 
-#[derive(serde::Serialize, Selectable, Queryable)]
+#[derive(serde::Serialize, HasQuery)]
 struct User {
     id: i32,
     name: String,
@@ -112,7 +112,7 @@ async fn list_users(
 ) -> Result<Json<Vec<User>>, (StatusCode, String)> {
     let conn = pool.get().await.map_err(internal_error)?;
     let res = conn
-        .interact(|conn| users::table.select(User::as_select()).load(conn))
+        .interact(|conn| User::query().load(conn))
         .await
         .map_err(internal_error)?
         .map_err(internal_error)?;

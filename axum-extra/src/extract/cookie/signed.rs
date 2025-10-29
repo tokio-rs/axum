@@ -154,7 +154,7 @@ where
             key,
             _marker: _,
         } = SignedCookieJar::from_headers(&parts.headers, key);
-        Ok(SignedCookieJar {
+        Ok(Self {
             jar,
             key,
             _marker: PhantomData,
@@ -292,7 +292,7 @@ impl<K> IntoResponseParts for SignedCookieJar<K> {
     type Error = Infallible;
 
     fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
-        set_cookies(self.jar, res.headers_mut());
+        set_cookies(&self.jar, res.headers_mut());
         Ok(res)
     }
 }

@@ -10,12 +10,12 @@ use axum::{
     routing::get,
     Router,
 };
-use bb8::{Pool, PooledConnection};
-use bb8_redis::RedisConnectionManager;
-use redis::AsyncCommands;
+use bb8_redis::{
+    bb8::{self, Pool, PooledConnection},
+    redis::AsyncCommands,
+    RedisConnectionManager,
+};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-use bb8_redis::bb8;
 
 #[tokio::main]
 async fn main() {

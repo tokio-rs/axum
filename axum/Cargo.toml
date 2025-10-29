@@ -11,6 +11,34 @@ license = "MIT"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
 
+[package.metadata.docs.rs]
+all-features = true
+
+[package.metadata.playground]
+features = ["http1", "http2", "json", "multipart", "ws"]
+
+[package.metadata.cargo-public-api-crates]
+allowed = [
+    # our crates
+    "axum_core",
+    "axum_macros",
+    # not 1.0
+    "futures_core",
+    "futures_sink",
+    "futures_util",
+    "pin_project_lite",
+    "tower_layer",
+    "tower_service",
+    # >=1.0
+    "bytes",
+    "http",
+    "http_body",
+    "serde_core",
+    "tokio",
+    # for the `__private` feature
+    "reqwest",
+]
+
 [features]
 default = [
     "form",
@@ -32,10 +60,24 @@ matched-path = []
 multipart = ["dep:multer"]
 original-uri = []
 query = ["dep:form_urlencoded", "dep:serde_urlencoded", "dep:serde_path_to_error"]
-tokio = ["dep:hyper-util", "dep:tokio", "tokio/net", "tokio/rt", "tower/make", "tokio/macros"]
+tokio = [
+    "dep:hyper-util",
+    "dep:tokio",
+    "tokio/net",
+    "tokio/rt",
+    "tower/make",
+    "tokio/macros",
+]
 tower-log = ["tower/log"]
 tracing = ["dep:tracing", "axum-core/tracing"]
-ws = ["dep:hyper", "tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
+ws = [
+    "dep:hyper",
+    "dep:futures-sink",
+    "tokio",
+    "dep:tokio-tungstenite",
+    "dep:sha1",
+    "dep:base64",
+]
 
 __private_docs = [
     # We re-export some docs from axum-core via #[doc(inline)],
@@ -53,7 +95,8 @@ __private = ["tokio", "http1", "dep:reqwest"]
 
 [dependencies]
 axum-core = { path = "../axum-core", version = "0.5.5" }
-bytes = "1.0"
+bytes = "1.7"
+futures-core = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "1.0.0"
 http-body = "1.0.0"
@@ -74,6 +117,7 @@ tower-service = "0.3"
 axum-macros = { path = "../axum-macros", version = "0.5.0", optional = true }
 base64 = { version = "0.22.1", optional = true }
 form_urlencoded = { version = "1.1.0", optional = true }
+futures-sink = { version = "0.3", optional = true }
 hyper = { version = "1.1.0", optional = true }
 hyper-util = { version = "0.1.3", features = ["tokio", "server", "service"], optional = true }
 multer = { version = "3.0.0", optional = true }
@@ -190,43 +234,6 @@ features = [
 
 [lints]
 workspace = true
-
-[package.metadata.docs.rs]
-all-features = true
-
-[package.metadata.playground]
-features = [
-    "http1",
-    "http2",
-    "json",
-    "multipart",
-    "ws",
-]
-
-[package.metadata.cargo-public-api-crates]
-allowed = [
-    # our crates
-    "axum_core",
-    "axum_macros",
-
-    # not 1.0
-    "futures_core",
-    "futures_sink",
-    "futures_util",
-    "pin_project_lite",
-    "tower_layer",
-    "tower_service",
-
-    # >=1.0
-    "bytes",
-    "http",
-    "http_body",
-    "serde_core",
-    "tokio",
-
-    # for the `__private` feature
-    "reqwest",
-]
 
 [[bench]]
 name = "benches"

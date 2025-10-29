@@ -6,9 +6,7 @@ publish = false
 
 [dependencies]
 axum = { path = "../../axum" }
-bb8 = "0.8.5"
-bb8-redis = "0.17.0"
-redis = "0.27.2"
+bb8-redis = "0.24"
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

@@ -2,6 +2,7 @@
 
 use std::{
     convert::Infallible,
+    error::Error as StdError,
     fmt::Debug,
     future::{Future, IntoFuture},
     io,
@@ -11,8 +12,9 @@ use std::{
 
 use axum_core::{body::Body, extract::Request, response::Response};
 use futures_util::FutureExt;
+use http_body::Body as HttpBody;
 use hyper::body::Incoming;
-use hyper_util::rt::{TokioExecutor, TokioIo};
+use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
 #[cfg(any(feature = "http1", feature = "http2"))]
 use hyper_util::{server::conn::auto::Builder, service::TowerToHyperService};
 use tokio::sync::watch;
@@ -21,12 +23,13 @@ use tower_service::Service;
 
 mod listener;
 
-pub use self::listener::{Listener, ListenerExt, TapIo};
+pub use self::listener::{ConnLimiter, ConnLimiterIo, Listener, ListenerExt, TapIo};
 
 /// Serve the service with the supplied listener.
 ///
 /// This method of running a service is intentionally simple and doesn't support any configuration.
-/// Use hyper or hyper-util if you need configuration.
+/// hyper's default configuration applies (including [timeouts]); use hyper or hyper-util if you
+/// need configuration.
 ///
 /// It supports both HTTP/1 as well as HTTP/2.
 ///
@@ -86,6 +89,7 @@ pub use self::listener::{Listener, ListenerExt, TapIo};
 /// error. Errors on the TCP socket will be handled by sleeping for a short while (currently, one
 /// second).
 ///
+/// [timeouts]: hyper::server::conn::http1::Builder::header_read_timeout
 /// [`Router`]: crate::Router
 /// [`Router::into_make_service_with_connect_info`]: crate::Router::into_make_service_with_connect_info
 /// [`MethodRouter`]: crate::routing::MethodRouter
@@ -94,12 +98,15 @@ pub use self::listener::{Listener, ListenerExt, TapIo};
 /// [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: crate::handler::HandlerWithoutStateExt::into_make_service_with_connect_info
 /// [`HandlerService::into_make_service_with_connect_info`]: crate::handler::HandlerService::into_make_service_with_connect_info
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-pub fn serve<L, M, S>(listener: L, make_service: M) -> Serve<L, M, S>
+pub fn serve<L, M, S, B>(listener: L, make_service: M) -> Serve<L, M, S, B>
 where
     L: Listener,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S>,
-    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S: Service<Request, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<Box<dyn StdError + Send + Sync>>,
 {
     Serve {
         listener,
@@ -111,14 +118,14 @@ where
 /// Future returned by [`serve`].
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[must_use = "futures must be awaited or polled"]
-pub struct Serve<L, M, S> {
+pub struct Serve<L, M, S, B> {
     listener: L,
     make_service: M,
-    _marker: PhantomData<S>,
+    _marker: PhantomData<(S, B)>,
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S> Serve<L, M, S>
+impl<L, M, S, B> Serve<L, M, S, B>
 where
     L: Listener,
 {
@@ -148,7 +155,7 @@ where
     ///
     /// Similarly to [`serve`], although this future resolves to `io::Result<()>`, it will never
     /// error. It returns `Ok(())` only after the `signal` future completes.
-    pub fn with_graceful_shutdown<F>(self, signal: F) -> WithGracefulShutdown<L, M, S, F>
+    pub fn with_graceful_shutdown<F>(self, signal: F) -> WithGracefulShutdown<L, M, S, F, B>
     where
         F: Future<Output = ()> + Send + 'static,
     {
@@ -167,14 +174,17 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S> Serve<L, M, S>
+impl<L, M, S, B> Serve<L, M, S, B>
 where
     L: Listener,
     L::Addr: Debug,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
     for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
-    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S: Service<Request, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<Box<dyn StdError + Send + Sync>>,
 {
     async fn run(self) -> ! {
         let Self {
@@ -194,7 +204,7 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S> Debug for Serve<L, M, S>
+impl<L, M, S, B> Debug for Serve<L, M, S, B>
 where
     L: Debug + 'static,
     M: Debug,
@@ -215,14 +225,17 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S> IntoFuture for Serve<L, M, S>
+impl<L, M, S, B> IntoFuture for Serve<L, M, S, B>
 where
     L: Listener,
     L::Addr: Debug,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
     for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
-    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S: Service<Request, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<Box<dyn StdError + Send + Sync>>,
 {
     type Output = io::Result<()>;
     type IntoFuture = private::ServeFuture;
@@ -235,15 +248,15 @@ where
 /// Serve future with graceful shutdown enabled.
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[must_use = "futures must be awaited or polled"]
-pub struct WithGracefulShutdown<L, M, S, F> {
+pub struct WithGracefulShutdown<L, M, S, F, B> {
     listener: L,
     make_service: M,
     signal: F,
-    _marker: PhantomData<S>,
+    _marker: PhantomData<(S, B)>,
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F> WithGracefulShutdown<L, M, S, F>
+impl<L, M, S, F, B> WithGracefulShutdown<L, M, S, F, B>
 where
     L: Listener,
 {
@@ -254,15 +267,18 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F> WithGracefulShutdown<L, M, S, F>
+impl<L, M, S, F, B> WithGracefulShutdown<L, M, S, F, B>
 where
     L: Listener,
     L::Addr: Debug,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
     for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
-    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S: Service<Request, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
     F: Future<Output = ()> + Send + 'static,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<Box<dyn StdError + Send + Sync>>,
 {
     async fn run(self) {
         let Self {
@@ -305,7 +321,7 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F> Debug for WithGracefulShutdown<L, M, S, F>
+impl<L, M, S, F, B> Debug for WithGracefulShutdown<L, M, S, F, B>
 where
     L: Debug + 'static,
     M: Debug,
@@ -329,15 +345,18 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F> IntoFuture for WithGracefulShutdown<L, M, S, F>
+impl<L, M, S, F, B> IntoFuture for WithGracefulShutdown<L, M, S, F, B>
 where
     L: Listener,
     L::Addr: Debug,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
     for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
-    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S: Service<Request, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
     F: Future<Output = ()> + Send + 'static,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<Box<dyn StdError + Send + Sync>>,
 {
     type Output = io::Result<()>;
     type IntoFuture = private::ServeFuture;
@@ -350,7 +369,7 @@ where
     }
 }
 
-async fn handle_connection<L, M, S>(
+async fn handle_connection<L, M, S, B>(
     make_service: &mut M,
     signal_tx: &watch::Sender<()>,
     close_rx: &watch::Receiver<()>,
@@ -361,8 +380,11 @@ async fn handle_connection<L, M, S>(
     L::Addr: Debug,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
     for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
-    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S: Service<Request, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<Box<dyn StdError + Send + Sync>>,
 {
     let io = TokioIo::new(io);
 
@@ -389,6 +411,11 @@ async fn handle_connection<L, M, S>(
     tokio::spawn(async move {
         #[allow(unused_mut)]
         let mut builder = Builder::new(TokioExecutor::new());
+
+        // Enable Hyper's default HTTP/1 request header timeout.
+        #[cfg(feature = "http1")]
+        builder.http1().timer(TokioTimer::new());
+
         // CONNECT protocol needed for HTTP/2 websockets
         #[cfg(feature = "http2")]
         builder.http2().enable_connect_protocol();
@@ -452,7 +479,7 @@ mod private {
         task::{Context, Poll},
     };
 
-    pub struct ServeFuture(pub(super) futures_util::future::BoxFuture<'static, io::Result<()>>);
+    pub struct ServeFuture(pub(super) futures_core::future::BoxFuture<'static, io::Result<()>>);
 
     impl Future for ServeFuture {
         type Output = io::Result<()>;
@@ -475,17 +502,19 @@ mod tests {
     use std::{
         future::{pending, IntoFuture as _},
         net::{IpAddr, Ipv4Addr},
+        time::Duration,
     };
 
     use axum_core::{body::Body, extract::Request};
-    use http::StatusCode;
+    use http::{Response, StatusCode};
     use hyper_util::rt::TokioIo;
     #[cfg(unix)]
     use tokio::net::UnixListener;
     use tokio::{
-        io::{self, AsyncRead, AsyncWrite},
+        io::{self, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
         net::TcpListener,
     };
+    use tower::ServiceBuilder;
 
     #[cfg(unix)]
     use super::IncomingStream;
@@ -497,8 +526,29 @@ mod tests {
         handler::{Handler, HandlerWithoutStateExt},
         routing::get,
         serve::ListenerExt,
-        Router,
+        Router, ServiceExt,
     };
+
+    struct ReadyListener<T>(Option<T>);
+
+    impl<T> Listener for ReadyListener<T>
+    where
+        T: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    {
+        type Io = T;
+        type Addr = ();
+
+        async fn accept(&mut self) -> (Self::Io, Self::Addr) {
+            match self.0.take() {
+                Some(server) => (server, ()),
+                None => std::future::pending().await,
+            }
+        }
+
+        fn local_addr(&self) -> io::Result<Self::Addr> {
+            Ok(())
+        }
+    }
 
     #[allow(dead_code, unused_must_use)]
     async fn if_it_compiles_it_works() {
@@ -665,6 +715,67 @@ mod tests {
         assert_ne!(address.port(), 0);
     }
 
+    #[tokio::test(start_paused = true)]
+    async fn test_with_graceful_shutdown_request_header_timeout() {
+        for (timeout, req) in [
+            // Idle connections (between requests) are closed immediately
+            // when a graceful shutdown is triggered.
+            (0, ""),                       // idle before request sent
+            (0, "GET / HTTP/1.1\r\n\r\n"), // idle after complete exchange
+            // hyper times stalled request lines/headers out after 30 sec,
+            // after which the graceful shutdown can be completed.
+            (30, "GET / HT"),                   // stall during request line
+            (30, "GET / HTTP/1.0\r\nAccept: "), // stall during request headers
+        ] {
+            let (mut client, server) = io::duplex(1024);
+            client.write_all(req.as_bytes()).await.unwrap();
+
+            let server_task = async {
+                serve(ReadyListener(Some(server)), Router::new())
+                    .with_graceful_shutdown(tokio::time::sleep(Duration::from_secs(1)))
+                    .await
+                    .unwrap();
+            };
+
+            tokio::time::timeout(Duration::from_secs(timeout + 2), server_task)
+                .await
+                .expect("server_task didn't exit in time");
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_hyper_header_read_timeout_is_enabled() {
+        let header_read_timeout_default = 30;
+        for req in [
+            "GET / HT",                   // stall during request line
+            "GET / HTTP/1.0\r\nAccept: ", // stall during request headers
+        ] {
+            let (mut client, server) = io::duplex(1024);
+            client.write_all(req.as_bytes()).await.unwrap();
+
+            let server_task = async {
+                serve(ReadyListener(Some(server)), Router::new())
+                    .await
+                    .unwrap();
+            };
+
+            let wait_for_server_to_close_conn = async {
+                tokio::time::timeout(
+                    Duration::from_secs(header_read_timeout_default + 1),
+                    client.read_to_end(&mut Vec::new()),
+                )
+                .await
+                .expect("timeout: server didn't close connection in time")
+                .expect("read_to_end");
+            };
+
+            tokio::select! {
+                _ = server_task => unreachable!(),
+                _ = wait_for_server_to_close_conn => (),
+            };
+        }
+    }
+
     #[test]
     fn into_future_outside_tokio() {
         let router: Router = Router::new();
@@ -683,27 +794,6 @@ mod tests {
 
     #[crate::test]
     async fn serving_on_custom_io_type() {
-        struct ReadyListener<T>(Option<T>);
-
-        impl<T> Listener for ReadyListener<T>
-        where
-            T: AsyncRead + AsyncWrite + Unpin + Send + 'static,
-        {
-            type Io = T;
-            type Addr = ();
-
-            async fn accept(&mut self) -> (Self::Io, Self::Addr) {
-                match self.0.take() {
-                    Some(server) => (server, ()),
-                    None => std::future::pending().await,
-                }
-            }
-
-            fn local_addr(&self) -> io::Result<Self::Addr> {
-                Ok(())
-            }
-        }
-
         let (client, server) = io::duplex(1024);
         let listener = ReadyListener(Some(server));
 
@@ -724,5 +814,32 @@ mod tests {
         let body = to_bytes(body, usize::MAX).await.unwrap();
         let body = String::from_utf8(body.to_vec()).unwrap();
         assert_eq!(body, "Hello, World!");
+    }
+
+    #[crate::test]
+    async fn serving_with_custom_body_type() {
+        struct CustomBody;
+        impl http_body::Body for CustomBody {
+            type Data = bytes::Bytes;
+            type Error = std::convert::Infallible;
+            fn poll_frame(
+                self: std::pin::Pin<&mut Self>,
+                _cx: &mut std::task::Context<'_>,
+            ) -> std::task::Poll<Option<Result<http_body::Frame<Self::Data>, Self::Error>>>
+            {
+                #![allow(clippy::unreachable)] // The implementation is not used, we just need to provide one.
+                unreachable!();
+            }
+        }
+
+        let app = ServiceBuilder::new()
+            .layer_fn(|_| tower::service_fn(|_| std::future::ready(Ok(Response::new(CustomBody)))))
+            .service(Router::<()>::new().route("/hello", get(|| async {})));
+        let addr = "0.0.0.0:0";
+
+        _ = serve(
+            TcpListener::bind(addr).await.unwrap(),
+            app.into_make_service(),
+        );
     }
 }
