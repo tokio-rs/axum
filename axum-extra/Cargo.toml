@@ -9,7 +9,7 @@ license = "MIT"
 name = "axum-extra"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.10.3"
+version = "0.12.0"
 
 [features]
 default = ["tracing"]
