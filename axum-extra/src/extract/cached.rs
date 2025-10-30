@@ -1,4 +1,4 @@
-use axum::extract::{Extension, FromRequestParts};
+use axum::extract::FromRequestParts;
 use http::request::Parts;
 
 /// Cache results of other extractors.
@@ -88,10 +88,8 @@ where
     type Rejection = T::Rejection;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        if let Ok(Extension(CachedEntry(value))) =
-            Extension::<CachedEntry<T>>::from_request_parts(parts, state).await
-        {
-            Ok(Self(value))
+        if let Some(value) = parts.extensions.get::<CachedEntry<T>>() {
+            Ok(Self(value.0.clone()))
         } else {
             let value = T::from_request_parts(parts, state).await?;
             parts.extensions.insert(CachedEntry(value.clone()));
