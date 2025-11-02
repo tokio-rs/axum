@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+# 0.12.1
+
+This release contains no changes in code, only a small `Cargo.toml` fix for
+`docs.rs`.
+
 # 0.12.0
 
 - **breaking:** Remove unused `async-stream` feature, which was accidentally
