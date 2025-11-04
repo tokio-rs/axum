@@ -59,9 +59,9 @@ fn app(client: Client) -> Router {
 
     Router::new()
         .route("/create", post(create_member))
-        .route("/read/:id", get(read_member))
+        .route("/read/{id}", get(read_member))
         .route("/update", put(update_member))
-        .route("/delete/:id", delete(delete_member))
+        .route("/delete/{id}", delete(delete_member))
         .layer(TraceLayer::new_for_http())
         .with_state(collection)
 }
