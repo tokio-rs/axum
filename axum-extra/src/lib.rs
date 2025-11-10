@@ -9,30 +9,30 @@
 //!
 //! Name | Description | Default?
 //! ---|---|---
-//! `async-read-body` | Enables the [`AsyncReadBody`](crate::body::AsyncReadBody) body | No
-//! `attachment` | Enables the [`Attachment`](crate::response::Attachment) response | No
-//! `cached` | Enables the [`Cached`](crate::extract::Cached) extractor | No
-//! `cookie` | Enables the [`CookieJar`](crate::extract::CookieJar) extractor | No
-//! `cookie-private` | Enables the [`PrivateCookieJar`](crate::extract::PrivateCookieJar) extractor | No
-//! `cookie-signed` | Enables the [`SignedCookieJar`](crate::extract::SignedCookieJar) extractor | No
-//! `cookie-key-expansion` | Enables the [`Key::derive_from`](crate::extract::cookie::Key::derive_from) method | No
-//! `erased-json` | Enables the [`ErasedJson`](crate::response::ErasedJson) response | No
-//! `error-response` | Enables the [`InternalServerError`](crate::response::InternalServerError) response | No
-//! `form` | Enables the [`Form`](crate::extract::Form) extractor | No
-//! `handler` | Enables the [handler] utilities | No
-//! `json-deserializer` | Enables the [`JsonDeserializer`](crate::extract::JsonDeserializer) extractor | No
-//! `json-lines` | Enables the [`JsonLines`](crate::extract::JsonLines) extractor and response | No
-//! `middleware` | Enables the [middleware] utilities | No
-//! `multipart` | Enables the [`Multipart`](crate::extract::Multipart) extractor | No
-//! `optional-path` | Enables the [`OptionalPath`](crate::extract::OptionalPath) extractor | No
-//! `protobuf` | Enables the [`Protobuf`](crate::protobuf::Protobuf) extractor and response | No
-//! `query` | Enables the [`Query`](crate::extract::Query) extractor | No
-//! `routing` | Enables the [routing] utilities | No
-//! `tracing` | Log rejections from built-in extractors | Yes
-//! `typed-routing` | Enables the [`TypedPath`](crate::routing::TypedPath) routing utilities and the `routing` feature. | No
-//! `typed-header` | Enables the [`TypedHeader`] extractor and response | No
-//! `file-stream` | Enables the [`FileStream`](crate::response::FileStream) response | No
-//! `with-rejection` | Enables the [`WithRejection`](crate::extract::WithRejection) extractor | No
+//! `async-read-body` | Enables the [`AsyncReadBody`](crate::body::AsyncReadBody) body |
+//! `attachment` | Enables the [`Attachment`](crate::response::Attachment) response |
+//! `cached` | Enables the [`Cached`](crate::extract::Cached) extractor |
+//! `cookie` | Enables the [`CookieJar`](crate::extract::CookieJar) extractor |
+//! `cookie-private` | Enables the [`PrivateCookieJar`](crate::extract::PrivateCookieJar) extractor |
+//! `cookie-signed` | Enables the [`SignedCookieJar`](crate::extract::SignedCookieJar) extractor |
+//! `cookie-key-expansion` | Enables the [`Key::derive_from`](crate::extract::cookie::Key::derive_from) method |
+//! `erased-json` | Enables the [`ErasedJson`](crate::response::ErasedJson) response |
+//! `error-response` | Enables the [`InternalServerError`](crate::response::InternalServerError) response |
+//! `form` | Enables the [`Form`](crate::extract::Form) extractor |
+//! `handler` | Enables the [handler] utilities |
+//! `json-deserializer` | Enables the [`JsonDeserializer`](crate::extract::JsonDeserializer) extractor |
+//! `json-lines` | Enables the [`JsonLines`](crate::extract::JsonLines) extractor and response |
+//! `middleware` | Enables the [middleware] utilities |
+//! `multipart` | Enables the [`Multipart`](crate::extract::Multipart) extractor |
+//! `optional-path` | Enables the [`OptionalPath`](crate::extract::OptionalPath) extractor |
+//! `protobuf` | Enables the [`Protobuf`](crate::protobuf::Protobuf) extractor and response |
+//! `query` | Enables the [`Query`](crate::extract::Query) extractor |
+//! `routing` | Enables the [routing] utilities |
+//! `tracing` | Log rejections from built-in extractors | <span role="img" aria-label="Default feature">✔</span>
+//! `typed-routing` | Enables the [`TypedPath`](crate::routing::TypedPath) routing utilities and the `routing` feature. |
+//! `typed-header` | Enables the [`TypedHeader`] extractor and response |
+//! `file-stream` | Enables the [`FileStream`](crate::response::FileStream) response |
+//! `with-rejection` | Enables the [`WithRejection`](crate::extract::WithRejection) extractor |
 //!
 //! [`axum`]: https://crates.io/crates/axum
 
