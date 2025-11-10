@@ -381,19 +381,19 @@
 //!
 //! Name | Description | Default?
 //! ---|---|---
-//! `http1` | Enables hyper's `http1` feature | Yes
-//! `http2` | Enables hyper's `http2` feature | No
-//! `json` | Enables the [`Json`] type and some similar convenience functionality | Yes
-//! `macros` | Enables optional utility macros | No
-//! `matched-path` | Enables capturing of every request's router path and the [`MatchedPath`] extractor | Yes
-//! `multipart` | Enables parsing `multipart/form-data` requests with [`Multipart`] | No
-//! `original-uri` | Enables capturing of every request's original URI and the [`OriginalUri`] extractor | Yes
-//! `tokio` | Enables `tokio` as a dependency and `axum::serve`, `SSE` and `extract::connect_info` types. | Yes
-//! `tower-log` | Enables `tower`'s `log` feature | Yes
-//! `tracing` | Log rejections from built-in extractors | Yes
-//! `ws` | Enables WebSockets support via [`extract::ws`] | No
-//! `form` | Enables the `Form` extractor | Yes
-//! `query` | Enables the `Query` extractor | Yes
+//! `http1` | Enables hyper's `http1` feature | <span role="img" aria-label="Default feature">✔</span>
+//! `http2` | Enables hyper's `http2` feature |
+//! `json` | Enables the [`Json`] type and some similar convenience functionality | <span role="img" aria-label="Default feature">✔</span>
+//! `macros` | Enables optional utility macros |
+//! `matched-path` | Enables capturing of every request's router path and the [`MatchedPath`] extractor | <span role="img" aria-label="Default feature">✔</span>
+//! `multipart` | Enables parsing `multipart/form-data` requests with [`Multipart`] |
+//! `original-uri` | Enables capturing of every request's original URI and the [`OriginalUri`] extractor | <span role="img" aria-label="Default feature">✔</span>
+//! `tokio` | Enables `tokio` as a dependency and `axum::serve`, `SSE` and `extract::connect_info` types. | <span role="img" aria-label="Default feature">✔</span>
+//! `tower-log` | Enables `tower`'s `log` feature | <span role="img" aria-label="Default feature">✔</span>
+//! `tracing` | Log rejections from built-in extractors | <span role="img" aria-label="Default feature">✔</span>
+//! `ws` | Enables WebSockets support via [`extract::ws`] |
+//! `form` | Enables the `Form` extractor | <span role="img" aria-label="Default feature">✔</span>
+//! `query` | Enables the `Query` extractor | <span role="img" aria-label="Default feature">✔</span>
 //!
 //! [`MatchedPath`]: crate::extract::MatchedPath
 //! [`Multipart`]: crate::extract::Multipart
