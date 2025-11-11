@@ -647,6 +647,11 @@ pub struct RouterIntoService<B, S = ()> {
     _marker: PhantomData<B>,
 }
 
+// SAFETY: B is only held onto as PhantomData so does not affect the Sync-ness of
+// RouterIntoService; S passed deep into the type heirarchy but eventually ends up as part of
+// Box<dyn ErasedIntoRoute<S, E>> and ErasedIntoRoute<S, E> as Send + Sync supertrait bounds.
+unsafe impl<B, S> Sync for RouterIntoService<B, S> {}
+
 impl<B, S> Clone for RouterIntoService<B, S>
 where
     Router<S>: Clone,
