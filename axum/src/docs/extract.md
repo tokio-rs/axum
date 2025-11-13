@@ -606,8 +606,8 @@ For more details, including how to disable this limit, see [`DefaultBodyLimit`].
 
 # Wrapping extractors
 
-If you want write an extractor that generically wraps another extractor (that
-may or may not consume the request body) you should implement both
+If you want to write an extractor that generically wraps another extractor
+(that may or may not consume the request body) you should implement both
 [`FromRequest`] and [`FromRequestParts`]:
 
 ```rust
