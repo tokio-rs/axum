@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# 0.8.7
+
+- Relax implicit `Send` / `Sync` bounds on `RouterAsService`, `RouterIntoService` ([#3555])
+- Make it easier to visually scan for default features ([#3550])
+- Fix some documentation typos
+
+[#3550]: https://github.com/tokio-rs/axum/pull/3550
+[#3555]: https://github.com/tokio-rs/axum/pull/3555
+
 # 0.8.6
 
 Released without changes to fix docs.rs build.

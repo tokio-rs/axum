@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+# 0.12.2
+
+- Make it easier to visually scan for default features ([#3550])
+
+[#3550]: https://github.com/tokio-rs/axum/pull/3550
+
 # 0.12.1
 
 This release contains no changes in code, only a small `Cargo.toml` fix for
