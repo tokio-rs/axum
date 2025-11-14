@@ -592,7 +592,7 @@ where
 /// See [`Router::as_service`] for more details.
 pub struct RouterAsService<'a, B, S = ()> {
     router: &'a mut Router<S>,
-    _marker: PhantomData<B>,
+    _marker: PhantomData<fn(B)>,
 }
 
 impl<B> Service<Request<B>> for RouterAsService<'_, B, ()>
@@ -631,7 +631,7 @@ where
 /// See [`Router::into_service`] for more details.
 pub struct RouterIntoService<B, S = ()> {
     router: Router<S>,
-    _marker: PhantomData<B>,
+    _marker: PhantomData<fn(B)>,
 }
 
 impl<B, S> Clone for RouterIntoService<B, S>
@@ -800,4 +800,8 @@ fn traits() {
     use crate::test_helpers::*;
     assert_send::<Router<()>>();
     assert_sync::<Router<()>>();
+    assert_send::<RouterAsService<'static, Body, ()>>();
+    assert_sync::<RouterAsService<'static, Body, ()>>();
+    assert_send::<RouterIntoService<Body, ()>>();
+    assert_sync::<RouterIntoService<Body, ()>>();
 }

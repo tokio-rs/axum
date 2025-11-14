@@ -114,7 +114,7 @@ where
 pub struct Serve<L, M, S> {
     listener: L,
     make_service: M,
-    _marker: PhantomData<S>,
+    _marker: PhantomData<fn() -> S>,
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
@@ -239,7 +239,7 @@ pub struct WithGracefulShutdown<L, M, S, F> {
     listener: L,
     make_service: M,
     signal: F,
-    _marker: PhantomData<S>,
+    _marker: PhantomData<fn() -> S>,
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
