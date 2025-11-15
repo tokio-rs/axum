@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v5
-    - uses: dtolnay/rust-toolchain@stable
+    - uses: dtolnay/rust-toolchain@nightly
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -42,7 +42,7 @@ jobs:
     - name: cargo doc -p axum-extra
       run: cargo doc --package axum-extra --all-features --no-deps
     env:
-      RUSTDOCFLAGS: "-D rustdoc::all -A rustdoc::private-doc-tests"
+      RUSTDOCFLAGS: "-D rustdoc::all -A rustdoc::private-doc-tests --cfg docsrs"
 
   cargo-hack:
     runs-on: ubuntu-24.04
