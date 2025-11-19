@@ -191,6 +191,10 @@ where
         let metadata = file.metadata().await?;
         let total_size = metadata.len();
 
+        if total_size == 0 {
+            return Ok((StatusCode::RANGE_NOT_SATISFIABLE, "Range Not Satisfiable").into_response());
+        }
+
         if end == 0 {
             end = total_size - 1;
         }
@@ -595,5 +599,62 @@ mod tests {
             return None;
         }
         Some((start, end))
+    }
+
+    #[tokio::test]
+    async fn response_range_empty_file() -> Result<(), Box<dyn std::error::Error>> {
+        struct TempFile(&'static str);
+
+        impl Drop for TempFile {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_file(self.0);
+            }
+        }
+
+        let filename = "test_empty_file.txt";
+        std::fs::write(filename, []).unwrap();
+        let _cleanup = TempFile(filename);
+
+        let app = Router::new().route(
+            "/range_empty",
+            get(move |headers: HeaderMap| async move {
+                let range_header = headers
+                    .get(header::RANGE)
+                    .and_then(|value| value.to_str().ok());
+
+                let (start, end) = if let Some(range) = range_header {
+                    if let Some(range) = parse_range_header(range) {
+                        range
+                    } else {
+                        return (StatusCode::RANGE_NOT_SATISFIABLE, "Invalid Range")
+                            .into_response();
+                    }
+                } else {
+                    (0, 0)
+                };
+
+                FileStream::<ReaderStream<File>>::try_range_response(
+                    Path::new("test_empty_file.txt"),
+                    start,
+                    end,
+                )
+                .await
+                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+            }),
+        );
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/range_empty")
+                    .header(header::RANGE, "bytes=0-")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::RANGE_NOT_SATISFIABLE);
+        Ok(())
     }
 }
