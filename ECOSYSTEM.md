@@ -60,7 +60,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [static-serve](https://crates.io/crates/static-serve): A helper macro for compressing and embedding static assets in an axum webserver.
 - [datastar](https://crates.io/crates/datastar): Rust implementation of the Datastar SDK specification with Axum support
 - [axum-governor](https://crates.io/crates/axum-governor): An independent Axum middleware for rate limiting, powered by [lazy-limit](https://github.com/canmi21/lazy-limit) (not related to tower-governor).
-- [axum-conditional-requests](https://crates.io/crates/axum-conditional-requests): A library for handling client-side caching HTTP headers (Only supports Last-Modified so far)
+- [axum-conditional-requests](https://crates.io/crates/axum-conditional-requests): A library for handling client-side caching HTTP headers
 
 ## Project showcase
 
