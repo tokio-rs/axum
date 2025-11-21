@@ -603,43 +603,34 @@ mod tests {
 
     #[tokio::test]
     async fn response_range_empty_file() -> Result<(), Box<dyn std::error::Error>> {
-        struct TempFile(&'static str);
-
-        impl Drop for TempFile {
-            fn drop(&mut self) {
-                let _ = std::fs::remove_file(self.0);
-            }
-        }
-
-        let filename = "test_empty_file.txt";
-        std::fs::write(filename, []).unwrap();
-        let _cleanup = TempFile(filename);
+        let file = tempfile::NamedTempFile::new()?;
+        file.as_file().set_len(0)?;
+        let path = file.path().to_owned();
 
         let app = Router::new().route(
             "/range_empty",
-            get(move |headers: HeaderMap| async move {
-                let range_header = headers
-                    .get(header::RANGE)
-                    .and_then(|value| value.to_str().ok());
+            get(move |headers: HeaderMap| {
+                let path = path.clone();
+                async move {
+                    let range_header = headers
+                        .get(header::RANGE)
+                        .and_then(|value| value.to_str().ok());
 
-                let (start, end) = if let Some(range) = range_header {
-                    if let Some(range) = parse_range_header(range) {
-                        range
+                    let (start, end) = if let Some(range) = range_header {
+                        if let Some(range) = parse_range_header(range) {
+                            range
+                        } else {
+                            return (StatusCode::RANGE_NOT_SATISFIABLE, "Invalid Range")
+                                .into_response();
+                        }
                     } else {
-                        return (StatusCode::RANGE_NOT_SATISFIABLE, "Invalid Range")
-                            .into_response();
-                    }
-                } else {
-                    (0, 0)
-                };
+                        (0, 0)
+                    };
 
-                FileStream::<ReaderStream<File>>::try_range_response(
-                    Path::new("test_empty_file.txt"),
-                    start,
-                    end,
-                )
-                .await
-                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+                    FileStream::<ReaderStream<File>>::try_range_response(path, start, end)
+                        .await
+                        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+                }
             }),
         );
 
