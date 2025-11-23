@@ -1,0 +1,9 @@
+[package]
+name = "example-closures"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+axum = { path = "../../axum" }
+tokio = { version = "1", features = ["full"] }
