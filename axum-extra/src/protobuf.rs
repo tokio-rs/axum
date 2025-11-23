@@ -161,7 +161,7 @@ mod tests {
     use super::*;
     use crate::test_helpers::*;
     use axum::{routing::post, Router};
-    use http::header::{CONTENT_TYPE};
+    use http::header::CONTENT_TYPE;
     use http::StatusCode;
 
     #[tokio::test]
@@ -253,7 +253,10 @@ mod tests {
             .get(CONTENT_TYPE)
             .expect("missing expected header");
 
-        assert_eq!(content_type_header_value, mime::APPLICATION_OCTET_STREAM.as_ref());
+        assert_eq!(
+            content_type_header_value,
+            mime::APPLICATION_OCTET_STREAM.as_ref()
+        );
 
         let body = res.bytes().await;
 
