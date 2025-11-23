@@ -161,6 +161,8 @@ mod tests {
     use super::*;
     use crate::test_helpers::*;
     use axum::{routing::post, Router};
+    use http::header::CONTENT_TYPE;
+    use http::StatusCode;
 
     #[tokio::test]
     async fn decode_body() {
@@ -182,9 +184,11 @@ mod tests {
         let client = TestClient::new(app);
         let res = client.post("/").body(input.encode_to_vec()).await;
 
+        let status = res.status();
         let body = res.text().await;
 
-        assert_eq!(body, "bar");
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, input.foo);
     }
 
     #[tokio::test]
@@ -211,6 +215,7 @@ mod tests {
         let res = client.post("/").body(input.encode_to_vec()).await;
 
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert!(res.text().await.starts_with("Failed to decode the body"));
     }
 
     #[tokio::test]
@@ -243,8 +248,13 @@ mod tests {
         let client = TestClient::new(app);
         let res = client.post("/").body(input.encode_to_vec()).await;
 
+        let content_type_header_value = res
+            .headers()
+            .get(CONTENT_TYPE)
+            .expect("missing expected header");
+
         assert_eq!(
-            res.headers()["content-type"],
+            content_type_header_value,
             mime::APPLICATION_OCTET_STREAM.as_ref()
         );
 
@@ -252,6 +262,6 @@ mod tests {
 
         let output = Output::decode(body).unwrap();
 
-        assert_eq!(output.result, "bar");
+        assert_eq!(output.result, input.foo);
     }
 }
