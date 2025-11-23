@@ -161,7 +161,7 @@ mod tests {
     use super::*;
     use crate::test_helpers::*;
     use axum::{routing::post, Router};
-    use http::header::{HeaderValue, CONTENT_TYPE};
+    use http::header::{CONTENT_TYPE};
     use http::StatusCode;
 
     #[tokio::test]
