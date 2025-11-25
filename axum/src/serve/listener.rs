@@ -272,7 +272,7 @@ fn is_connection_error(e: &io::Error) -> bool {
 }
 
 /// A TLS Listener is a simple wrapper to allow axum accept TLS connections natively.
-/// 
+///
 /// # Examples
 ///
 /// ```rust,no_run
