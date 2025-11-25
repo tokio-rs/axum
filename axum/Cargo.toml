@@ -37,6 +37,8 @@ allowed = [
     "tokio",
     # for the `__private` feature
     "reqwest",
+    "rustls",
+    "tokio-rustls",
 ]
 
 [features]
