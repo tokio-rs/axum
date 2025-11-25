@@ -440,10 +440,6 @@ impl EventDataWriter {
     // Assumption: underlying writer never returns an error:
     // <https://docs.rs/bytes/latest/src/bytes/buf/writer.rs.html#79-82>
     fn write_buf(&mut self, buf: &[u8]) -> usize {
-        if buf.is_empty() {
-            return 0;
-        }
-
         let buffer = self.event.buffer.as_mut();
 
         if !std::mem::replace(&mut self.data_written, true) {
@@ -654,21 +650,23 @@ mod tests {
     }
 
     #[test]
+    fn empty_data_not_omitted() {
+        let no_leading_space = Event::default().data("");
+        assert_eq!(&*no_leading_space.finalize(), b"data: \n\n");
+    }
+
+    #[test]
     fn write_data_writer_str() {
         // also confirm that nop writers do nothing :)
-        let mut writer = Event::default()
+        let writer = Event::default()
             .into_data_writer()
             .into_event()
             .into_data_writer();
-        writer.write_str("").unwrap();
         let mut writer = writer.into_event().into_data_writer();
 
-        writer.write_str("").unwrap();
         writer.write_str("moon ").unwrap();
         writer.write_str("star\nsun").unwrap();
-        writer.write_str("").unwrap();
         writer.write_str("set").unwrap();
-        writer.write_str("").unwrap();
         writer.write_str(" bye\r").unwrap();
 
         let event = writer.into_event();
