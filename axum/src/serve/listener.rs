@@ -271,6 +271,110 @@ fn is_connection_error(e: &io::Error) -> bool {
     )
 }
 
+/// A TLS Listener is a simple wrapper to allow axum accept TLS connections natively.
+/// 
+/// # Examples
+///
+/// ```rust,no_run
+/// # use tokio::net::TcpListener;
+/// # use tokio_rustls::rustls::pki_types::pem::PemObject;
+/// # use axum::serve::TlsListener;
+/// # async {
+/// let cert = tokio_rustls::rustls::pki_types::CertificateDer::from_slice(&[0]);
+/// let key = tokio_rustls::rustls::pki_types::PrivateKeyDer::from_pem_slice(&[0]).unwrap();
+/// let config = tokio_rustls::rustls::ServerConfig::builder()
+///     .with_no_client_auth()
+///     .with_single_cert(vec![cert], key).unwrap();
+///
+/// let tcp = TcpListener::bind(("0.0.0.0", 8443)).await.unwrap();
+/// let tls_listener = TlsListener::new(tcp, config);
+/// let app = axum::Router::new().route("/", axum::routing::get(|| async { "Hello" }));
+///
+/// let _ = axum::serve(tls_listener, app.into_make_service());
+/// # };
+/// # ()
+/// ````
+#[cfg(feature = "tokio-rustls")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tokio-rustls")))]
+#[allow(missing_debug_implementations)]
+pub struct TlsListener {
+    _inner: TcpListener,
+    acceptor: tokio_rustls::TlsAcceptor,
+}
+
+#[cfg(feature = "tokio-rustls")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tokio-rustls")))]
+impl TlsListener {
+    /// Construct a new `TlsListener` from given [`TcpListener`] with provided
+    /// [`ServerConfig`].
+    ///
+    /// `TlsListener` wraps underlying `TcpListener` which enables axum server to listen HTTPS
+    /// connections natively with `rustls`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use tokio::net::TcpListener;
+    /// # use tokio_rustls::rustls::pki_types::pem::PemObject;
+    /// # use axum::serve::TlsListener;
+    /// # async {
+    /// let cert = tokio_rustls::rustls::pki_types::CertificateDer::from_slice(&[0]);
+    /// let key = tokio_rustls::rustls::pki_types::PrivateKeyDer::from_pem_slice(&[0]).unwrap();
+    /// let config = tokio_rustls::rustls::ServerConfig::builder()
+    ///     .with_no_client_auth()
+    ///     .with_single_cert(vec![cert], key).unwrap();
+    ///
+    /// let tcp = TcpListener::bind(("0.0.0.0", 8443)).await.unwrap();
+    /// let tls_listener = TlsListener::new(tcp, config);
+    /// # };
+    /// # ()
+    /// ````
+    ///
+    /// [`ServerConfig`]: https://docs.rs/rustls/0.23.31/rustls/server/struct.ServerConfig.html
+    /// [`TcpListener`]: https://docs.rs/tokio/latest/tokio/net/struct.TcpListener.html
+    pub fn new(listener: TcpListener, server_config: tokio_rustls::rustls::ServerConfig) -> Self {
+        Self {
+            _inner: listener,
+            acceptor: tokio_rustls::TlsAcceptor::from(Arc::new(server_config)),
+        }
+    }
+
+    async fn accept(
+        &self,
+    ) -> io::Result<(
+        tokio_rustls::server::TlsStream<TcpStream>,
+        std::net::SocketAddr,
+    )> {
+        let (tcp, addr) = self._inner.accept().await?;
+
+        // with valid tcp, try to acquire tls connection
+        match self.acceptor.accept(tcp).await {
+            Ok(tls) => Ok((tls, addr)),
+            Err(error) => Err(error),
+        }
+    }
+}
+
+#[cfg(feature = "tokio-rustls")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tokio-rustls")))]
+impl Listener for TlsListener {
+    type Io = tokio_rustls::server::TlsStream<TcpStream>;
+    type Addr = std::net::SocketAddr;
+
+    async fn accept(&mut self) -> (Self::Io, Self::Addr) {
+        loop {
+            match Self::accept(self).await {
+                Ok(tup) => return tup,
+                Err(e) => handle_accept_error(e).await,
+            }
+        }
+    }
+
+    fn local_addr(&self) -> io::Result<Self::Addr> {
+        self._inner.local_addr()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};

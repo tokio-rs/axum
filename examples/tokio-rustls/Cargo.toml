@@ -1,0 +1,13 @@
+[package]
+name = "tokio-rustls"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+axum = { path = "../../axum", features = ["tokio-rustls"] }
+tokio = { version = "1", features = ["full"] }
+tokio-rustls = "0.26"
+tower-service = "0.3.2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

@@ -24,6 +24,8 @@ use tower_service::Service;
 mod listener;
 
 pub use self::listener::{ConnLimiter, ConnLimiterIo, Listener, ListenerExt, TapIo};
+#[cfg(feature = "tokio-rustls")]
+pub use self::listener::TlsListener;
 
 /// Serve the service with the supplied listener.
 ///

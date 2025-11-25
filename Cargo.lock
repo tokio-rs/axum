@@ -333,6 +333,7 @@ dependencies = [
  "sync_wrapper",
  "time",
  "tokio",
+ "tokio-rustls 0.26.1",
  "tokio-stream",
  "tokio-tungstenite",
  "tower",
@@ -444,7 +445,7 @@ dependencies = [
  "rustls-pemfile",
  "rustls-pki-types",
  "tokio",
- "tokio-rustls",
+ "tokio-rustls 0.26.1",
  "tower-service",
 ]
 
@@ -1641,7 +1642,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "tokio",
- "tokio-rustls",
+ "tokio-rustls 0.26.1",
  "tower-service",
  "tracing",
  "tracing-subscriber",
@@ -2580,7 +2581,7 @@ dependencies = [
  "rustls",
  "rustls-pki-types",
  "tokio",
- "tokio-rustls",
+ "tokio-rustls 0.26.1",
  "tower-service",
  "webpki-roots",
 ]
@@ -3252,7 +3253,7 @@ dependencies = [
  "take_mut",
  "thiserror 1.0.69",
  "tokio",
- "tokio-rustls",
+ "tokio-rustls 0.26.1",
  "tokio-util",
  "typed-builder",
  "uuid",
@@ -4034,7 +4035,7 @@ dependencies = [
  "system-configuration",
  "tokio",
  "tokio-native-tls",
- "tokio-rustls",
+ "tokio-rustls 0.26.1",
  "tokio-util",
  "tower",
  "tower-service",
@@ -5075,6 +5076,18 @@ dependencies = [
  "tokio",
  "tokio-util",
  "whoami",
+]
+
+[[package]]
+name = "tokio-rustls"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "tokio",
+ "tokio-rustls 0.26.1",
+ "tower-service",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
