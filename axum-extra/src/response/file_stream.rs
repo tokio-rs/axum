@@ -305,6 +305,11 @@ mod tests {
     use std::io::Cursor;
     use tokio_util::io::ReaderStream;
     use tower::ServiceExt;
+    use http::header::CONTENT_TYPE;
+    use http::header::CONTENT_LENGTH;
+    use http::StatusCode;
+    use mime;
+
 
     #[tokio::test]
     async fn response() -> Result<(), Box<dyn std::error::Error>> {
@@ -347,19 +352,29 @@ mod tests {
 
     #[tokio::test]
     async fn response_not_set_filename() -> Result<(), Box<dyn std::error::Error>> {
-        let app = Router::new().route(
-            "/file",
-            get(|| async {
-                // Simulating a file stream
-                let file_content = b"Hello, this is the simulated file content!".to_vec();
-                let size = file_content.len() as u64;
-                let reader = Cursor::new(file_content);
+        let file_content = b"Hello, this is the simulated file content!".to_vec();
+        let size = file_content.len().to_owned() as u64;
 
-                // Response file stream
-                let stream = ReaderStream::new(reader);
-                FileStream::new(stream).content_size(size).into_response()
-            }),
-        );
+        let app = {
+            let file_content = file_content.clone();
+            let size = size;
+
+            Router::new().route(
+                "/file",
+                get(move || {
+                    let file_content = file_content.clone();
+
+                    async move {
+                        let reader = Cursor::new(file_content);
+                        let stream = ReaderStream::new(reader);
+
+                        FileStream::new(stream)
+                            .content_size(size)
+                            .into_response()
+                    }
+                }),
+            )
+        };
 
         // Simulating a GET request
         let response = app
@@ -371,16 +386,24 @@ mod tests {
 
         // Validate Response Headers
         assert_eq!(
-            response.headers().get("content-type").unwrap(),
-            "application/octet-stream"
+            response.headers().get(CONTENT_TYPE).unwrap(),
+            mime::APPLICATION_OCTET_STREAM.as_ref()
         );
-        assert_eq!(response.headers().get("content-length").unwrap(), "42");
+
+        let response_header_content_length = response
+            .headers()
+            .get(CONTENT_LENGTH)
+            .unwrap()
+            .to_str()
+            .unwrap();
+
+        assert_eq!(response_header_content_length, size.to_string());
 
         // Validate Response Body
         let body: &[u8] = &response.into_body().collect().await?.to_bytes();
         assert_eq!(
-            std::str::from_utf8(body)?,
-            "Hello, this is the simulated file content!"
+            std::str::from_utf8(body)?.as_bytes(),
+            file_content
         );
         Ok(())
     }
