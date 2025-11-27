@@ -357,7 +357,6 @@ mod tests {
 
         let app = {
             let file_content = file_content.clone();
-            let size = size;
 
             Router::new().route(
                 "/file",
