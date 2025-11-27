@@ -300,16 +300,15 @@ mod tests {
     use super::*;
     use axum::{extract::Request, routing::get, Router};
     use body::Body;
+    use http::header::CONTENT_LENGTH;
+    use http::header::CONTENT_TYPE;
     use http::HeaderMap;
+    use http::StatusCode;
     use http_body_util::BodyExt;
+    use mime;
     use std::io::Cursor;
     use tokio_util::io::ReaderStream;
     use tower::ServiceExt;
-    use http::header::CONTENT_TYPE;
-    use http::header::CONTENT_LENGTH;
-    use http::StatusCode;
-    use mime;
-
 
     #[tokio::test]
     async fn response() -> Result<(), Box<dyn std::error::Error>> {
@@ -367,9 +366,7 @@ mod tests {
                         let reader = Cursor::new(file_content);
                         let stream = ReaderStream::new(reader);
 
-                        FileStream::new(stream)
-                            .content_size(size)
-                            .into_response()
+                        FileStream::new(stream).content_size(size).into_response()
                     }
                 }),
             )
@@ -400,10 +397,7 @@ mod tests {
 
         // Validate Response Body
         let body: &[u8] = &response.into_body().collect().await?.to_bytes();
-        assert_eq!(
-            std::str::from_utf8(body)?.as_bytes(),
-            file_content
-        );
+        assert_eq!(std::str::from_utf8(body)?.as_bytes(), file_content);
         Ok(())
     }
 
