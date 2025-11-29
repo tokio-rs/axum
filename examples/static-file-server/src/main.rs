@@ -4,6 +4,9 @@
 //! cargo run -p example-static-file-server
 //! ```
 
+#[cfg(test)]
+mod tests;
+
 use axum::{
     extract::Request, handler::HandlerWithoutStateExt, http::StatusCode, routing::get, Router,
 };
