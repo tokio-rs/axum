@@ -1398,6 +1398,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-closures"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "tokio",
+]
+
+[[package]]
 name = "example-compression"
 version = "0.1.0"
 dependencies = [
