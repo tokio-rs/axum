@@ -320,7 +320,7 @@ where
 /// Utility trait used with [`RouterExt`] to ensure the second element of a tuple type is a
 /// given type.
 ///
-/// If you see it in type errors it's most likely because the second argument to your handler doesn't
+/// If you see it in type errors it's most likely because the first argument to your handler doesn't
 /// implement [`TypedPath`].
 ///
 /// You normally shouldn't have to use this trait directly.
