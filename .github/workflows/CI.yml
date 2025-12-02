@@ -24,6 +24,8 @@ jobs:
         save-if: ${{ github.ref == 'refs/heads/main' }}
     - name: Check
       run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+    - name: Check
+      run: cargo clippy --manifest-path examples/Cargo.toml --workspace --all-targets --all-features -- -D warnings
     - name: rustfmt
       run: cargo fmt --all --check
 
@@ -92,6 +94,8 @@ jobs:
         save-if: ${{ github.ref == 'refs/heads/main' }}
     - name: Run tests
       run: cargo test --workspace --all-features --all-targets
+    - name: Test examples
+      run: cargo test --manifest-path examples/Cargo.toml --workspace --all-features --all-targets
 
   # some examples don't support our MSRV so we only test axum itself on our MSRV
   test-nightly:
@@ -129,8 +133,12 @@ jobs:
         save-if: ${{ github.ref == 'refs/heads/main' }}
     - name: Select minimal version
       run: cargo +nightly update -Z minimal-versions
-    - name: Fix up Cargo.lock
+    - name: Fix up Cargo.lock - crc32fast
       run: cargo +nightly update -p crc32fast --precise 1.1.1
+    - name: Fix up Cargo.lock - version_check
+      run : cargo +nightly update -p version_check@0.1.0 --precise 0.1.4
+    - name: Fix up Cargo.lock - lazy_static
+      run: cargo +nightly update -p lazy_static --precise 1.1.0
     - name: Run tests
       run: >
         cargo +${{ env.MSRV }}
