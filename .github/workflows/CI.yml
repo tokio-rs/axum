@@ -61,22 +61,22 @@ jobs:
     - name: cargo hack check
       run: cargo hack check --each-feature --no-dev-deps --all
 
-  cargo-public-api-crates:
+  external-types:
     runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        crate: [axum, axum-core, axum-extra, axum-macros]
     steps:
     - uses: actions/checkout@v6
-    - uses: dtolnay/rust-toolchain@nightly
+    - uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: nightly-2025-08-06
+    - name: Install cargo-check-external-types
+      uses: taiki-e/cache-cargo-install-action@v2
+      with:
+        tool: cargo-check-external-types@0.3.0
+    - uses: taiki-e/install-action@cargo-hack
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
-    - name: Install cargo-public-api-crates
-      run: |
-        cargo install --git https://github.com/jplatte/cargo-public-api-crates
-    - name: cargo public-api-crates check
-      run: cargo public-api-crates --manifest-path ${{ matrix.crate }}/Cargo.toml check
+    - run: cargo hack --no-private --exclude axum-macros check-external-types --all-features
 
   test-versions:
     needs: check

@@ -14,26 +14,24 @@ version = "0.12.2"
 [package.metadata.docs.rs]
 all-features = true
 
-[package.metadata.cargo-public-api-crates]
-allowed = [
-    "axum",
-    "axum_core",
-    "axum_macros",
-    "bytes",
-    "cookie",
-    "futures_core",
-    "futures_util",
+[package.metadata.cargo_check_external_types]
+allowed_external_types = [
+    "axum::*",
+    "axum_core::*",
+    "axum_macros::*",
+    "bytes::*",
+    "cookie::*",
+    "futures_core::*",
+    "futures_util::*",
     "headers",
-    "headers_core",
-    "http",
-    "http_body",
-    "pin_project_lite",
-    "prost",
-    "serde_core",
-    "tokio",
-    "tokio_util",
-    "tower_layer",
-    "tower_service",
+    "headers_core::*",
+    "http::*",
+    "http_body::*",
+    "prost::*",
+    "serde_core::*",
+    "tokio::*",
+    "tower_layer::*",
+    "tower_service::*",
 ]
 
 [features]

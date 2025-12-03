@@ -11,15 +11,15 @@ readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
 version = "0.5.5" # remember to bump the version that axum and axum-extra depend on
 
-[package.metadata.cargo-public-api-crates]
-allowed = [
+[package.metadata.cargo_check_external_types]
+allowed_external_types = [
     # not 1.0
-    "futures_core",
-    "tower_layer",
+    "futures_core::*",
+    "tower_layer::*",
     # >=1.0
-    "bytes",
-    "http",
-    "http_body",
+    "bytes::*",
+    "http::*",
+    "http_body::*",
 ]
 
 [package.metadata.cargo-machete]
