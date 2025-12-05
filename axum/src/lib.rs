@@ -455,6 +455,7 @@ pub mod serve;
 
 #[cfg(any(test, feature = "__private"))]
 #[allow(missing_docs, missing_debug_implementations, clippy::print_stdout)]
+#[doc(hidden)]
 pub mod test_helpers;
 
 #[doc(no_inline)]

@@ -17,26 +17,24 @@ all-features = true
 [package.metadata.playground]
 features = ["http1", "http2", "json", "multipart", "ws"]
 
-[package.metadata.cargo-public-api-crates]
-allowed = [
+[package.metadata.cargo_check_external_types]
+allowed_external_types = [
     # our crates
-    "axum_core",
-    "axum_macros",
+    "axum_core::*",
+    "axum_macros::*",
     # not 1.0
-    "futures_core",
-    "futures_sink",
-    "futures_util",
-    "pin_project_lite",
-    "tower_layer",
-    "tower_service",
+    "futures_core::*",
+    "futures_sink::*",
+    "futures_util::*",
+    "tower_layer::*",
+    "tower_service::*",
     # >=1.0
-    "bytes",
+    "bytes::*",
     "http",
-    "http_body",
-    "serde_core",
-    "tokio",
-    # for the `__private` feature
-    "reqwest",
+    "http::*",
+    "http_body::*",
+    "serde_core::*",
+    "tokio::*",
 ]
 
 [features]
