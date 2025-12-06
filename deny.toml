@@ -18,9 +18,6 @@ allow = [
 multiple-versions = "deny"
 highlight = "all"
 skip-tree = [
-    # currently duplicated through header, reqwest, tower-http and cookie
-    # C.f. https://github.com/tokio-rs/axum/pull/1641
-    { name = "base64" },
     # parking_lot pulls in old versions of windows-sys
     { name = "windows-sys" },
     # pulled in by quickcheck and cookie
