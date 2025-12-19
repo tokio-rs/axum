@@ -134,7 +134,5 @@ If your project isn't listed here and you would like it to be, please feel free 
 [Using Rust, Axum, PostgreSQL, and Tokio to build a Blog]: https://spacedimp.com/blog/using-rust-axum-postgresql-and-tokio-to-build-a-blog/
 [Introduction to axum]: https://www.youtube.com/playlist?list=PLrmY5pVcnuE-_CP7XZ_44HN-mDrLQV4nS
 [Rust Axum Full Course]: https://www.youtube.com/watch?v=XZtlD_m59sM
-[Deploying Axum projects with Shuttle]: https://docs.shuttle.rs/examples/axum
 [axum-rest-api-postgres-redis-jwt-docker]: https://sheroz.com/pages/blog/rust-axum-rest-api-postgres-redis-jwt-docker.html
-
 [Building a SaaS with Rust & Next.js](https://joshmo.bearblog.dev/lets-build-a-saas-with-rust/) A tutorial for combining Next.js with Rust via axum to make a SaaS.
