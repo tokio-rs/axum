@@ -839,7 +839,7 @@ where
                     panic!(
                         "Overlapping method route. Cannot add two method routes that both handle \
                          `{method_name}`",
-                    )
+                    );
                 }
                 *out = endpoint.clone();
                 for method in methods {
