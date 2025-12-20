@@ -384,10 +384,13 @@ where
         }
     }
 
+    let _slot;
     let redirect_path = if let Some(without_slash) = path.strip_suffix('/') {
         without_slash
     } else {
-        &format!("{path}/")
+        // FIXME: Can return `&format!(...)` directly when MSRV is updated
+        _slot = format!("{path}/");
+        &_slot
     };
 
     let method_router = match method_filter {
