@@ -3,6 +3,7 @@ use crate::response::{IntoResponse, Response};
 use http::request::Parts;
 use std::{convert::Infallible, future::Future};
 
+#[diagnostic::do_not_recommend]
 impl<S> FromRequestParts<S> for ()
 where
     S: Send + Sync,
@@ -18,6 +19,7 @@ macro_rules! impl_from_request {
     (
         [$($ty:ident),*], $last:ident
     ) => {
+        #[diagnostic::do_not_recommend]
         #[allow(non_snake_case, unused_mut, unused_variables)]
         impl<S, $($ty,)* $last> FromRequestParts<S> for ($($ty,)* $last,)
         where
@@ -43,6 +45,7 @@ macro_rules! impl_from_request {
 
         // This impl must not be generic over M, otherwise it would conflict with the blanket
         // implementation of `FromRequest<S, Mut>` for `T: FromRequestParts<S>`.
+        #[diagnostic::do_not_recommend]
         #[allow(non_snake_case, unused_mut, unused_variables)]
         impl<S, $($ty,)* $last> FromRequest<S> for ($($ty,)* $last,)
         where

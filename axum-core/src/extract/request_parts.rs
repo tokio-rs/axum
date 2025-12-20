@@ -65,6 +65,7 @@ where
     }
 }
 
+#[diagnostic::do_not_recommend] // pretty niche impl
 impl<S> FromRequest<S> for BytesMut
 where
     S: Send + Sync,
@@ -134,6 +135,7 @@ where
     }
 }
 
+#[diagnostic::do_not_recommend] // pretty niche impl
 impl<S> FromRequestParts<S> for Parts
 where
     S: Send + Sync,
@@ -145,6 +147,7 @@ where
     }
 }
 
+#[diagnostic::do_not_recommend] // pretty niche impl
 impl<S> FromRequestParts<S> for Extensions
 where
     S: Send + Sync,
