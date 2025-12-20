@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+# 0.12.3
+
+- **changed:** Make the `typed-routing` feature enable the `routing` feature ([#3514])
+- **changed:** Add trailing newline to `ErasedJson::pretty` response bodies ([#3526])
+- **fixed:** Fix integer underflow in `FileStream::try_range_response` for empty files ([#3566])
+
+[#3514]: https://github.com/tokio-rs/axum/pull/3514
+[#3526]: https://github.com/tokio-rs/axum/pull/3526
+[#3566]: https://github.com/tokio-rs/axum/pull/3566
+
 # 0.12.2
 
 - Make it easier to visually scan for default features ([#3550])
