@@ -1303,6 +1303,7 @@ where
     }
 }
 
+#[diagnostic::do_not_recommend]
 impl<S> Handler<(), S> for MethodRouter<S>
 where
     S: Clone + 'static,
