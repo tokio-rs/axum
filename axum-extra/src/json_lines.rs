@@ -4,7 +4,7 @@ use axum_core::{
     body::Body,
     extract::{FromRequest, Request},
     response::{IntoResponse, Response},
-    BoxError,
+    BoxError, RequestExt,
 };
 use bytes::{BufMut, BytesMut};
 use futures_core::{stream::BoxStream, Stream, TryStream};
@@ -109,7 +109,7 @@ where
     async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         // `Stream::lines` isn't a thing so we have to convert it into an `AsyncRead`
         // so we can call `AsyncRead::lines` and then convert it back to a `Stream`
-        let body = req.into_body();
+        let body = req.into_limited_body();
         let stream = body.into_data_stream();
         let stream = stream.map_err(io::Error::other);
         let read = StreamReader::new(stream);

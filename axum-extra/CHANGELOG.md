@@ -1,3 +1,9 @@
+# Unreleased
+
+- **fixed:** `JsonLines` now correctly respects the default body limit ([#3591])
+
+[#3591]: https://github.com/tokio-rs/axum/pull/3591
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
