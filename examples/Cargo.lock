@@ -107,11 +107,11 @@ checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 
 [[package]]
 name = "askama"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f75363874b771be265f4ffe307ca705ef6f3baa19011c149da8674a87f1b75c4"
+checksum = "21c01049339e624573a8027fe9392219f64d315a0ad24712b469611b3138f042"
 dependencies = [
- "askama_derive",
+ "askama_macros",
  "itoa",
  "percent-encoding",
  "serde",
@@ -120,30 +120,35 @@ dependencies = [
 
 [[package]]
 name = "askama_derive"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "129397200fe83088e8a68407a8e2b1f826cf0086b21ccdb866a722c8bcd3a94f"
+checksum = "e393a25182a000666df345c2bdaa9ab6b0c243974ec7d29e377d6feea651778d"
 dependencies = [
  "askama_parser",
- "basic-toml",
  "memchr",
  "proc-macro2",
  "quote",
  "rustc-hash 2.1.1",
- "serde",
- "serde_derive",
  "syn",
 ]
 
 [[package]]
-name = "askama_parser"
-version = "0.14.0"
+name = "askama_macros"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6ab5630b3d5eaf232620167977f95eb51f3432fc76852328774afbd242d4358"
+checksum = "4e8bb77385d2954705452516f99511835be34b4c4a15a70800623b91406b1db9"
 dependencies = [
- "memchr",
- "serde",
- "serde_derive",
+ "askama_derive",
+]
+
+[[package]]
+name = "askama_parser"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb6401aa356822013db13e8f756011cd5042e7e61d37456bb8b7ef26feb8ebca"
+dependencies = [
+ "rustc-hash 2.1.1",
+ "unicode-ident",
  "winnow",
 ]
 
@@ -270,7 +275,7 @@ dependencies = [
 
 [[package]]
 name = "axum"
-version = "0.8.7"
+version = "0.8.8"
 dependencies = [
  "axum-core",
  "axum-macros",
@@ -325,7 +330,7 @@ dependencies = [
 
 [[package]]
 name = "axum-extra"
-version = "0.12.2"
+version = "0.12.3"
 dependencies = [
  "axum",
  "axum-core",
@@ -406,15 +411,6 @@ name = "base64ct"
 version = "1.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "89e25b6adfb930f02d1981565a6e5d9c547ac15a96606256d3b59040e5cd4ca3"
-
-[[package]]
-name = "basic-toml"
-version = "0.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba62675e8242a4c4e806d12f11d136e626e6c8361d6b829310732241652a178a"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "bb8"
