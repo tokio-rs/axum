@@ -1,0 +1,18 @@
+[package]
+name = "example-serve-with-hyper-rustls"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow = "1.0"
+axum = { path = "../../axum", features = ["http1", "http2"] }
+http-body = "1.0"
+hyper = "1.0"
+rustls = "0.23"
+rustls-pemfile = "2"
+tokio = { version = "1.0", features = ["full"] }
+tokio-rustls = { version = "0.26", default-features = false }
+tokio-util = "0.7"
+tower = { version = "0.5.2", features = ["util"] }
+tracing = "0.1.41"
