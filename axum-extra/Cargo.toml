@@ -97,7 +97,7 @@ with-rejection = ["dep:axum"]
 
 # Enabled by docs.rs because it uses all-features
 # Enables upstream things linked to in docs
-__private_docs = ["axum/json", "dep:serde", "dep:tower"]
+__private_docs = ["axum/json", "axum/query", "dep:serde", "dep:tower"]
 
 [dependencies]
 axum-core = { path = "../axum-core", version = "0.5.5" }
@@ -124,6 +124,11 @@ percent-encoding = { version = "2.1", optional = true }
 prost = { version = "0.14", optional = true }
 rustversion = { version = "1.0.9", optional = true }
 serde_core = { version = "1.0.221", optional = true }
+# DO NOT update. axum itself uses serde_html_form 0.3.x which has slightly
+# different behavior in some edge cases. This feature here is kept (deprecated)
+# to let people transition to that easier (fewer breaking changes to deal with
+# at once if they keep using axum_extra's `Query` / `Form` initially when going
+# to axum 0.9).
 serde_html_form = { version = "0.2.0", optional = true }
 serde_json = { version = "1.0.71", optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }

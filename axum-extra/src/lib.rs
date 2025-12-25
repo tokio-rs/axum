@@ -18,7 +18,7 @@
 //! `cookie-key-expansion` | Enables the [`Key::derive_from`](crate::extract::cookie::Key::derive_from) method |
 //! `erased-json` | Enables the [`ErasedJson`](crate::response::ErasedJson) response |
 //! `error-response` | Enables the [`InternalServerError`](crate::response::InternalServerError) response |
-//! `form` | Enables the [`Form`](crate::extract::Form) extractor |
+//! `form` (deprecated) | Enables the [`Form`](crate::extract::Form) extractor |
 //! `handler` | Enables the [handler] utilities |
 //! `json-deserializer` | Enables the [`JsonDeserializer`](crate::extract::JsonDeserializer) extractor |
 //! `json-lines` | Enables the [`JsonLines`](crate::extract::JsonLines) extractor and response |
@@ -26,7 +26,7 @@
 //! `multipart` | Enables the [`Multipart`](crate::extract::Multipart) extractor |
 //! `optional-path` | Enables the [`OptionalPath`](crate::extract::OptionalPath) extractor |
 //! `protobuf` | Enables the [`Protobuf`](crate::protobuf::Protobuf) extractor and response |
-//! `query` | Enables the [`Query`](crate::extract::Query) extractor |
+//! `query` (deprecated) | Enables the [`Query`](crate::extract::Query) extractor |
 //! `routing` | Enables the [routing] utilities |
 //! `tracing` | Log rejections from built-in extractors | <span role="img" aria-label="Default feature">✔</span>
 //! `typed-routing` | Enables the [`TypedPath`](crate::routing::TypedPath) routing utilities and the `routing` feature. |

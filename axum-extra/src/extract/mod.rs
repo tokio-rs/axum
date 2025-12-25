@@ -52,11 +52,13 @@ pub use self::cookie::PrivateCookieJar;
 pub use self::cookie::SignedCookieJar;
 
 #[cfg(feature = "form")]
+#[allow(deprecated)]
 pub use self::form::{Form, FormRejection};
 
 #[cfg(feature = "query")]
 pub use self::query::OptionalQuery;
 #[cfg(feature = "query")]
+#[allow(deprecated)]
 pub use self::query::{OptionalQueryRejection, Query, QueryRejection};
 
 #[cfg(feature = "multipart")]
