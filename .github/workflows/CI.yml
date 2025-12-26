@@ -78,25 +78,6 @@ jobs:
     - name: Run tests
       run: cargo test --workspace --all-features --all-targets
 
-  # some examples don't support our MSRV so we only test axum itself on our MSRV
-  test-nightly:
-    needs: check
-    runs-on: ubuntu-24.04
-    steps:
-    - uses: actions/checkout@v4
-    - name: Get rust-toolchain version
-      id: rust-toolchain
-      run: echo "version=$(cat axum-macros/rust-toolchain)" >> $GITHUB_OUTPUT
-    - uses: dtolnay/rust-toolchain@master
-      with:
-        toolchain: ${{ steps.rust-toolchain.outputs.version }}
-    - uses: Swatinem/rust-cache@v2
-      with:
-        save-if: ${{ github.ref == 'refs/heads/main' }}
-    - name: Run nightly tests
-      working-directory: axum-macros
-      run: cargo test
-
   # some examples don't support our MSRV (such as async-graphql)
   # so we only test axum itself on our MSRV
   test-msrv:
