@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use super::rejection::{FailedToResolveHost, HostRejection};
 use axum_core::{
     extract::{FromRequestParts, OptionalFromRequestParts},
@@ -25,6 +27,7 @@ const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 ///
 /// Note that user agents can set `X-Forwarded-Host` and `Host` headers to arbitrary values so make
 /// sure to validate them to avoid security issues.
+#[deprecated = "will be removed in the next version; see https://github.com/tokio-rs/axum/issues/3442"]
 #[derive(Debug, Clone)]
 pub struct Host(pub String);
 
