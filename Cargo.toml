@@ -2,8 +2,12 @@
 members = ["axum", "axum-*", "examples/*"]
 # Only check / build main crates by default (check all with `--workspace`)
 default-members = ["axum", "axum-*"]
-# Example has been deleted, but README.md remains
-exclude = ["examples/async-graphql"]
+exclude = [
+    # Example has been deleted, but README.md remains
+    "examples/async-graphql",
+    # Dependency bug, fixed on main - DO NOT MERGE
+    "examples/diesel-async-postgres"
+]
 resolver = "2"
 
 [workspace.package]

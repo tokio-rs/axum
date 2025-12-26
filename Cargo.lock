@@ -1217,21 +1217,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "diesel-async"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51a307ac00f7c23f526a04a77761a0519b9f0eb2838ebf5b905a58580095bdcb"
-dependencies = [
- "async-trait",
- "bb8 0.8.6",
- "diesel",
- "futures-util",
- "scoped-futures",
- "tokio",
- "tokio-postgres",
-]
-
-[[package]]
 name = "diesel_derives"
 version = "2.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1518,20 +1503,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
-]
-
-[[package]]
-name = "example-diesel-async-postgres"
-version = "0.1.0"
-dependencies = [
- "axum",
- "bb8 0.8.6",
- "diesel",
- "diesel-async",
- "serde",
- "tokio",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -4512,15 +4483,6 @@ dependencies = [
  "ref-cast",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "scoped-futures"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b24aae2d0636530f359e9d5ef0c04669d11c5e756699b27a6a6d845d8329091"
-dependencies = [
- "pin-project-lite",
 ]
 
 [[package]]
