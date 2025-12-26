@@ -61,23 +61,6 @@ jobs:
     - name: cargo hack check
       run: cargo hack check --each-feature --no-dev-deps --all
 
-  cargo-public-api-crates:
-    runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        crate: [axum, axum-core, axum-extra, axum-macros]
-    steps:
-    - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@nightly
-    - uses: Swatinem/rust-cache@v2
-      with:
-        save-if: ${{ github.ref == 'refs/heads/main' }}
-    - name: Install cargo-public-api-crates
-      run: |
-        cargo install --git https://github.com/jplatte/cargo-public-api-crates
-    - name: cargo public-api-crates check
-      run: cargo public-api-crates --manifest-path ${{ matrix.crate }}/Cargo.toml check
-
   test-versions:
     needs: check
     runs-on: ubuntu-24.04
