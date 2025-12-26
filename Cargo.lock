@@ -138,9 +138,9 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_core",
+ "serde_html_form 0.3.2",
  "serde_json",
  "serde_path_to_error",
- "serde_urlencoded",
  "sha1",
  "sync_wrapper",
  "time",
@@ -206,7 +206,7 @@ dependencies = [
  "rustversion",
  "serde",
  "serde_core",
- "serde_html_form",
+ "serde_html_form 0.2.7",
  "serde_json",
  "serde_path_to_error",
  "tempfile",
@@ -1498,6 +1498,19 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "serde_html_form"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2acf96b1d9364968fce46ebb548f1c0e1d7eceae27bdff73865d42e6c7369d94"
+dependencies = [
+ "form_urlencoded",
+ "indexmap",
+ "itoa",
+ "ryu",
+ "serde_core",
 ]
 
 [[package]]

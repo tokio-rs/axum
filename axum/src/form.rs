@@ -84,7 +84,7 @@ where
         match req.extract().await {
             Ok(RawForm(bytes)) => {
                 let deserializer =
-                    serde_urlencoded::Deserializer::new(form_urlencoded::parse(&bytes));
+                    serde_html_form::Deserializer::new(form_urlencoded::parse(&bytes));
                 let value = serde_path_to_error::deserialize(deserializer).map_err(
                     |err| -> FormRejection {
                         if is_get_or_head {
@@ -110,7 +110,7 @@ where
 {
     fn into_response(self) -> Response {
         // Extracted into separate fn so it's only compiled once for all T.
-        fn make_response(ser_result: Result<String, serde_urlencoded::ser::Error>) -> Response {
+        fn make_response(ser_result: Result<String, serde_html_form::ser::Error>) -> Response {
             match ser_result {
                 Ok(body) => (
                     [(CONTENT_TYPE, mime::APPLICATION_WWW_FORM_URLENCODED.as_ref())],
@@ -121,7 +121,7 @@ where
             }
         }
 
-        make_response(serde_urlencoded::to_string(&self.0))
+        make_response(serde_html_form::to_string(&self.0))
     }
 }
 axum_core::__impl_deref!(Form);
@@ -160,7 +160,7 @@ mod tests {
             .uri("http://example.com/test")
             .method(Method::POST)
             .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED.as_ref())
-            .body(Body::from(serde_urlencoded::to_string(&value).unwrap()))
+            .body(Body::from(serde_html_form::to_string(&value).unwrap()))
             .unwrap();
         assert_eq!(Form::<T>::from_request(req, &()).await.unwrap().0, value);
     }
@@ -223,7 +223,7 @@ mod tests {
             .method(Method::POST)
             .header(CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
             .body(Body::from(
-                serde_urlencoded::to_string(&Pagination {
+                serde_html_form::to_string(&Pagination {
                     size: Some(10),
                     page: None,
                 })

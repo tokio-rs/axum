@@ -298,9 +298,9 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "serde_core",
+ "serde_html_form",
  "serde_json",
  "serde_path_to_error",
- "serde_urlencoded",
  "sha1",
  "sync_wrapper",
  "tokio",
@@ -1571,17 +1571,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "example-query-params-with-empty-strings"
-version = "0.1.0"
-dependencies = [
- "axum",
- "http-body-util",
- "serde",
- "tokio",
- "tower",
 ]
 
 [[package]]
@@ -4066,6 +4055,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "serde_html_form"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a055051604d997ae4ddff53663d390c15e96adc3720f54d43d18a7fd944cc79"
+dependencies = [
+ "form_urlencoded",
+ "indexmap",
+ "itoa",
+ "ryu",
+ "serde_core",
 ]
 
 [[package]]
