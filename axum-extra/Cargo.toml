@@ -100,7 +100,7 @@ with-rejection = ["dep:axum"]
 __private_docs = ["axum/json", "axum/query", "dep:serde", "dep:tower"]
 
 [dependencies]
-axum-core = { path = "../axum-core", version = "0.5.5" }
+axum-core = { path = "../axum-core", version = "0.5.6" }
 bytes = "1.1.0"
 futures-core = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
