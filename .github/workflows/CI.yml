@@ -23,7 +23,7 @@ jobs:
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
     - name: Check
-      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
     - name: Check
       run: cargo clippy --manifest-path examples/Cargo.toml --workspace --all-targets --all-features -- -D warnings
     - name: rustfmt
@@ -93,9 +93,9 @@ jobs:
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
     - name: Run tests
-      run: cargo test --workspace --all-features --all-targets
+      run: cargo test --locked --workspace --all-features --all-targets
     - name: Test examples
-      run: cargo test --manifest-path examples/Cargo.toml --workspace --all-features --all-targets
+      run: cargo test --locked --manifest-path examples/Cargo.toml --workspace --all-features --all-targets
 
   # some examples don't support our MSRV so we only test axum itself on our MSRV
   test-nightly:
@@ -170,7 +170,7 @@ jobs:
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
     - name: Run doc tests
-      run: cargo test --all-features --doc
+      run: cargo test --locked --all-features --doc
 
   deny-check:
     name: cargo-deny check
