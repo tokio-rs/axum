@@ -69,7 +69,7 @@ async fn main() {
         .unwrap();
 }
 
-async fn shutdown_signal(handle: axum_server::Handle) {
+async fn shutdown_signal(handle: axum_server::Handle<SocketAddr>) {
     let ctrl_c = async {
         signal::ctrl_c()
             .await
