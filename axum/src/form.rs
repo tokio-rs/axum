@@ -1,5 +1,6 @@
 use crate::extract::Request;
 use crate::extract::{rejection::*, FromRequest, RawForm};
+use axum_core::extract::OptionalFromRequest;
 use axum_core::response::{IntoResponse, Response};
 use axum_core::RequestExt;
 use http::header::CONTENT_TYPE;
@@ -104,6 +105,42 @@ where
     }
 }
 
+impl<T, S> OptionalFromRequest<S> for Form<T>
+where
+    T: DeserializeOwned,
+    S: Send + Sync,
+{
+    type Rejection = FormRejection;
+
+    async fn from_request(req: Request, _state: &S) -> Result<Option<Self>, Self::Rejection> {
+        let is_get_or_head =
+            req.method() == http::Method::GET || req.method() == http::Method::HEAD;
+
+        match req.extract().await {
+            Ok(Some(RawForm(bytes))) => {
+                let deserializer =
+                    serde_urlencoded::Deserializer::new(form_urlencoded::parse(&bytes));
+                let value = serde_path_to_error::deserialize(deserializer).map_err(
+                    |err| -> FormRejection {
+                        if is_get_or_head {
+                            FailedToDeserializeForm::from_err(err).into()
+                        } else {
+                            FailedToDeserializeFormBody::from_err(err).into()
+                        }
+                    },
+                )?;
+
+                Ok(Some(Form(value)))
+            }
+            Ok(None) => Ok(None),
+            Err(RawFormRejection::BytesRejection(r)) => Err(FormRejection::BytesRejection(r)),
+            Err(RawFormRejection::InvalidFormContentType(r)) => {
+                Err(FormRejection::InvalidFormContentType(r))
+            }
+        }
+    }
+}
+
 impl<T> IntoResponse for Form<T>
 where
     T: Serialize,
@@ -152,7 +189,13 @@ mod tests {
             .uri(uri.as_ref())
             .body(Body::empty())
             .unwrap();
-        assert_eq!(Form::<T>::from_request(req, &()).await.unwrap().0, value);
+        assert_eq!(
+            <Form::<T> as FromRequest<_>>::from_request(req, &())
+                .await
+                .unwrap()
+                .0,
+            value
+        );
     }
 
     async fn check_body<T: Serialize + DeserializeOwned + PartialEq + Debug>(value: T) {
@@ -162,7 +205,13 @@ mod tests {
             .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED.as_ref())
             .body(Body::from(serde_html_form::to_string(&value).unwrap()))
             .unwrap();
-        assert_eq!(Form::<T>::from_request(req, &()).await.unwrap().0, value);
+        assert_eq!(
+            <Form::<T> as FromRequest<_>>::from_request(req, &())
+                .await
+                .unwrap()
+                .0,
+            value
+        );
     }
 
     #[crate::test]
@@ -231,7 +280,7 @@ mod tests {
             ))
             .unwrap();
         assert!(matches!(
-            Form::<Pagination>::from_request(req, &())
+            <Form::<Pagination> as FromRequest<_>>::from_request(req, &())
                 .await
                 .unwrap_err(),
             FormRejection::InvalidFormContentType(InvalidFormContentType)
