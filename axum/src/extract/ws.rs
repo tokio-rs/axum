@@ -265,9 +265,117 @@ impl<F> WebSocketUpgrade<F> {
         self
     }
 
+    /// Select a WebSocket subprotocol using a custom predicate.
+    ///
+    /// This method inspects the `Sec-WebSocket-Protocol` header sent by the client
+    /// and selects the **first client-requested protocol** for which the provided
+    /// `predicate` returns `Some`.
+    ///
+    /// The `predicate` is invoked once per client protocol, in the order they were
+    /// sent by the client. Returning `Some(HeaderValue)` indicates acceptance of
+    /// that protocol and determines the value echoed back in the WebSocket upgrade
+    /// response. Returning `None` rejects the protocol and causes selection to
+    /// continue.
+    ///
+    /// If no protocol is accepted, or if the client did not send a
+    /// `Sec-WebSocket-Protocol` header, no subprotocol is selected.
+    ///
+    /// This API is more flexible than [`protocols`](Self::protocols) and allows
+    /// custom selection logic, such as Token-encoded subprotocols .
+    ///
+    /// # Examples
+    ///
+    /// ## Accept a fixed protocol with no allocation
+    ///
+    /// ```rust
+    /// use http::HeaderValue;
+    /// use axum::{
+    ///     extract::ws::{WebSocketUpgrade, WebSocket},
+    ///     routing::any,
+    ///     response::{IntoResponse, Response},
+    ///     Router,
+    /// };
+    ///
+    /// let app = Router::new().route("/ws", any(handler));
+    ///
+    /// async fn handler(ws: WebSocketUpgrade) -> Response {
+    ///     ws.select_protocol(|proto| {
+    ///             (proto == "my-protocol")
+    ///                 .then(|| HeaderValue::from_static("my-protocol"))
+    ///         }).on_upgrade(|socket| async {
+    ///             // ...
+    ///         })
+    /// }
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// ## Accept token based auth
+    /// Suppose that the HTTP header is set as:
+    /// ```txt
+    /// Sec-WebSocket-Protocol: token.subprotocol.bearer.bXl0b2tlbgac7G, token.subprotocol.auth
+    /// ```
+    ///
+    /// where the `bXl0b2tlbgac7G` is the credential token
+    ///
+    /// ```rust
+    /// use http::HeaderValue;
+    /// use axum::{
+    ///     extract::ws::{WebSocketUpgrade, WebSocket},
+    ///     routing::any,
+    ///     response::{IntoResponse, Response},
+    ///     Router,
+    /// };
+    ///
+    /// let app = Router::new().route("/ws", any(handler));
+    /// async fn handler(ws: WebSocketUpgrade) -> impl IntoResponse {
+    ///     let ws = ws.select_protocol(|proto| {
+    ///         proto
+    ///             .strip_prefix("token.subprotocol.bearer.")
+    ///             .map(|token| {
+    ///                 (token == "bXl0b2tlbgac7G") // replace with real authenticate logic
+    ///                     .then_some(HeaderValue::from_static("token.subprotocol.auth"))
+    ///             })
+    ///             .flatten()
+    ///     });
+    ///     if ws.selected_protocol().is_some() {
+    ///         ws.on_upgrade(|socket| async {
+    ///             // ...
+    ///         })
+    ///     } else {
+    ///         // Reject the connection
+    ///         (axum::http::StatusCode::UNAUTHORIZED, "Unauthorized").into_response()
+    ///     }
+    /// }
+    /// # let _: Router = app;
+    /// ```
+    ///
+    /// # Notes
+    ///
+    /// - The predicate is evaluated lazily and stops at the first accepted protocol.
+    /// - The selected protocol is echoed back in the WebSocket upgrade
+    ///   response as required by RFC 6455. Some browsers may reject a
+    ///   value that was not present in the client's request.
+    /// - No allocation is performed unless the predicate constructs a dynamic
+    ///   `HeaderValue`.
+    pub fn select_protocol(
+        mut self,
+        mut predicate: impl FnMut(&str) -> Option<HeaderValue>,
+    ) -> Self {
+        if let Some(req_protocols) = self
+            .sec_websocket_protocol
+            .as_ref()
+            .and_then(|p| p.to_str().ok())
+        {
+            self.protocol = req_protocols
+                .split(',')
+                .find_map(|client_protocol| predicate(client_protocol.trim()));
+        }
+        self
+    }
+
     /// Return the selected WebSocket subprotocol, if one has been chosen.
     ///
-    /// If [`protocols()`][Self::protocols] has been called and a matching
+    /// If [`protocols()`][Self::protocols] or [`select_protocol()`][Self::select_protocol] has been called and a matching
     /// protocol has been selected, the return value will be `Some` containing
     /// said protocol. Otherwise, it will be `None`.
     pub fn selected_protocol(&self) -> Option<&HeaderValue> {
