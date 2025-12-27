@@ -77,7 +77,7 @@ async fn main() {
             .unwrap()
     );
 
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app).await;
 }
 
 #[derive(Clone)]

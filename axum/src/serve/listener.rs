@@ -110,7 +110,7 @@ pub trait ListenerExt: Listener + Sized {
     ///             trace!("failed to set TCP_NODELAY on incoming connection: {err:#}");
     ///         }
     ///     });
-    /// axum::serve(listener, router).await.unwrap();
+    /// axum::serve(listener, router).await;
     /// # };
     /// ```
     fn tap_io<F>(self, tap_fn: F) -> TapIo<Self, F>
