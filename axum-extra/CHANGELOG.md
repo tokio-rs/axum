@@ -9,8 +9,20 @@ and this project adheres to [Semantic Versioning].
 
 - **breaking:** Remove the deprecated `Host`, `Scheme` and `OptionalPath`
   extractors ([#3599])
+- **breaking:** Change `routing::RouterExt::route_with_tsr` to only redirect
+  the HTTP methods that the supplied `MethodRouter` handles. This allows the
+  following pattern which lead to a panic before because the two
+  `route_with_tsr` calls would both attempt to register a method-independent
+  redirect ([#3586]):
+
+  ```rust
+  Router::new()
+      .route_with_tsr("/path", get(/* handler */))
+      .route_with_tsr("/path", post(/* handler */))
+  ```
 
 [#3599]: https://github.com/tokio-rs/axum/pull/3599
+[#3586]: https://github.com/tokio-rs/axum/pull/3586
 
 # 0.12.5
 
