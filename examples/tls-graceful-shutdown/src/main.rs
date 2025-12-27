@@ -6,12 +6,11 @@
 
 use axum::{
     handler::HandlerWithoutStateExt,
-    http::{uri::Authority, StatusCode, Uri},
+    http::{StatusCode, Uri},
     response::Redirect,
     routing::get,
     BoxError, Router,
 };
-use axum_extra::extract::Host;
 use axum_server::tls_rustls::RustlsConfig;
 use std::{future::Future, net::SocketAddr, path::PathBuf, time::Duration};
 use tokio::signal;
@@ -106,33 +105,21 @@ async fn redirect_http_to_https<F>(ports: Ports, signal: F)
 where
     F: Future<Output = ()> + Send + 'static,
 {
-    fn make_https(host: &str, uri: Uri, https_port: u16) -> Result<Uri, BoxError> {
+    fn make_https(uri: Uri, https_port: u16) -> Result<Uri, BoxError> {
         let mut parts = uri.into_parts();
 
         parts.scheme = Some(axum::http::uri::Scheme::HTTPS);
+        parts.authority = Some(format!("localhost:{https_port}").parse()?);
 
         if parts.path_and_query.is_none() {
             parts.path_and_query = Some("/".parse().unwrap());
         }
 
-        let authority: Authority = host.parse()?;
-        let bare_host = match authority.port() {
-            Some(port_struct) => authority
-                .as_str()
-                .strip_suffix(port_struct.as_str())
-                .unwrap()
-                .strip_suffix(':')
-                .unwrap(), // if authority.port() is Some(port) then we can be sure authority ends with :{port}
-            None => authority.as_str(),
-        };
-
-        parts.authority = Some(format!("{bare_host}:{https_port}").parse()?);
-
         Ok(Uri::from_parts(parts)?)
     }
 
-    let redirect = move |Host(host): Host, uri: Uri| async move {
-        match make_https(&host, uri, ports.https) {
+    let redirect = move |uri: Uri| async move {
+        match make_https(uri, ports.https) {
             Ok(uri) => Ok(Redirect::permanent(&uri.to_string())),
             Err(error) => {
                 tracing::warn!(%error, "failed to convert URI to HTTPS");

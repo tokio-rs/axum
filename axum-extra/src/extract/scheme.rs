@@ -1,5 +1,6 @@
 //! Extractor that parses the scheme of a request.
 //! See [`Scheme`] for more details.
+#![allow(deprecated)]
 
 use axum_core::{__define_rejection as define_rejection, extract::FromRequestParts};
 use http::{
@@ -17,6 +18,7 @@ const X_FORWARDED_PROTO_HEADER_KEY: &str = "X-Forwarded-Proto";
 ///
 /// Note that user agents can set the `X-Forwarded-Proto` header to arbitrary values so make
 /// sure to validate them to avoid security issues.
+#[deprecated = "will be removed in the next version; see https://github.com/tokio-rs/axum/issues/3442"]
 #[derive(Debug, Clone)]
 pub struct Scheme(pub String);
 

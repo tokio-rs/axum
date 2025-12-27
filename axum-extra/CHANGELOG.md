@@ -11,6 +11,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+# 0.12.4
+
+- **changed:** Deprecated the `Host` and `Scheme` extractors ([#3595])
+  - Please comment in [#3442] if you depend on one of them
+
+[#3595]: https://github.com/tokio-rs/axum/pull/3595
+[#3442]: https://github.com/tokio-rs/axum/issues/3442
+
 # 0.12.3
 
 - **changed:** Make the `typed-routing` feature enable the `routing` feature ([#3514])
