@@ -24,7 +24,6 @@
 //! `json-lines` | Enables the [`JsonLines`](crate::extract::JsonLines) extractor and response |
 //! `middleware` | Enables the [middleware] utilities |
 //! `multipart` | Enables the [`Multipart`](crate::extract::Multipart) extractor |
-//! `optional-path` | Enables the [`OptionalPath`](crate::extract::OptionalPath) extractor |
 //! `protobuf` | Enables the [`Protobuf`](crate::protobuf::Protobuf) extractor and response |
 //! `query` (deprecated) | Enables the [`Query`](crate::extract::Query) extractor |
 //! `routing` | Enables the [routing] utilities |
@@ -87,9 +86,6 @@ pub mod __private {
     const PATH: &AsciiSet = &FRAGMENT.add(b'#').add(b'?').add(b'{').add(b'}');
     pub const PATH_SEGMENT: &AsciiSet = &PATH.add(b'/').add(b'%');
 }
-
-#[cfg(test)]
-use axum_macros::__private_axum_test as test;
 
 #[cfg(test)]
 pub(crate) use axum::test_helpers;
