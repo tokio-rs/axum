@@ -1,0 +1,9 @@
+// Recommended settings for VSCode.
+//
+// Copy to `.vscode/settings.json` at the crate root too use.
+{
+    "rust-analyzer.linkedProjects": [
+        "Cargo.toml",
+        "examples/Cargo.toml"
+    ]
+}
