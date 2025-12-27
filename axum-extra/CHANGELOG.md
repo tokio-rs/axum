@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+# Unreleased
+
+- **breaking:** Remove the deprecated `Host`, `Scheme` and `OptionalPath`
+  extractors ([#3599])
+
+[#3599]: https://github.com/tokio-rs/axum/pull/3599
+
 # 0.12.5
 
 - **fixed:** `JsonLines` now correctly respects the default body limit ([#3591])

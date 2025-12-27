@@ -73,10 +73,8 @@ json-lines = [
 ]
 middleware = ["dep:axum"]
 multipart = ["dep:multer", "dep:fastrand"]
-optional-path = ["dep:axum", "dep:serde_core"]
 protobuf = ["dep:prost"]
 routing = ["axum/original-uri", "dep:rustversion"]
-scheme = []
 query = [
     "dep:form_urlencoded",
     "dep:serde_core",
