@@ -21,9 +21,7 @@ where
     println!("Listening on {addr}");
 
     tokio::spawn(async move {
-        serve(listener, Shared::new(svc))
-            .await
-            .expect("server error")
+        serve(listener, Shared::new(svc)).await;
     });
 
     addr

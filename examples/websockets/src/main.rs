@@ -73,8 +73,7 @@ async fn main() {
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
-    .await
-    .unwrap();
+    .await;
 }
 
 /// The handler for the HTTP request (this gets called when the HTTP request lands at the start
