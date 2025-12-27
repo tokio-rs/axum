@@ -29,7 +29,7 @@ async fn main() {
         .await
         .unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app()).await.unwrap();
+    axum::serve(listener, app()).await;
 }
 
 /// Having a function that produces our app makes it easy to call it from tests
@@ -132,7 +132,7 @@ mod tests {
         let addr = listener.local_addr().unwrap();
 
         tokio::spawn(async move {
-            axum::serve(listener, app()).await.unwrap();
+            axum::serve(listener, app()).await;
         });
 
         let client =

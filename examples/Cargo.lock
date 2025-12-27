@@ -313,7 +313,7 @@ dependencies = [
 
 [[package]]
 name = "axum-core"
-version = "0.5.5"
+version = "0.5.6"
 dependencies = [
  "bytes",
  "futures-core",
@@ -330,7 +330,7 @@ dependencies = [
 
 [[package]]
 name = "axum-extra"
-version = "0.12.3"
+version = "0.12.5"
 dependencies = [
  "axum",
  "axum-core",
@@ -4059,9 +4059,9 @@ dependencies = [
 
 [[package]]
 name = "serde_html_form"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a055051604d997ae4ddff53663d390c15e96adc3720f54d43d18a7fd944cc79"
+checksum = "2acf96b1d9364968fce46ebb548f1c0e1d7eceae27bdff73865d42e6c7369d94"
 dependencies = [
  "form_urlencoded",
  "indexmap",

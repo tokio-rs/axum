@@ -163,9 +163,9 @@ impl BenchmarkBuilder {
             .unwrap();
         let addr = listener.local_addr().unwrap();
 
+        #[allow(unreachable_code)] // buggy lint, fixed in nightly
         std::thread::spawn(move || {
-            rt.block_on(axum::serve(listener, app).into_future())
-                .unwrap();
+            rt.block_on(axum::serve(listener, app).into_future());
         });
 
         let mut cmd = Command::new("rewrk");

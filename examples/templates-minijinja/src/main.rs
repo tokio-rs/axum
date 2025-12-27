@@ -44,7 +44,7 @@ async fn main() {
         .await
         .unwrap();
     println!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app).await;
 }
 
 async fn handler_home(State(state): State<Arc<AppState>>) -> Result<Html<String>, StatusCode> {
