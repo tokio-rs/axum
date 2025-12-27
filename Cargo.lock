@@ -181,7 +181,7 @@ dependencies = [
 
 [[package]]
 name = "axum-extra"
-version = "0.12.3"
+version = "0.12.5"
 dependencies = [
  "axum",
  "axum-core",
