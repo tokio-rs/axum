@@ -17,7 +17,7 @@ async fn main() {
         .await
         .unwrap();
     println!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app()).await.unwrap();
+    axum::serve(listener, app()).await;
 }
 
 // GET routes will also be called for HEAD requests but will have the response body removed.

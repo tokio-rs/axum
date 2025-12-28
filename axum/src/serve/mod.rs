@@ -44,7 +44,7 @@ pub use self::listener::{ConnLimiter, ConnLimiterIo, Listener, ListenerExt, TapI
 /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
 ///
 /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-/// axum::serve(listener, router).await.unwrap();
+/// axum::serve(listener, router).await;
 /// # };
 /// ```
 ///
@@ -59,7 +59,7 @@ pub use self::listener::{ConnLimiter, ConnLimiterIo, Listener, ListenerExt, TapI
 /// let router = get(|| async { "Hello, World!" });
 ///
 /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-/// axum::serve(listener, router).await.unwrap();
+/// axum::serve(listener, router).await;
 /// # };
 /// ```
 ///
@@ -76,7 +76,7 @@ pub use self::listener::{ConnLimiter, ConnLimiterIo, Listener, ListenerExt, TapI
 /// }
 ///
 /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-/// axum::serve(listener, handler.into_make_service()).await.unwrap();
+/// axum::serve(listener, handler.into_make_service()).await;
 /// # };
 /// ```
 ///
@@ -142,8 +142,7 @@ where
     /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     /// axum::serve(listener, router)
     ///     .with_graceful_shutdown(shutdown_signal())
-    ///     .await
-    ///     .unwrap();
+    ///     .await;
     /// # };
     ///
     /// async fn shutdown_signal() {
@@ -237,7 +236,7 @@ where
     B::Data: Send,
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
 {
-    type Output = io::Result<()>;
+    type Output = Infallible;
     type IntoFuture = private::ServeFuture;
 
     fn into_future(self) -> Self::IntoFuture {
@@ -358,14 +357,11 @@ where
     B::Data: Send,
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
 {
-    type Output = io::Result<()>;
-    type IntoFuture = private::ServeFuture;
+    type Output = ();
+    type IntoFuture = private::ServeFuture<()>;
 
     fn into_future(self) -> Self::IntoFuture {
-        private::ServeFuture(Box::pin(async move {
-            self.run().await;
-            Ok(())
-        }))
+        private::ServeFuture(Box::pin(async move { self.run().await }))
     }
 }
 
@@ -473,16 +469,16 @@ where
 
 mod private {
     use std::{
+        convert::Infallible,
         future::Future,
-        io,
         pin::Pin,
         task::{Context, Poll},
     };
 
-    pub struct ServeFuture(pub(super) futures_core::future::BoxFuture<'static, io::Result<()>>);
+    pub struct ServeFuture<T = Infallible>(pub(super) futures_core::future::BoxFuture<'static, T>);
 
-    impl Future for ServeFuture {
-        type Output = io::Result<()>;
+    impl<T> Future for ServeFuture<T> {
+        type Output = T;
 
         #[inline]
         fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -576,9 +572,7 @@ mod tests {
 
         // router
         serve(TcpListener::bind(addr).await.unwrap(), router.clone());
-        serve(tcp_nodelay_listener().await, router.clone())
-            .await
-            .unwrap();
+        serve(tcp_nodelay_listener().await, router.clone()).await;
         #[cfg(unix)]
         serve(UnixListener::bind("").unwrap(), router.clone());
 
@@ -733,8 +727,7 @@ mod tests {
             let server_task = async {
                 serve(ReadyListener(Some(server)), Router::new())
                     .with_graceful_shutdown(tokio::time::sleep(Duration::from_secs(1)))
-                    .await
-                    .unwrap();
+                    .await;
             };
 
             tokio::time::timeout(Duration::from_secs(timeout + 2), server_task)
@@ -754,9 +747,7 @@ mod tests {
             client.write_all(req.as_bytes()).await.unwrap();
 
             let server_task = async {
-                serve(ReadyListener(Some(server)), Router::new())
-                    .await
-                    .unwrap();
+                serve(ReadyListener(Some(server)), Router::new()).await;
             };
 
             let wait_for_server_to_close_conn = async {

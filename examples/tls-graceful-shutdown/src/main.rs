@@ -133,6 +133,5 @@ where
     tracing::debug!("listening on {addr}");
     axum::serve(listener, redirect.into_make_service())
         .with_graceful_shutdown(signal)
-        .await
-        .unwrap();
+        .await;
 }
