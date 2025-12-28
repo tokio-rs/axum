@@ -105,6 +105,18 @@ fn nest_service_at_empty_path() {
     let _: Router = Router::new().nest_service("", get(|| async {}));
 }
 
+#[test]
+#[should_panic(expected = "Nesting paths must start with a `/`.")]
+fn nest_no_slash() {
+    let _: Router = Router::new().nest("x", Router::new());
+}
+
+#[test]
+#[should_panic(expected = "Nesting paths must start with a `/`.")]
+fn nest_service_no_slash() {
+    let _: Router = Router::new().nest_service("x", get(|| async {}));
+}
+
 #[crate::test]
 async fn nested_url_extractor() {
     let app = Router::new().nest(
