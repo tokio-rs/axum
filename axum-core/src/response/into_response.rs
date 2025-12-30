@@ -1,4 +1,4 @@
-use super::{IntoResponseParts, Response, ResponseParts};
+use super::{ForceStatusCode, IntoResponseFailed, IntoResponseParts, Response, ResponseParts};
 use crate::{body::Body, BoxError};
 use bytes::{buf::Chain, Buf, Bytes, BytesMut};
 use http::{
@@ -329,7 +329,9 @@ where
 {
     fn into_response(self) -> Response {
         let mut res = self.1.into_response();
-        *res.status_mut() = self.0;
+        if res.extensions().get::<IntoResponseFailed>().is_none() {
+            *res.status_mut() = self.0;
+        }
         res
     }
 }
@@ -405,18 +407,16 @@ macro_rules! impl_into_response {
                 let ($($ty),*, res) = self;
 
                 let res = res.into_response();
-                let parts = ResponseParts { res };
-
-                $(
-                    let parts = match $ty.into_response_parts(parts) {
+                if res.extensions().get::<IntoResponseFailed>().is_none() {
+                    let parts = ResponseParts { res };
+                    let parts = match ($($ty,)*).into_response_parts(parts) {
                         Ok(parts) => parts,
-                        Err(err) => {
-                            return err.into_response();
-                        }
+                        Err(err) => return err.into_response(),
                     };
-                )*
-
-                parts.res
+                    parts.res
+                } else {
+                    res
+                }
             }
         }
 
@@ -430,16 +430,40 @@ macro_rules! impl_into_response {
                 let (status, $($ty),*, res) = self;
 
                 let res = res.into_response();
-                let parts = ResponseParts { res };
-
-                $(
-                    let parts = match $ty.into_response_parts(parts) {
+                if res.extensions().get::<IntoResponseFailed>().is_none() {
+                    let parts = ResponseParts { res };
+                    let mut parts = match ($($ty,)*).into_response_parts(parts) {
                         Ok(parts) => parts,
-                        Err(err) => {
-                            return err.into_response();
-                        }
+                        Err(err) => return err.into_response(),
                     };
-                )*
+
+                    // Don't call `(status, parts.res).into_response()` since that checks for
+                    // `IntoResponseFailed` and skips setting the status. We've already done that
+                    // check here so overriding the status is required if returning
+                    // `(IntoResponseFailed, StatusCode::INTERNAL_SERVER_ERROR)`
+                    *parts.res.status_mut() = status;
+                    parts.res
+                } else {
+                    res
+                }
+            }
+        }
+
+        #[allow(non_snake_case)]
+        impl<R, $($ty,)*> IntoResponse for (ForceStatusCode, $($ty),*, R)
+        where
+            $( $ty: IntoResponseParts, )*
+            R: IntoResponse,
+        {
+            fn into_response(self) -> Response {
+                let (status, $($ty),*, res) = self;
+
+                let res = res.into_response();
+                let parts = ResponseParts { res };
+                let parts = match ($($ty,)*).into_response_parts(parts) {
+                    Ok(parts) => parts,
+                    Err(err) => return err.into_response(),
+                };
 
                 (status, parts.res).into_response()
             }
@@ -455,17 +479,22 @@ macro_rules! impl_into_response {
                 let (outer_parts, $($ty),*, res) = self;
 
                 let res = res.into_response();
-                let parts = ResponseParts { res };
-                $(
-                    let parts = match $ty.into_response_parts(parts) {
+                if res.extensions().get::<IntoResponseFailed>().is_none() {
+                    let parts = ResponseParts { res };
+                    let mut parts = match ($($ty,)*).into_response_parts(parts) {
                         Ok(parts) => parts,
-                        Err(err) => {
-                            return err.into_response();
-                        }
+                        Err(err) => return err.into_response(),
                     };
-                )*
 
-                (outer_parts, parts.res).into_response()
+                    // Don't call `(outer_parts, parts.res).into_response()` for the same reason we
+                    // don't call `(status, parts.res).into_response()` in the above impl.
+                    *parts.res.status_mut() = outer_parts.status;
+                    parts.res.headers_mut().extend(outer_parts.headers);
+                    parts.res.extensions_mut().extend(outer_parts.extensions);
+                    parts.res
+                } else {
+                    res
+                }
             }
         }
 
