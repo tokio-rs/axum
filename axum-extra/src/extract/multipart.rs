@@ -247,7 +247,11 @@ impl MultipartError {
 
     /// Get the response body text used for this rejection.
     pub fn body_text(&self) -> String {
-        let body = self.source.to_string();
+        let body = if is_body_limit_error(&self.source) {
+            "Request payload is too large".to_owned()
+        } else {
+            self.source.to_string()
+        };
         axum_core::__log_rejection!(
             rejection_type = Self,
             body_text = body,
@@ -295,6 +299,22 @@ fn status_code_from_multer_error(err: &multer::Error) -> StatusCode {
             StatusCode::INTERNAL_SERVER_ERROR
         }
         _ => StatusCode::INTERNAL_SERVER_ERROR,
+    }
+}
+
+fn is_body_limit_error(err: &multer::Error) -> bool {
+    match err {
+        multer::Error::FieldSizeExceeded { .. } | multer::Error::StreamSizeExceeded { .. } => true,
+        multer::Error::StreamReadFailed(err) => {
+            if let Some(err) = err.downcast_ref::<multer::Error>() {
+                return is_body_limit_error(err);
+            }
+            err.downcast_ref::<axum_core::Error>()
+                .and_then(|err| err.source())
+                .and_then(|err| err.downcast_ref::<http_body_util::LengthLimitError>())
+                .is_some()
+        }
+        _ => false,
     }
 }
 
@@ -403,6 +423,7 @@ mod tests {
 
         let res = client.post("/").multipart(form).await;
         assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+        assert_eq!(res.text().await, "Request payload is too large");
     }
 
     #[tokio::test]
