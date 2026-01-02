@@ -206,6 +206,12 @@ impl<F> WebSocketUpgrade<F> {
         self
     }
 
+    /// Require manually sending the close frame (defaults to false)
+    pub fn manually_close(mut self, manually_close: bool) -> Self {
+        self.config.manually_close = manually_close;
+        self
+    }
+
     /// Set the known protocols.
     ///
     /// If the protocol name specified by `Sec-WebSocket-Protocol` header
