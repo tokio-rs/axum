@@ -660,6 +660,54 @@ where
         self
     }
 
+    /// Get a [`MethodFilter`] for the methods that this `MethodRouter` has
+    /// custom code for.
+    ///
+    /// Note that `MethodRouter`'s [`Service`] implementation never fails (it
+    /// always creates an HTTP response) based on which HTTP method was used.
+    /// However, the information which methods have the default behavior of
+    /// returning HTTP 405 is stored, and can be queried with this method.
+    ///
+    /// Returns `None` if the `MethodRouter` was constructed with [`any`] or
+    /// has had a [`fallback`][Self::fallback] set.
+    pub fn method_filter(&self) -> Option<MethodFilter> {
+        let Self {
+            get,
+            head,
+            delete,
+            options,
+            patch,
+            post,
+            put,
+            trace,
+            connect,
+            fallback,
+            allow_header: _,
+        } = self;
+
+        if !fallback.is_default() {
+            return None;
+        }
+
+        let filter = [
+            (get, MethodFilter::GET),
+            (head, MethodFilter::HEAD),
+            (delete, MethodFilter::DELETE),
+            (options, MethodFilter::OPTIONS),
+            (patch, MethodFilter::PATCH),
+            (post, MethodFilter::POST),
+            (put, MethodFilter::PUT),
+            (trace, MethodFilter::TRACE),
+            (connect, MethodFilter::CONNECT),
+        ]
+        .into_iter()
+        .filter_map(|(ep, f)| ep.is_some().then_some(f))
+        .reduce(MethodFilter::or)
+        .expect("can't create a MethodRouter with all-default handlers");
+
+        Some(filter)
+    }
+
     /// Add a fallback [`Handler`] if no custom one has been provided.
     pub(crate) fn default_fallback<H, T>(self, handler: H) -> Self
     where
@@ -839,7 +887,7 @@ where
                     panic!(
                         "Overlapping method route. Cannot add two method routes that both handle \
                          `{method_name}`",
-                    )
+                    );
                 }
                 *out = endpoint.clone();
                 for method in methods {
@@ -1612,6 +1660,25 @@ mod tests {
         let (status, _, _) = call(Method::POST, &mut svc).await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(text, "state");
+    }
+
+    #[test]
+    fn method_filter() {
+        let router: MethodRouter = get(|| async {});
+        assert_eq!(router.method_filter(), Some(MethodFilter::GET));
+
+        let router: MethodRouter = get(|| async {}).head(|| async {}).post(|| async {});
+        assert_eq!(
+            router.method_filter(),
+            Some(
+                MethodFilter::GET
+                    .or(MethodFilter::HEAD)
+                    .or(MethodFilter::POST)
+            )
+        );
+
+        let router: MethodRouter = any(|| async {});
+        assert_eq!(router.method_filter(), None);
     }
 
     async fn call<S>(method: Method, svc: &mut S) -> (StatusCode, HeaderMap, String)
