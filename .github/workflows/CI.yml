@@ -14,6 +14,9 @@ on:
 jobs:
   check:
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        workspace: [".", examples]
     steps:
     - uses: actions/checkout@v6
     - uses: dtolnay/rust-toolchain@beta
@@ -22,12 +25,11 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
+        workspaces: ${{ matrix.workspace }}
     - name: Check
-      run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
-    - name: Check
-      run: cargo clippy --manifest-path examples/Cargo.toml --workspace --all-targets --all-features -- -D warnings
+      run: cargo clippy --locked --manifest-path ${{ matrix.workspace }}/Cargo.toml --workspace --all-targets --all-features -- -D warnings
     - name: rustfmt
-      run: cargo fmt --all --check
+      run: cargo fmt --all --check --manifest-path ${{ matrix.workspace }}/Cargo.toml
 
   check-docs:
     runs-on: ubuntu-24.04
@@ -84,6 +86,7 @@ jobs:
     strategy:
       matrix:
         rust: [stable, beta]
+        workspace: [".", examples]
     steps:
     - uses: actions/checkout@v6
     - uses: dtolnay/rust-toolchain@master
@@ -92,10 +95,9 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
+        workspaces: ${{ matrix.workspace }}
     - name: Run tests
-      run: cargo test --locked --workspace --all-features --all-targets
-    - name: Test examples
-      run: cargo test --locked --manifest-path examples/Cargo.toml --workspace --all-features --all-targets
+      run: cargo test --locked --workspace --all-features --all-targets --manifest-path ${{ matrix.workspace }}/Cargo.toml
 
   # some examples don't support our MSRV so we only test axum itself on our MSRV
   test-nightly:
@@ -225,6 +227,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
+        workspaces: examples
     - name: Check
       run: >
         cargo
