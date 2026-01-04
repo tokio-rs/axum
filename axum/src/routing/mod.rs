@@ -740,6 +740,10 @@ where
             }
         }
     }
+
+    fn is_default(&self) -> bool {
+        matches!(self, Self::Default(..))
+    }
 }
 
 impl<S, E> Clone for Fallback<S, E> {
