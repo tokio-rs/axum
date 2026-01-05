@@ -4,7 +4,7 @@ description = "Extra utilities for axum"
 edition = "2021"
 rust-version = { workspace = true }
 homepage = "https://github.com/tokio-rs/axum"
-keywords = ["http", "web", "framework"]
+keywords = ["http", "web", "routing"]
 license = "MIT"
 name = "axum-extra"
 readme = "README.md"

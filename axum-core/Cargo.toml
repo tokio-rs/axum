@@ -4,7 +4,7 @@ description = "Core types and traits for axum"
 edition = "2021"
 rust-version = { workspace = true }
 homepage = "https://github.com/tokio-rs/axum"
-keywords = ["http", "web", "framework"]
+keywords = ["http", "web", "routing"]
 license = "MIT"
 name = "axum-core"
 readme = "README.md"
