@@ -130,6 +130,7 @@ impl IntoResponse for ErasedJson {
 /// ```
 /// let response = axum_extra::json!(["trailing",]);
 /// ```
+#[cfg_attr(docsrs, doc(cfg(feature = "erased-json")))]
 #[macro_export]
 macro_rules! json {
     ($($t:tt)*) => {
