@@ -68,6 +68,7 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
 /// ```
 ///
 /// This macro is available only on rust versions 1.80 and above.
+#[cfg_attr(docsrs, doc(cfg(feature = "routing")))]
 #[rustversion::since(1.80)]
 #[macro_export]
 macro_rules! vpath {
