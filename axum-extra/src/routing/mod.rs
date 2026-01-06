@@ -38,7 +38,7 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
     }
 
     // Checks if we have a path in 107 format.
-    let size: usize = path.len();
+    let size: usize = path.len() - 1;
     let mut curr: usize = 0;
     let bytes = path.as_bytes();
     while curr < size {
