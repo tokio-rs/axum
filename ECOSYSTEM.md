@@ -24,7 +24,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-template](https://github.com/Altair-Bueno/axum-template): Layers, extractors and template engine wrappers for axum based Web MVC applications
 - [axum-template](https://github.com/janos-r/axum-template): GraphQL and REST API, SurrealDb, JWT auth, direct error handling, request logs
 - [axum-guard-logic](https://github.com/sjud/axum_guard_logic): Use AND/OR logic to extract types and check their values against `Service` inputs.
-- [axum-casbin-auth](https://github.com/casbin-rs/axum-casbin-auth): Casbin access control middleware for axum framework
+- [axum-casbin-auth](https://github.com/casbin-rs/axum-casbin-auth): Casbin access control middleware for axum
 - [aide](https://docs.rs/aide): Code-first Open API documentation generator with [axum integration](https://docs.rs/aide/latest/aide/axum/index.html).
 - [axum-typed-routing](https://docs.rs/axum-typed-routing/latest/axum_typed_routing/): Statically typed routing macros with OpenAPI generation using aide.
 - [axum-jsonschema](https://docs.rs/axum-jsonschema/): A `Json<T>` extractor that does JSON schema validation of requests.
@@ -115,7 +115,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 
 - [Rust on Nails](https://rust-on-nails.com/): A full stack architecture for Rust web applications
 - [axum-tutorial] ([website][axum-tutorial-website]): axum tutorial for beginners
-- [demo-rust-axum]: Demo of Rust and axum web framework
+- [demo-rust-axum]: Demo of Rust and axum
 - [Introduction to axum (talk)]: Talk about axum from the Copenhagen Rust Meetup
 - [Getting Started with Axum]: axum tutorial, GET, POST endpoints and serving files
 - [Using Rust, Axum, PostgreSQL, and Tokio to build a Blog]
