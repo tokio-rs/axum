@@ -1,4 +1,4 @@
-//! axum is a web application framework that focuses on ergonomics and modularity.
+//! axum is an HTTP routing and request-handling library that focuses on ergonomics and modularity.
 //!
 //! # High-level features
 //!
@@ -9,7 +9,7 @@
 //! - Take full advantage of the [`tower`] and [`tower-http`] ecosystem of
 //!   middleware, services, and utilities.
 //!
-//! In particular, the last point is what sets `axum` apart from other frameworks.
+//! In particular, the last point is what sets `axum` apart from other libraries / frameworks.
 //! `axum` doesn't have its own middleware system but instead uses
 //! [`tower::Service`]. This means `axum` gets timeouts, tracing, compression,
 //! authorization, and more, for free. It also enables you to share middleware with
