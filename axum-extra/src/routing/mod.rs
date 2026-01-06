@@ -43,7 +43,9 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
     let bytes = path.as_bytes();
     while curr < size {
         if bytes[curr] == b'/' && (bytes[curr + 1] == b'*' || bytes[curr + 1] == b':') {
-            panic!("You have a path with a deprecated format, move your ':var' or '*var' to '{{var}}'");
+            panic!(
+                "You have a path with a deprecated format, move your ':var' or '*var' to '{{var}}'"
+            );
         }
         curr += 1;
     }
