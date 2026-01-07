@@ -265,14 +265,16 @@ impl<F> WebSocketUpgrade<F> {
         self
     }
 
-    /// Return the WebSocket subprotocols requested by the client as an iterator of &str.
+    /// Return the WebSocket subprotocols requested by the client.
     ///
     /// # Examples
     ///
     /// If the client sends the following HTTP header in the WebSocket upgrade request:
+    ///
     /// ```txt
     /// Sec-WebSocket-Protocol: soap, wamp
     /// ```
+    ///
     /// this method returns an iterator yielding `"soap"` and `"wamp"`.
     pub fn requested_protocols(&self) -> impl Iterator<Item = &str> {
         self.sec_websocket_protocol
