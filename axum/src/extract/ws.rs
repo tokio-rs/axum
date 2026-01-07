@@ -265,11 +265,45 @@ impl<F> WebSocketUpgrade<F> {
         self
     }
 
+    /// Return the WebSocket subprotocols requested by the client.
+    ///
+    /// # Examples
+    ///
+    /// If the client sends the following HTTP header in the WebSocket upgrade request:
+    ///
+    /// ```txt
+    /// Sec-WebSocket-Protocol: soap, wamp
+    /// ```
+    ///
+    /// this method returns an iterator yielding `"soap"` and `"wamp"`.
+    pub fn requested_protocols(&self) -> impl Iterator<Item = &str> {
+        self.sec_websocket_protocol
+            .as_ref()
+            .and_then(|p| p.to_str().ok())
+            .into_iter()
+            .flat_map(|s| s.split(','))
+            .map(|s| s.trim())
+    }
+
+    /// Set the chosen WebSocket subprotocol.
+    ///
+    /// Another method, [`protocols()`][Self::protocols], also sets the chosen WebSocket
+    /// subprotocol. If both methods are called, only the latter call takes effect.
+    ///
+    /// # Notes
+    ///
+    /// - The chosen protocol is echoed back in the WebSocket upgrade
+    ///   response as required by RFC 6455. Some browsers may reject a
+    ///   value that was not present in the client's request.
+    pub fn set_selected_protocol(&mut self, protocol: HeaderValue) {
+        self.protocol = Some(protocol);
+    }
+
     /// Return the selected WebSocket subprotocol, if one has been chosen.
     ///
-    /// If [`protocols()`][Self::protocols] has been called and a matching
-    /// protocol has been selected, the return value will be `Some` containing
-    /// said protocol. Otherwise, it will be `None`.
+    /// If [`protocols()`][Self::protocols] selects a matching protocol, or
+    /// [`set_selected_protocol()`][Self::set_selected_protocol] has been called, the return
+    /// value will be `Some` containing the selected protocol. Otherwise, it will be `None`.
     pub fn selected_protocol(&self) -> Option<&HeaderValue> {
         self.protocol.as_ref()
     }
