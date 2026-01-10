@@ -244,8 +244,10 @@ jobs:
         with:
           tool: cargo-sort@2.0.2
       - name: Check dependency tables
-        run: |
-          cargo-sort --workspace --grouped --check
+        run: cargo-sort --workspace --grouped --check
+      - name: Check examples dependency tables
+        run: cargo-sort --workspace --grouped --check
+        working-directory: examples
 
   typos:
     name: Spell Check with Typos
