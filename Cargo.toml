@@ -11,7 +11,7 @@ exclude = [
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.78"
+rust-version = "1.80"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
