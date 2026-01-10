@@ -125,14 +125,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.MSRV }}
       - name: "install Rust nightly"
         uses: dtolnay/rust-toolchain@nightly
-      - uses: Swatinem/rust-cache@v2
-        with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Select minimal version
         run: cargo +nightly update -Z minimal-versions
       - name: Fix up Cargo.lock - crc32fast
@@ -141,6 +135,12 @@ jobs:
         run : cargo +nightly update -p version_check@0.1.0 --precise 0.1.4
       - name: Fix up Cargo.lock - lazy_static
         run: cargo +nightly update -p lazy_static --precise 1.1.0
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.MSRV }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Run tests
         run: >
           cargo +${{ env.MSRV }}
