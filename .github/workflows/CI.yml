@@ -142,25 +142,7 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Run tests
-        run: >
-          cargo +${{ env.MSRV }}
-          test
-          -p axum
-          -p axum-extra
-          -p axum-core
-          --all-features
-          --locked
-      # the compiler errors are different on our MSRV which makes
-      # the trybuild tests in axum-macros fail, so just run the doc
-      # tests
-      - name: Run axum-macros doc tests
-        run: >
-          cargo +${{ env.MSRV }}
-          test
-          -p axum-macros
-          --doc
-          --all-features
-          --locked
+        run: cargo +${{ env.MSRV }} test --locked --all-features
 
   test-docs:
     needs: check
@@ -205,16 +187,7 @@ jobs:
         env:
           # Clang has native cross-compilation support
           CC: clang
-        run: >
-          cargo
-          check
-          --all-targets
-          --all-features
-          -p axum
-          -p axum-core
-          -p axum-extra
-          -p axum-macros
-          --target armv5te-unknown-linux-musleabi
+        run: cargo check --all-targets --all-features --target armv5te-unknown-linux-musleabi
 
   wasm32-unknown-unknown:
     needs: check
