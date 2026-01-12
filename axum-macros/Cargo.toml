@@ -11,9 +11,6 @@ readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
 version = "0.5.0" # remember to also bump the version that axum and axum-extra depends on
 
-[package.metadata.cargo-public-api-crates]
-allowed = []
-
 [package.metadata.docs.rs]
 all-features = true
 
