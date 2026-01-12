@@ -49,6 +49,21 @@ default = [
     "tower-log",
     "tracing",
 ]
+full = [
+    "form",
+    "http1",
+    "http2",
+    "json",
+    "macros",
+    "matched-path",
+    "multipart",
+    "original-uri",
+    "query",
+    "tokio",
+    "tower-log",
+    "tracing",
+    "ws",
+]
 form = [
     "dep:form_urlencoded",
     "dep:serde_html_form",
