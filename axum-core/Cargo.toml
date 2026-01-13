@@ -29,6 +29,7 @@ ignored = ["tower-http"] # See __private_docs feature
 all-features = true
 
 [features]
+full = ["tracing"]
 tracing = ["dep:tracing"]
 
 # Required for intra-doc links to resolve correctly
