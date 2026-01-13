@@ -144,18 +144,6 @@ jobs:
       - name: Run tests
         run: cargo +${{ env.MSRV }} test --locked --all-features
 
-  test-docs:
-    needs: check
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Run doc tests
-        run: cargo test --locked --all-features --doc
-
   deny-check:
     name: cargo-deny check
     runs-on: ubuntu-24.04
