@@ -1,6 +1,6 @@
-use axum_core::extract::{FromRequest, Request};
+use axum_core::extract::{FromRequest, OptionalFromRequest, Request};
 use bytes::Bytes;
-use http::Method;
+use http::{header, Method};
 
 use super::{
     has_content_type,
@@ -36,7 +36,7 @@ where
     type Rejection = RawFormRejection;
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        if req.method() == Method::GET {
+        if req.method() == Method::GET || req.method() == Method::HEAD {
             if let Some(query) = req.uri().query() {
                 return Ok(Self(Bytes::copy_from_slice(query.as_bytes())));
             }
@@ -48,6 +48,34 @@ where
             }
 
             Ok(Self(Bytes::from_request(req, state).await?))
+        }
+    }
+}
+
+impl<S> OptionalFromRequest<S> for RawForm
+where
+    S: Send + Sync,
+{
+    type Rejection = RawFormRejection;
+
+    async fn from_request(req: Request, state: &S) -> Result<Option<Self>, Self::Rejection> {
+        if req.method() == Method::GET || req.method() == Method::HEAD {
+            if let Some(query) = req.uri().query() {
+                return Ok(Some(Self(Bytes::copy_from_slice(query.as_bytes()))));
+            }
+
+            Ok(None)
+        } else {
+            let headers = req.headers();
+            if headers.get(header::CONTENT_TYPE).is_some() {
+                if !has_content_type(headers, &mime::APPLICATION_WWW_FORM_URLENCODED) {
+                    return Err(InvalidFormContentType.into());
+                }
+
+                Ok(Some(Self(Bytes::from_request(req, state).await?)))
+            } else {
+                Ok(None)
+            }
         }
     }
 }
