@@ -171,6 +171,7 @@ dependencies = [
  "hyper",
  "mime",
  "pin-project-lite",
+ "serde",
  "sync_wrapper",
  "tokio",
  "tower-http",

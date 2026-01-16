@@ -4,6 +4,10 @@
 //!
 //! [`axum::response`]: https://docs.rs/axum/0.8/axum/response/index.html
 
+use std::convert::Infallible;
+
+use http::StatusCode;
+
 use crate::body::Body;
 
 mod append_headers;
@@ -126,5 +130,89 @@ where
 {
     fn from(value: T) -> Self {
         Self(value.into_response())
+    }
+}
+
+/// Response part that stops status code overrides.
+///
+/// This type should be used by types implementing [`IntoResponseParts`] or
+/// [`IntoResponse`] when they fail to produce the response usually expected of
+/// them and return some sort of error response instead.
+///
+/// It is checked used by the tuple impls of [`IntoResponse`] that have a
+/// [`StatusCode`] as their first element to ignore that status code.
+/// Consider the following example:
+///
+/// ```no_run
+/// # use axum::Json;
+/// # use http::StatusCode;
+/// # #[derive(serde::Serialize)]
+/// # struct CreatedResponse { }
+/// fn my_handler(/* ... */) -> (StatusCode, Json<CreatedResponse>) {
+///     // This response type's serialization may fail
+///     let response = CreatedResponse { /* ... */ };
+///     (StatusCode::CREATED, Json(response))
+/// }
+/// ```
+///
+/// When `response` serialization succeeds, the server responds with a status
+/// code of 201 Created (overwriting `Json`s default status code of 200 OK),
+/// and the expected JSON payload.
+///
+/// When `response` serialization fails hoewever, `impl IntoResponse for Json`
+/// return a response with status code 500 Internal Server Error, and
+/// `IntoResponseFailed` as a response extension, and the 201 Created override
+/// is ignored.
+///
+/// This is a behavior introduced with axum 0.9.\
+/// To force a status code override even when an inner [`IntoResponseParts`] /
+/// [`IntoResponse`] failed, use [`ForceStatusCode`].
+#[derive(Copy, Clone, Debug)]
+pub struct IntoResponseFailed;
+
+impl IntoResponseParts for IntoResponseFailed {
+    type Error = Infallible;
+
+    fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+        res.extensions_mut().insert(self);
+        Ok(res)
+    }
+}
+
+/// Not sure it makes sense to return `IntoResponseFailed` as the whole response. You should
+/// probably at least combine it with a status code.
+///
+/// ```compile_fail
+/// fn foo()
+/// where
+///     axum_core::response::IntoResponseFailed: axum_core::response::IntoResponse,
+/// {}
+/// ```
+#[allow(dead_code)]
+fn into_response_failed_doesnt_impl_into_response() {}
+
+/// Set the status code regardless of whether [`IntoResponseFailed`] is used or not.
+///
+/// See the docs for [`IntoResponseFailed`] for more details.
+#[derive(Debug, Copy, Clone, Default)]
+pub struct ForceStatusCode(pub StatusCode);
+
+impl IntoResponse for ForceStatusCode {
+    fn into_response(self) -> Response {
+        let mut res = ().into_response();
+        *res.status_mut() = self.0;
+        res
+    }
+}
+
+impl<R> IntoResponse for (ForceStatusCode, R)
+where
+    R: IntoResponse,
+{
+    fn into_response(self) -> Response {
+        let (ForceStatusCode(status), res) = self;
+        let mut res = res.into_response();
+        *res.status_mut() = status;
+        res
     }
 }
