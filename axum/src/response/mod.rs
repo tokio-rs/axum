@@ -19,7 +19,8 @@ pub use crate::Extension;
 
 #[doc(inline)]
 pub use axum_core::response::{
-    AppendHeaders, ErrorResponse, IntoResponse, IntoResponseParts, Response, ResponseParts, Result,
+    AppendHeaders, ErrorResponse, IntoResponse, IntoResponseFailed, IntoResponseParts, Response,
+    ResponseParts, Result,
 };
 
 #[doc(inline)]
@@ -85,10 +86,16 @@ impl IntoResponse for NoContent {
 #[cfg(test)]
 mod tests {
     use crate::extract::Extension;
+    use crate::test_helpers::*;
+    use crate::Json;
     use crate::{routing::get, Router};
-    use axum_core::response::IntoResponse;
+    use axum_core::response::ForceStatusCode;
+    use axum_core::response::{
+        IntoResponse, IntoResponseFailed, IntoResponseParts, Response, ResponseParts,
+    };
     use http::HeaderMap;
     use http::{StatusCode, Uri};
+    use std::collections::HashMap;
 
     // just needs to compile
     #[allow(dead_code)]
@@ -245,6 +252,287 @@ mod tests {
             .route("/", get(header_array_impl_into_response))
             .route("/", get(header_array_extension_body))
             .route("/", get(header_array_extension_mixed_body));
+    }
+
+    #[test]
+    fn status_code_tuple_doesnt_override_error() {
+        // sanity check where there is just one status code
+        assert_eq!(
+            StatusCode::INTERNAL_SERVER_ERROR.into_response().status(),
+            StatusCode::INTERNAL_SERVER_ERROR
+        );
+        assert_eq!(
+            (StatusCode::INTERNAL_SERVER_ERROR,)
+                .into_response()
+                .status(),
+            StatusCode::INTERNAL_SERVER_ERROR
+        );
+
+        // non-5xx status should be changed
+        assert_eq!(
+            (StatusCode::SEE_OTHER, StatusCode::NO_CONTENT)
+                .into_response()
+                .status(),
+            StatusCode::SEE_OTHER
+        );
+        let res = (
+            StatusCode::SEE_OTHER,
+            [("location", "foo")],
+            StatusCode::NO_CONTENT,
+        )
+            .into_response();
+        assert_eq!(res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(res.headers()["location"], "foo");
+
+        // 5xx status codes are also changed
+        assert_eq!(
+            (StatusCode::SEE_OTHER, StatusCode::INTERNAL_SERVER_ERROR)
+                .into_response()
+                .status(),
+            StatusCode::SEE_OTHER
+        );
+        let res = (
+            StatusCode::SEE_OTHER,
+            [("location", "foo")],
+            StatusCode::INTERNAL_SERVER_ERROR,
+        )
+            .into_response();
+        assert_eq!(res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(res.headers()["location"], "foo");
+
+        // the status is not changed if `IntoResponseFailed` is used
+        assert_eq!(
+            (
+                StatusCode::SEE_OTHER,
+                (IntoResponseFailed, StatusCode::INTERNAL_SERVER_ERROR)
+            )
+                .into_response()
+                .status(),
+            StatusCode::INTERNAL_SERVER_ERROR
+        );
+        let res = (
+            StatusCode::SEE_OTHER,
+            [("location", "foo")],
+            (IntoResponseFailed, StatusCode::INTERNAL_SERVER_ERROR),
+        )
+            .into_response();
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(res.headers().get("location").is_none());
+
+        // response parts from the inner response do run
+        let res = (
+            // with status override
+            StatusCode::SEE_OTHER,
+            [("location", "foo")],
+            (
+                [("x-bar", "bar")],
+                IntoResponseFailed,
+                [("x-foo", "foo")],
+                StatusCode::INTERNAL_SERVER_ERROR,
+            ),
+        )
+            .into_response();
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(res.headers().get("location").is_none());
+        assert_eq!(res.headers()["x-foo"], "foo");
+        assert_eq!(res.headers()["x-bar"], "bar");
+
+        let res = (
+            // without status override
+            [("location", "foo")],
+            (
+                [("x-bar", "bar")],
+                IntoResponseFailed,
+                [("x-foo", "foo")],
+                StatusCode::INTERNAL_SERVER_ERROR,
+            ),
+        )
+            .into_response();
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(res.headers().get("location").is_none());
+        assert_eq!(res.headers()["x-foo"], "foo");
+        assert_eq!(res.headers()["x-bar"], "bar");
+
+        // (Parts, ...)
+        let res = (
+            Response::new(()).into_parts().0,
+            [("location", "foo")],
+            (
+                [("x-bar", "bar")],
+                IntoResponseFailed,
+                [("x-foo", "foo")],
+                StatusCode::INTERNAL_SERVER_ERROR,
+            ),
+        )
+            .into_response();
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(res.headers().get("location").is_none());
+        assert_eq!(res.headers()["x-foo"], "foo");
+        assert_eq!(res.headers()["x-bar"], "bar");
+
+        // (Response<()>, ...)
+        let res = (
+            Response::new(()),
+            [("location", "foo")],
+            (
+                [("x-bar", "bar")],
+                IntoResponseFailed,
+                [("x-foo", "foo")],
+                StatusCode::INTERNAL_SERVER_ERROR,
+            ),
+        )
+            .into_response();
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(res.headers().get("location").is_none());
+        assert_eq!(res.headers()["x-foo"], "foo");
+        assert_eq!(res.headers()["x-bar"], "bar");
+    }
+
+    #[test]
+    fn into_response_parts_failing_sets_extension() {
+        struct Fail;
+
+        impl IntoResponseParts for Fail {
+            type Error = ();
+
+            fn into_response_parts(
+                self,
+                _res: ResponseParts,
+            ) -> Result<ResponseParts, Self::Error> {
+                Err(())
+            }
+        }
+
+        impl IntoResponse for Fail {
+            fn into_response(self) -> Response {
+                (self, ()).into_response()
+            }
+        }
+
+        assert!(Fail
+            .into_response()
+            .extensions()
+            .get::<IntoResponseFailed>()
+            .is_some());
+
+        assert!((StatusCode::INTERNAL_SERVER_ERROR, Fail, ())
+            .into_response()
+            .extensions()
+            .get::<IntoResponseFailed>()
+            .is_some());
+
+        assert!((Response::new(()).into_parts().0, Fail, ())
+            .into_response()
+            .extensions()
+            .get::<IntoResponseFailed>()
+            .is_some());
+
+        assert!((Response::new(()), Fail, ())
+            .into_response()
+            .extensions()
+            .get::<IntoResponseFailed>()
+            .is_some());
+    }
+
+    #[test]
+    fn doenst_override_status_code_when_using_into_response_failed_at_same_level() {
+        assert_eq!(
+            (StatusCode::INTERNAL_SERVER_ERROR, IntoResponseFailed, ())
+                .into_response()
+                .status(),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        );
+
+        #[derive(Clone)]
+        struct Thing;
+
+        let res = (
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .header("x-foo", "foo")
+                .extension(Thing)
+                .body(())
+                .unwrap()
+                .into_parts()
+                .0,
+            IntoResponseFailed,
+            (),
+        )
+            .into_response();
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(res.headers()["x-foo"], "foo");
+        assert!(res.extensions().get::<Thing>().is_some());
+
+        // just a sanity check
+        assert_eq!(
+            (IntoResponseFailed, ()).into_response().status(),
+            StatusCode::OK,
+        );
+    }
+
+    #[test]
+    fn force_overriding_status_code() {
+        assert_eq!(
+            ForceStatusCode(StatusCode::IM_A_TEAPOT)
+                .into_response()
+                .status(),
+            StatusCode::IM_A_TEAPOT
+        );
+
+        assert_eq!(
+            (ForceStatusCode(StatusCode::IM_A_TEAPOT),)
+                .into_response()
+                .status(),
+            StatusCode::IM_A_TEAPOT
+        );
+
+        assert_eq!(
+            (ForceStatusCode(StatusCode::IM_A_TEAPOT), ())
+                .into_response()
+                .status(),
+            StatusCode::IM_A_TEAPOT
+        );
+
+        assert_eq!(
+            (
+                ForceStatusCode(StatusCode::IM_A_TEAPOT),
+                IntoResponseFailed,
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+                .into_response()
+                .status(),
+            StatusCode::IM_A_TEAPOT
+        );
+    }
+
+    #[crate::test]
+    async fn status_code_tuple_doesnt_override_error_json() {
+        let app = Router::new()
+            .route(
+                "/",
+                get(|| async {
+                    let not_json_compatible = HashMap::from([(Vec::from([1, 2, 3]), 123)]);
+                    (StatusCode::IM_A_TEAPOT, Json(not_json_compatible))
+                }),
+            )
+            .route(
+                "/two",
+                get(|| async {
+                    let not_json_compatible = HashMap::from([(Vec::from([1, 2, 3]), 123)]);
+                    (
+                        ForceStatusCode(StatusCode::IM_A_TEAPOT),
+                        Json(not_json_compatible),
+                    )
+                }),
+            );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/").await;
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let res = client.get("/two").await;
+        assert_eq!(res.status(), StatusCode::IM_A_TEAPOT);
     }
 
     #[test]
