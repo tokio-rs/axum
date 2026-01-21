@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning].
 
 - **breaking:** Remove the deprecated `Host`, `Scheme` and `OptionalPath`
   extractors ([#3599])
+  - Also remove `HostRejection` which only had `FailedToResolveHost`
+    previously used in the `Host` extractor ([#3636])
 - **breaking:** Change `routing::RouterExt::route_with_tsr` to only redirect
   the HTTP methods that the supplied `MethodRouter` handles. This allows the
   following pattern which lead to a panic before because the two
