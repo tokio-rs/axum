@@ -9,6 +9,7 @@ use tracing::error;
 /// the `IntoResponse` trait itself. Error details are logged using [`tracing::error!`]
 /// and a generic `500 Internal Server Error` response is returned to the client without
 /// exposing error details.
+///
 /// ```rust
 /// use axum_extra::response::InternalServerError;
 /// use axum_core::response::IntoResponse;
