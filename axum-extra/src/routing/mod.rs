@@ -379,7 +379,7 @@ where
         });
 
         if let Some(new_uri) = new_uri {
-            Redirect::permanent(&new_uri.to_string()).into_response()
+            Redirect::permanent(new_uri.to_string()).into_response()
         } else {
             StatusCode::BAD_REQUEST.into_response()
         }
