@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
 - **changed:** Update minimum rust version to 1.80 ([#3620])
+- **changed:** `Redirect` constructors now accept any `impl Into<String>` ([#3635])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
