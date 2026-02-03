@@ -50,7 +50,7 @@ async fn main() {
         .await
         .unwrap();
     tracing::debug!("Listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app(client)).await.unwrap();
+    axum::serve(listener, app(client)).await;
 }
 
 // defining routes and state

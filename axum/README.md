@@ -1,6 +1,6 @@
 # axum
 
-`axum` is a web application framework that focuses on ergonomics and modularity.
+`axum` is an HTTP routing and request-handling library that focuses on ergonomics and modularity.
 
 [![Build status](https://github.com/tokio-rs/axum/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/tokio-rs/axum/actions/workflows/CI.yml)
 [![Crates.io](https://img.shields.io/crates/v/axum)](https://crates.io/crates/axum)
@@ -17,7 +17,7 @@ More information about this crate can be found in the [crate documentation][docs
 - Take full advantage of the [`tower`] and [`tower-http`] ecosystem of
   middleware, services, and utilities.
 
-In particular the last point is what sets `axum` apart from other frameworks.
+In particular the last point is what sets `axum` apart from other libraries / frameworks.
 `axum` doesn't have its own middleware system but instead uses
 [`tower::Service`]. This means `axum` gets timeouts, tracing, compression,
 authorization, and more, for free. It also enables you to share middleware with
@@ -54,7 +54,7 @@ async fn main() {
 
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app).await;
 }
 
 // basic handler that responds with a static string
@@ -111,7 +111,7 @@ This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in
 
 ## Minimum supported Rust version
 
-axum's MSRV is 1.78.
+axum's MSRV is 1.80.
 
 ## Examples
 

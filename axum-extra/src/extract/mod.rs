@@ -1,11 +1,5 @@
 //! Additional extractors.
 
-mod host;
-pub mod rejection;
-
-#[cfg(feature = "optional-path")]
-mod optional_path;
-
 #[cfg(feature = "cached")]
 mod cached;
 
@@ -27,15 +21,6 @@ mod query;
 #[cfg(feature = "multipart")]
 pub mod multipart;
 
-#[cfg(feature = "scheme")]
-mod scheme;
-
-#[allow(deprecated)]
-#[cfg(feature = "optional-path")]
-pub use self::optional_path::OptionalPath;
-
-pub use self::host::Host;
-
 #[cfg(feature = "cached")]
 pub use self::cached::Cached;
 
@@ -52,19 +37,17 @@ pub use self::cookie::PrivateCookieJar;
 pub use self::cookie::SignedCookieJar;
 
 #[cfg(feature = "form")]
+#[allow(deprecated)]
 pub use self::form::{Form, FormRejection};
 
 #[cfg(feature = "query")]
 pub use self::query::OptionalQuery;
 #[cfg(feature = "query")]
+#[allow(deprecated)]
 pub use self::query::{OptionalQueryRejection, Query, QueryRejection};
 
 #[cfg(feature = "multipart")]
 pub use self::multipart::Multipart;
-
-#[cfg(feature = "scheme")]
-#[doc(no_inline)]
-pub use self::scheme::{Scheme, SchemeMissing};
 
 #[cfg(feature = "json-deserializer")]
 pub use self::json_deserializer::{

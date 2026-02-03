@@ -4,22 +4,22 @@ description = "Core types and traits for axum"
 edition = "2021"
 rust-version = { workspace = true }
 homepage = "https://github.com/tokio-rs/axum"
-keywords = ["http", "web", "framework"]
+keywords = ["http", "web", "routing"]
 license = "MIT"
 name = "axum-core"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.5.5" # remember to bump the version that axum and axum-extra depend on
+version = "0.5.6" # remember to bump the version that axum and axum-extra depend on
 
-[package.metadata.cargo-public-api-crates]
-allowed = [
+[package.metadata.cargo_check_external_types]
+allowed_external_types = [
     # not 1.0
-    "futures_core",
-    "tower_layer",
+    "futures_core::*",
+    "tower_layer::*",
     # >=1.0
-    "bytes",
-    "http",
-    "http_body",
+    "bytes::*",
+    "http::*",
+    "http_body::*",
 ]
 
 [package.metadata.cargo-machete]
@@ -55,6 +55,7 @@ axum = { path = "../axum", features = ["__private"] }
 axum-extra = { path = "../axum-extra", features = ["typed-header"] }
 axum-macros = { path = "../axum-macros", features = ["__private"] }
 hyper = "1.0.0"
+serde = { version = "1.0.200", features = ["derive"] }
 tokio = { version = "1.25.0", features = ["macros"] }
 tower-http = { version = "0.6.0", features = ["limit"] }
 

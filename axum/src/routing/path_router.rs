@@ -174,7 +174,7 @@ where
         path_to_nest_at: &str,
         router: Self,
     ) -> Result<(), Cow<'static, str>> {
-        let prefix = validate_nest_path(self.v7_checks, path_to_nest_at);
+        let prefix = validate_nest_path(self.v7_checks, path_to_nest_at)?;
 
         let Self {
             routes,
@@ -219,7 +219,7 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        let path = validate_nest_path(self.v7_checks, path_to_nest_at);
+        let path = validate_nest_path(self.v7_checks, path_to_nest_at)?;
         let prefix = path;
 
         let path = if path.ends_with('/') {
@@ -442,22 +442,25 @@ impl fmt::Debug for Node {
     }
 }
 
-#[track_caller]
-fn validate_nest_path(v7_checks: bool, path: &str) -> &str {
-    assert!(path.starts_with('/'));
-    assert!(path.len() > 1);
+fn validate_nest_path(v7_checks: bool, path: &str) -> Result<&str, &'static str> {
+    if !path.starts_with('/') {
+        return Err("Nesting paths must start with a `/`.");
+    }
+    if path.len() < 2 {
+        return Err("Nesting at `/` is not supported.");
+    }
 
     if path.split('/').any(|segment| {
         segment.starts_with("{*") && segment.ends_with('}') && !segment.ends_with("}}")
     }) {
-        panic!("Invalid route: nested routes cannot contain wildcards (*)");
+        return Err("Invalid route: nested routes cannot contain wildcards (*)");
     }
 
     if v7_checks {
-        validate_v07_paths(path).unwrap();
+        validate_v07_paths(path)?;
     }
 
-    path
+    Ok(path)
 }
 
 pub(crate) fn path_for_nested_route<'a>(prefix: &'a str, path: &'a str) -> Cow<'a, str> {

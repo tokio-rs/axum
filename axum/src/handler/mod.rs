@@ -204,6 +204,7 @@ pub trait Handler<T, S>: Clone + Send + Sync + Sized + 'static {
     }
 }
 
+#[diagnostic::do_not_recommend]
 impl<F, Fut, Res, S> Handler<((),), S> for F
 where
     F: FnOnce() -> Fut + Clone + Send + Sync + 'static,
@@ -221,6 +222,7 @@ macro_rules! impl_handler {
     (
         [$($ty:ident),*], $last:ident
     ) => {
+        #[diagnostic::do_not_recommend]
         #[allow(non_snake_case, unused_mut)]
         impl<F, Fut, S, Res, M, $($ty,)* $last> Handler<(M, $($ty,)* $last,), S> for F
         where
@@ -265,6 +267,7 @@ mod private {
     pub enum IntoResponseHandler {}
 }
 
+#[diagnostic::do_not_recommend]
 impl<T, S> Handler<private::IntoResponseHandler, S> for T
 where
     T: IntoResponse + Clone + Send + Sync + 'static,
@@ -310,6 +313,7 @@ where
     }
 }
 
+#[diagnostic::do_not_recommend]
 impl<H, S, T, L> Handler<T, S> for Layered<L, H, T, S>
 where
     L: Layer<HandlerService<H, T, S>> + Clone + Send + Sync + 'static,

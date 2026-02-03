@@ -438,7 +438,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 ///     let app = Router::new().route("/", get(handler));
 ///
 ///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-///     axum::serve(listener, app).await.unwrap();
+///     axum::serve(listener, app).await;
 /// }
 ///
 /// fn handler() -> &'static str {
@@ -458,7 +458,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// #     let app = Router::new().route("/", get(handler));
 /// #
 /// #     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-/// #     axum::serve(listener, app).await.unwrap();
+/// #     axum::serve(listener, app).await;
 /// # }
 /// #
 /// #[debug_handler]
@@ -485,7 +485,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 ///     let app = Router::new().route("/", get(handler));
 ///
 ///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-///     axum::serve(listener, app).await.unwrap();
+///     axum::serve(listener, app).await;
 /// }
 ///
 /// #[debug_handler]
@@ -607,7 +607,7 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 ///         .layer(middleware::from_fn(my_middleware));
 ///
 ///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-///     axum::serve(listener, app).await.unwrap();
+///     axum::serve(listener, app).await;
 /// }
 ///
 /// // if this wasn't a valid middleware function #[debug_middleware] would

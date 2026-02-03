@@ -200,7 +200,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/nest.md")]
-    #[doc(alias = "scope")] // Some web frameworks like actix-web use this term
+    #[doc(alias = "scope")] // Some other libs like actix-web use this term
     #[track_caller]
     pub fn nest(self, path: &str, router: Self) -> Self {
         if path.is_empty() || path == "/" {
@@ -532,7 +532,7 @@ impl Router {
     ///
     /// # async {
     /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    /// axum::serve(listener, app).await.unwrap();
+    /// axum::serve(listener, app).await;
     /// # };
     /// ```
     ///
@@ -739,6 +739,10 @@ where
                 route.oneshot_inner_owned(req)
             }
         }
+    }
+
+    fn is_default(&self) -> bool {
+        matches!(self, Self::Default(..))
     }
 }
 

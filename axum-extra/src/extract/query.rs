@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use axum_core::__composite_rejection as composite_rejection;
 use axum_core::__define_rejection as define_rejection;
 use axum_core::extract::FromRequestParts;
@@ -8,72 +10,16 @@ use serde_core::de::DeserializeOwned;
 ///
 /// `T` is expected to implement [`serde::Deserialize`].
 ///
-/// # Differences from `axum::extract::Query`
+/// # Deprecated
 ///
-/// This extractor uses [`serde_html_form`] under-the-hood which supports multi-value items. These
-/// are sent by multiple `<input>` attributes of the same name (e.g. checkboxes) and `<select>`s
-/// with the `multiple` attribute. Those values can be collected into a `Vec` or other sequential
-/// container.
+/// This extractor used to use a different deserializer under-the-hood but that
+/// is no longer the case. Now it only uses an older version of the same
+/// deserializer, purely for ease of transition to the latest version.
+/// Before switching to `axum::extract::Form`, it is recommended to read the
+/// [changelog for `serde_html_form v0.3.0`][changelog].
 ///
-/// # Example
-///
-/// ```rust,no_run
-/// use axum::{routing::get, Router};
-/// use axum_extra::extract::Query;
-/// use serde::Deserialize;
-///
-/// #[derive(Deserialize)]
-/// struct Pagination {
-///     page: usize,
-///     per_page: usize,
-/// }
-///
-/// // This will parse query strings like `?page=2&per_page=30` into `Pagination`
-/// // structs.
-/// async fn list_things(pagination: Query<Pagination>) {
-///     let pagination: Pagination = pagination.0;
-///
-///     // ...
-/// }
-///
-/// let app = Router::new().route("/list_things", get(list_things));
-/// # let _: Router = app;
-/// ```
-///
-/// If the query string cannot be parsed it will reject the request with a `400
-/// Bad Request` response.
-///
-/// For handling values being empty vs missing see the [query-params-with-empty-strings][example]
-/// example.
-///
-/// [example]: https://github.com/tokio-rs/axum/blob/main/examples/query-params-with-empty-strings/src/main.rs
-///
-/// While `Option<T>` will handle empty parameters (e.g. `param=`), beware when using this with a
-/// `Vec<T>`. If your list is optional, use `Vec<T>` in combination with `#[serde(default)]`
-/// instead of `Option<Vec<T>>`. `Option<Vec<T>>` will handle 0, 2, or more arguments, but not one
-/// argument.
-///
-/// # Example
-///
-/// ```rust,no_run
-/// use axum::{routing::get, Router};
-/// use axum_extra::extract::Query;
-/// use serde::Deserialize;
-///
-/// #[derive(Deserialize)]
-/// struct Params {
-///     #[serde(default)]
-///     items: Vec<usize>,
-/// }
-///
-/// // This will parse 0 occurrences of `items` as an empty `Vec`.
-/// async fn process_items(Query(params): Query<Params>) {
-///     // ...
-/// }
-///
-/// let app = Router::new().route("/process_items", get(process_items));
-/// # let _: Router = app;
-/// ```
+/// [changelog]: https://github.com/jplatte/serde_html_form/blob/main/CHANGELOG.md#030
+#[deprecated = "see documentation"]
 #[cfg_attr(docsrs, doc(cfg(feature = "query")))]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Query<T>(pub T);
@@ -140,6 +86,7 @@ composite_rejection! {
     /// Rejection used for [`Query`].
     ///
     /// Contains one variant for each way the [`Query`] extractor can fail.
+    #[deprecated = "because Query is deprecated"]
     pub enum QueryRejection {
         FailedToDeserializeQueryString,
     }
@@ -147,7 +94,7 @@ composite_rejection! {
 
 /// Extractor that deserializes query strings into `None` if no query parameters are present.
 ///
-/// Otherwise behaviour is identical to [`Query`].
+/// Otherwise behaviour is identical to [`Query`][axum::extract::Query].
 /// `T` is expected to implement [`serde::Deserialize`].
 ///
 /// # Example
@@ -179,11 +126,6 @@ composite_rejection! {
 ///
 /// If the query string cannot be parsed it will reject the request with a `400
 /// Bad Request` response.
-///
-/// For handling values being empty vs missing see the [query-params-with-empty-strings][example]
-/// example.
-///
-/// [example]: https://github.com/tokio-rs/axum/blob/main/examples/query-params-with-empty-strings/src/main.rs
 #[cfg_attr(docsrs, doc(cfg(feature = "query")))]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct OptionalQuery<T>(pub Option<T>);

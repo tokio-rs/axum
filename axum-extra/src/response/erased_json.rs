@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use axum_core::response::{IntoResponse, Response};
+use axum_core::response::{IntoResponse, IntoResponseFailed, Response};
 use bytes::{BufMut, Bytes, BytesMut};
 use http::{header, HeaderValue, StatusCode};
 use serde_core::Serialize;
@@ -78,7 +78,12 @@ impl IntoResponse for ErasedJson {
                 bytes,
             )
                 .into_response(),
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                IntoResponseFailed,
+                err.to_string(),
+            )
+                .into_response(),
         }
     }
 }
@@ -130,6 +135,7 @@ impl IntoResponse for ErasedJson {
 /// ```
 /// let response = axum_extra::json!(["trailing",]);
 /// ```
+#[cfg_attr(docsrs, doc(cfg(feature = "erased-json")))]
 #[macro_export]
 macro_rules! json {
     ($($t:tt)*) => {

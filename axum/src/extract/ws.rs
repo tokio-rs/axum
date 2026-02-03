@@ -106,8 +106,10 @@ use hyper_util::rt::TokioIo;
 use sha1::{Digest, Sha1};
 use std::{
     borrow::Cow,
+    collections::BTreeSet,
     future::Future,
     pin::Pin,
+    str,
     task::{ready, Context, Poll},
 };
 use tokio_tungstenite::{
@@ -137,7 +139,7 @@ pub struct WebSocketUpgrade<F = DefaultOnFailedUpgrade> {
     sec_websocket_key: Option<HeaderValue>,
     on_upgrade: hyper::upgrade::OnUpgrade,
     on_failed_upgrade: F,
-    sec_websocket_protocol: Option<HeaderValue>,
+    sec_websocket_protocol: BTreeSet<HeaderValue>,
 }
 
 impl<F> std::fmt::Debug for WebSocketUpgrade<F> {
@@ -241,35 +243,61 @@ impl<F> WebSocketUpgrade<F> {
         I: IntoIterator,
         I::Item: Into<Cow<'static, str>>,
     {
-        if let Some(req_protocols) = self
-            .sec_websocket_protocol
-            .as_ref()
-            .and_then(|p| p.to_str().ok())
-        {
-            self.protocol = protocols
-                .into_iter()
-                // FIXME: This will often allocate a new `String` and so is less efficient than it
-                // could be. But that can't be fixed without breaking changes to the public API.
-                .map(Into::into)
-                .find(|protocol| {
-                    req_protocols
-                        .split(',')
-                        .any(|req_protocol| req_protocol.trim() == protocol)
-                })
-                .map(|protocol| match protocol {
-                    Cow::Owned(s) => HeaderValue::from_str(&s).unwrap(),
-                    Cow::Borrowed(s) => HeaderValue::from_static(s),
-                });
-        }
+        self.protocol = protocols
+            .into_iter()
+            .map(Into::into)
+            .find(|proto| {
+                // FIXME: When https://github.com/hyperium/http/pull/814
+                //        is merged + released, we can look use
+                //        `contains(proto.as_bytes())` without converting
+                //        to `HeaderValue` first.
+                let Ok(proto) = HeaderValue::from_str(proto) else {
+                    return false;
+                };
+                self.sec_websocket_protocol.contains(&proto)
+            })
+            .map(|protocol| match protocol {
+                Cow::Owned(s) => HeaderValue::from_str(&s).unwrap(),
+                Cow::Borrowed(s) => HeaderValue::from_static(s),
+            });
 
         self
     }
 
+    /// Return the WebSocket subprotocols requested by the client.
+    ///
+    /// # Examples
+    ///
+    /// If the client sends the following HTTP header in the WebSocket upgrade request:
+    ///
+    /// ```txt
+    /// Sec-WebSocket-Protocol: soap, wamp
+    /// ```
+    ///
+    /// this method returns an iterator yielding `"soap"` and `"wamp"`.
+    pub fn requested_protocols(&self) -> impl Iterator<Item = &HeaderValue> {
+        self.sec_websocket_protocol.iter()
+    }
+
+    /// Set the chosen WebSocket subprotocol.
+    ///
+    /// Another method, [`protocols()`][Self::protocols], also sets the chosen WebSocket
+    /// subprotocol. If both methods are called, only the latter call takes effect.
+    ///
+    /// # Notes
+    ///
+    /// - The chosen protocol is echoed back in the WebSocket upgrade
+    ///   response as required by RFC 6455. Some browsers may reject a
+    ///   value that was not present in the client's request.
+    pub fn set_selected_protocol(&mut self, protocol: HeaderValue) {
+        self.protocol = Some(protocol);
+    }
+
     /// Return the selected WebSocket subprotocol, if one has been chosen.
     ///
-    /// If [`protocols()`][Self::protocols] has been called and a matching
-    /// protocol has been selected, the return value will be `Some` containing
-    /// said protocol. Otherwise, it will be `None`.
+    /// If [`protocols()`][Self::protocols] selects a matching protocol, or
+    /// [`set_selected_protocol()`][Self::set_selected_protocol] has been called, the return
+    /// value will be `Some` containing the selected protocol. Otherwise, it will be `None`.
     pub fn selected_protocol(&self) -> Option<&HeaderValue> {
         self.protocol.as_ref()
     }
@@ -466,7 +494,16 @@ where
             .remove::<hyper::upgrade::OnUpgrade>()
             .ok_or(ConnectionNotUpgradable)?;
 
-        let sec_websocket_protocol = parts.headers.get(header::SEC_WEBSOCKET_PROTOCOL).cloned();
+        let sec_websocket_protocol = parts
+            .headers
+            .get_all(header::SEC_WEBSOCKET_PROTOCOL)
+            .iter()
+            .flat_map(|val| val.as_bytes().split(|&b| b == b','))
+            .map(|proto| {
+                HeaderValue::from_bytes(proto.trim_ascii())
+                    .expect("substring of HeaderValue is valid HeaderValue")
+            })
+            .collect();
 
         Ok(Self {
             config: Default::default(),

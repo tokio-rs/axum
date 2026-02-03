@@ -11,15 +11,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** `#[from_request(via(Extractor))]` now uses the extractor's
   rejection type instead of `axum::response::Response` ([#3261])
 - **breaking:** `axum::serve` now applies hyper's default `header_read_timeout` ([#3478])
+- **breaking:** `axum::serve` future output type has been adjusted to remove `io::Result`
+  (never returned `Err`) and be an uninhabited type if `with_graceful_shutdown` is not used
+  (because it was already never terminating if that method wasn't used) ([#3601])
 - **added:** New `ListenerExt::limit_connections` allows limiting concurrent `axum::serve` connections ([#3489])
+- **added:** `MethodRouter::method_filter` ([#3586])
+- **added:** `WebSocketUpgrade::{requested_protocols, set_selected_protocol}` for more
+  flexible subprotocol selection ([#3597])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
+- **changed:** Update minimum rust version to 1.80 ([#3620])
+- **changed:** `Redirect` constructors now accept any `impl Into<String>` ([#3635])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
 [#3205]: https://github.com/tokio-rs/axum/pull/3205
 [#3478]: https://github.com/tokio-rs/axum/pull/3478
+[#3601]: https://github.com/tokio-rs/axum/pull/3601
 [#3489]: https://github.com/tokio-rs/axum/pull/3489
+[#3586]: https://github.com/tokio-rs/axum/pull/3586
+[#3597]: https://github.com/tokio-rs/axum/pull/3597
+[#3620]: https://github.com/tokio-rs/axum/pull/3620
+
+# 0.8.8
+
+- Clarify documentation for `Router::route_layer` ([#3567])
+
+[#3567]: https://github.com/tokio-rs/axum/pull/3567
 
 # 0.8.7
 

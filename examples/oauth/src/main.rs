@@ -77,7 +77,7 @@ async fn main() {
             .unwrap()
     );
 
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app).await;
 }
 
 #[derive(Clone)]
@@ -270,15 +270,16 @@ async fn login_authorized(
 ) -> Result<impl IntoResponse, AppError> {
     csrf_token_validation_workflow(&query, &cookies, &store).await?;
 
+    let client = reqwest::Client::new();
+
     // Get an auth token
     let token = oauth_client
         .exchange_code(AuthorizationCode::new(query.code.clone()))
-        .request_async(&reqwest::Client::new())
+        .request_async(&client)
         .await
         .context("failed in sending request request to authorization server")?;
 
     // Fetch user data from discord
-    let client = reqwest::Client::new();
     let user_data: User = client
         // https://discord.com/developers/docs/resources/user#get-current-user
         .get("https://discordapp.com/api/users/@me")

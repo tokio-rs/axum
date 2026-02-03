@@ -3,7 +3,7 @@
 use axum::{
     extract::{OriginalUri, Request},
     response::{IntoResponse, Redirect, Response},
-    routing::{any, MethodRouter},
+    routing::{any, on, MethodFilter, MethodRouter},
     Router,
 };
 use http::{uri::PathAndQuery, StatusCode, Uri};
@@ -68,6 +68,7 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
 /// ```
 ///
 /// This macro is available only on rust versions 1.80 and above.
+#[cfg_attr(docsrs, doc(cfg(feature = "routing")))]
 #[rustversion::since(1.80)]
 #[macro_export]
 macro_rules! vpath {
@@ -336,8 +337,9 @@ where
         Self: Sized,
     {
         validate_tsr_path(path);
+        let method_filter = method_router.method_filter();
         self = self.route(path, method_router);
-        add_tsr_redirect_route(self, path)
+        add_tsr_redirect_route(self, path, method_filter)
     }
 
     #[track_caller]
@@ -350,7 +352,7 @@ where
     {
         validate_tsr_path(path);
         self = self.route_service(path, service);
-        add_tsr_redirect_route(self, path)
+        add_tsr_redirect_route(self, path, None)
     }
 }
 
@@ -361,7 +363,11 @@ fn validate_tsr_path(path: &str) {
     }
 }
 
-fn add_tsr_redirect_route<S>(router: Router<S>, path: &str) -> Router<S>
+fn add_tsr_redirect_route<S>(
+    router: Router<S>,
+    path: &str,
+    method_filter: Option<MethodFilter>,
+) -> Router<S>
 where
     S: Clone + Send + Sync + 'static,
 {
@@ -373,17 +379,27 @@ where
         });
 
         if let Some(new_uri) = new_uri {
-            Redirect::permanent(&new_uri.to_string()).into_response()
+            Redirect::permanent(new_uri.to_string()).into_response()
         } else {
             StatusCode::BAD_REQUEST.into_response()
         }
     }
 
-    if let Some(path_without_trailing_slash) = path.strip_suffix('/') {
-        router.route(path_without_trailing_slash, any(redirect_handler))
+    let _slot;
+    let redirect_path = if let Some(without_slash) = path.strip_suffix('/') {
+        without_slash
     } else {
-        router.route(&format!("{path}/"), any(redirect_handler))
-    }
+        // FIXME: Can return `&format!(...)` directly when MSRV is updated
+        _slot = format!("{path}/");
+        &_slot
+    };
+
+    let method_router = match method_filter {
+        Some(f) => on(f, redirect_handler),
+        None => any(redirect_handler),
+    };
+
+    router.route(redirect_path, method_router)
 }
 
 /// Map the path of a `Uri`.
@@ -417,7 +433,10 @@ mod sealed {
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{extract::Path, routing::get};
+    use axum::{
+        extract::Path,
+        routing::{get, post},
+    };
 
     #[tokio::test]
     async fn test_tsr() {
@@ -498,6 +517,13 @@ mod tests {
         let res = client.get("/neko/nyan").await;
         assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(res.headers()["location"], "/neko/nyan/");
+    }
+
+    #[test]
+    fn tsr_independent_route_registration() {
+        let _: Router = Router::new()
+            .route_with_tsr("/x", get(|| async {}))
+            .route_with_tsr("/x", post(|| async {}));
     }
 
     #[test]

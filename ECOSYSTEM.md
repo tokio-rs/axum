@@ -24,7 +24,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-template](https://github.com/Altair-Bueno/axum-template): Layers, extractors and template engine wrappers for axum based Web MVC applications
 - [axum-template](https://github.com/janos-r/axum-template): GraphQL and REST API, SurrealDb, JWT auth, direct error handling, request logs
 - [axum-guard-logic](https://github.com/sjud/axum_guard_logic): Use AND/OR logic to extract types and check their values against `Service` inputs.
-- [axum-casbin-auth](https://github.com/casbin-rs/axum-casbin-auth): Casbin access control middleware for axum framework
+- [axum-casbin-auth](https://github.com/casbin-rs/axum-casbin-auth): Casbin access control middleware for axum
 - [aide](https://docs.rs/aide): Code-first Open API documentation generator with [axum integration](https://docs.rs/aide/latest/aide/axum/index.html).
 - [axum-typed-routing](https://docs.rs/axum-typed-routing/latest/axum_typed_routing/): Statically typed routing macros with OpenAPI generation using aide.
 - [axum-jsonschema](https://docs.rs/axum-jsonschema/): A `Json<T>` extractor that does JSON schema validation of requests.
@@ -43,7 +43,6 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-prometheus](https://github.com/ptrskay3/axum-prometheus): A middleware library to collect HTTP metrics for axum applications, compatible with all [metrics.rs](https://metrics.rs) exporters.
 - [axum-valid](https://github.com/gengteng/axum-valid): Extractors for data validation using validator, garde, and validify.
 - [tower-sessions](https://github.com/maxcountryman/tower-sessions): Sessions as a `tower` and `axum` middleware.
-- [shuttle](https://github.com/shuttle-hq/shuttle): Build & ship backends without writing any infrastructure files. Now with axum support.
 - [socketioxide](https://github.com/totodore/socketioxide): An easy to use socket.io server implementation working as a `tower` layer/service.
 - [axum-serde](https://github.com/gengteng/axum-serde): Provides multiple serde-based extractors / responses, also offers a macro to easily customize serde-based extractors / responses.
 - [loco.rs](https://github.com/loco-rs/loco): A full stack Web and API productivity framework similar to Rails, based on axum.
@@ -62,6 +61,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [datastar](https://crates.io/crates/datastar): Rust implementation of the Datastar SDK specification with Axum support
 - [axum-governor](https://crates.io/crates/axum-governor): An independent Axum middleware for rate limiting, powered by [lazy-limit](https://github.com/canmi21/lazy-limit) (not related to tower-governor).
 - [axum-conditional-requests](https://crates.io/crates/axum-conditional-requests): A library for handling client-side caching HTTP headers
+- [sigterm](https://github.com/canmi21/sigterm): Signal-aware async control and cancellation primitives for Tokio.
 
 ## Project showcase
 
@@ -116,13 +116,12 @@ If your project isn't listed here and you would like it to be, please feel free 
 
 - [Rust on Nails](https://rust-on-nails.com/): A full stack architecture for Rust web applications
 - [axum-tutorial] ([website][axum-tutorial-website]): axum tutorial for beginners
-- [demo-rust-axum]: Demo of Rust and axum web framework
+- [demo-rust-axum]: Demo of Rust and axum
 - [Introduction to axum (talk)]: Talk about axum from the Copenhagen Rust Meetup
 - [Getting Started with Axum]: axum tutorial, GET, POST endpoints and serving files
 - [Using Rust, Axum, PostgreSQL, and Tokio to build a Blog]
 - [Introduction to axum]: YouTube playlist
 - [Rust Axum Full Course]: YouTube video
-- [Deploying Axum projects with Shuttle]
 - [API Development with Rust](https://rust-api.dev/docs/front-matter/preface/): REST APIs based on axum
 - [axum-rest-api-postgres-redis-jwt-docker]: Getting started with REST API Web Services in Rust using Axum, PostgreSQL, Redis, and JWT
 
@@ -134,7 +133,5 @@ If your project isn't listed here and you would like it to be, please feel free 
 [Using Rust, Axum, PostgreSQL, and Tokio to build a Blog]: https://spacedimp.com/blog/using-rust-axum-postgresql-and-tokio-to-build-a-blog/
 [Introduction to axum]: https://www.youtube.com/playlist?list=PLrmY5pVcnuE-_CP7XZ_44HN-mDrLQV4nS
 [Rust Axum Full Course]: https://www.youtube.com/watch?v=XZtlD_m59sM
-[Deploying Axum projects with Shuttle]: https://docs.shuttle.rs/examples/axum
 [axum-rest-api-postgres-redis-jwt-docker]: https://sheroz.com/pages/blog/rust-axum-rest-api-postgres-redis-jwt-docker.html
-
 [Building a SaaS with Rust & Next.js](https://joshmo.bearblog.dev/lets-build-a-saas-with-rust/) A tutorial for combining Next.js with Rust via axum to make a SaaS.

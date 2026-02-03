@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+# Unreleased
+
+- **breaking:** Remove the deprecated `Host`, `Scheme` and `OptionalPath`
+  extractors ([#3599])
+  - Also remove `HostRejection` which only had `FailedToResolveHost`
+    previously used in the `Host` extractor ([#3636])
+- **breaking:** Change `routing::RouterExt::route_with_tsr` to only redirect
+  the HTTP methods that the supplied `MethodRouter` handles. This allows the
+  following pattern which lead to a panic before because the two
+  `route_with_tsr` calls would both attempt to register a method-independent
+  redirect ([#3586]):
+
+  ```rust
+  Router::new()
+      .route_with_tsr("/path", get(/* handler */))
+      .route_with_tsr("/path", post(/* handler */))
+  ```
+
+[#3599]: https://github.com/tokio-rs/axum/pull/3599
+[#3586]: https://github.com/tokio-rs/axum/pull/3586
+
+# 0.12.5
+
+- **fixed:** `JsonLines` now correctly respects the default body limit ([#3591])
+
+[#3591]: https://github.com/tokio-rs/axum/pull/3591
+
+# 0.12.4
+
+- **changed:** Deprecated the `Host` and `Scheme` extractors ([#3595])
+  - Please comment in [#3442] if you depend on one of them
+
+[#3595]: https://github.com/tokio-rs/axum/pull/3595
+[#3442]: https://github.com/tokio-rs/axum/issues/3442
+
+# 0.12.3
+
+- **changed:** Make the `typed-routing` feature enable the `routing` feature ([#3514])
+- **changed:** Add trailing newline to `ErasedJson::pretty` response bodies ([#3526])
+- **fixed:** Fix integer underflow in `FileStream::try_range_response` for empty files ([#3566])
+
+[#3514]: https://github.com/tokio-rs/axum/pull/3514
+[#3526]: https://github.com/tokio-rs/axum/pull/3526
+[#3566]: https://github.com/tokio-rs/axum/pull/3566
+
 # 0.12.2
 
 - Make it easier to visually scan for default features ([#3550])

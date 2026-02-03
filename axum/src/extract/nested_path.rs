@@ -47,6 +47,7 @@ impl NestedPath {
     }
 }
 
+#[diagnostic::do_not_recommend] // pretty niche type
 impl<S> FromRequestParts<S> for NestedPath
 where
     S: Send + Sync,

@@ -4,36 +4,34 @@ description = "Extra utilities for axum"
 edition = "2021"
 rust-version = { workspace = true }
 homepage = "https://github.com/tokio-rs/axum"
-keywords = ["http", "web", "framework"]
+keywords = ["http", "web", "routing"]
 license = "MIT"
 name = "axum-extra"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.12.2"
+version = "0.12.5"
 
 [package.metadata.docs.rs]
 all-features = true
 
-[package.metadata.cargo-public-api-crates]
-allowed = [
-    "axum",
-    "axum_core",
-    "axum_macros",
-    "bytes",
-    "cookie",
-    "futures_core",
-    "futures_util",
+[package.metadata.cargo_check_external_types]
+allowed_external_types = [
+    "axum::*",
+    "axum_core::*",
+    "axum_macros::*",
+    "bytes::*",
+    "cookie::*",
+    "futures_core::*",
+    "futures_util::*",
     "headers",
-    "headers_core",
-    "http",
-    "http_body",
-    "pin_project_lite",
-    "prost",
-    "serde_core",
-    "tokio",
-    "tokio_util",
-    "tower_layer",
-    "tower_service",
+    "headers_core::*",
+    "http::*",
+    "http_body::*",
+    "prost::*",
+    "serde_core::*",
+    "tokio::*",
+    "tower_layer::*",
+    "tower_service::*",
 ]
 
 [features]
@@ -75,10 +73,8 @@ json-lines = [
 ]
 middleware = ["dep:axum"]
 multipart = ["dep:multer", "dep:fastrand"]
-optional-path = ["dep:axum", "dep:serde_core"]
 protobuf = ["dep:prost"]
 routing = ["axum/original-uri", "dep:rustversion"]
-scheme = []
 query = [
     "dep:form_urlencoded",
     "dep:serde_core",
@@ -99,10 +95,10 @@ with-rejection = ["dep:axum"]
 
 # Enabled by docs.rs because it uses all-features
 # Enables upstream things linked to in docs
-__private_docs = ["axum/json", "dep:serde", "dep:tower"]
+__private_docs = ["axum/json", "axum/query", "dep:serde", "dep:tower"]
 
 [dependencies]
-axum-core = { path = "../axum-core", version = "0.5.5" }
+axum-core = { path = "../axum-core", version = "0.5.6" }
 bytes = "1.1.0"
 futures-core = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
@@ -115,7 +111,7 @@ tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-axum = { path = "../axum", version = "0.8.7", default-features = false, optional = true }
+axum = { path = "../axum", version = "0.8.8", default-features = false, optional = true }
 axum-macros = { path = "../axum-macros", version = "0.5.0", optional = true }
 cookie = { package = "cookie", version = "0.18.0", features = ["percent-encode"], optional = true }
 fastrand = { version = "2.1.0", optional = true }
@@ -126,6 +122,11 @@ percent-encoding = { version = "2.1", optional = true }
 prost = { version = "0.14", optional = true }
 rustversion = { version = "1.0.9", optional = true }
 serde_core = { version = "1.0.221", optional = true }
+# DO NOT update. axum itself uses serde_html_form 0.3.x which has slightly
+# different behavior in some edge cases. This feature here is kept (deprecated)
+# to let people transition to that easier (fewer breaking changes to deal with
+# at once if they keep using axum_extra's `Query` / `Form` initially when going
+# to axum 0.9).
 serde_html_form = { version = "0.2.0", optional = true }
 serde_json = { version = "1.0.71", optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }
@@ -150,7 +151,7 @@ tempfile = "3.23.0"
 tokio = { version = "1.14", features = ["full"] }
 tower = { version = "0.5.2", features = ["util"] }
 tower-http = { version = "0.6.0", features = ["map-response-body", "timeout"] }
-tracing-subscriber = "0.3.19"
+tracing-subscriber = "0.3.20"
 
 [lints]
 workspace = true

@@ -321,8 +321,7 @@ mod tests {
                 listener,
                 app.into_make_service_with_connect_info::<SocketAddr>(),
             )
-            .await
-            .unwrap();
+            .await;
         });
         rx.await.unwrap();
 
@@ -363,8 +362,7 @@ mod tests {
                 listener,
                 app.into_make_service_with_connect_info::<MyConnectInfo>(),
             )
-            .await
-            .unwrap();
+            .await;
         });
         rx.await.unwrap();
 
@@ -410,8 +408,7 @@ mod tests {
                 listener,
                 app.into_make_service_with_connect_info::<SocketAddr>(),
             )
-            .await
-            .unwrap();
+            .await;
         });
 
         let client = reqwest::Client::new();

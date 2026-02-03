@@ -35,6 +35,9 @@ pub trait OptionalFromRequest<S, M = private::ViaRequest>: Sized {
     ) -> impl Future<Output = Result<Option<Self>, Self::Rejection>> + Send;
 }
 
+// Compiler hint just says that there is an impl for Option<T>, not mentioning
+// the bounds, which is not very helpful.
+#[diagnostic::do_not_recommend]
 impl<S, T> FromRequestParts<S> for Option<T>
 where
     T: OptionalFromRequestParts<S>,
@@ -51,6 +54,7 @@ where
     }
 }
 
+#[diagnostic::do_not_recommend]
 impl<S, T> FromRequest<S> for Option<T>
 where
     T: OptionalFromRequest<S>,

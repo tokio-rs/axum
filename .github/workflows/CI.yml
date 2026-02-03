@@ -2,7 +2,7 @@ name: CI
 
 env:
   CARGO_TERM_COLOR: always
-  MSRV: '1.78'
+  MSRV: '1.80'
 
 on:
   push:
@@ -14,33 +14,37 @@ on:
 jobs:
   check:
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        workspace: [".", examples]
     steps:
-    - uses: actions/checkout@v5
-    - uses: dtolnay/rust-toolchain@beta
-      with:
-        components: clippy, rustfmt
-    - uses: Swatinem/rust-cache@v2
-      with:
-        save-if: ${{ github.ref == 'refs/heads/main' }}
-    - name: Check
-      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
-    - name: rustfmt
-      run: cargo fmt --all --check
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@beta
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          workspaces: ${{ matrix.workspace }}
+      - name: Check
+        run: cargo clippy --locked --manifest-path ${{ matrix.workspace }}/Cargo.toml --workspace --all-targets --all-features -- -D warnings
+      - name: rustfmt
+        run: cargo fmt --all --check --manifest-path ${{ matrix.workspace }}/Cargo.toml
 
   check-docs:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v5
-    - uses: dtolnay/rust-toolchain@stable
-    - uses: Swatinem/rust-cache@v2
-      with:
-        save-if: ${{ github.ref == 'refs/heads/main' }}
-    - name: cargo doc -p axum-core
-      run: cargo doc --package axum-core --all-features --no-deps
-    - name: cargo doc -p axum
-      run: cargo doc --package axum --all-features --no-deps
-    - name: cargo doc -p axum-extra
-      run: cargo doc --package axum-extra --all-features --no-deps
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: cargo doc -p axum-core
+        run: cargo doc --package axum-core --all-features --no-deps
+      - name: cargo doc -p axum
+        run: cargo doc --package axum --all-features --no-deps
+      - name: cargo doc -p axum-extra
+        run: cargo doc --package axum-extra --all-features --no-deps
     env:
       RUSTDOCFLAGS: "-D rustdoc::all -A rustdoc::private-doc-tests"
 
@@ -50,31 +54,31 @@ jobs:
       # Fail the build if there are any warnings
       RUSTFLAGS: "-D warnings"
     steps:
-    - uses: actions/checkout@v5
-    - uses: dtolnay/rust-toolchain@stable
-    - uses: Swatinem/rust-cache@v2
-      with:
-        save-if: ${{ github.ref == 'refs/heads/main' }}
-    - uses: taiki-e/install-action@cargo-hack
-    - name: cargo hack check
-      run: cargo hack check --each-feature --no-dev-deps --all
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: taiki-e/install-action@cargo-hack
+      - name: cargo hack check
+        run: cargo hack check --each-feature --no-dev-deps --all
 
-  cargo-public-api-crates:
+  external-types:
     runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        crate: [axum, axum-core, axum-extra, axum-macros]
     steps:
-    - uses: actions/checkout@v5
-    - uses: dtolnay/rust-toolchain@nightly
-    - uses: Swatinem/rust-cache@v2
-      with:
-        save-if: ${{ github.ref == 'refs/heads/main' }}
-    - name: Install cargo-public-api-crates
-      run: |
-        cargo install --git https://github.com/jplatte/cargo-public-api-crates
-    - name: cargo public-api-crates check
-      run: cargo public-api-crates --manifest-path ${{ matrix.crate }}/Cargo.toml check
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2025-10-18
+      - name: Install cargo-check-external-types
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-check-external-types@0.4.0
+      - uses: taiki-e/install-action@cargo-hack
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: cargo hack --no-private --exclude axum-macros check-external-types --all-features
 
   test-versions:
     needs: check
@@ -82,35 +86,37 @@ jobs:
     strategy:
       matrix:
         rust: [stable, beta]
+        workspace: [".", examples]
     steps:
-    - uses: actions/checkout@v5
-    - uses: dtolnay/rust-toolchain@master
-      with:
-        toolchain: ${{ matrix.rust }}
-    - uses: Swatinem/rust-cache@v2
-      with:
-        save-if: ${{ github.ref == 'refs/heads/main' }}
-    - name: Run tests
-      run: cargo test --workspace --all-features --all-targets
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          workspaces: ${{ matrix.workspace }}
+      - name: Run tests
+        run: cargo test --locked --workspace --all-features --all-targets --manifest-path ${{ matrix.workspace }}/Cargo.toml
 
   # some examples don't support our MSRV so we only test axum itself on our MSRV
   test-nightly:
     needs: check
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v5
-    - name: Get rust-toolchain version
-      id: rust-toolchain
-      run: echo "version=$(cat axum-macros/rust-toolchain)" >> $GITHUB_OUTPUT
-    - uses: dtolnay/rust-toolchain@master
-      with:
-        toolchain: ${{ steps.rust-toolchain.outputs.version }}
-    - uses: Swatinem/rust-cache@v2
-      with:
-        save-if: ${{ github.ref == 'refs/heads/main' }}
-    - name: Run nightly tests
-      working-directory: axum-macros
-      run: cargo test
+      - uses: actions/checkout@v6
+      - name: Get rust-toolchain version
+        id: rust-toolchain
+        run: echo "version=$(cat axum-macros/rust-toolchain)" >> $GITHUB_OUTPUT
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.rust-toolchain.outputs.version }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Run nightly tests
+        working-directory: axum-macros
+        run: cargo test
 
   # some examples don't support our MSRV (such as async-graphql)
   # so we only test axum itself on our MSRV
@@ -118,51 +124,25 @@ jobs:
     needs: check
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v5
-    - uses: dtolnay/rust-toolchain@master
-      with:
-        toolchain: ${{ env.MSRV }}
-    - name: "install Rust nightly"
-      uses: dtolnay/rust-toolchain@nightly
-    - uses: Swatinem/rust-cache@v2
-      with:
-        save-if: ${{ github.ref == 'refs/heads/main' }}
-    - name: Select minimal version
-      run: cargo +nightly update -Z minimal-versions
-    - name: Fix up Cargo.lock
-      run: cargo +nightly update -p crc32fast --precise 1.1.1
-    - name: Run tests
-      run: >
-        cargo +${{ env.MSRV }}
-        test
-        -p axum
-        -p axum-extra
-        -p axum-core
-        --all-features
-        --locked
-    # the compiler errors are different on our MSRV which makes
-    # the trybuild tests in axum-macros fail, so just run the doc
-    # tests
-    - name: Run axum-macros doc tests
-      run: >
-        cargo +${{ env.MSRV }}
-        test
-        -p axum-macros
-        --doc
-        --all-features
-        --locked
-
-  test-docs:
-    needs: check
-    runs-on: ubuntu-24.04
-    steps:
-    - uses: actions/checkout@v5
-    - uses: dtolnay/rust-toolchain@stable
-    - uses: Swatinem/rust-cache@v2
-      with:
-        save-if: ${{ github.ref == 'refs/heads/main' }}
-    - name: Run doc tests
-      run: cargo test --all-features --doc
+      - uses: actions/checkout@v6
+      - name: "install Rust nightly"
+        uses: dtolnay/rust-toolchain@nightly
+      - name: Select minimal version
+        run: cargo +nightly update -Z minimal-versions
+      - name: Fix up Cargo.lock - crc32fast
+        run: cargo +nightly update -p crc32fast --precise 1.1.1
+      - name: Fix up Cargo.lock - version_check
+        run : cargo +nightly update -p version_check@0.1.0 --precise 0.1.4
+      - name: Fix up Cargo.lock - lazy_static
+        run: cargo +nightly update -p lazy_static --precise 1.1.0
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.MSRV }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Run tests
+        run: cargo +${{ env.MSRV }} test --locked --all-features
 
   deny-check:
     name: cargo-deny check
@@ -174,7 +154,7 @@ jobs:
           - advisories
           - bans licenses sources
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check ${{ matrix.checks }}
@@ -184,65 +164,56 @@ jobs:
     needs: check
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v5
-    - uses: dtolnay/rust-toolchain@stable
-      with:
-        target: armv5te-unknown-linux-musleabi
-    - uses: Swatinem/rust-cache@v2
-      with:
-        save-if: ${{ github.ref == 'refs/heads/main' }}
-    - name: Check
-      env:
-        # Clang has native cross-compilation support
-        CC: clang
-      run: >
-        cargo
-        check
-        --all-targets
-        --all-features
-        -p axum
-        -p axum-core
-        -p axum-extra
-        -p axum-macros
-        --target armv5te-unknown-linux-musleabi
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          target: armv5te-unknown-linux-musleabi
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Check
+        env:
+          # Clang has native cross-compilation support
+          CC: clang
+        run: cargo check --all-targets --all-features --target armv5te-unknown-linux-musleabi
 
   wasm32-unknown-unknown:
     needs: check
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v5
-    - uses: dtolnay/rust-toolchain@stable
-      with:
-        target: wasm32-unknown-unknown
-    - uses: Swatinem/rust-cache@v2
-      with:
-        save-if: ${{ github.ref == 'refs/heads/main' }}
-    - name: Check
-      run: >
-        cargo
-        check
-        --manifest-path ./examples/simple-router-wasm/Cargo.toml
-        --target wasm32-unknown-unknown
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          target: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          workspaces: examples
+      - name: Check
+        run: >
+          cargo
+          check
+          --manifest-path ./examples/simple-router-wasm/Cargo.toml
+          --target wasm32-unknown-unknown
 
   dependencies-are-sorted:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v5
-    - name: Install cargo-sort
-      uses: taiki-e/install-action@v2
-      with:
-        tool: cargo-sort@2.0.2
-    - name: Check dependency tables
-      run: |
-        cargo-sort --workspace --grouped --check
+      - uses: actions/checkout@v6
+      - name: Install cargo-sort
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-sort@2.0.2
+      - name: Check dependency tables
+        run: cargo-sort --workspace --grouped --check
+      - name: Check examples dependency tables
+        run: cargo-sort --workspace --grouped --check
+        working-directory: examples
 
   typos:
     name: Spell Check with Typos
     runs-on: ubuntu-24.04
-
     steps:
-      - name: Checkout Actions Repository
-        uses: actions/checkout@v5
-
+      - uses: actions/checkout@v6
       - name: Check the spelling of the files in our repo
         uses: crate-ci/typos@v1.29.4

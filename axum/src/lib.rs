@@ -1,4 +1,4 @@
-//! axum is a web application framework that focuses on ergonomics and modularity.
+//! axum is an HTTP routing and request-handling library that focuses on ergonomics and modularity.
 //!
 //! # High-level features
 //!
@@ -9,7 +9,7 @@
 //! - Take full advantage of the [`tower`] and [`tower-http`] ecosystem of
 //!   middleware, services, and utilities.
 //!
-//! In particular, the last point is what sets `axum` apart from other frameworks.
+//! In particular, the last point is what sets `axum` apart from other libraries / frameworks.
 //! `axum` doesn't have its own middleware system but instead uses
 //! [`tower::Service`]. This means `axum` gets timeouts, tracing, compression,
 //! authorization, and more, for free. It also enables you to share middleware with
@@ -37,7 +37,7 @@
 //!
 //!     // run our app with hyper, listening globally on port 3000
 //!     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-//!     axum::serve(listener, app).await.unwrap();
+//!     axum::serve(listener, app).await;
 //! }
 //! ```
 //!
@@ -455,6 +455,7 @@ pub mod serve;
 
 #[cfg(any(test, feature = "__private"))]
 #[allow(missing_docs, missing_debug_implementations, clippy::print_stdout)]
+#[doc(hidden)]
 pub mod test_helpers;
 
 #[doc(no_inline)]
