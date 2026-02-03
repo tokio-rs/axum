@@ -1,6 +1,6 @@
 error: Cannot return tuples with more than 17 elements
- --> tests/debug_handler/fail/output_tuple_too_many.rs:4:20
-  |
+  --> tests/debug_handler/fail/output_tuple_too_many.rs:4:20
+   |
  4 |   async fn handler() -> (
    |  ____________________^
  5 | |     axum::http::StatusCode,
