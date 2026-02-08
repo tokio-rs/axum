@@ -64,7 +64,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 
 ## Project showcase
 
-- [webshelf](https://github.com/aiqubits/webshelf): 🤘 The best way to develop your web service with one click.
+- [webshelf](https://github.com/aiqubits/webshelf): 🤘 A convenient way to develop your web service with one click.
 - [HomeDisk](https://github.com/MedzikUser/HomeDisk): ☁️ Fast, lightweight and Open Source local cloud for your data.
 - [Houseflow](https://github.com/gbaranski/houseflow): House automation platform written in Rust.
 - [JWT Auth](https://github.com/Z4RX/axum_jwt_example): JWT auth service for educational purposes.
