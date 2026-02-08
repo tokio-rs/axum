@@ -1,7 +1,5 @@
 //! Additional extractors.
 
-pub mod rejection;
-
 #[cfg(feature = "cached")]
 mod cached;
 

@@ -241,7 +241,9 @@ macro_rules! impl_into_response_parts {
                     let res = match $ty.into_response_parts(res) {
                         Ok(res) => res,
                         Err(err) => {
-                            return Err(err.into_response());
+                            let mut err_res = err.into_response();
+                            err_res.extensions_mut().insert(super::IntoResponseFailed);
+                            return Err(err_res);
                         }
                     };
                 )*
@@ -268,5 +270,21 @@ impl IntoResponseParts for () {
 
     fn into_response_parts(self, res: ResponseParts) -> Result<ResponseParts, Self::Error> {
         Ok(res)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use http::StatusCode;
+
+    use crate::response::IntoResponse;
+
+    #[test]
+    fn failed_into_response_parts() {
+        let response = (StatusCode::CREATED, [("\n", "\n")]).into_response();
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let response = (StatusCode::CREATED, [("\n", "\n")], ()).into_response();
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 }
