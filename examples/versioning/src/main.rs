@@ -83,12 +83,7 @@ mod tests {
     #[tokio::test]
     async fn test_v1() {
         let response = app()
-            .oneshot(
-                Request::builder()
-                    .uri("/v1/foo")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
+            .oneshot(Request::get("/v1/foo").body(Body::empty()).unwrap())
             .await
             .unwrap();
 
@@ -103,12 +98,7 @@ mod tests {
     #[tokio::test]
     async fn test_v4() {
         let response = app()
-            .oneshot(
-                Request::builder()
-                    .uri("/v4/foo")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
+            .oneshot(Request::get("/v4/foo").body(Body::empty()).unwrap())
             .await
             .unwrap();
 
