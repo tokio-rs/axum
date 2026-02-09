@@ -105,7 +105,9 @@ where
 
 impl Multipart {
     /// Yields the next [`Field`] if available.
-    pub async fn next_field(&mut self) -> Result<Option<Field<'_>>, MultipartError> {
+    pub async fn next_field<'output, 'multipart: 'output>(
+        &'multipart mut self,
+    ) -> Result<Option<Field<'output>>, MultipartError> {
         let field = self
             .inner
             .next_field()
