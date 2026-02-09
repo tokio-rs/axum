@@ -149,7 +149,8 @@ fn expand_named_fields(
                 parts: &mut ::axum::http::request::Parts,
                 state: &S,
             ) -> ::std::result::Result<Self, Self::Rejection> {
-                ::axum::extract::Path::from_request_parts(parts, state)
+                <::axum::extract::Path<#ident> as ::axum::extract::FromRequestParts<S>>
+                    ::from_request_parts(parts, state)
                     .await
                     .map(|path| path.0)
                     #map_err_rejection
