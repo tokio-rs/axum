@@ -99,10 +99,9 @@ impl Service<Request> for TakeOnceRoute {
         let route = if let Some(route) = self.route.take() {
             route
         } else {
-            #[cfg(not(test))]
             debug_assert!(
                 false,
-                "TakeOnceRoute called more than once; returning an internal error route",
+                "TakeOnceRoute called more than once; this is a bug in axum. Please file an issue.",
             );
             self.stale.clone()
         };
@@ -852,8 +851,37 @@ mod take_once_route_tests {
     use super::*;
     use tower::ServiceExt;
 
+    #[cfg(debug_assertions)]
     #[tokio::test]
-    async fn take_once_route_does_not_panic_on_second_call() {
+    #[should_panic(
+        expected = "TakeOnceRoute called more than once; this is a bug in axum. Please file an issue."
+    )]
+    async fn take_once_route_panics_on_second_call() {
+        let svc = service_fn(|_req: Request| async move { Ok::<_, Infallible>("ok") });
+
+        let route = Route::new(svc);
+        let mut take_once = TakeOnceRoute::new(route);
+
+        let _ = take_once
+            .ready()
+            .await
+            .unwrap()
+            .call(Request::new(Body::empty()))
+            .await
+            .unwrap();
+
+        std::mem::drop(
+            take_once
+                .ready()
+                .await
+                .unwrap()
+                .call(Request::new(Body::empty())),
+        );
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[tokio::test]
+    async fn take_once_route_returns_internal_error_on_second_call() {
         let svc = service_fn(|_req: Request| async move { Ok::<_, Infallible>("ok") });
 
         let route = Route::new(svc);
