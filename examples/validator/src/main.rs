@@ -115,7 +115,7 @@ mod tests {
     #[tokio::test]
     async fn test_no_param() {
         let response = app()
-            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+            .oneshot(Request::get("/").body(Body::empty()).unwrap())
             .await
             .unwrap();
 
@@ -127,12 +127,7 @@ mod tests {
     #[tokio::test]
     async fn test_with_param_without_value() {
         let response = app()
-            .oneshot(
-                Request::builder()
-                    .uri("/?name=")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
+            .oneshot(Request::get("/?name=").body(Body::empty()).unwrap())
             .await
             .unwrap();
 
@@ -144,12 +139,7 @@ mod tests {
     #[tokio::test]
     async fn test_with_param_with_short_value() {
         let response = app()
-            .oneshot(
-                Request::builder()
-                    .uri("/?name=X")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
+            .oneshot(Request::get("/?name=X").body(Body::empty()).unwrap())
             .await
             .unwrap();
 
@@ -161,12 +151,7 @@ mod tests {
     #[tokio::test]
     async fn test_with_param_and_value() {
         let response = app()
-            .oneshot(
-                Request::builder()
-                    .uri("/?name=LT")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
+            .oneshot(Request::get("/?name=LT").body(Body::empty()).unwrap())
             .await
             .unwrap();
 
