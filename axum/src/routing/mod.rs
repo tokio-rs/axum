@@ -15,7 +15,6 @@ use axum_core::{
     extract::Request,
     response::{IntoResponse, Response},
 };
-use http::StatusCode;
 use std::{
     convert::Infallible,
     fmt,
@@ -56,58 +55,6 @@ macro_rules! panic_on_err {
             Err(err) => panic!("{err}"),
         }
     };
-}
-
-#[derive(Clone, Debug)]
-struct TakeOnceRoute {
-    route: Option<Route>,
-    stale: Route,
-}
-
-impl TakeOnceRoute {
-    fn new(route: Route) -> Self {
-        Self {
-            route: Some(route),
-            stale: Self::stale_route(),
-        }
-    }
-
-    #[cold]
-    fn stale_route() -> Route {
-        Route::new(service_fn(|_req: Request| async move {
-            Ok::<_, Infallible>(StatusCode::INTERNAL_SERVER_ERROR.into_response())
-        }))
-    }
-}
-
-impl Service<Request> for TakeOnceRoute {
-    type Response = Response;
-    type Error = Infallible;
-    type Future = RouteFuture<Infallible>;
-
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(
-        &mut self,
-        #[cfg_attr(not(feature = "matched-path"), allow(unused_mut))] mut req: Request,
-    ) -> Self::Future {
-        #[cfg(feature = "matched-path")]
-        req.extensions_mut().remove::<MatchedPath>();
-
-        let route = if let Some(route) = self.route.take() {
-            route
-        } else {
-            debug_assert!(
-                false,
-                "TakeOnceRoute called more than once; this is a bug in axum. Please file an issue.",
-            );
-            self.stale.clone()
-        };
-
-        route.oneshot_inner_owned(req)
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -427,20 +374,73 @@ where
     }
 
     fn fallback_endpoint(self, endpoint: Endpoint<S>) -> Self {
-        // Wrap fallback routes in a service that consumes the inner route on first call. This
-        // keeps the no-extra-clone behavior from `oneshot_inner_owned` while avoiding request-path
-        // panics.
+        // TODO make this better.
+        // We need the returned `Service` to be `Clone` and the function inside `service_fn` to be
+        // `FnMut` so instead of just using the owned service, we do this trick with `Option`. We
+        // know this will be called just once so it's fine. We're doing that so that we avoid one
+        // clone inside `oneshot_inner` so that the `Router` and subsequently the `State` is not
+        // cloned too much.
         tap_inner!(self, mut this => {
-            let take_once_layer = layer_fn(TakeOnceRoute::new);
-
             _ = this.path_router.route_endpoint(
                 "/",
-                endpoint.clone().layer(take_once_layer),
+                endpoint.clone().layer(
+                    layer_fn(
+                        |service: Route| {
+                            let mut service = Some(service);
+                            service_fn(
+                                #[cfg_attr(not(feature = "matched-path"), allow(unused_mut))]
+                                move |mut request: Request| {
+                                    #[cfg(feature = "matched-path")]
+                                    request.extensions_mut().remove::<MatchedPath>();
+                                    let route = service.take().unwrap_or_else(|| {
+                                        debug_assert!(
+                                            false,
+                                            "TakeOnceRoute called more than once; if this was not triggered by an intentional test, this should never happen. Please file an issue.",
+                                        );
+                                        Route::new(service_fn(|_req: Request| async move {
+                                            Ok::<_, Infallible>(
+                                                http::StatusCode::INTERNAL_SERVER_ERROR
+                                                    .into_response(),
+                                            )
+                                        }))
+                                    });
+                                    route.oneshot_inner_owned(request)
+                                }
+                            )
+                        }
+                    )
+                )
             );
 
             _ = this.path_router.route_endpoint(
                 FALLBACK_PARAM_PATH,
-                endpoint.layer(take_once_layer),
+                endpoint.layer(
+                    layer_fn(
+                        |service: Route| {
+                            let mut service = Some(service);
+                            service_fn(
+                                #[cfg_attr(not(feature = "matched-path"), allow(unused_mut))]
+                                move |mut request: Request| {
+                                    #[cfg(feature = "matched-path")]
+                                    request.extensions_mut().remove::<MatchedPath>();
+                                    let route = service.take().unwrap_or_else(|| {
+                                        debug_assert!(
+                                            false,
+                                            "TakeOnceRoute called more than once; if this was not triggered by an intentional test, this should never happen. Please file an issue.",
+                                        );
+                                        Route::new(service_fn(|_req: Request| async move {
+                                            Ok::<_, Infallible>(
+                                                http::StatusCode::INTERNAL_SERVER_ERROR
+                                                    .into_response(),
+                                            )
+                                        }))
+                                    });
+                                    route.oneshot_inner_owned(request)
+                                }
+                            )
+                        }
+                    )
+                )
             );
 
             this.default_fallback = false;
@@ -846,21 +846,35 @@ fn traits() {
     assert_sync::<RouterIntoService<Body, ()>>();
 }
 
-#[cfg(all(test, feature = "tokio"))]
+#[cfg(all(test, feature = "tokio", debug_assertions))]
 mod take_once_route_tests {
     use super::*;
     use tower::ServiceExt;
 
-    #[cfg(debug_assertions)]
     #[tokio::test]
     #[should_panic(
-        expected = "TakeOnceRoute called more than once; this is a bug in axum. Please file an issue."
+        expected = "TakeOnceRoute called more than once; if this was not triggered by an intentional test, this should never happen. Please file an issue."
     )]
     async fn take_once_route_panics_on_second_call() {
-        let svc = service_fn(|_req: Request| async move { Ok::<_, Infallible>("ok") });
+        let route = Route::new(service_fn(|_req: Request| async move {
+            Ok::<_, Infallible>("ok")
+        }));
 
-        let route = Route::new(svc);
-        let mut take_once = TakeOnceRoute::new(route);
+        let mut take_once = {
+            let mut service = Some(route);
+            service_fn(move |request: Request| {
+                let route = service.take().unwrap_or_else(|| {
+                    debug_assert!(
+                        false,
+                        "TakeOnceRoute called more than once; if this was not triggered by an intentional test, this should never happen. Please file an issue."
+                    );
+                    Route::new(service_fn(|_req: Request| async move {
+                        Ok::<_, Infallible>(http::StatusCode::INTERNAL_SERVER_ERROR.into_response())
+                    }))
+                });
+                route.oneshot_inner_owned(request)
+            })
+        };
 
         let _ = take_once
             .ready()
@@ -877,32 +891,5 @@ mod take_once_route_tests {
                 .unwrap()
                 .call(Request::new(Body::empty())),
         );
-    }
-
-    #[cfg(not(debug_assertions))]
-    #[tokio::test]
-    async fn take_once_route_returns_internal_error_on_second_call() {
-        let svc = service_fn(|_req: Request| async move { Ok::<_, Infallible>("ok") });
-
-        let route = Route::new(svc);
-        let mut take_once = TakeOnceRoute::new(route);
-
-        let res1 = take_once
-            .ready()
-            .await
-            .unwrap()
-            .call(Request::new(Body::empty()))
-            .await
-            .unwrap();
-        assert_eq!(res1.status(), StatusCode::OK);
-
-        let res2 = take_once
-            .ready()
-            .await
-            .unwrap()
-            .call(Request::new(Body::empty()))
-            .await
-            .unwrap();
-        assert_eq!(res2.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 }
