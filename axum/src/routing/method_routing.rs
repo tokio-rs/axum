@@ -978,7 +978,7 @@ where
 
         set_endpoint(
             "CONNECT",
-            &mut self.options,
+            &mut self.connect,
             endpoint,
             filter,
             MethodFilter::CONNECT,
@@ -1445,12 +1445,15 @@ mod tests {
 
     #[crate::test]
     async fn merge() {
-        let mut svc = get(ok).merge(post(ok));
+        let mut svc = get(ok).merge(post(ok)).merge(connect(ok));
 
         let (status, _, _) = call(Method::GET, &mut svc).await;
         assert_eq!(status, StatusCode::OK);
 
         let (status, _, _) = call(Method::POST, &mut svc).await;
+        assert_eq!(status, StatusCode::OK);
+
+        let (status, _, _) = call(Method::CONNECT, &mut svc).await;
         assert_eq!(status, StatusCode::OK);
     }
 
