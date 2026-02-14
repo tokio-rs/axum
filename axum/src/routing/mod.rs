@@ -57,6 +57,21 @@ macro_rules! panic_on_err {
     };
 }
 
+const TAKE_ONCE_ROUTE_PANIC_MSG: &str =
+    "TakeOnceRoute called more than once; if this was not triggered by an intentional test, this should never happen. Please file an issue.";
+
+fn take_route_or_internal_error(service: &mut Option<Route>) -> Route {
+    service.take().unwrap_or_else(|| {
+        if cfg!(debug_assertions) {
+            panic!("{TAKE_ONCE_ROUTE_PANIC_MSG}");
+        }
+
+        Route::new(service_fn(|_req: Request| async move {
+            Ok::<_, Infallible>(http::StatusCode::INTERNAL_SERVER_ERROR.into_response())
+        }))
+    })
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct RouteId(usize);
 
@@ -374,7 +389,7 @@ where
     }
 
     fn fallback_endpoint(self, endpoint: Endpoint<S>) -> Self {
-        // TODO make this better, get rid of the `unwrap`s.
+        // TODO make this better.
         // We need the returned `Service` to be `Clone` and the function inside `service_fn` to be
         // `FnMut` so instead of just using the owned service, we do this trick with `Option`. We
         // know this will be called just once so it's fine. We're doing that so that we avoid one
@@ -392,7 +407,8 @@ where
                                 move |mut request: Request| {
                                     #[cfg(feature = "matched-path")]
                                     request.extensions_mut().remove::<MatchedPath>();
-                                    service.take().unwrap().oneshot_inner_owned(request)
+                                    let route = take_route_or_internal_error(&mut service);
+                                    route.oneshot_inner_owned(request)
                                 }
                             )
                         }
@@ -411,7 +427,8 @@ where
                                 move |mut request: Request| {
                                     #[cfg(feature = "matched-path")]
                                     request.extensions_mut().remove::<MatchedPath>();
-                                    service.take().unwrap().oneshot_inner_owned(request)
+                                    let route = take_route_or_internal_error(&mut service);
+                                    route.oneshot_inner_owned(request)
                                 }
                             )
                         }
