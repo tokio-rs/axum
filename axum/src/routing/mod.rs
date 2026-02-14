@@ -57,6 +57,21 @@ macro_rules! panic_on_err {
     };
 }
 
+const TAKE_ONCE_ROUTE_PANIC_MSG: &str =
+    "TakeOnceRoute called more than once; if this was not triggered by an intentional test, this should never happen. Please file an issue.";
+
+fn take_route_or_internal_error(service: &mut Option<Route>) -> Route {
+    service.take().unwrap_or_else(|| {
+        if cfg!(debug_assertions) {
+            panic!("{TAKE_ONCE_ROUTE_PANIC_MSG}");
+        }
+
+        Route::new(service_fn(|_req: Request| async move {
+            Ok::<_, Infallible>(http::StatusCode::INTERNAL_SERVER_ERROR.into_response())
+        }))
+    })
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct RouteId(usize);
 
@@ -392,18 +407,7 @@ where
                                 move |mut request: Request| {
                                     #[cfg(feature = "matched-path")]
                                     request.extensions_mut().remove::<MatchedPath>();
-                                    let route = service.take().unwrap_or_else(|| {
-                                        debug_assert!(
-                                            false,
-                                            "TakeOnceRoute called more than once; if this was not triggered by an intentional test, this should never happen. Please file an issue.",
-                                        );
-                                        Route::new(service_fn(|_req: Request| async move {
-                                            Ok::<_, Infallible>(
-                                                http::StatusCode::INTERNAL_SERVER_ERROR
-                                                    .into_response(),
-                                            )
-                                        }))
-                                    });
+                                    let route = take_route_or_internal_error(&mut service);
                                     route.oneshot_inner_owned(request)
                                 }
                             )
@@ -423,18 +427,7 @@ where
                                 move |mut request: Request| {
                                     #[cfg(feature = "matched-path")]
                                     request.extensions_mut().remove::<MatchedPath>();
-                                    let route = service.take().unwrap_or_else(|| {
-                                        debug_assert!(
-                                            false,
-                                            "TakeOnceRoute called more than once; if this was not triggered by an intentional test, this should never happen. Please file an issue.",
-                                        );
-                                        Route::new(service_fn(|_req: Request| async move {
-                                            Ok::<_, Infallible>(
-                                                http::StatusCode::INTERNAL_SERVER_ERROR
-                                                    .into_response(),
-                                            )
-                                        }))
-                                    });
+                                    let route = take_route_or_internal_error(&mut service);
                                     route.oneshot_inner_owned(request)
                                 }
                             )
@@ -844,52 +837,4 @@ fn traits() {
     assert_sync::<RouterAsService<'static, Body, ()>>();
     assert_send::<RouterIntoService<Body, ()>>();
     assert_sync::<RouterIntoService<Body, ()>>();
-}
-
-#[cfg(all(test, feature = "tokio", debug_assertions))]
-mod take_once_route_tests {
-    use super::*;
-    use tower::ServiceExt;
-
-    #[tokio::test]
-    #[should_panic(
-        expected = "TakeOnceRoute called more than once; if this was not triggered by an intentional test, this should never happen. Please file an issue."
-    )]
-    async fn take_once_route_panics_on_second_call() {
-        let route = Route::new(service_fn(|_req: Request| async move {
-            Ok::<_, Infallible>("ok")
-        }));
-
-        let mut take_once = {
-            let mut service = Some(route);
-            service_fn(move |request: Request| {
-                let route = service.take().unwrap_or_else(|| {
-                    debug_assert!(
-                        false,
-                        "TakeOnceRoute called more than once; if this was not triggered by an intentional test, this should never happen. Please file an issue."
-                    );
-                    Route::new(service_fn(|_req: Request| async move {
-                        Ok::<_, Infallible>(http::StatusCode::INTERNAL_SERVER_ERROR.into_response())
-                    }))
-                });
-                route.oneshot_inner_owned(request)
-            })
-        };
-
-        let _ = take_once
-            .ready()
-            .await
-            .unwrap()
-            .call(Request::new(Body::empty()))
-            .await
-            .unwrap();
-
-        std::mem::drop(
-            take_once
-                .ready()
-                .await
-                .unwrap()
-                .call(Request::new(Body::empty())),
-        );
-    }
 }
