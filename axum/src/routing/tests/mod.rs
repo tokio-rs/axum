@@ -45,6 +45,30 @@ mod handle_error;
 mod merge;
 mod nest;
 
+#[cfg(all(feature = "tokio", debug_assertions))]
+#[test]
+fn take_route_or_internal_error_panics_on_second_call() {
+    let route = super::Route::new(service_fn(|_req: Request| async move {
+        Ok::<_, Infallible>("ok")
+    }));
+
+    let mut service = Some(route);
+    let _ = super::take_route_or_internal_error(&mut service);
+
+    let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _ = super::take_route_or_internal_error(&mut service);
+    }))
+    .expect_err("take_route_or_internal_error should panic on the second call in debug mode");
+
+    let panic_message = panic
+        .downcast_ref::<&str>()
+        .copied()
+        .or_else(|| panic.downcast_ref::<String>().map(String::as_str))
+        .unwrap_or("<non-string panic>");
+
+    assert_eq!(panic_message, super::TAKE_ONCE_ROUTE_PANIC_MSG);
+}
+
 #[crate::test]
 async fn hello_world() {
     async fn root(_: Request) -> &'static str {
