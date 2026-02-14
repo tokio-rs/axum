@@ -549,11 +549,10 @@ impl WebSocket {
     /// Receive another message.
     ///
     /// Returns `None` if the stream has closed.
-    /// 
+    ///
     /// # Cancel safety
-    ///cargo fmt --all --check --manifest-path ./Cargo.toml
-    /// This method is **not** cancel-safe. If the future is dropped before it completes, 
-    /// messages may be lost. To receive messages in a way that is cancel-safe, use the 
+    /// This method is **not** cancel-safe. If the future is dropped before it completes,
+    /// messages may be lost. To receive messages in a way that is cancel-safe, use the
     /// [`Stream`] implementation and a pinned future.
     pub async fn recv(&mut self) -> Option<Result<Message, Error>> {
         self.next().await
