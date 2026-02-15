@@ -158,7 +158,13 @@ mod tests {
 
     #[test]
     fn as_response_parts() {
-        let response = (Redirect::to(EXAMPLE_URL), Html(format!(r#"<p>Redirecting to <a href="{EXAMPLE_URL}">{EXAMPLE_URL}</a></p>"#))).into_response();
+        let response = (
+            Redirect::to(EXAMPLE_URL),
+            Html(format!(
+                r#"<p>Redirecting to <a href="{EXAMPLE_URL}">{EXAMPLE_URL}</a></p>"#
+            )),
+        )
+            .into_response();
 
         assert_eq!(response.status(), StatusCode::SEE_OTHER);
         assert_eq!(response.headers()[http::header::LOCATION], EXAMPLE_URL);
