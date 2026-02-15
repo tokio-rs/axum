@@ -1,4 +1,4 @@
-use axum_core::response::{IntoResponse, Response};
+use axum_core::response::{IntoResponse, IntoResponseParts, Response, ResponseParts};
 use http::{header::LOCATION, HeaderValue, StatusCode};
 
 /// Response that redirects the request to another location.
@@ -93,8 +93,28 @@ impl IntoResponse for Redirect {
     }
 }
 
+impl IntoResponseParts for Redirect {
+    type Error = Response;
+
+    fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+        match HeaderValue::try_from(self.location) {
+            Ok(location) => {
+                res.set_status(self.status_code);
+                res.headers_mut().insert(LOCATION, location);
+                Ok(res)
+            }
+            Err(error) => {
+                // If the URI is invalid, we return a 500 error response immediately
+                Err((StatusCode::INTERNAL_SERVER_ERROR, error.to_string()).into_response())
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::response::Html;
+
     use super::Redirect;
     use axum_core::response::IntoResponse;
     use http::StatusCode;
@@ -134,5 +154,13 @@ mod tests {
             .into_response();
 
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[test]
+    fn as_response_parts() {
+        let response = (Redirect::to(EXAMPLE_URL), Html(format!(r#"<p>Redirecting to <a href="{EXAMPLE_URL}">{EXAMPLE_URL}</a></p>"#))).into_response();
+
+        assert_eq!(response.status(), StatusCode::SEE_OTHER);
+        assert_eq!(response.headers()[http::header::LOCATION], EXAMPLE_URL);
     }
 }
