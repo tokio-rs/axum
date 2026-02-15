@@ -18,7 +18,7 @@ type_complexity = "allow"
 
 await_holding_lock = "warn"
 dbg_macro = "warn"
-empty_enums = "warn"
+empty_enum = "warn"
 enum_glob_use = "warn"
 equatable_if_let = "warn"
 exit = "warn"
