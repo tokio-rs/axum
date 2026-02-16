@@ -346,7 +346,7 @@ pub enum ErrorKind {
         key: String,
         /// The value that failed to deserialize.
         value: String,
-        /// The deserializaation failure message.
+        /// The deserialization failure message.
         message: String,
     },
 
