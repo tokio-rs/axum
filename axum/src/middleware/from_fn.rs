@@ -281,8 +281,7 @@ macro_rules! impl_service {
             }
 
             fn call(&mut self, req: Request) -> Self::Future {
-                let not_ready_inner = self.inner.clone();
-                let ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
+                let inner = self.inner.clone();
 
                 let mut f = self.f.clone();
                 let state = self.state.clone();
@@ -303,7 +302,7 @@ macro_rules! impl_service {
                         Err(rejection) => return rejection.into_response(),
                     };
 
-                    let inner = BoxCloneSyncService::new(MapIntoResponse::new(ready_inner));
+                    let inner = BoxCloneSyncService::new(MapIntoResponse::new(inner));
                     let next = Next { inner };
 
                     f($($ty,)* $last, next).await.into_response()
