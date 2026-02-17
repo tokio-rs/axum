@@ -1,3 +1,4 @@
+use super::content_disposition::EscapedFilename;
 use axum_core::response::IntoResponse;
 use http::{header, HeaderMap, HeaderValue};
 use tracing::error;
@@ -87,18 +88,14 @@ where
         }
 
         let content_disposition = if let Some(filename) = self.filename {
-            let mut bytes = b"attachment; filename=\"".to_vec();
-            // Escape backslashes and double quotes in the filename to prevent
-            // Content-Disposition header parameter injection (similar to CVE-2023-29401)
-            for &byte in filename.as_bytes() {
-                if byte == b'\\' || byte == b'"' {
-                    bytes.push(b'\\');
-                }
-                bytes.push(byte);
-            }
-            bytes.push(b'\"');
-
-            HeaderValue::from_bytes(&bytes).expect("This was a HeaderValue so this can not fail")
+            let filename_str = filename
+                .to_str()
+                .expect("This was a HeaderValue so this can not fail");
+            let value = format!(
+                "attachment; filename=\"{}\"",
+                EscapedFilename(filename_str)
+            );
+            HeaderValue::try_from(value).expect("This was a HeaderValue so this can not fail")
         } else {
             HeaderValue::from_static("attachment")
         };

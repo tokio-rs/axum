@@ -273,13 +273,13 @@ where
     fn into_response(self) -> Response {
         let mut resp = Response::builder().header(header::CONTENT_TYPE, "application/octet-stream");
 
-        if let Some(file_name) = self.file_name {
-            // Escape backslashes and double quotes in the filename to prevent
-            // Content-Disposition header parameter injection (similar to CVE-2023-29401)
-            let escaped = file_name.replace('\\', "\\\\").replace('"', "\\\"");
+        if let Some(ref file_name) = self.file_name {
             resp = resp.header(
                 header::CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{escaped}\""),
+                format!(
+                    "attachment; filename=\"{}\"",
+                    super::content_disposition::EscapedFilename(file_name)
+                ),
             );
         }
 
