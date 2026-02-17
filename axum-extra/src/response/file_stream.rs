@@ -276,7 +276,10 @@ where
         if let Some(file_name) = self.file_name {
             resp = resp.header(
                 header::CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{file_name}\""),
+                format!(
+                    "attachment; filename=\"{}\"",
+                    super::content_disposition::EscapedFilename(&file_name)
+                ),
             );
         }
 
@@ -599,6 +602,59 @@ mod tests {
             return None;
         }
         Some((start, end))
+    }
+
+    #[tokio::test]
+    async fn filename_escapes_quotes() -> Result<(), Box<dyn std::error::Error>> {
+        let app = Router::new().route(
+            "/file",
+            get(|| async {
+                let file_content = b"data".to_vec();
+                let reader = Cursor::new(file_content);
+                let stream = ReaderStream::new(reader);
+                // Filename containing double quotes that could cause parameter injection
+                FileStream::new(stream)
+                    .file_name("evil\"; filename*=UTF-8''pwned.txt; x=\"")
+                    .into_response()
+            }),
+        );
+
+        let response = app
+            .oneshot(Request::builder().uri("/file").body(Body::empty())?)
+            .await?;
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get("content-disposition").unwrap(),
+            "attachment; filename=\"evil\\\"; filename*=UTF-8''pwned.txt; x=\\\"\""
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn filename_escapes_backslashes() -> Result<(), Box<dyn std::error::Error>> {
+        let app = Router::new().route(
+            "/file",
+            get(|| async {
+                let file_content = b"data".to_vec();
+                let reader = Cursor::new(file_content);
+                let stream = ReaderStream::new(reader);
+                FileStream::new(stream)
+                    .file_name("file\\name.txt")
+                    .into_response()
+            }),
+        );
+
+        let response = app
+            .oneshot(Request::builder().uri("/file").body(Body::empty())?)
+            .await?;
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get("content-disposition").unwrap(),
+            "attachment; filename=\"file\\\\name.txt\""
+        );
+        Ok(())
     }
 
     #[tokio::test]

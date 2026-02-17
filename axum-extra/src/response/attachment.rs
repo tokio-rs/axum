@@ -1,3 +1,4 @@
+use super::content_disposition::EscapedFilename;
 use axum_core::response::IntoResponse;
 use http::{header, HeaderMap, HeaderValue};
 use tracing::error;
@@ -87,11 +88,11 @@ where
         }
 
         let content_disposition = if let Some(filename) = self.filename {
-            let mut bytes = b"attachment; filename=\"".to_vec();
-            bytes.extend_from_slice(filename.as_bytes());
-            bytes.push(b'\"');
-
-            HeaderValue::from_bytes(&bytes).expect("This was a HeaderValue so this can not fail")
+            let filename_str = filename
+                .to_str()
+                .expect("This was a HeaderValue so this can not fail");
+            let value = format!("attachment; filename=\"{}\"", EscapedFilename(filename_str));
+            HeaderValue::try_from(value).expect("This was a HeaderValue so this can not fail")
         } else {
             HeaderValue::from_static("attachment")
         };
@@ -99,5 +100,51 @@ where
         headers.append(header::CONTENT_DISPOSITION, content_disposition);
 
         (headers, self.inner).into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum_core::response::IntoResponse;
+    use http::header::CONTENT_DISPOSITION;
+
+    #[test]
+    fn attachment_without_filename() {
+        let attachment = Attachment::new("data").into_response();
+        let value = attachment.headers().get(CONTENT_DISPOSITION).unwrap();
+        assert_eq!(value, "attachment");
+    }
+
+    #[test]
+    fn attachment_with_normal_filename() {
+        let attachment = Attachment::new("data")
+            .filename("report.pdf")
+            .into_response();
+        let value = attachment.headers().get(CONTENT_DISPOSITION).unwrap();
+        assert_eq!(value, "attachment; filename=\"report.pdf\"");
+    }
+
+    #[test]
+    fn attachment_filename_escapes_quotes() {
+        // A filename containing a double quote should be escaped to prevent
+        // Content-Disposition parameter injection (see CVE-2023-29401)
+        let attachment = Attachment::new("data")
+            .filename("evil\"; filename*=UTF-8''pwned.txt; x=\"")
+            .into_response();
+        let value = attachment.headers().get(CONTENT_DISPOSITION).unwrap();
+        assert_eq!(
+            value,
+            "attachment; filename=\"evil\\\"; filename*=UTF-8''pwned.txt; x=\\\"\""
+        );
+    }
+
+    #[test]
+    fn attachment_filename_escapes_backslashes() {
+        let attachment = Attachment::new("data")
+            .filename("file\\name.txt")
+            .into_response();
+        let value = attachment.headers().get(CONTENT_DISPOSITION).unwrap();
+        assert_eq!(value, "attachment; filename=\"file\\\\name.txt\"");
     }
 }
