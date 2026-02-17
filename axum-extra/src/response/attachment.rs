@@ -91,10 +91,7 @@ where
             let filename_str = filename
                 .to_str()
                 .expect("This was a HeaderValue so this can not fail");
-            let value = format!(
-                "attachment; filename=\"{}\"",
-                EscapedFilename(filename_str)
-            );
+            let value = format!("attachment; filename=\"{}\"", EscapedFilename(filename_str));
             HeaderValue::try_from(value).expect("This was a HeaderValue so this can not fail")
         } else {
             HeaderValue::from_static("attachment")
@@ -121,7 +118,9 @@ mod tests {
 
     #[test]
     fn attachment_with_normal_filename() {
-        let attachment = Attachment::new("data").filename("report.pdf").into_response();
+        let attachment = Attachment::new("data")
+            .filename("report.pdf")
+            .into_response();
         let value = attachment.headers().get(CONTENT_DISPOSITION).unwrap();
         assert_eq!(value, "attachment; filename=\"report.pdf\"");
     }
