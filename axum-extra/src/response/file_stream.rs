@@ -273,12 +273,12 @@ where
     fn into_response(self) -> Response {
         let mut resp = Response::builder().header(header::CONTENT_TYPE, "application/octet-stream");
 
-        if let Some(ref file_name) = self.file_name {
+        if let Some(file_name) = self.file_name {
             resp = resp.header(
                 header::CONTENT_DISPOSITION,
                 format!(
                     "attachment; filename=\"{}\"",
-                    super::content_disposition::EscapedFilename(file_name)
+                    super::content_disposition::EscapedFilename(&file_name)
                 ),
             );
         }
