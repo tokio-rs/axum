@@ -127,6 +127,11 @@ impl ResponseParts {
     pub fn extensions_mut(&mut self) -> &mut Extensions {
         self.res.extensions_mut()
     }
+
+    /// Set the status code of the response.
+    pub fn set_status(&mut self, status: StatusCode) {
+        *self.res.status_mut() = status;
+    }
 }
 
 impl IntoResponseParts for HeaderMap {
