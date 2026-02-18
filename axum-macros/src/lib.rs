@@ -136,7 +136,7 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 ///
 /// #[derive(FromRequest)]
 /// struct MyExtractor {
-///     // This will extracted via `Option::<TypedHeader<ContentType>>::from_request`
+///     // This will extracted via `<TypedHeader<ContentType> as OptionalFromRequestParts>::from_request_parts`
 ///     #[from_request(via(TypedHeader))]
 ///     content_type: Option<ContentType>,
 ///     // This will extracted via
