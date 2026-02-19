@@ -18,20 +18,18 @@ use tower::service_fn;
 
 let app = Router::new()
     .route(
-        // Any request to `/` goes to a service
+        // Any request to `/` goes to a service.
+        // `route` requires a `MethodRouter`, so `any_service` is used to
+        // accept all HTTP methods.
         "/",
-        // Services whose response body is not `axum::body::BoxBody`
-        // can be wrapped in `axum::routing::any_service` (or one of the other routing filters)
-        // to have the response body mapped
         any_service(service_fn(|_: Request| async {
             let res = Response::new(Body::from("Hi from `GET /`"));
             Ok::<_, Infallible>(res)
         }))
     )
     .route_service(
+        // `route_service` accepts a `Service` directly, so no wrapping is needed.
         "/foo",
-        // This service's response body is `axum::body::BoxBody` so
-        // it can be routed to directly.
         service_fn(|req: Request| async move {
             let body = Body::from(format!("Hi from `{} /foo`", req.method()));
             let res = Response::new(body);
