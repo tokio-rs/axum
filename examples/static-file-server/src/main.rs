@@ -51,7 +51,7 @@ fn using_serve_dir_with_assets_fallback() -> Router {
     Router::new()
         .route("/foo", get(|| async { "Hi from /foo" }))
         .nest_service("/assets", serve_dir.clone())
-        .fallback_service(serve_dir)
+        .fallback_service(ServeFile::new("assets/index.html"))
 }
 
 fn using_serve_dir_only_from_root_via_fallback() -> Router {
@@ -76,7 +76,7 @@ fn using_serve_dir_with_handler_as_service() -> Router {
 
     Router::new()
         .route("/foo", get(|| async { "Hi from /foo" }))
-        .fallback_service(serve_dir)
+        .fallback_service(ServeFile::new("assets/index.html"))
 }
 
 fn two_serve_dirs() -> Router {
