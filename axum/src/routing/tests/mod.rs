@@ -330,7 +330,10 @@ async fn wildcard_sees_whole_url() {
 async fn middleware_applies_to_routes_above() {
     let app = Router::new()
         .route("/one", get(std::future::pending::<()>))
-        .layer(TimeoutLayer::new(Duration::ZERO))
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::REQUEST_TIMEOUT,
+            Duration::ZERO,
+        ))
         .route("/two", get(|| async {}));
 
     let client = TestClient::new(app);
@@ -586,6 +589,7 @@ async fn routing_to_router_panics() {
     TestClient::new(Router::new().route_service("/", Router::new()));
 }
 
+#[allow(deprecated)]
 #[crate::test]
 async fn route_layer() {
     let app = Router::new()
