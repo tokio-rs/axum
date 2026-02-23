@@ -275,7 +275,7 @@ async fn login_authorized(
     // Get an auth token
     let token = oauth_client
         .exchange_code(AuthorizationCode::new(query.code.clone()))
-        .request_async(&client)
+        .request_async(&oauth2_reqwest::ReqwestClient::from(client.clone()))
         .await
         .context("failed in sending request request to authorization server")?;
 
