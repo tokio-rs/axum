@@ -1412,6 +1412,7 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
     }
 
+    #[allow(deprecated)]
     #[crate::test]
     async fn layer() {
         let mut svc = MethodRouter::new()
@@ -1427,6 +1428,7 @@ mod tests {
         assert_eq!(status, StatusCode::UNAUTHORIZED);
     }
 
+    #[allow(deprecated)]
     #[crate::test]
     async fn route_layer() {
         let mut svc = MethodRouter::new()
@@ -1442,7 +1444,7 @@ mod tests {
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code, deprecated)]
     async fn building_complex_router() {
         let app = crate::Router::new().route(
             "/",
@@ -1453,7 +1455,10 @@ mod tests {
                 .merge(delete_service(ServeDir::new(".")))
                 .fallback(|| async { StatusCode::NOT_FOUND })
                 .put(ok)
-                .layer(TimeoutLayer::new(Duration::from_secs(10))),
+                .layer(TimeoutLayer::with_status_code(
+                    StatusCode::REQUEST_TIMEOUT,
+                    Duration::from_secs(10),
+                )),
         );
 
         let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await.unwrap();
