@@ -143,7 +143,7 @@ tracing = { version = "0.1", default-features = false, optional = true }
 serde = { version = "1.0.211", optional = true }
 
 [dependencies.tower-http]
-version = "0.6.0"
+version = "0.6.8"
 optional = true
 features = [
     # all tower-http features except (de)?compression-zstd which doesn't
@@ -208,7 +208,7 @@ features = [
 ]
 
 [dev-dependencies.tower-http]
-version = "0.6.0"
+version = "0.6.8"
 features = [
     # all tower-http features except (de)?compression-zstd which doesn't
     # build on `--target armv5te-unknown-linux-musleabi`
