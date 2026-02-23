@@ -127,7 +127,10 @@ async fn layer_and_handle_error() {
     let one = Router::new().route("/foo", get(|| async {}));
     let two = Router::new()
         .route("/timeout", get(std::future::pending::<()>))
-        .layer(TimeoutLayer::new(Duration::from_millis(10)));
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::REQUEST_TIMEOUT,
+            Duration::from_millis(10),
+        ));
     let app = one.merge(two);
 
     let client = TestClient::new(app);
@@ -364,6 +367,7 @@ async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
     );
 }
 
+#[allow(deprecated)]
 #[crate::test]
 async fn middleware_that_return_early() {
     let private = Router::new()
