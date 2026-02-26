@@ -244,7 +244,11 @@ impl MultipartError {
     /// Get the response body text used for this rejection.
     #[must_use]
     pub fn body_text(&self) -> String {
-        self.source.to_string()
+        if is_body_limit_error(&self.source) {
+            "Request payload is too large".to_owned()
+        } else {
+            self.source.to_string()
+        }
     }
 
     /// Get the status code used for this rejection.
@@ -286,6 +290,22 @@ fn status_code_from_multer_error(err: &multer::Error) -> StatusCode {
             StatusCode::INTERNAL_SERVER_ERROR
         }
         _ => StatusCode::INTERNAL_SERVER_ERROR,
+    }
+}
+
+fn is_body_limit_error(err: &multer::Error) -> bool {
+    match err {
+        multer::Error::FieldSizeExceeded { .. } | multer::Error::StreamSizeExceeded { .. } => true,
+        multer::Error::StreamReadFailed(err) => {
+            if let Some(err) = err.downcast_ref::<multer::Error>() {
+                return is_body_limit_error(err);
+            }
+            err.downcast_ref::<crate::Error>()
+                .and_then(|err| err.source())
+                .and_then(|err| err.downcast_ref::<http_body_util::LengthLimitError>())
+                .is_some()
+        }
+        _ => false,
     }
 }
 
@@ -407,6 +427,7 @@ mod tests {
 
         let res = client.post("/").multipart(form).await;
         assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+        assert_eq!(res.text().await, "Request payload is too large");
     }
 
     #[crate::test]
