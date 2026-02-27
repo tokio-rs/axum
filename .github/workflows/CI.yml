@@ -125,16 +125,14 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
-      - name: "install Rust nightly"
-        uses: dtolnay/rust-toolchain@nightly
-      - name: Select minimal version
-        run: cargo +nightly update -Z minimal-versions
-      - name: Fix up Cargo.lock - crc32fast
-        run: cargo +nightly update -p crc32fast --precise 1.1.1
-      - name: Fix up Cargo.lock - version_check
-        run : cargo +nightly update -p version_check@0.1.0 --precise 0.1.4
-      - name: Fix up Cargo.lock - lazy_static
-        run: cargo +nightly update -p lazy_static --precise 1.1.0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Resolve MSRV aware dependencies
+        run: |
+          cargo update
+          cargo update async-compression --precise 0.4.32
+          cargo update compression-codecs --precise 0.4.32
+        env:
+          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS: fallback
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.MSRV }}
