@@ -36,6 +36,20 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
     if path.as_bytes()[0] != b'/' {
         panic!("Paths must start with /");
     }
+
+    // Checks if we have a path in 107 format.
+    let size: usize = path.len() - 1;
+    let mut curr: usize = 0;
+    let bytes = path.as_bytes();
+    while curr < size {
+        if bytes[curr] == b'/' && (bytes[curr + 1] == b'*' || bytes[curr + 1] == b':') {
+            panic!(
+                "You have a path with a deprecated format, move your ':var' or '*var' to '{{var}}'"
+            );
+        }
+        curr += 1;
+    }
+
     path
 }
 
@@ -61,12 +75,35 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
 /// use axum_extra::vpath;
 ///
 /// let router = axum::Router::<()>::new()
-///     .route(vpath!("/valid_path"), get(root))
+///     .route(vpath!("/valid_path/{id}"), get(root))
 ///     .to_owned();
 ///
 /// async fn root() {}
 /// ```
 ///
+/// It also checks for deprecated usage of variables within the path:
+///
+/// ```compile_fail
+///  use axum::routing::{Router, get};
+///  use axum_extra::vpath;
+///
+/// let router = axum::Router::<()>::new()
+///     .route(vpath!("/users/:id"), get(root))
+///     .to_owned();
+///
+/// async fn root() {}
+/// ```
+///
+/// ```compile_fail
+///  use axum::routing::{Router, get};
+///  use axum_extra::vpath;
+///
+/// let router = axum::Router::<()>::new()
+///     .route(vpath!("/users/*id"), get(root))
+///     .to_owned();
+///
+/// async fn root() {}
+/// ```
 /// This macro is available only on rust versions 1.80 and above.
 #[cfg_attr(docsrs, doc(cfg(feature = "routing")))]
 #[rustversion::since(1.80)]
