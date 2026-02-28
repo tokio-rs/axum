@@ -200,6 +200,82 @@ impl CookieJar {
     pub fn iter(&self) -> impl Iterator<Item = &'_ Cookie<'static>> {
         self.jar.iter()
     }
+
+    /// Add a cookie with the specified prefix to the jar.
+    ///
+    /// # Example
+    /// ```rust
+    /// use axum_extra::extract::cookie::{CookieJar, Cookie};
+    /// use cookie::prefix::{Host, Secure};
+    ///
+    /// async fn handler(jar: CookieJar) -> CookieJar {
+    ///     // Add a cookie with the "__Host-" prefix
+    ///     let with_host = jar.clone().add_prefixed(Host, Cookie::new("session_id", "value"));
+    ///
+    ///     // Add a cookie with the "__Secure-" prefix
+    ///     let _with_secure = jar.add_prefixed(Secure, Cookie::new("auth", "token"));
+    ///
+    ///     with_host
+    /// }
+    /// ```
+    #[must_use]
+    pub fn add_prefixed<P: cookie::prefix::Prefix>(
+        mut self,
+        prefix: P,
+        cookie: Cookie<'static>,
+    ) -> Self {
+        let mut prefixed_jar = self.jar.prefixed_mut(prefix);
+        prefixed_jar.add(cookie);
+        self
+    }
+
+    /// Get a signed cookie with the specified prefix from the jar.
+    ///
+    /// If the cookie exists and its signature is valid, it is returned with its original name
+    /// (without the prefix) and plaintext value.
+    ///
+    /// # Example
+    /// ```rust
+    /// use axum_extra::extract::cookie::{CookieJar, Cookie};
+    /// use cookie::prefix::{Host, Secure};
+    ///
+    /// async fn handler(jar: CookieJar) {
+    ///     if let Some(cookie) = jar.get_prefixed(cookie::prefix::Host, "session_id") {
+    ///         let value = cookie.value();
+    ///     }
+    /// }
+    /// ```
+    pub fn get_prefixed<P: cookie::prefix::Prefix>(
+        &self,
+        prefix: P,
+        name: &str,
+    ) -> Option<Cookie<'static>> {
+        let prefixed_jar = self.jar.prefixed(prefix);
+        prefixed_jar.get(name)
+    }
+
+    /// Remove a cookie with the specified prefix from the jar.
+    ///
+    /// # Example
+    /// ```rust
+    /// use axum_extra::extract::cookie::CookieJar;
+    /// use cookie::prefix::{Host, Secure};
+    ///
+    /// async fn handler(jar: CookieJar) -> CookieJar {
+    ///     // Remove a cookie with the "__Host-" prefix
+    ///     jar.remove_prefixed(Host, "session_id")
+    /// }
+    /// ```
+    #[must_use]
+    pub fn remove_prefixed<P, S>(mut self, prefix: P, name: S) -> Self
+    where
+        P: cookie::prefix::Prefix,
+        S: Into<String>,
+    {
+        let mut prefixed_jar = self.jar.prefixed_mut(prefix);
+        prefixed_jar.remove(name.into());
+        self
+    }
 }
 
 impl IntoResponseParts for CookieJar {
@@ -232,6 +308,7 @@ fn set_cookies(jar: &cookie::CookieJar, headers: &mut HeaderMap) {
 mod tests {
     use super::*;
     use axum::{body::Body, extract::FromRef, http::Request, routing::get, Router};
+    use cookie::prefix::Host;
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
@@ -269,6 +346,18 @@ mod tests {
                     .unwrap();
                 let cookie_value = res.headers()["set-cookie"].to_str().unwrap();
 
+                assert!(cookie_value.starts_with("key="));
+
+                // For signed/private cookies, verify that the plaintext value is not directly visible
+                // (only for signed and private jars, not for the regular CookieJar)
+                if std::any::type_name::<$jar>().contains("Private")
+                    || std::any::type_name::<$jar>().contains("Signed")
+                {
+                    assert!(!cookie_value.contains("key=value"));
+                } else {
+                    assert!(cookie_value.contains("key=value"));
+                }
+
                 let res = app
                     .clone()
                     .oneshot(
@@ -302,17 +391,113 @@ mod tests {
         };
     }
 
+    macro_rules! cookie_prefixed_test {
+        ($name:ident, $jar:ty) => {
+            #[tokio::test]
+            async fn $name() {
+                async fn set_cookie_prefixed(jar: $jar) -> impl IntoResponse {
+                    jar.add_prefixed(Host, Cookie::new("key", "value"))
+                }
+
+                async fn get_cookie_prefixed(jar: $jar) -> impl IntoResponse {
+                    jar.get_prefixed(Host, "key").unwrap().value().to_owned()
+                }
+
+                async fn remove_cookie_prefixed(jar: $jar) -> impl IntoResponse {
+                    jar.remove_prefixed(Host, "key")
+                }
+
+                let state = AppState {
+                    key: Key::generate(),
+                    custom_key: CustomKey(Key::generate()),
+                };
+
+                let app = Router::new()
+                    .route("/set", get(set_cookie_prefixed))
+                    .route("/get", get(get_cookie_prefixed))
+                    .route("/remove", get(remove_cookie_prefixed))
+                    .with_state(state);
+
+                let res = app
+                    .clone()
+                    .oneshot(Request::builder().uri("/set").body(Body::empty()).unwrap())
+                    .await
+                    .unwrap();
+                let cookie_value = res.headers()["set-cookie"].to_str().unwrap();
+                assert!(cookie_value.contains("__Host-key"));
+
+                // For signed/private cookies, verify that the plaintext value is not directly visible
+                // (only for signed and private jars, not for the regular CookieJar)
+                if std::any::type_name::<$jar>().contains("Private")
+                    || std::any::type_name::<$jar>().contains("Signed")
+                {
+                    assert!(!cookie_value.contains("key=value"));
+                } else {
+                    assert!(cookie_value.contains("key=value"));
+                }
+
+                // Extract just the cookie part (before the first semicolon)
+                // Set-Cookie: __Host-key=value; Secure; Path=/ -> __Host-key=value
+                let cookie_header_value = cookie_value.split(';').next().unwrap().trim();
+
+                let res = app
+                    .clone()
+                    .oneshot(
+                        Request::builder()
+                            .uri("/get")
+                            .header("cookie", cookie_header_value)
+                            .body(Body::empty())
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                let body = body_text(res).await;
+                assert_eq!(body, "value");
+
+                let res = app
+                    .clone()
+                    .oneshot(
+                        Request::builder()
+                            .uri("/remove")
+                            .header("cookie", cookie_value)
+                            .body(Body::empty())
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert!(res.headers()["set-cookie"]
+                    .to_str()
+                    .unwrap()
+                    .contains("__Host-key=;"));
+            }
+        };
+    }
+
     cookie_test!(plaintext_cookies, CookieJar);
 
     #[cfg(feature = "cookie-signed")]
     cookie_test!(signed_cookies, SignedCookieJar);
     #[cfg(feature = "cookie-signed")]
+    cookie_prefixed_test!(signed_cookies_prefixed, SignedCookieJar);
+    #[cfg(feature = "cookie-signed")]
     cookie_test!(signed_cookies_with_custom_key, SignedCookieJar<CustomKey>);
+    #[cfg(feature = "cookie-signed")]
+    cookie_prefixed_test!(
+        signed_cookies_prefixed_with_custom_key,
+        SignedCookieJar<CustomKey>
+    );
 
     #[cfg(feature = "cookie-private")]
     cookie_test!(private_cookies, PrivateCookieJar);
     #[cfg(feature = "cookie-private")]
+    cookie_prefixed_test!(private_cookies_prefixed, PrivateCookieJar);
+    #[cfg(feature = "cookie-private")]
     cookie_test!(private_cookies_with_custom_key, PrivateCookieJar<CustomKey>);
+    #[cfg(feature = "cookie-private")]
+    cookie_prefixed_test!(
+        private_cookies_prefixed_with_custom_key,
+        PrivateCookieJar<CustomKey>
+    );
 
     #[derive(Clone)]
     struct AppState {
