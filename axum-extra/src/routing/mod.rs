@@ -15,6 +15,9 @@ mod resource;
 #[cfg(feature = "typed-routing")]
 mod typed;
 
+#[cfg(feature = "typed-routing")]
+use crate::routing::typed::TypedMethod;
+
 pub use self::resource::Resource;
 
 #[cfg(feature = "typed-routing")]
@@ -80,6 +83,14 @@ macro_rules! vpath {
 /// Extension trait that adds additional methods to [`Router`].
 #[allow(clippy::return_self_not_must_use)]
 pub trait RouterExt<S>: sealed::Sealed {
+    // TODO: comments
+    #[cfg(feature = "typed-routing")]
+    fn typed<H, T, P>(self, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, S>,
+        T: SecondElementIs<P> + 'static,
+        P: TypedMethod;
+
     /// Add a typed `GET` route to the router.
     ///
     /// The path will be inferred from the first argument to the handler function which must
@@ -241,6 +252,16 @@ impl<S> RouterExt<S> for Router<S>
 where
     S: Clone + Send + Sync + 'static,
 {
+    #[cfg(feature = "typed-routing")]
+    fn typed<H, T, P>(self, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, S>,
+        T: SecondElementIs<P> + 'static,
+        P: TypedMethod,
+    {
+        self.route(P::PATH, axum::routing::on(P::METHOD, handler))
+    }
+
     #[cfg(feature = "typed-routing")]
     fn typed_get<H, T, P>(self, handler: H) -> Self
     where

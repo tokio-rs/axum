@@ -4,6 +4,11 @@ use super::sealed::Sealed;
 use http::Uri;
 use serde_core::Serialize;
 
+// TODO: comments
+pub trait TypedMethod: TypedPath {
+    const METHOD: axum::routing::MethodFilter;
+}
+
 /// A type safe path.
 ///
 /// This is used to statically connect a path to its corresponding handler using
