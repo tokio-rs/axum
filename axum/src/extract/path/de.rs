@@ -4,7 +4,7 @@ use serde_core::{
     de::{self, DeserializeSeed, EnumAccess, Error, MapAccess, SeqAccess, VariantAccess, Visitor},
     forward_to_deserialize_any, Deserializer,
 };
-use std::{any::type_name, sync::Arc};
+use std::{any::type_name, str::Split, sync::Arc};
 
 macro_rules! unsupported_type {
     ($trait_fn:ident) => {
@@ -144,6 +144,12 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
+        if let [(_, s)] = self.url_params {
+            return visitor.visit_seq(ValueSeqDeserializer {
+                split: s.split('/'),
+            });
+        }
+
         visitor.visit_seq(SeqDeserializer {
             params: self.url_params,
             idx: 0,
@@ -486,13 +492,13 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
         }
     }
 
-    fn deserialize_seq<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
-        Err(PathDeserializationError::unsupported_type(type_name::<
-            V::Value,
-        >()))
+        visitor.visit_seq(ValueSeqDeserializer {
+            split: self.value.split('/'),
+        })
     }
 
     fn deserialize_tuple_struct<V>(
@@ -627,6 +633,124 @@ impl<'de> SeqAccess<'de> for SeqDeserializer<'de> {
             }
             None => Ok(None),
         }
+    }
+}
+
+macro_rules! parse_raw_str {
+    ($trait_fn:ident, $visit_fn:ident, $ty:literal) => {
+        fn $trait_fn<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+        where
+            V: Visitor<'de>,
+        {
+            let v = self.value.parse().map_err(|_| {
+                PathDeserializationError::new(ErrorKind::ParseError {
+                    value: self.value.to_owned(),
+                    expected_type: $ty,
+                })
+            })?;
+            visitor.$visit_fn(v)
+        }
+    };
+}
+
+#[derive(Debug)]
+struct RawStrValueDeserializer<'de> {
+    value: &'de str,
+}
+
+impl<'de> Deserializer<'de> for RawStrValueDeserializer<'de> {
+    type Error = PathDeserializationError;
+
+    parse_raw_str!(deserialize_bool, visit_bool, "bool");
+    parse_raw_str!(deserialize_i8, visit_i8, "i8");
+    parse_raw_str!(deserialize_i16, visit_i16, "i16");
+    parse_raw_str!(deserialize_i32, visit_i32, "i32");
+    parse_raw_str!(deserialize_i64, visit_i64, "i64");
+    parse_raw_str!(deserialize_i128, visit_i128, "i128");
+    parse_raw_str!(deserialize_u8, visit_u8, "u8");
+    parse_raw_str!(deserialize_u16, visit_u16, "u16");
+    parse_raw_str!(deserialize_u32, visit_u32, "u32");
+    parse_raw_str!(deserialize_u64, visit_u64, "u64");
+    parse_raw_str!(deserialize_u128, visit_u128, "u128");
+    parse_raw_str!(deserialize_f32, visit_f32, "f32");
+    parse_raw_str!(deserialize_f64, visit_f64, "f64");
+    parse_raw_str!(deserialize_string, visit_string, "String");
+    parse_raw_str!(deserialize_byte_buf, visit_string, "String");
+    parse_raw_str!(deserialize_char, visit_char, "char");
+
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_borrowed_str(self.value)
+    }
+
+    fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_borrowed_bytes(self.value.as_bytes())
+    }
+
+    fn deserialize_newtype_struct<V>(
+        self,
+        _name: &'static str,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_newtype_struct(self)
+    }
+
+    fn deserialize_enum<V>(
+        self,
+        _name: &'static str,
+        _variants: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_enum(EnumDeserializer { value: self.value })
+    }
+
+    fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        Err(PathDeserializationError::unsupported_type(type_name::<
+            V::Value,
+        >()))
+    }
+
+    forward_to_deserialize_any! {
+        option unit unit_struct seq tuple identifier
+        tuple_struct map struct ignored_any
+    }
+}
+
+struct ValueSeqDeserializer<'de> {
+    split: Split<'de, char>,
+}
+
+impl<'de> SeqAccess<'de> for ValueSeqDeserializer<'de> {
+    type Error = PathDeserializationError;
+
+    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
+    where
+        T: DeserializeSeed<'de>,
+    {
+        for s in self.split.by_ref() {
+            // skip empty segments from trailing or consecutive slashes
+            if !s.is_empty() {
+                return Ok(Some(
+                    seed.deserialize(RawStrValueDeserializer { value: s })?,
+                ));
+            }
+        }
+
+        Ok(None)
     }
 }
 
