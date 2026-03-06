@@ -945,6 +945,63 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_parse_seq_wildcard() {
+        let url_params = create_url_params(vec![("a", "x/y/z")]);
+        assert_eq!(
+            <Vec<String>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            ["x".to_owned(), "y".to_owned(), "z".to_owned()]
+        );
+
+        let url_params = create_url_params(vec![("a", "1/-2/3")]);
+        assert_eq!(
+            <Vec<i32>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            [1, -2, 3]
+        );
+    }
+
+    #[test]
+    fn test_parse_seq_wildcard_empty() {
+        let url_params = create_url_params(vec![("a", "x")]);
+        assert_eq!(
+            <Vec<String>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            ["x".to_owned()]
+        );
+
+        let url_params = create_url_params(vec![("a", "x/")]);
+        assert_eq!(
+            <Vec<String>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            ["x".to_owned()]
+        );
+
+        let url_params = create_url_params(vec![("a", "x///y")]);
+        assert_eq!(
+            <Vec<String>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            ["x".to_owned(), "y".to_owned()]
+        );
+    }
+
+    #[test]
+    fn test_parse_seq_wildcard_multiple_segments() {
+        let url_params = create_url_params(vec![("a", "test"), ("b", "x")]);
+        assert_eq!(
+            <(String, Vec<String>)>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            ("test".to_owned(), vec!["x".to_owned()])
+        );
+
+        let url_params = create_url_params(vec![("a", "test"), ("b", "x/")]);
+        assert_eq!(
+            <(String, Vec<String>)>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            ("test".to_owned(), vec!["x".to_owned()])
+        );
+
+        let url_params = create_url_params(vec![("a", "test"), ("b", "x/y")]);
+        assert_eq!(
+            <(String, Vec<String>)>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            ("test".to_owned(), vec!["x".to_owned(), "y".to_owned()])
+        );
+    }
+
     macro_rules! test_parse_error {
         (
             $params:expr,
@@ -1061,6 +1118,14 @@ mod tests {
         test_parse_error!(
             vec![("a", "false")],
             Vec<(u32, String)>,
+            ErrorKind::UnsupportedType {
+                name: "(u32, alloc::string::String)"
+            }
+        );
+
+        test_parse_error!(
+            vec![("a", "false"), ("b", "true")],
+            Vec<(u32, String)>,
             ErrorKind::Message("Unexpected key type".to_owned())
         );
     }
@@ -1096,6 +1161,30 @@ mod tests {
                 key: "id".to_owned(),
                 value: "123123-123-123123".to_owned(),
                 message: "UUID parsing failed: invalid group count: expected 5, found 3".to_owned(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_seq_wildcard_error() {
+        test_parse_error!(
+            vec![("a", "1/notanumber/3")],
+            Vec<i32>,
+            ErrorKind::ParseError {
+                value: "notanumber".to_owned(),
+                expected_type: "i32",
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_seq_wildcard_tuple_error() {
+        test_parse_error!(
+            vec![("a", "test"), ("b", "x/y")],
+            (String, Vec<i32>),
+            ErrorKind::ParseError {
+                value: "x".to_owned(),
+                expected_type: "i32",
             }
         );
     }
