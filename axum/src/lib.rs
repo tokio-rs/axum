@@ -183,6 +183,51 @@
 //! # let _: Router = app;
 //! ```
 //!
+//! State is cloned for every request. Wrapping your state in `Arc` makes those
+//! clones cheap. If all fields are already cheap to clone (for example, each field
+//! is itself an `Arc` or a copy type), you can `#[derive(Clone)]` directly on the
+//! struct instead.
+//!
+//! ### Substates with `FromRef`
+//!
+//! When a handler only needs part of the application state, use [`FromRef`] to extract
+//! a substate. Implement the trait manually, or derive it with `#[derive(FromRef)]`
+//! (requires the `macros` feature):
+//!
+//! ```rust
+//! use axum::{Router, routing::get, extract::{State, FromRef}};
+//!
+//! #[derive(Clone)]
+//! struct AppState {
+//!     api_state: ApiState,
+//! }
+//!
+//! #[derive(Clone)]
+//! struct ApiState {}
+//!
+//! // Teach axum how to produce an `ApiState` from a reference to `AppState`.
+//! impl FromRef<AppState> for ApiState {
+//!     fn from_ref(app_state: &AppState) -> ApiState {
+//!         app_state.api_state.clone()
+//!     }
+//! }
+//!
+//! let app = Router::new()
+//!     .route("/", get(handler))
+//!     .with_state(AppState { api_state: ApiState {} });
+//!
+//! // This handler receives only the `ApiState` slice; it never sees `AppState`.
+//! async fn handler(State(api_state): State<ApiState>) {}
+//! # let _: Router = app;
+//! ```
+//!
+//! ### The `Router<S>` type parameter
+//!
+//! `Router<S>` means a router that is _missing_ a state of type `S`. Calling
+//! [`.with_state(s)`][Router::with_state] provides that state and typically produces a
+//! `Router<()>`, which is the only form that can be passed to [`serve()`]. See
+//! [`Router::with_state`] for a full explanation.
+//!
 //! You should prefer using [`State`] if possible since it's more type safe. The downside is that
 //! it's less dynamic than task-local variables and request extensions.
 //!
@@ -426,6 +471,8 @@
 //! [load shed]: tower::load_shed
 //! [`axum-core`]: http://crates.io/crates/axum-core
 //! [`State`]: crate::extract::State
+//! [`FromRef`]: crate::extract::FromRef
+//! [`Router::with_state`]: crate::routing::Router::with_state
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
