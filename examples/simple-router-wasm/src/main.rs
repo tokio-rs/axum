@@ -29,8 +29,7 @@ use http::Request;
 use tower_service::Service;
 
 fn main() {
-    let request: Request<String> = Request::builder()
-        .uri("https://serverless.example/api/")
+    let request: Request<String> = Request::get("https://serverless.example/api/")
         .body("Some Body Data".into())
         .unwrap();
 

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **fixed:** Escape backslashes and double quotes in `Content-Disposition` filenames
+  to prevent header parameter injection in `Attachment` and `FileStream` ([#3664])
 - **breaking:** Remove the deprecated `Host`, `Scheme` and `OptionalPath`
   extractors ([#3599])
   - Also remove `HostRejection` which only had `FailedToResolveHost`
@@ -23,6 +25,7 @@ and this project adheres to [Semantic Versioning].
       .route_with_tsr("/path", post(/* handler */))
   ```
 
+[#3664]: https://github.com/tokio-rs/axum/pull/3664
 [#3599]: https://github.com/tokio-rs/axum/pull/3599
 [#3586]: https://github.com/tokio-rs/axum/pull/3586
 

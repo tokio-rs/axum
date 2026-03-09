@@ -81,12 +81,7 @@ mod tests {
     #[tokio::test]
     async fn test_main() {
         let response = app()
-            .oneshot(
-                Request::builder()
-                    .uri("/greet/Foo")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
+            .oneshot(Request::get("/greet/Foo").body(Body::empty()).unwrap())
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);

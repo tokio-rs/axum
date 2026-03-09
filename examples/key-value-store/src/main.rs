@@ -123,6 +123,7 @@ fn admin_routes() -> Router<SharedState> {
         state.write().unwrap().db.remove(&key);
     }
 
+    #[allow(deprecated)] // FIXME
     Router::new()
         .route("/keys", delete(delete_all_keys))
         .route("/key/{key}", delete(remove_key))

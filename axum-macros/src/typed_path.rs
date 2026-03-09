@@ -118,6 +118,7 @@ fn expand_named_fields(
         #[automatically_derived]
         impl ::std::fmt::Display for #ident {
             #[allow(clippy::unnecessary_to_owned)]
+            #[allow(clippy::implicit_clone)]
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 let Self { #(#captures,)* } = self;
                 write!(
@@ -149,7 +150,8 @@ fn expand_named_fields(
                 parts: &mut ::axum::http::request::Parts,
                 state: &S,
             ) -> ::std::result::Result<Self, Self::Rejection> {
-                ::axum::extract::Path::from_request_parts(parts, state)
+                <::axum::extract::Path<#ident> as ::axum::extract::FromRequestParts<S>>
+                    ::from_request_parts(parts, state)
                     .await
                     .map(|path| path.0)
                     #map_err_rejection
@@ -222,6 +224,7 @@ fn expand_unnamed_fields(
         #[automatically_derived]
         impl ::std::fmt::Display for #ident {
             #[allow(clippy::unnecessary_to_owned)]
+            #[allow(clippy::implicit_clone)]
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 let Self { #(#destructure_self)* } = self;
                 write!(

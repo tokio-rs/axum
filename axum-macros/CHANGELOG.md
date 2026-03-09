@@ -9,8 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **breaking:** `#[from_request(via(Extractor))]` now uses the extractor's
   rejection type instead of `axum::response::Response` ([#3261])
+- **fixed:** Fix compilation error when deriving `TypedPath` with
+  `OptionalFromRequestParts` being in scope ([#3645])
 
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
+[#3645]: https://github.com/tokio-rs/axum/pull/3645
 
 # 0.5.0
 
