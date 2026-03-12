@@ -223,7 +223,7 @@
 //!
 //! ### The `Router<S>` type parameter
 //!
-//! `Router<S>` means a router that is _missing_ a state of type `S`. Calling
+//! `Router<S>` when `S` is not `()` means a router that is _missing_ a state of type `S`. Calling
 //! [`.with_state(s)`][Router::with_state] provides that state and typically produces a
 //! `Router<()>`, which is the only form that can be passed to [`serve()`]. See
 //! [`Router::with_state`] for a full explanation.
