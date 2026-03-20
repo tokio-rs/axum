@@ -203,7 +203,7 @@ jobs:
       - name: Install cargo-sort
         uses: taiki-e/install-action@v2
         with:
-          tool: cargo-sort@2.0.2
+          tool: cargo-sort@2.1.3
       - name: Check dependency tables
         run: cargo-sort --workspace --grouped --check
       - name: Check examples dependency tables
