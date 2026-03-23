@@ -23,7 +23,9 @@ use axum::{
     Router,
 };
 use std::time::Duration;
-use tower::{buffer::BufferLayer, limit::RateLimitLayer, BoxError, ServiceBuilder};
+use tower::{
+    buffer::BufferLayer, limit::RateLimitLayer, load_shed::LoadShedLayer, BoxError, ServiceBuilder,
+};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -43,11 +45,14 @@ async fn main() {
         // Apply a global rate limit: 5 requests per second.
         //
         // HandleErrorLayer converts tower errors into HTTP responses.
+        // LoadShedLayer rejects requests immediately when the inner
+        // service is not ready (buffer full) instead of waiting.
         // BufferLayer wraps the non-Clone RateLimit service so that axum
         // can clone it across tasks.
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(handle_error))
+                .layer(LoadShedLayer::new())
                 .layer(BufferLayer::new(1024))
                 .layer(RateLimitLayer::new(5, Duration::from_secs(1))),
         );
@@ -65,6 +70,14 @@ async fn slow_handler() -> &'static str {
 }
 
 async fn handle_error(error: BoxError) -> impl IntoResponse {
+    if error.is::<tower::load_shed::error::Overloaded>() {
+        tracing::warn!(%error, "service overloaded");
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "Service overloaded, try again later".to_string(),
+        );
+    }
+
     tracing::error!(%error, "unhandled middleware error");
     (
         StatusCode::INTERNAL_SERVER_ERROR,
