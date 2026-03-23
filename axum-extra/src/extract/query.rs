@@ -46,7 +46,7 @@ use serde_core::de::DeserializeOwned;
 /// For handling values being empty vs missing see the [query-params-with-empty-strings][example]
 /// example.
 ///
-/// [example]: https://github.com/tokio-rs/axum/blob/main/examples/query-params-with-empty-strings/src/main.rs
+/// [example]: https://github.com/tokio-rs/axum/blob/v0.8.x/examples/query-params-with-empty-strings/src/main.rs
 ///
 /// While `Option<T>` will handle empty parameters (e.g. `param=`), beware when using this with a
 /// `Vec<T>`. If your list is optional, use `Vec<T>` in combination with `#[serde(default)]`
