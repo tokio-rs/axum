@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+# 0.12.6
+
 - **fixed:** Escape backslashes and double quotes in `Content-Disposition` filenames
   to prevent header parameter injection in `Attachment` and `FileStream` ([#3664])
 - `vpath!` macro now stops the compilation if your path is using deprecated
