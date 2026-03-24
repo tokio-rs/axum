@@ -476,19 +476,24 @@ fn extract_fields(
 
             if peel_option(&field.ty).is_some() {
                 let field_ty = into_outer(via.as_ref(), ty_span, peel_option(&field.ty).unwrap());
+                let map_err = if let Some(rejection) = rejection {
+                    quote! { <#rejection as ::std::convert::From<_>>::from }
+                } else {
+                    quote! { ::axum::response::IntoResponse::into_response }
+                };
                 let tokens = match tr {
                     Trait::FromRequest => {
                         quote_spanned! {ty_span=>
                             #member: {
                                 let (mut parts, body) = req.into_parts();
                                 let value =
-                                    <#field_ty as ::axum::extract::FromRequestParts<_>>::from_request_parts(
+                                    <#field_ty as ::axum::extract::OptionalFromRequestParts<_>>::from_request_parts(
                                         &mut parts,
                                         state,
                                     )
                                     .await
-                                    .ok()
-                                    .map(#into_inner);
+                                    .map(|opt| opt.map(#into_inner))
+                                    .map_err(#map_err)?;
                                 req = ::axum::http::Request::from_parts(parts, body);
                                 value
                             },
@@ -497,13 +502,13 @@ fn extract_fields(
                     Trait::FromRequestParts => {
                         quote_spanned! {ty_span=>
                             #member: {
-                                <#field_ty as ::axum::extract::FromRequestParts<_>>::from_request_parts(
+                                <#field_ty as ::axum::extract::OptionalFromRequestParts<_>>::from_request_parts(
                                     parts,
                                     state,
                                 )
                                 .await
-                                .ok()
-                                .map(#into_inner)
+                                .map(|opt| opt.map(#into_inner))
+                                .map_err(#map_err)?
                             },
                         }
                     }
@@ -597,12 +602,17 @@ fn extract_fields(
 
         let item = if peel_option(&field.ty).is_some() {
             let field_ty = into_outer(via.as_ref(), ty_span, peel_option(&field.ty).unwrap());
+            let map_err = if let Some(rejection) = rejection {
+                quote! { <#rejection as ::std::convert::From<_>>::from }
+            } else {
+                quote! { ::axum::response::IntoResponse::into_response }
+            };
             quote_spanned! {ty_span=>
                 #member: {
-                    <#field_ty as ::axum::extract::FromRequest<_, _>>::from_request(req, state)
+                    <#field_ty as ::axum::extract::OptionalFromRequest<_, _>>::from_request(req, state)
                         .await
-                        .ok()
-                        .map(#into_inner)
+                        .map(|opt| opt.map(#into_inner))
+                        .map_err(#map_err)?
                 },
             }
         } else if peel_result_ok(&field.ty).is_some() {

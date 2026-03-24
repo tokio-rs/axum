@@ -9,10 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **breaking:** `#[from_request(via(Extractor))]` now uses the extractor's
   rejection type instead of `axum::response::Response` ([#3261])
+- **breaking:** `Option<T>` fields in `#[derive(FromRequest)]` and
+  `#[derive(FromRequestParts)]` now use `OptionalFromRequest` /
+  `OptionalFromRequestParts` instead of calling `.ok()` on the result. This
+  means the extractor decides when to return `None` vs an error, instead of
+  silently converting all rejections to `None`. Extractors used with
+  `Option<T>` must implement `OptionalFromRequest` or
+  `OptionalFromRequestParts`. ([#3623])
 - **fixed:** Fix compilation error when deriving `TypedPath` with
   `OptionalFromRequestParts` being in scope ([#3645])
 
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
+[#3623]: https://github.com/tokio-rs/axum/issues/3623
 [#3645]: https://github.com/tokio-rs/axum/pull/3645
 
 # 0.5.0
