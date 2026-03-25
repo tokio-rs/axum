@@ -1,6 +1,13 @@
 Provide the state for the router. State passed to this method is global and will be used
 for all requests this router receives. That means it is not suitable for holding state derived from a request, such as authorization data extracted in a middleware. Use [`Extension`] instead for such data.
 
+See ["Sharing state with handlers"][sharing-state] for an overview of state patterns,
+including when to use `Arc`, how to extract substates with [`FromRef`], and what the
+`Router<S>` type parameter means.
+
+[sharing-state]: crate#sharing-state-with-handlers
+[`FromRef`]: crate::extract::FromRef
+
 ```rust
 use axum::{Router, routing::get, extract::State};
 

@@ -114,6 +114,7 @@ async fn list_keys(State(state): State<SharedState>) -> String {
         .join("\n")
 }
 
+#[allow(deprecated)]
 fn admin_routes() -> Router<SharedState> {
     async fn delete_all_keys(State(state): State<SharedState>) {
         state.write().unwrap().db.clear();

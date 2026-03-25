@@ -204,7 +204,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/nest.md")]
-    #[doc(alias = "scope")] // Some web frameworks like actix-web use this term
+    #[doc(alias = "scope")] // Some other libs like actix-web use this term
     #[track_caller]
     pub fn nest(self, path: &str, router: Router<S>) -> Self {
         if path.is_empty() || path == "/" {
