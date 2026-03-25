@@ -1,6 +1,6 @@
 [package]
 name = "axum"
-version = "0.8.8" # remember to bump the version that axum-extra depends on
+version = "0.8.9" # remember to bump the version that axum-extra depends on
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "HTTP routing and request handling library that focuses on ergonomics and modularity"
 edition = "2021"
