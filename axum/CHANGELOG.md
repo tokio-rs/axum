@@ -11,9 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** `WebSocketUpgrade::{requested_protocols, set_selected_protocol}` for more
   flexible subprotocol selection ([#3597])
 - **changed:** Update minimum rust version to 1.80 ([#3620])
+- **fixed:** Set connect endpoint on correct field in MethodRouter ([#3656])
+- **fixed:** Return specific error message when multipart body limit is exceeded ([#3611])
 
 [#3597]: https://github.com/tokio-rs/axum/pull/3597
 [#3620]: https://github.com/tokio-rs/axum/pull/3620
+[#3656]: https://github.com/tokio-rs/axum/pull/3656
+[#3611]: https://github.com/tokio-rs/axum/pull/3611
 
 # 0.8.8
 
