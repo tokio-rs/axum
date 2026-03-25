@@ -12,9 +12,11 @@ and this project adheres to [Semantic Versioning].
 - `vpath!` macro now stops the compilation if your path is using deprecated
   path variables in the old `107` format, such as `:var` and `*var`. the 
   only allowed way now is `{var}`. ([#3618])
+- **fixed:** Return specific error message when multipart body limit is exceeded ([#3611])
 
 [#3664]: https://github.com/tokio-rs/axum/pull/3664
 [#3618]: https://github.com/tokio-rs/axum/pull/3618
+[#3611]: https://github.com/tokio-rs/axum/pull/3611
 
 # 0.12.5
 
