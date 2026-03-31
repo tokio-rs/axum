@@ -31,8 +31,8 @@ Examples:
 - `/{key}`
 - `/users/{id}`
 - `/users/{id}/tweets`
-- `/avatars/large_{id}.png`
-- `/avatars/small_{id}.jpg`
+- `/avatars/{id}.jpg`
+- `/avatars/{id}.png`
 
 Captures can be extracted using [`Path`](crate::extract::Path). See its
 documentation for more details.
@@ -45,20 +45,14 @@ regular expression. You must handle that manually in your handlers.
 Captures must not be empty. For example `/a/` will not match `/a/{capture}` and
 `/.png` will not match `/{image}.png`.
 
-You may mix captures that have different static prefixes or suffixes, though it is discouraged as it
-might lead to surprising behavior.  If multiple routes would match, the one with the longest static
-prefix is used, if there are multiple with the same match, the longest matched static suffix is
-chosen. For example, if a request is done to `/abcdef` here are examples of routes that would all
-match. If multiple of these were defined in a single router, the topmost one would be used.
+You may have either capture(s) with static prefixes, capture(s) with suffixes, or a single
+capture with both prefix and suffix, but these kinds of captures may not be mixed. You may mix
+these with static routes and a standalone capture though. If multiple patterns match, static
+segment takes precedence, then the capture with longest static prefix or suffix.
 
-- `/abcdef`
-- `/abc{x}ef`
-- `/abc{x}f`
-- `/abc{x}`
-- `/a{x}def`
-- `/a{x}`
-- `/{x}def`
-- `/{x}`
+Example valid mixed route sets:
+- `/logo.png`, `/author.jpg`, `/{id}.png`, `{other_file}` (but you may not add `/{id}.jpg` or `/post-{id}`).
+- `/logo.png`, `/avatar-{id}.png`, `{other_file}` (but you may not add `/{id}.jpg`, `/avatar-{id}.png`).
 
 This is done on each level of the path and if the path matches even if due to a wildcard, that path
 will be chosen. For example if one makes a request to `/foo/bar/baz` the first route will be used by
