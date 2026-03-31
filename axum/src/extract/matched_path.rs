@@ -295,6 +295,26 @@ mod tests {
     }
 
     #[crate::test]
+    async fn can_extract_nested_matched_path_with_prefix_in_middleware_on_nested_router() {
+        async fn extract_matched_path<B>(matched_path: MatchedPath, req: Request<B>) -> Request<B> {
+            assert_eq!(matched_path.as_str(), "/foo{one}/bar{two}");
+            req
+        }
+
+        let app = Router::new().nest(
+            "/foo{one}",
+            Router::new()
+                .route("/bar{two}", get(|| async move {}))
+                .layer(map_request(extract_matched_path)),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo1/bar2").await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
     async fn can_extract_nested_matched_path_with_prefix_and_suffix_in_middleware_on_nested_router()
     {
         async fn extract_matched_path<B>(matched_path: MatchedPath, req: Request<B>) -> Request<B> {

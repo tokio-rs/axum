@@ -331,6 +331,24 @@ async fn nest_service_at_prefix_capture() {
     );
 
     let app = Router::new()
+        .nest_service("/x{a}", api_routes)
+        .nest_service("/xa", empty_routes);
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/xa/bar").await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn nest_service_at_prefix_suffix_capture() {
+    let empty_routes = Router::new();
+    let api_routes = Router::new().route(
+        "/{b}",
+        get(|Path((a, b)): Path<(String, String)>| async move { format!("a={a} b={b}") }),
+    );
+
+    let app = Router::new()
         .nest_service("/x{a}x", api_routes)
         .nest_service("/xax", empty_routes);
 

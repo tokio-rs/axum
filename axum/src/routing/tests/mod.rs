@@ -435,11 +435,10 @@ async fn what_matches_wildcard() {
 }
 
 #[crate::test]
-async fn prefix_suffix_match() {
+async fn prefix_match() {
     let app = Router::new()
         .route("/{picture}.png", get(|| async { "picture" }))
-        .route("/hello-{name}", get(|| async { "greeting" }))
-        .route("/start-{regex}-end", get(|| async { "regex" }))
+        .route("/{picture}.txt", get(|| async { "text" }))
         .route("/logo.svg", get(|| async { "logo" }))
         .fallback(|| async { "fallback" });
 
@@ -461,15 +460,64 @@ async fn prefix_suffix_match() {
     assert_eq!(get("/a.png").await, "picture");
     assert_eq!(get("/b.png").await, "picture");
 
-    assert_eq!(get("/hello-").await, "fallback");
-    assert_eq!(get("/hello-world").await, "greeting");
-
-    assert_eq!(get("/start--end").await, "fallback");
-    assert_eq!(get("/start-regex-end").await, "regex");
+    assert_eq!(get("/.txt").await, "fallback");
+    assert_eq!(get("/..txt").await, "text");
+    assert_eq!(get("/a.txt").await, "text");
+    assert_eq!(get("/b.txt").await, "text");
 
     assert_eq!(get("/logo.svg").await, "logo");
+}
 
-    assert_eq!(get("/hello-.png").await, "greeting");
+#[crate::test]
+async fn suffix_match() {
+    let app = Router::new()
+        .route("/new-{id}", get(|| async { "new" }))
+        .route("/old-{id}", get(|| async { "old" }))
+        .route("/any", get(|| async { "any" }))
+        .fallback(|| async { "fallback" });
+
+    let client = TestClient::new(app);
+
+    let get = |path| {
+        let f = client.get(path);
+        async move { f.await.text().await }
+    };
+
+    assert_eq!(get("/").await, "fallback");
+    assert_eq!(get("/a/new-1").await, "fallback");
+    assert_eq!(get("/new-1/").await, "fallback");
+    assert_eq!(get("//new-1/").await, "fallback");
+
+    // Empty capture is not allowed
+    assert_eq!(get("/new-").await, "fallback");
+    assert_eq!(get("/new-1").await, "new");
+
+    assert_eq!(get("/old-").await, "fallback");
+    assert_eq!(get("/old-1").await, "old");
+
+    assert_eq!(get("/any").await, "any");
+}
+
+#[crate::test]
+async fn prefix_suffix_match() {
+    let app = Router::new()
+        .route("/start-{regex}-end", get(|| async { "regex" }))
+        .fallback(|| async { "fallback" });
+
+    let client = TestClient::new(app);
+
+    let get = |path| {
+        let f = client.get(path);
+        async move { f.await.text().await }
+    };
+
+    assert_eq!(get("/").await, "fallback");
+
+    // Empty capture is not allowed
+    assert_eq!(get("/start--end").await, "fallback");
+
+    assert_eq!(get("/start-regex-end").await, "regex");
+    assert_eq!(get("/foo/start-regex-end").await, "fallback");
 }
 
 #[crate::test]
