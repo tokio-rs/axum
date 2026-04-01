@@ -1067,6 +1067,50 @@ mod tests {
     }
 
     #[crate::test]
+    #[cfg(feature = "http2")]
+    async fn serving_with_custom_executor_http2() {
+        use hyper_util::rt::TokioExecutor;
+
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        let app = Router::new().route("/", get(|| async { "Hello, World!" }));
+
+        let executor = TestExecutor::new();
+        tokio::spawn(
+            serve(listener, app)
+                .with_executor(executor.clone())
+                .into_future(),
+        );
+
+        let io = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http2::Builder::new(TokioExecutor::new())
+            .handshake(io)
+            .await
+            .unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder().body(Body::empty()).unwrap();
+
+        let response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = Body::new(response.into_body());
+        let body = to_bytes(body, usize::MAX).await.unwrap();
+        let body = String::from_utf8(body.to_vec()).unwrap();
+        assert_eq!(body, "Hello, World!");
+
+        // Verify the executor is used for both axum's connection task
+        // and hyper's internal HTTP/2 task (spawned via HyperExecutor).
+        assert_eq!(
+            executor.count(),
+            2,
+            "expected 2 spawned tasks for HTTP/2, got {}",
+            executor.count()
+        );
+    }
+
+    #[crate::test]
     async fn serving_with_custom_body_type() {
         struct CustomBody;
         impl http_body::Body for CustomBody {
