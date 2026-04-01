@@ -8,6 +8,7 @@ use std::{
     io,
     marker::PhantomData,
     pin::pin,
+    sync::Arc,
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
@@ -27,9 +28,10 @@ pub use self::listener::{ConnLimiter, ConnLimiterIo, Listener, ListenerExt, TapI
 
 /// Serve the service with the supplied listener.
 ///
-/// This method of running a service is intentionally simple and doesn't support any configuration.
+/// This method of running a service is intentionally simple and doesn't support much configuration.
 /// hyper's default configuration applies (including [timeouts]); use hyper or hyper-util if you
-/// need configuration.
+/// need more control. You can supply a custom [`Executor`] via [`Serve::with_executor`] to
+/// control how connection tasks are spawned.
 ///
 /// It supports both HTTP/1 as well as HTTP/2.
 ///
@@ -98,7 +100,7 @@ pub use self::listener::{ConnLimiter, ConnLimiterIo, Listener, ListenerExt, TapI
 /// [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: crate::handler::HandlerWithoutStateExt::into_make_service_with_connect_info
 /// [`HandlerService::into_make_service_with_connect_info`]: crate::handler::HandlerService::into_make_service_with_connect_info
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-pub fn serve<L, M, S, B>(listener: L, make_service: M) -> Serve<L, M, S, B>
+pub fn serve<L, M, S, B>(listener: L, make_service: M) -> Serve<L, M, S, B, TokioExecutor>
 where
     L: Listener,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S>,
@@ -111,21 +113,88 @@ where
     Serve {
         listener,
         make_service,
+        executor: TokioExecutor::new(),
         _marker: PhantomData,
+    }
+}
+
+/// Executor used by [`serve`] to spawn connection tasks, graceful shutdown
+/// tasks, and hyper's internal tasks (e.g. HTTP/2 connection management).
+///
+/// The default executor is [`TokioExecutor`], which delegates to
+/// [`tokio::spawn`]. Provide a custom implementation to instrument or
+/// intercept spawned tasks — for example, to add tracing or telemetry.
+///
+/// Spawned futures rely on Tokio primitives internally, so the executor
+/// must run them within a Tokio runtime context (e.g. via [`tokio::spawn`]).
+///
+/// # Example
+///
+/// ```
+/// use std::future::Future;
+/// use axum::serve::Executor;
+///
+/// #[derive(Clone)]
+/// struct MyExecutor;
+///
+/// impl Executor for MyExecutor {
+///     fn execute<Fut>(&self, fut: Fut)
+///     where
+///         Fut: Future<Output = ()> + Send + 'static,
+///     {
+///         tokio::spawn(fut);
+///     }
+/// }
+/// ```
+///
+/// If your executor is expensive to clone, wrap it in an [`Arc`] — a blanket
+/// implementation is provided for `Arc<T>` where `T: Executor`.
+///
+/// [`TokioExecutor`]: hyper_util::rt::TokioExecutor
+/// [`Arc`]: std::sync::Arc
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+pub trait Executor: Clone + Send + Sync + 'static {
+    /// Execute a fire-and-forget task.
+    fn execute<Fut>(&self, fut: Fut)
+    where
+        Fut: Future<Output = ()> + Send + 'static;
+}
+
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl Executor for TokioExecutor {
+    fn execute<Fut>(&self, fut: Fut)
+    where
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        <Self as hyper::rt::Executor<Fut>>::execute(self, fut);
+    }
+}
+
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl<T> Executor for Arc<T>
+where
+    T: Executor,
+{
+    fn execute<Fut>(&self, fut: Fut)
+    where
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        self.as_ref().execute(fut);
     }
 }
 
 /// Future returned by [`serve`].
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[must_use = "futures must be awaited or polled"]
-pub struct Serve<L, M, S, B> {
+pub struct Serve<L, M, S, B, E = TokioExecutor> {
     listener: L,
     make_service: M,
+    executor: E,
     _marker: PhantomData<fn(B) -> S>,
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, B> Serve<L, M, S, B>
+impl<L, M, S, B, E> Serve<L, M, S, B, E>
 where
     L: Listener,
 {
@@ -154,13 +223,14 @@ where
     ///
     /// Similarly to [`serve`], although this future resolves to `io::Result<()>`, it will never
     /// error. It returns `Ok(())` only after the `signal` future completes.
-    pub fn with_graceful_shutdown<F>(self, signal: F) -> WithGracefulShutdown<L, M, S, F, B>
+    pub fn with_graceful_shutdown<F>(self, signal: F) -> WithGracefulShutdown<L, M, S, F, B, E>
     where
         F: Future<Output = ()> + Send + 'static,
     {
         WithGracefulShutdown {
             listener: self.listener,
             make_service: self.make_service,
+            executor: self.executor,
             signal,
             _marker: PhantomData,
         }
@@ -170,10 +240,60 @@ where
     pub fn local_addr(&self) -> io::Result<L::Addr> {
         self.listener.local_addr()
     }
+
+    /// Provide a custom [`Executor`] to use for spawning connection tasks and
+    /// hyper's internal tasks (e.g. HTTP/2).
+    ///
+    /// By default, [`TokioExecutor`] is used. A custom executor can be used to
+    /// instrument or intercept spawned tasks.
+    ///
+    /// This method can be called before or after [`with_graceful_shutdown`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::future::Future;
+    /// use axum::{Router, routing::get, serve::Executor};
+    ///
+    /// #[derive(Clone)]
+    /// struct MyExecutor;
+    ///
+    /// impl Executor for MyExecutor {
+    ///     fn execute<Fut>(&self, fut: Fut)
+    ///     where
+    ///         Fut: Future<Output = ()> + Send + 'static,
+    ///     {
+    ///         tokio::spawn(fut);
+    ///     }
+    /// }
+    ///
+    /// # async {
+    /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    ///
+    /// axum::serve(listener, router)
+    ///     .with_executor(MyExecutor)
+    ///     .await;
+    /// # };
+    /// ```
+    ///
+    /// [`TokioExecutor`]: hyper_util::rt::TokioExecutor
+    /// [`with_graceful_shutdown`]: Serve::with_graceful_shutdown
+    pub fn with_executor<E2>(self, executor: E2) -> Serve<L, M, S, B, E2>
+    where
+        E2: Executor,
+    {
+        Serve {
+            listener: self.listener,
+            make_service: self.make_service,
+            executor,
+            _marker: PhantomData,
+        }
+    }
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, B> Serve<L, M, S, B>
+impl<L, M, S, B, E> Serve<L, M, S, B, E>
 where
     L: Listener,
     L::Addr: Debug,
@@ -184,11 +304,13 @@ where
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
+    E: Executor,
 {
     async fn run(self) -> ! {
         let Self {
             mut listener,
             mut make_service,
+            executor,
             _marker,
         } = self;
 
@@ -197,34 +319,45 @@ where
 
         loop {
             let (io, remote_addr) = listener.accept().await;
-            handle_connection(&mut make_service, &signal_tx, &close_rx, io, remote_addr).await;
+            handle_connection(
+                &mut make_service,
+                &signal_tx,
+                &close_rx,
+                io,
+                remote_addr,
+                &executor,
+            )
+            .await;
         }
     }
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, B> Debug for Serve<L, M, S, B>
+impl<L, M, S, B, E> Debug for Serve<L, M, S, B, E>
 where
     L: Debug + 'static,
     M: Debug,
+    E: Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             listener,
             make_service,
+            executor,
             _marker: _,
         } = self;
 
         let mut s = f.debug_struct("Serve");
         s.field("listener", listener)
-            .field("make_service", make_service);
+            .field("make_service", make_service)
+            .field("executor", executor);
 
         s.finish()
     }
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, B> IntoFuture for Serve<L, M, S, B>
+impl<L, M, S, B, E> IntoFuture for Serve<L, M, S, B, E>
 where
     L: Listener,
     L::Addr: Debug,
@@ -235,6 +368,7 @@ where
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
+    E: Executor,
 {
     type Output = Infallible;
     type IntoFuture = private::ServeFuture;
@@ -247,15 +381,16 @@ where
 /// Serve future with graceful shutdown enabled.
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[must_use = "futures must be awaited or polled"]
-pub struct WithGracefulShutdown<L, M, S, F, B> {
+pub struct WithGracefulShutdown<L, M, S, F, B, E = TokioExecutor> {
     listener: L,
     make_service: M,
+    executor: E,
     signal: F,
     _marker: PhantomData<fn(B) -> S>,
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F, B> WithGracefulShutdown<L, M, S, F, B>
+impl<L, M, S, F, B, E> WithGracefulShutdown<L, M, S, F, B, E>
 where
     L: Listener,
 {
@@ -263,10 +398,27 @@ where
     pub fn local_addr(&self) -> io::Result<L::Addr> {
         self.listener.local_addr()
     }
+
+    /// Provide a custom [`Executor`] to use for spawning connection tasks and
+    /// hyper's internal tasks (e.g. HTTP/2).
+    ///
+    /// See [`Serve::with_executor`] for details and examples.
+    pub fn with_executor<E2>(self, executor: E2) -> WithGracefulShutdown<L, M, S, F, B, E2>
+    where
+        E2: Executor,
+    {
+        WithGracefulShutdown {
+            listener: self.listener,
+            make_service: self.make_service,
+            executor,
+            signal: self.signal,
+            _marker: PhantomData,
+        }
+    }
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F, B> WithGracefulShutdown<L, M, S, F, B>
+impl<L, M, S, F, B, E> WithGracefulShutdown<L, M, S, F, B, E>
 where
     L: Listener,
     L::Addr: Debug,
@@ -278,17 +430,19 @@ where
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
+    E: Executor,
 {
     async fn run(self) {
         let Self {
             mut listener,
             mut make_service,
+            executor,
             signal,
             _marker,
         } = self;
 
         let (signal_tx, signal_rx) = watch::channel(());
-        tokio::spawn(async move {
+        executor.execute(async move {
             signal.await;
             trace!("received graceful shutdown signal. Telling tasks to shutdown");
             drop(signal_rx);
@@ -305,7 +459,15 @@ where
                 }
             };
 
-            handle_connection(&mut make_service, &signal_tx, &close_rx, io, remote_addr).await;
+            handle_connection(
+                &mut make_service,
+                &signal_tx,
+                &close_rx,
+                io,
+                remote_addr,
+                &executor,
+            )
+            .await;
         }
 
         drop(close_rx);
@@ -320,17 +482,19 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F, B> Debug for WithGracefulShutdown<L, M, S, F, B>
+impl<L, M, S, F, B, E> Debug for WithGracefulShutdown<L, M, S, F, B, E>
 where
     L: Debug + 'static,
     M: Debug,
     S: Debug,
     F: Debug,
+    E: Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             listener,
             make_service,
+            executor: _,
             signal,
             _marker: _,
         } = self;
@@ -344,7 +508,7 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F, B> IntoFuture for WithGracefulShutdown<L, M, S, F, B>
+impl<L, M, S, F, B, E> IntoFuture for WithGracefulShutdown<L, M, S, F, B, E>
 where
     L: Listener,
     L::Addr: Debug,
@@ -356,6 +520,7 @@ where
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
+    E: Executor,
 {
     type Output = ();
     type IntoFuture = private::ServeFuture<()>;
@@ -365,12 +530,27 @@ where
     }
 }
 
-async fn handle_connection<L, M, S, B>(
+/// Adapts axum's [`Executor`] to Hyper's `Executor<Fut>` interface.
+#[derive(Clone)]
+struct HyperExecutor<E>(E);
+
+impl<E, Fut> hyper::rt::Executor<Fut> for HyperExecutor<E>
+where
+    E: Executor,
+    Fut: Future<Output = ()> + Send + 'static,
+{
+    fn execute(&self, fut: Fut) {
+        self.0.execute(fut);
+    }
+}
+
+async fn handle_connection<L, M, S, B, E>(
     make_service: &mut M,
     signal_tx: &watch::Sender<()>,
     close_rx: &watch::Receiver<()>,
     io: <L as Listener>::Io,
     remote_addr: <L as Listener>::Addr,
+    executor: &E,
 ) where
     L: Listener,
     L::Addr: Debug,
@@ -381,6 +561,7 @@ async fn handle_connection<L, M, S, B>(
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
+    E: Executor,
 {
     let io = TokioIo::new(io);
 
@@ -404,9 +585,10 @@ async fn handle_connection<L, M, S, B>(
     let signal_tx = signal_tx.clone();
     let close_rx = close_rx.clone();
 
-    tokio::spawn(async move {
+    let hyper_executor = HyperExecutor(executor.clone());
+    executor.execute(async move {
         #[allow(unused_mut)]
-        let mut builder = Builder::new(TokioExecutor::new());
+        let mut builder = Builder::new(hyper_executor);
 
         // Enable Hyper's default HTTP/1 request header timeout.
         #[cfg(feature = "http1")]
@@ -680,9 +862,49 @@ mod tests {
             UnixListener::bind("").unwrap(),
             handler.into_make_service_with_connect_info::<UdsConnectInfo>(),
         );
+
+        // with_executor
+        let router: Router = Router::new();
+        let exec = TestExecutor::new();
+        serve(TcpListener::bind(addr).await.unwrap(), router.clone()).with_executor(exec.clone());
+        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .with_executor(exec.clone())
+            .with_graceful_shutdown(std::future::pending());
+        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .with_graceful_shutdown(std::future::pending())
+            .with_executor(exec.clone());
+        serve(TcpListener::bind(addr).await.unwrap(), get(handler)).with_executor(exec.clone());
+        serve(
+            TcpListener::bind(addr).await.unwrap(),
+            handler.into_make_service(),
+        )
+        .with_executor(exec);
     }
 
     async fn handler() {}
+
+    #[derive(Clone)]
+    struct TestExecutor(std::sync::Arc<std::sync::atomic::AtomicUsize>);
+
+    impl TestExecutor {
+        fn new() -> Self {
+            Self(std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)))
+        }
+
+        fn count(&self) -> usize {
+            self.0.load(std::sync::atomic::Ordering::SeqCst)
+        }
+    }
+
+    impl super::Executor for TestExecutor {
+        fn execute<Fut>(&self, fut: Fut)
+        where
+            Fut: std::future::Future<Output = ()> + Send + 'static,
+        {
+            self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            tokio::spawn(fut);
+        }
+    }
 
     #[crate::test]
     async fn test_serve_local_addr() {
@@ -805,6 +1027,39 @@ mod tests {
         let body = to_bytes(body, usize::MAX).await.unwrap();
         let body = String::from_utf8(body.to_vec()).unwrap();
         assert_eq!(body, "Hello, World!");
+    }
+
+    #[crate::test]
+    async fn serving_with_custom_executor() {
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        let app = Router::new().route("/", get(|| async { "Hello, World!" }));
+
+        let executor = TestExecutor::new();
+        tokio::spawn(
+            serve(listener, app)
+                .with_executor(executor.clone())
+                .into_future(),
+        );
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder().body(Body::empty()).unwrap();
+
+        let response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = Body::new(response.into_body());
+        let body = to_bytes(body, usize::MAX).await.unwrap();
+        let body = String::from_utf8(body.to_vec()).unwrap();
+        assert_eq!(body, "Hello, World!");
+
+        // Verify the custom executor was used for spawning the connection task.
+        // HTTP/1 should spawn exactly one task per connection.
+        assert_eq!(executor.count(), 1, "expected exactly one spawned task for the connection");
     }
 
     #[crate::test]
