@@ -1059,7 +1059,11 @@ mod tests {
 
         // Verify the custom executor was used for spawning the connection task.
         // HTTP/1 should spawn exactly one task per connection.
-        assert_eq!(executor.count(), 1, "expected exactly one spawned task for the connection");
+        assert_eq!(
+            executor.count(),
+            1,
+            "expected exactly one spawned task for the connection"
+        );
     }
 
     #[crate::test]
