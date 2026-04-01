@@ -67,6 +67,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 
 ## Project showcase
 
+- [xidl](https://github.com/xidl/xidl): Using axum just like tonic, declare IDL, then generate server, client and OpenAPI.
 - [webshelf](https://github.com/aiqubits/webshelf): 🤘 A convenient way to develop your web service with one click.
 - [HomeDisk](https://github.com/MedzikUser/HomeDisk): ☁️ Fast, lightweight and Open Source local cloud for your data.
 - [Houseflow](https://github.com/gbaranski/houseflow): House automation platform written in Rust.
