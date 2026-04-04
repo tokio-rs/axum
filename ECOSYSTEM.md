@@ -88,7 +88,8 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [wastebin](https://github.com/matze/wastebin): A minimalist pastebin service.
 - [sandbox_axum_observability](https://github.com/davidB/sandbox_axum_observability) A Sandbox/showcase project to experiment axum and observability (tracing, opentelemetry, jaeger, grafana tempo,...)
 - [axum_admin](https://github.com/lingdu1234/axum_admin): An admin panel built with **axum**, Sea-orm and Vue 3.
-- [rgit](https://git.inept.dev/~doyle/rgit.git/about): A blazingly fast Git repository browser, compatible with- and heavily inspired by cgit.
+- [rgit](https://github.com/w4/rgit/): A blazingly fast Git repository browser, compatible with- and heavily inspired by cgit.
+- [gitore](https://codeberg.org/kallisti5/gitore): A fork of `rgit`.
 - [Petclinic](https://github.com/danipardo/petclinic): A port of Spring Framework's Petclinic showcase project to axum
 - [axum-middleware-example](https://github.com/casbin-rs/axum-middleware-example): A authorization application using axum, Casbin and Diesel, with JWT support.
 - [circleci-hook](https://github.com/DavidS/circleci-hook): Translate CircleCI WebHooks to OpenTelemetry traces to improve your test insights. Add detail with otel-cli to capture individual commands. Use the TRACEPARENT integration to add details from your tests.
