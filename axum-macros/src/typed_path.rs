@@ -370,7 +370,7 @@ fn format_str_from_path(segments: &[PathSegment]) -> String {
                             _ => path.push(ch),
                         }
                     }
-                },
+                }
             }
         }
     }
