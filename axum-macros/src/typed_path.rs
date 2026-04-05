@@ -298,7 +298,8 @@ fn expand_unit_fields(
         #[automatically_derived]
         impl ::std::fmt::Display for #ident {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                write!(f, #path)
+                // Avoid treating route literals as format strings.
+                write!(f, "{}", #path)
             }
         }
     };
