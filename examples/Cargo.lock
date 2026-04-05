@@ -1312,7 +1312,9 @@ name = "example-global-404-handler"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "http-body-util",
  "tokio",
+ "tower",
  "tracing",
  "tracing-subscriber",
 ]
