@@ -361,7 +361,16 @@ fn format_str_from_path(segments: &[PathSegment]) -> String {
                     path.push_str(capture);
                     path.push('}');
                 }
-                SegmentPart::Static(static_part) => path.push_str(static_part),
+                SegmentPart::Static(static_part) => {
+                    // Escape braces since this string is used as a `write!` format string.
+                    for ch in static_part.chars() {
+                        match ch {
+                            '{' => path.push_str("{{"),
+                            '}' => path.push_str("}}"),
+                            _ => path.push(ch),
+                        }
+                    }
+                },
             }
         }
     }
