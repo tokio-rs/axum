@@ -101,7 +101,7 @@ impl Combine for Attrs {
 fn expand_named_fields(
     ident: &syn::Ident,
     path: &LitStr,
-    segments: &[Segment],
+    segments: &[PathSegment],
     rejection: Option<&syn::Path>,
 ) -> TokenStream {
     let format_str = format_str_from_path(segments);
@@ -170,16 +170,10 @@ fn expand_unnamed_fields(
     fields: &syn::FieldsUnnamed,
     ident: &syn::Ident,
     path: &LitStr,
-    segments: &[Segment],
+    segments: &[PathSegment],
     rejection: Option<&syn::Path>,
 ) -> syn::Result<TokenStream> {
-    let num_captures = segments
-        .iter()
-        .filter(|segment| match segment {
-            Segment::Capture(_, _) => true,
-            Segment::Static(_) => false,
-        })
-        .count();
+    let num_captures = captures_from_path(segments).len();
     let num_fields = fields.unnamed.len();
     if num_fields != num_captures {
         return Err(syn::Error::new_spanned(
@@ -192,23 +186,18 @@ fn expand_unnamed_fields(
         ));
     }
 
-    let destructure_self = segments
-        .iter()
-        .filter_map(|segment| match segment {
-            Segment::Capture(capture, _) => Some(capture),
-            Segment::Static(_) => None,
-        })
-        .enumerate()
-        .map(|(idx, capture)| {
-            let idx = syn::Index {
-                index: idx as _,
-                span: Span::call_site(),
-            };
-            let capture = format_ident!("{}", capture, span = path.span());
-            quote_spanned! {path.span()=>
-                #idx: #capture,
-            }
-        });
+    let unnamed_captures = captures_from_path(segments);
+
+    let destructure_self = unnamed_captures.iter().enumerate().map(|(idx, capture)| {
+        let idx = syn::Index {
+            index: idx as _,
+            span: Span::call_site(),
+        };
+        let capture = format_ident!("{}", capture, span = path.span());
+        quote_spanned! {path.span()=>
+            #idx: #capture,
+        }
+    });
 
     let format_str = format_str_from_path(segments);
     let captures = captures_from_path(segments);
@@ -284,16 +273,18 @@ fn expand_unit_fields(
     path: &LitStr,
     rejection: Option<&syn::Path>,
 ) -> syn::Result<TokenStream> {
-    for segment in parse_path(path)? {
-        match segment {
-            Segment::Capture(_, span) => {
-                return Err(syn::Error::new(
-                    span,
-                    "Typed paths for unit structs cannot contain captures",
-                ));
-            }
-            Segment::Static(_) => {}
-        }
+    let has_captures = parse_path(path)?.iter().any(|segment| {
+        segment
+            .parts
+            .iter()
+            .any(|part| matches!(part, SegmentPart::Capture(_, _)))
+    });
+
+    if has_captures {
+        return Err(syn::Error::new(
+            path.span(),
+            "Typed paths for unit structs cannot contain captures",
+        ));
     }
 
     let typed_path_impl = quote_spanned! {path.span()=>
@@ -355,28 +346,41 @@ fn expand_unit_fields(
     })
 }
 
-fn format_str_from_path(segments: &[Segment]) -> String {
-    segments
-        .iter()
-        .map(|segment| match segment {
-            Segment::Capture(capture, _) => format!("{{{capture}}}"),
-            Segment::Static(segment) => segment.to_owned(),
-        })
-        .collect::<Vec<_>>()
-        .join("/")
+fn format_str_from_path(segments: &[PathSegment]) -> String {
+    let mut path = String::new();
+
+    for (idx, segment) in segments.iter().enumerate() {
+        if idx > 0 {
+            path.push('/');
+        }
+
+        for part in &segment.parts {
+            match part {
+                SegmentPart::Capture(capture, _) => {
+                    path.push('{');
+                    path.push_str(capture);
+                    path.push('}');
+                }
+                SegmentPart::Static(static_part) => path.push_str(static_part),
+            }
+        }
+    }
+
+    path
 }
 
-fn captures_from_path(segments: &[Segment]) -> Vec<syn::Ident> {
+fn captures_from_path(segments: &[PathSegment]) -> Vec<syn::Ident> {
     segments
         .iter()
-        .filter_map(|segment| match segment {
-            Segment::Capture(capture, span) => Some(format_ident!("{}", capture, span = *span)),
-            Segment::Static(_) => None,
+        .flat_map(|segment| &segment.parts)
+        .filter_map(|part| match part {
+            SegmentPart::Capture(capture, span) => Some(format_ident!("{}", capture, span = *span)),
+            SegmentPart::Static(_) => None,
         })
-        .collect::<Vec<_>>()
+        .collect()
 }
 
-fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
+fn parse_path(path: &LitStr) -> syn::Result<Vec<PathSegment>> {
     let value = path.value();
     if value.is_empty() {
         return Err(syn::Error::new_spanned(
@@ -389,24 +393,51 @@ fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
 
     path.value()
         .split('/')
-        .map(|segment| {
-            if let Some(capture) = segment
-                .strip_prefix('{')
-                .and_then(|segment| segment.strip_suffix('}'))
-                .and_then(|segment| {
-                    (!segment.starts_with('{') && !segment.ends_with('}')).then_some(segment)
-                })
-                .map(|capture| capture.strip_prefix('*').unwrap_or(capture))
-            {
-                Ok(Segment::Capture(capture.to_owned(), path.span()))
-            } else {
-                Ok(Segment::Static(segment.to_owned()))
-            }
-        })
+        .map(|segment| Ok(PathSegment::new(segment, path.span())))
         .collect()
 }
 
-enum Segment {
+struct PathSegment {
+    parts: Vec<SegmentPart>,
+}
+
+impl PathSegment {
+    fn new(segment: &str, span: Span) -> Self {
+        let mut parts = Vec::new();
+        let mut remaining = segment;
+
+        while let Some(capture_start) = remaining.find('{') {
+            let (before_capture, after_capture_start) = remaining.split_at(capture_start);
+            if !before_capture.is_empty() {
+                parts.push(SegmentPart::Static(before_capture.to_owned()));
+            }
+
+            let after_open = &after_capture_start[1..];
+            if let Some(capture_end) = after_open.find('}') {
+                let (capture, after_capture) = after_open.split_at(capture_end);
+                let after_capture = &after_capture[1..];
+
+                if !capture.is_empty() && !capture.contains(['{', '}']) {
+                    let capture = capture.strip_prefix('*').unwrap_or(capture);
+                    parts.push(SegmentPart::Capture(capture.to_owned(), span));
+                    remaining = after_capture;
+                    continue;
+                }
+            }
+
+            parts.push(SegmentPart::Static("{".to_owned()));
+            remaining = after_open;
+        }
+
+        if !remaining.is_empty() {
+            parts.push(SegmentPart::Static(remaining.to_owned()));
+        }
+
+        Self { parts }
+    }
+}
+
+enum SegmentPart {
     Capture(String, Span),
     Static(String),
 }
