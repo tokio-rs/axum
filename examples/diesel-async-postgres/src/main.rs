@@ -2,7 +2,6 @@
 //!
 //! ```sh
 //! export DATABASE_URL=postgres://localhost/your_db
-//! diesel migration run
 //! cargo run -p example-diesel-async-postgres
 //! ```
 //!
@@ -21,10 +20,14 @@ use axum::{
 };
 use diesel::prelude::*;
 use diesel_async::{
-    pooled_connection::AsyncDieselConnectionManager, AsyncPgConnection, RunQueryDsl,
+    pooled_connection::{bb8, AsyncDieselConnectionManager},
+    AsyncMigrationHarness, AsyncPgConnection, RunQueryDsl,
 };
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
 // normally part of your generated schema.rs file
 table! {
@@ -35,7 +38,7 @@ table! {
     }
 }
 
-#[derive(serde::Serialize, Selectable, Queryable)]
+#[derive(serde::Serialize, HasQuery)]
 struct User {
     id: i32,
     name: String,
@@ -49,7 +52,7 @@ struct NewUser {
     hair_color: Option<String>,
 }
 
-type Pool = bb8::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
+type Pool = bb8::Pool<AsyncPgConnection>;
 
 #[tokio::main]
 async fn main() {
@@ -67,6 +70,9 @@ async fn main() {
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(db_url);
     let pool = bb8::Pool::builder().build(config).await.unwrap();
 
+    let mut harness = AsyncMigrationHarness::new(pool.get_owned().await.unwrap());
+    harness.run_pending_migrations(MIGRATIONS).unwrap();
+
     // build our application with some routes
     let app = Router::new()
         .route("/user/list", get(list_users))
@@ -77,7 +83,7 @@ async fn main() {
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {addr}");
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app).await;
 }
 
 async fn create_user(
@@ -97,9 +103,7 @@ async fn create_user(
 
 // we can also write a custom extractor that grabs a connection from the pool
 // which setup is appropriate depends on your application
-struct DatabaseConnection(
-    bb8::PooledConnection<'static, AsyncDieselConnectionManager<AsyncPgConnection>>,
-);
+struct DatabaseConnection(bb8::PooledConnection<'static, AsyncPgConnection>);
 
 impl<S> FromRequestParts<S> for DatabaseConnection
 where
@@ -120,8 +124,7 @@ where
 async fn list_users(
     DatabaseConnection(mut conn): DatabaseConnection,
 ) -> Result<Json<Vec<User>>, (StatusCode, String)> {
-    let res = users::table
-        .select(User::as_select())
+    let res = User::query()
         .load(&mut conn)
         .await
         .map_err(internal_error)?;

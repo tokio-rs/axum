@@ -1,5 +1,10 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run -p example-low-level-openssl
+//! ```
+
 use axum::{http::Request, routing::get, Router};
-use futures_util::pin_mut;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod};
@@ -48,8 +53,6 @@ async fn main() {
     let tcp_listener = TcpListener::bind(bind).await.unwrap();
     info!("HTTPS server listening on {bind}. To contact curl -k https://localhost:3000");
     let app = Router::new().route("/", get(handler));
-
-    pin_mut!(tcp_listener);
 
     loop {
         let tower_service = app.clone();

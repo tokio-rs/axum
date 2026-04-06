@@ -9,31 +9,14 @@ use tower_layer::Layer;
 use tower_service::Service;
 
 use super::{
-    future::RouteFuture, not_found::NotFound, strip_prefix::StripPrefix, url_params, Endpoint,
-    MethodRouter, Route, RouteId, FALLBACK_PARAM_PATH, NEST_TAIL_PARAM,
+    future::RouteFuture, strip_prefix::StripPrefix, url_params, Endpoint, MethodRouter, Route,
+    RouteId, NEST_TAIL_PARAM,
 };
 
-pub(super) struct PathRouter<S, const IS_FALLBACK: bool> {
-    routes: HashMap<RouteId, Endpoint<S>>,
+pub(super) struct PathRouter<S> {
+    routes: Vec<Endpoint<S>>,
     node: Arc<Node>,
-    prev_route_id: RouteId,
     v7_checks: bool,
-}
-
-impl<S> PathRouter<S, true>
-where
-    S: Clone + Send + Sync + 'static,
-{
-    pub(super) fn new_fallback() -> Self {
-        let mut this = Self::default();
-        this.set_fallback(Endpoint::Route(Route::new(NotFound)));
-        this
-    }
-
-    pub(super) fn set_fallback(&mut self, endpoint: Endpoint<S>) {
-        self.replace_endpoint("/", endpoint.clone());
-        self.replace_endpoint(FALLBACK_PARAM_PATH, endpoint);
-    }
 }
 
 fn validate_path(v7_checks: bool, path: &str) -> Result<(), &'static str> {
@@ -72,7 +55,7 @@ fn validate_v07_paths(path: &str) -> Result<(), &'static str> {
         .unwrap_or(Ok(()))
 }
 
-impl<S, const IS_FALLBACK: bool> PathRouter<S, IS_FALLBACK>
+impl<S> PathRouter<S>
 where
     S: Clone + Send + Sync + 'static,
 {
@@ -87,11 +70,11 @@ where
     ) -> Result<(), Cow<'static, str>> {
         validate_path(self.v7_checks, path)?;
 
-        let endpoint = if let Some((route_id, Endpoint::MethodRouter(prev_method_router))) = self
+        if let Some((route_id, Endpoint::MethodRouter(prev_method_router))) = self
             .node
             .path_to_route_id
             .get(path)
-            .and_then(|route_id| self.routes.get(route_id).map(|svc| (*route_id, svc)))
+            .and_then(|route_id| self.routes.get(route_id.0).map(|svc| (*route_id, svc)))
         {
             // if we're adding a new `MethodRouter` to a route that already has one just
             // merge them. This makes `.route("/", get(_)).route("/", post(_))` work
@@ -100,25 +83,21 @@ where
                     .clone()
                     .merge_for_path(Some(path), method_router)?,
             );
-            self.routes.insert(route_id, service);
-            return Ok(());
+            self.routes[route_id.0] = service;
         } else {
-            Endpoint::MethodRouter(method_router)
-        };
-
-        let id = self.next_route_id();
-        self.set_node(path, id)?;
-        self.routes.insert(id, endpoint);
+            let endpoint = Endpoint::MethodRouter(method_router);
+            self.new_route(path, endpoint)?;
+        }
 
         Ok(())
     }
 
-    pub(super) fn method_not_allowed_fallback<H, T>(&mut self, handler: H)
+    pub(super) fn method_not_allowed_fallback<H, T>(&mut self, handler: &H)
     where
         H: Handler<T, S>,
         T: 'static,
     {
-        for (_, endpoint) in self.routes.iter_mut() {
+        for endpoint in self.routes.iter_mut() {
             if let Endpoint::MethodRouter(rt) = endpoint {
                 *rt = rt.clone().default_fallback(handler.clone());
             }
@@ -145,9 +124,7 @@ where
     ) -> Result<(), Cow<'static, str>> {
         validate_path(self.v7_checks, path)?;
 
-        let id = self.next_route_id();
-        self.set_node(path, id)?;
-        self.routes.insert(id, endpoint);
+        self.new_route(path, endpoint)?;
 
         Ok(())
     }
@@ -159,44 +136,33 @@ where
             .map_err(|err| format!("Invalid route {path:?}: {err}"))
     }
 
-    pub(super) fn merge(
-        &mut self,
-        other: PathRouter<S, IS_FALLBACK>,
-    ) -> Result<(), Cow<'static, str>> {
-        let PathRouter {
+    fn new_route(&mut self, path: &str, endpoint: Endpoint<S>) -> Result<(), String> {
+        let id = RouteId(self.routes.len());
+        self.set_node(path, id)?;
+        self.routes.push(endpoint);
+        Ok(())
+    }
+
+    pub(super) fn merge(&mut self, other: Self) -> Result<(), Cow<'static, str>> {
+        let Self {
             routes,
             node,
-            prev_route_id: _,
             v7_checks,
         } = other;
 
         // If either of the two did not allow paths starting with `:` or `*`, do not allow them for the merged router either.
         self.v7_checks |= v7_checks;
 
-        for (id, route) in routes {
+        for (id, route) in routes.into_iter().enumerate() {
+            let route_id = RouteId(id);
             let path = node
                 .route_id_to_path
-                .get(&id)
+                .get(&route_id)
                 .expect("no path for route id. This is a bug in axum. Please file an issue");
 
-            if IS_FALLBACK && (&**path == "/" || &**path == FALLBACK_PARAM_PATH) {
-                // when merging two routers it doesn't matter if you do `a.merge(b)` or
-                // `b.merge(a)`. This must also be true for fallbacks.
-                //
-                // However all fallback routers will have routes for `/` and `/*` so when merging
-                // we have to ignore the top level fallbacks on one side otherwise we get
-                // conflicts.
-                //
-                // `Router::merge` makes sure that when merging fallbacks `other` always has the
-                // fallback we want to keep. It panics if both routers have a custom fallback. Thus
-                // it is always okay to ignore one fallback and `Router::merge` also makes sure the
-                // one we can ignore is that of `self`.
-                self.replace_endpoint(path, route);
-            } else {
-                match route {
-                    Endpoint::MethodRouter(method_router) => self.route(path, method_router)?,
-                    Endpoint::Route(route) => self.route_service(path, route)?,
-                }
+            match route {
+                Endpoint::MethodRouter(method_router) => self.route(path, method_router)?,
+                Endpoint::Route(route) => self.route_service(path, route)?,
             }
         }
 
@@ -206,22 +172,22 @@ where
     pub(super) fn nest(
         &mut self,
         path_to_nest_at: &str,
-        router: PathRouter<S, IS_FALLBACK>,
+        router: Self,
     ) -> Result<(), Cow<'static, str>> {
-        let prefix = validate_nest_path(self.v7_checks, path_to_nest_at);
+        let prefix = validate_nest_path(self.v7_checks, path_to_nest_at)?;
 
-        let PathRouter {
+        let Self {
             routes,
             node,
-            prev_route_id: _,
             // Ignore the configuration of the nested router
             v7_checks: _,
         } = router;
 
-        for (id, endpoint) in routes {
+        for (id, endpoint) in routes.into_iter().enumerate() {
+            let route_id = RouteId(id);
             let inner_path = node
                 .route_id_to_path
-                .get(&id)
+                .get(&route_id)
                 .expect("no path for route id. This is a bug in axum. Please file an issue");
 
             let path = path_for_nested_route(prefix, inner_path);
@@ -253,7 +219,7 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        let path = validate_nest_path(self.v7_checks, path_to_nest_at);
+        let path = validate_nest_path(self.v7_checks, path_to_nest_at)?;
         let prefix = path;
 
         let path = if path.ends_with('/') {
@@ -282,7 +248,7 @@ where
         Ok(())
     }
 
-    pub(super) fn layer<L>(self, layer: L) -> PathRouter<S, IS_FALLBACK>
+    pub(super) fn layer<L>(self, layer: L) -> Self
     where
         L: Layer<Route> + Clone + Send + Sync + 'static,
         L::Service: Service<Request> + Clone + Send + Sync + 'static,
@@ -293,16 +259,12 @@ where
         let routes = self
             .routes
             .into_iter()
-            .map(|(id, endpoint)| {
-                let route = endpoint.layer(layer.clone());
-                (id, route)
-            })
+            .map(|endpoint| endpoint.layer(layer.clone()))
             .collect();
 
-        PathRouter {
+        Self {
             routes,
             node: self.node,
-            prev_route_id: self.prev_route_id,
             v7_checks: self.v7_checks,
         }
     }
@@ -326,16 +288,12 @@ where
         let routes = self
             .routes
             .into_iter()
-            .map(|(id, endpoint)| {
-                let route = endpoint.layer(layer.clone());
-                (id, route)
-            })
+            .map(|endpoint| endpoint.layer(layer.clone()))
             .collect();
 
-        PathRouter {
+        Self {
             routes,
             node: self.node,
-            prev_route_id: self.prev_route_id,
             v7_checks: self.v7_checks,
         }
     }
@@ -344,25 +302,21 @@ where
         !self.routes.is_empty()
     }
 
-    pub(super) fn with_state<S2>(self, state: S) -> PathRouter<S2, IS_FALLBACK> {
+    pub(super) fn with_state<S2>(self, state: S) -> PathRouter<S2> {
         let routes = self
             .routes
             .into_iter()
-            .map(|(id, endpoint)| {
-                let endpoint: Endpoint<S2> = match endpoint {
-                    Endpoint::MethodRouter(method_router) => {
-                        Endpoint::MethodRouter(method_router.with_state(state.clone()))
-                    }
-                    Endpoint::Route(route) => Endpoint::Route(route),
-                };
-                (id, endpoint)
+            .map(|endpoint| match endpoint {
+                Endpoint::MethodRouter(method_router) => {
+                    Endpoint::MethodRouter(method_router.with_state(state.clone()))
+                }
+                Endpoint::Route(route) => Endpoint::Route(route),
             })
             .collect();
 
         PathRouter {
             routes,
             node: self.node,
-            prev_route_id: self.prev_route_id,
             v7_checks: self.v7_checks,
         }
     }
@@ -389,20 +343,18 @@ where
             Ok(match_) => {
                 let id = *match_.value;
 
-                if !IS_FALLBACK {
-                    #[cfg(feature = "matched-path")]
-                    crate::extract::matched_path::set_matched_path_for_request(
-                        id,
-                        &self.node.route_id_to_path,
-                        &mut parts.extensions,
-                    );
-                }
+                #[cfg(feature = "matched-path")]
+                crate::extract::matched_path::set_matched_path_for_request(
+                    id,
+                    &self.node.route_id_to_path,
+                    &mut parts.extensions,
+                );
 
-                url_params::insert_url_params(&mut parts.extensions, match_.params);
+                url_params::insert_url_params(&mut parts.extensions, &match_.params);
 
                 let endpoint = self
                     .routes
-                    .get(&id)
+                    .get(id.0)
                     .expect("no route for id. This is a bug in axum. Please file an issue");
 
                 let req = Request::from_parts(parts, body);
@@ -418,42 +370,19 @@ where
             Err(MatchError::NotFound) => Err((Request::from_parts(parts, body), state)),
         }
     }
-
-    pub(super) fn replace_endpoint(&mut self, path: &str, endpoint: Endpoint<S>) {
-        match self.node.at(path) {
-            Ok(match_) => {
-                let id = *match_.value;
-                self.routes.insert(id, endpoint);
-            }
-            Err(_) => self
-                .route_endpoint(path, endpoint)
-                .expect("path wasn't matched so endpoint shouldn't exist"),
-        }
-    }
-
-    fn next_route_id(&mut self) -> RouteId {
-        let next_id = self
-            .prev_route_id
-            .0
-            .checked_add(1)
-            .expect("Over `u32::MAX` routes created. If you need this, please file an issue.");
-        self.prev_route_id = RouteId(next_id);
-        self.prev_route_id
-    }
 }
 
-impl<S, const IS_FALLBACK: bool> Default for PathRouter<S, IS_FALLBACK> {
+impl<S> Default for PathRouter<S> {
     fn default() -> Self {
         Self {
             routes: Default::default(),
             node: Default::default(),
-            prev_route_id: RouteId(0),
             v7_checks: true,
         }
     }
 }
 
-impl<S, const IS_FALLBACK: bool> fmt::Debug for PathRouter<S, IS_FALLBACK> {
+impl<S> fmt::Debug for PathRouter<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PathRouter")
             .field("routes", &self.routes)
@@ -462,12 +391,11 @@ impl<S, const IS_FALLBACK: bool> fmt::Debug for PathRouter<S, IS_FALLBACK> {
     }
 }
 
-impl<S, const IS_FALLBACK: bool> Clone for PathRouter<S, IS_FALLBACK> {
+impl<S> Clone for PathRouter<S> {
     fn clone(&self) -> Self {
         Self {
             routes: self.routes.clone(),
             node: self.node.clone(),
-            prev_route_id: self.prev_route_id,
             v7_checks: self.v7_checks,
         }
     }
@@ -514,22 +442,25 @@ impl fmt::Debug for Node {
     }
 }
 
-#[track_caller]
-fn validate_nest_path(v7_checks: bool, path: &str) -> &str {
-    assert!(path.starts_with('/'));
-    assert!(path.len() > 1);
+fn validate_nest_path(v7_checks: bool, path: &str) -> Result<&str, &'static str> {
+    if !path.starts_with('/') {
+        return Err("Nesting paths must start with a `/`.");
+    }
+    if path.len() < 2 {
+        return Err("Nesting at `/` is not supported.");
+    }
 
     if path.split('/').any(|segment| {
         segment.starts_with("{*") && segment.ends_with('}') && !segment.ends_with("}}")
     }) {
-        panic!("Invalid route: nested routes cannot contain wildcards (*)");
+        return Err("Invalid route: nested routes cannot contain wildcards (*)");
     }
 
     if v7_checks {
-        validate_v07_paths(path).unwrap();
+        validate_v07_paths(path)?;
     }
 
-    path
+    Ok(path)
 }
 
 pub(crate) fn path_for_nested_route<'a>(prefix: &'a str, path: &'a str) -> Cow<'a, str> {

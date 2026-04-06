@@ -23,6 +23,13 @@ In particular the last point is what sets `axum` apart from other libraries / fr
 authorization, and more, for free. It also enables you to share middleware with
 applications written using [`hyper`] or [`tonic`].
 
+## ⚠ Breaking changes ⚠
+
+We are currently working towards axum 0.9 so the `main` branch contains breaking
+changes. See the [`0.8.x`] branch for what's released to crates.io.
+
+[`0.8.x`]: https://github.com/tokio-rs/axum/tree/v0.8.x
+
 ## Usage example
 
 ```rust
@@ -47,7 +54,7 @@ async fn main() {
 
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app).await;
 }
 
 // basic handler that responds with a static string

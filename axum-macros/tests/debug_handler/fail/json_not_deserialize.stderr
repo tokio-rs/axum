@@ -2,8 +2,13 @@ error[E0277]: the trait bound `Struct: serde::Deserialize<'de>` is not satisfied
  --> tests/debug_handler/fail/json_not_deserialize.rs:7:24
   |
 7 | async fn handler(_foo: Json<Struct>) {}
-  |                        ^^^^^^^^^^^^ the trait `for<'de> serde_core::de::Deserialize<'de>` is not implemented for `Struct`, which is required by `Json<Struct>: FromRequest<()>`
+  |                        ^^^^^^^^^^^^ unsatisfied trait bound
   |
+help: the trait `for<'de> serde_core::de::Deserialize<'de>` is not implemented for `Struct`
+ --> tests/debug_handler/fail/json_not_deserialize.rs:4:1
+  |
+4 | struct Struct {}
+  | ^^^^^^^^^^^^^
   = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `Struct` type
   = note: for types from other crates check whether the crate offers a `serde` feature flag
   = help: the following other types implement trait `serde_core::de::Deserialize<'de>`:
@@ -28,8 +33,13 @@ error[E0277]: the trait bound `Struct: serde::Deserialize<'de>` is not satisfied
  --> tests/debug_handler/fail/json_not_deserialize.rs:7:24
   |
 7 | async fn handler(_foo: Json<Struct>) {}
-  |                        ^^^^^^^^^^^^ the trait `for<'de> serde_core::de::Deserialize<'de>` is not implemented for `Struct`, which is required by `Json<Struct>: FromRequest<()>`
+  |                        ^^^^^^^^^^^^ unsatisfied trait bound
   |
+help: the trait `for<'de> serde_core::de::Deserialize<'de>` is not implemented for `Struct`
+ --> tests/debug_handler/fail/json_not_deserialize.rs:4:1
+  |
+4 | struct Struct {}
+  | ^^^^^^^^^^^^^
   = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `Struct` type
   = note: for types from other crates check whether the crate offers a `serde` feature flag
   = help: the following other types implement trait `serde_core::de::Deserialize<'de>`:

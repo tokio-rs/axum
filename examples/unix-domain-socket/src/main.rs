@@ -19,7 +19,7 @@ mod unix {
     use axum::{
         body::Body,
         extract::connect_info::{self, ConnectInfo},
-        http::{Method, Request, StatusCode},
+        http::{Request, StatusCode},
         routing::get,
         serve::IncomingStream,
         Router,
@@ -52,7 +52,7 @@ mod unix {
                 .route("/", get(handler))
                 .into_make_service_with_connect_info::<UdsConnectInfo>();
 
-            axum::serve(uds, app).await.unwrap();
+            axum::serve(uds, app).await;
         });
 
         let stream = TokioIo::new(UnixStream::connect(path).await.unwrap());
@@ -63,9 +63,7 @@ mod unix {
             }
         });
 
-        let request = Request::builder()
-            .method(Method::GET)
-            .uri("http://uri-doesnt-matter.com")
+        let request = Request::get("http://uri-doesnt-matter.com")
             .body(Body::empty())
             .unwrap();
 

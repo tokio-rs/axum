@@ -206,7 +206,7 @@ impl IntoResponseParts for CookieJar {
     type Error = Infallible;
 
     fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
-        set_cookies(self.jar, res.headers_mut());
+        set_cookies(&self.jar, res.headers_mut());
         Ok(res)
     }
 }
@@ -217,7 +217,7 @@ impl IntoResponse for CookieJar {
     }
 }
 
-fn set_cookies(jar: cookie::CookieJar, headers: &mut HeaderMap) {
+fn set_cookies(jar: &cookie::CookieJar, headers: &mut HeaderMap) {
     for cookie in jar.delta() {
         if let Ok(header_value) = cookie.encoded().to_string().parse() {
             headers.append(SET_COOKIE, header_value);
@@ -321,13 +321,13 @@ mod tests {
     }
 
     impl FromRef<AppState> for Key {
-        fn from_ref(state: &AppState) -> Key {
+        fn from_ref(state: &AppState) -> Self {
             state.key.clone()
         }
     }
 
     impl FromRef<AppState> for CustomKey {
-        fn from_ref(state: &AppState) -> CustomKey {
+        fn from_ref(state: &AppState) -> Self {
             state.custom_key.clone()
         }
     }

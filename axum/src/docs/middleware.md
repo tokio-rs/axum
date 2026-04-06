@@ -208,7 +208,7 @@ use axum::{
     body::Body,
     extract::Request,
 };
-use futures_util::future::BoxFuture;
+use futures_core::future::BoxFuture;
 use tower::{Service, Layer};
 use std::task::{Context, Poll};
 
@@ -557,7 +557,7 @@ let app_with_middleware = middleware.layer(app);
 
 # async {
 let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-axum::serve(listener, app_with_middleware.into_make_service()).await.unwrap();
+axum::serve(listener, app_with_middleware.into_make_service()).await;
 # };
 ```
 

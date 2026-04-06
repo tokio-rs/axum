@@ -571,14 +571,13 @@ enum AllowHeader {
 impl AllowHeader {
     fn merge(self, other: Self) -> Self {
         match (self, other) {
-            (AllowHeader::Skip, _) | (_, AllowHeader::Skip) => AllowHeader::Skip,
-            (AllowHeader::None, AllowHeader::None) => AllowHeader::None,
-            (AllowHeader::None, AllowHeader::Bytes(pick)) => AllowHeader::Bytes(pick),
-            (AllowHeader::Bytes(pick), AllowHeader::None) => AllowHeader::Bytes(pick),
-            (AllowHeader::Bytes(mut a), AllowHeader::Bytes(b)) => {
+            (Self::Skip, _) | (_, Self::Skip) => Self::Skip,
+            (Self::None, Self::None) => Self::None,
+            (Self::None, Self::Bytes(pick)) | (Self::Bytes(pick), Self::None) => Self::Bytes(pick),
+            (Self::Bytes(mut a), Self::Bytes(b)) => {
                 a.extend_from_slice(b",");
                 a.extend_from_slice(&b);
-                AllowHeader::Bytes(a)
+                Self::Bytes(a)
             }
         }
     }
@@ -636,7 +635,7 @@ where
     {
         self.on_endpoint(
             filter,
-            MethodEndpoint::BoxedHandler(BoxedIntoRoute::from_handler(handler)),
+            &MethodEndpoint::BoxedHandler(BoxedIntoRoute::from_handler(handler)),
         )
     }
 
@@ -659,6 +658,54 @@ where
     {
         self.fallback = Fallback::BoxedHandler(BoxedIntoRoute::from_handler(handler));
         self
+    }
+
+    /// Get a [`MethodFilter`] for the methods that this `MethodRouter` has
+    /// custom code for.
+    ///
+    /// Note that `MethodRouter`'s [`Service`] implementation never fails (it
+    /// always creates an HTTP response) based on which HTTP method was used.
+    /// However, the information which methods have the default behavior of
+    /// returning HTTP 405 is stored, and can be queried with this method.
+    ///
+    /// Returns `None` if the `MethodRouter` was constructed with [`any`] or
+    /// has had a [`fallback`][Self::fallback] set.
+    pub fn method_filter(&self) -> Option<MethodFilter> {
+        let Self {
+            get,
+            head,
+            delete,
+            options,
+            patch,
+            post,
+            put,
+            trace,
+            connect,
+            fallback,
+            allow_header: _,
+        } = self;
+
+        if !fallback.is_default() {
+            return None;
+        }
+
+        let filter = [
+            (get, MethodFilter::GET),
+            (head, MethodFilter::HEAD),
+            (delete, MethodFilter::DELETE),
+            (options, MethodFilter::OPTIONS),
+            (patch, MethodFilter::PATCH),
+            (post, MethodFilter::POST),
+            (put, MethodFilter::PUT),
+            (trace, MethodFilter::TRACE),
+            (connect, MethodFilter::CONNECT),
+        ]
+        .into_iter()
+        .filter_map(|(ep, f)| ep.is_some().then_some(f))
+        .reduce(MethodFilter::or)
+        .expect("can't create a MethodRouter with all-default handlers");
+
+        Some(filter)
     }
 
     /// Add a fallback [`Handler`] if no custom one has been provided.
@@ -698,7 +745,7 @@ impl MethodRouter<(), Infallible> {
     ///
     /// # async {
     /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    /// axum::serve(listener, router.into_make_service()).await.unwrap();
+    /// axum::serve(listener, router.into_make_service()).await;
     /// # };
     /// ```
     ///
@@ -730,7 +777,7 @@ impl MethodRouter<(), Infallible> {
     ///
     /// # async {
     /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    /// axum::serve(listener, router.into_make_service()).await.unwrap();
+    /// axum::serve(listener, router.into_make_service()).await;
     /// # };
     /// ```
     ///
@@ -816,11 +863,11 @@ where
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
-        self.on_endpoint(filter, MethodEndpoint::Route(Route::new(svc)))
+        self.on_endpoint(filter, &MethodEndpoint::Route(Route::new(svc)))
     }
 
     #[track_caller]
-    fn on_endpoint(mut self, filter: MethodFilter, endpoint: MethodEndpoint<S, E>) -> Self {
+    fn on_endpoint(mut self, filter: MethodFilter, endpoint: &MethodEndpoint<S, E>) -> Self {
         // written as a separate function to generate less IR
         #[track_caller]
         fn set_endpoint<S, E>(
@@ -840,7 +887,7 @@ where
                     panic!(
                         "Overlapping method route. Cannot add two method routes that both handle \
                          `{method_name}`",
-                    )
+                    );
                 }
                 *out = endpoint.clone();
                 for method in methods {
@@ -852,7 +899,7 @@ where
         set_endpoint(
             "GET",
             &mut self.get,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::GET,
             &mut self.allow_header,
@@ -862,7 +909,7 @@ where
         set_endpoint(
             "HEAD",
             &mut self.head,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::HEAD,
             &mut self.allow_header,
@@ -872,7 +919,7 @@ where
         set_endpoint(
             "TRACE",
             &mut self.trace,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::TRACE,
             &mut self.allow_header,
@@ -882,7 +929,7 @@ where
         set_endpoint(
             "PUT",
             &mut self.put,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::PUT,
             &mut self.allow_header,
@@ -892,7 +939,7 @@ where
         set_endpoint(
             "POST",
             &mut self.post,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::POST,
             &mut self.allow_header,
@@ -902,7 +949,7 @@ where
         set_endpoint(
             "PATCH",
             &mut self.patch,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::PATCH,
             &mut self.allow_header,
@@ -912,7 +959,7 @@ where
         set_endpoint(
             "OPTIONS",
             &mut self.options,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::OPTIONS,
             &mut self.allow_header,
@@ -922,7 +969,7 @@ where
         set_endpoint(
             "DELETE",
             &mut self.delete,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::DELETE,
             &mut self.allow_header,
@@ -932,7 +979,7 @@ where
         set_endpoint(
             "CONNECT",
             &mut self.connect,
-            &endpoint,
+            endpoint,
             filter,
             MethodFilter::CONNECT,
             &mut self.allow_header,
@@ -994,7 +1041,7 @@ where
 
     #[doc = include_str!("../docs/method_routing/route_layer.md")]
     #[track_caller]
-    pub fn route_layer<L>(mut self, layer: L) -> MethodRouter<S, E>
+    pub fn route_layer<L>(mut self, layer: L) -> Self
     where
         L: Layer<Route<E>> + Clone + Send + Sync + 'static,
         L::Service: Service<Request, Error = E> + Clone + Send + Sync + 'static,
@@ -1037,7 +1084,7 @@ where
     pub(crate) fn merge_for_path(
         mut self,
         path: Option<&str>,
-        other: MethodRouter<S, E>,
+        other: Self,
     ) -> Result<Self, Cow<'static, str>> {
         // written using inner functions to generate less IR
         fn merge_inner<S, E>(
@@ -1088,7 +1135,7 @@ where
 
     #[doc = include_str!("../docs/method_routing/merge.md")]
     #[track_caller]
-    pub fn merge(self, other: MethodRouter<S, E>) -> Self {
+    pub fn merge(self, other: Self) -> Self {
         match self.merge_for_path(None, other) {
             Ok(t) => t,
             // not using unwrap or unwrap_or_else to get a clean panic message + the right location
@@ -1189,7 +1236,7 @@ fn append_allow_header(allow_header: &mut AllowHeader, method: &'static str) {
                 }
             } else {
                 #[cfg(debug_assertions)]
-                panic!("`allow_header` contained invalid uft-8. This should never happen")
+                panic!("`allow_header` contained invalid utf-8. This should never happen")
             }
         }
     }
@@ -1256,11 +1303,9 @@ where
 
     fn with_state<S2>(self, state: &S) -> MethodEndpoint<S2, E> {
         match self {
-            MethodEndpoint::None => MethodEndpoint::None,
-            MethodEndpoint::Route(route) => MethodEndpoint::Route(route),
-            MethodEndpoint::BoxedHandler(handler) => {
-                MethodEndpoint::Route(handler.into_route(state.clone()))
-            }
+            Self::None => MethodEndpoint::None,
+            Self::Route(route) => MethodEndpoint::Route(route),
+            Self::BoxedHandler(handler) => MethodEndpoint::Route(handler.into_route(state.clone())),
         }
     }
 }
@@ -1462,7 +1507,7 @@ mod tests {
         );
 
         let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await.unwrap();
-        crate::serve(listener, app).await.unwrap();
+        crate::serve(listener, app).await;
     }
 
     #[crate::test]
@@ -1623,6 +1668,25 @@ mod tests {
         let (status, _, _) = call(Method::POST, &mut svc).await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(text, "state");
+    }
+
+    #[test]
+    fn method_filter() {
+        let router: MethodRouter = get(|| async {});
+        assert_eq!(router.method_filter(), Some(MethodFilter::GET));
+
+        let router: MethodRouter = get(|| async {}).head(|| async {}).post(|| async {});
+        assert_eq!(
+            router.method_filter(),
+            Some(
+                MethodFilter::GET
+                    .or(MethodFilter::HEAD)
+                    .or(MethodFilter::POST)
+            )
+        );
+
+        let router: MethodRouter = any(|| async {});
+        assert_eq!(router.method_filter(), None);
     }
 
     async fn call<S>(method: Method, svc: &mut S) -> (StatusCode, HeaderMap, String)

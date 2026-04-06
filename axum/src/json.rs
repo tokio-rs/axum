@@ -1,7 +1,7 @@
 use crate::extract::Request;
 use crate::extract::{rejection::*, FromRequest};
 use axum_core::extract::OptionalFromRequest;
-use axum_core::response::{IntoResponse, Response};
+use axum_core::response::{IntoResponse, IntoResponseFailed, Response};
 use bytes::{BufMut, Bytes, BytesMut};
 use http::{
     header::{self, HeaderMap, HeaderValue},
@@ -136,22 +136,14 @@ where
 }
 
 fn json_content_type(headers: &HeaderMap) -> bool {
-    let Some(content_type) = headers.get(header::CONTENT_TYPE) else {
-        return false;
-    };
-
-    let Ok(content_type) = content_type.to_str() else {
-        return false;
-    };
-
-    let Ok(mime) = content_type.parse::<mime::Mime>() else {
-        return false;
-    };
-
-    let is_json_content_type = mime.type_() == "application"
-        && (mime.subtype() == "json" || mime.suffix().is_some_and(|name| name == "json"));
-
-    is_json_content_type
+    headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|content_type| content_type.to_str().ok())
+        .and_then(|content_type| content_type.parse::<mime::Mime>().ok())
+        .is_some_and(|mime| {
+            mime.type_() == "application"
+                && (mime.subtype() == "json" || mime.suffix().is_some_and(|name| name == "json"))
+        })
 }
 
 axum_core::__impl_deref!(Json);
@@ -224,6 +216,7 @@ where
                         header::CONTENT_TYPE,
                         HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
                     )],
+                    IntoResponseFailed,
                     err.to_string(),
                 )
                     .into_response(),

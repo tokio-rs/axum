@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+# Unreleased
+
+- **breaking:** Remove the deprecated `Host`, `Scheme` and `OptionalPath`
+  extractors ([#3599])
+  - Also remove `HostRejection` which only had `FailedToResolveHost`
+    previously used in the `Host` extractor ([#3636])
+- **breaking:** Change `routing::RouterExt::route_with_tsr` to only redirect
+  the HTTP methods that the supplied `MethodRouter` handles. This allows the
+  following pattern which lead to a panic before because the two
+  `route_with_tsr` calls would both attempt to register a method-independent
+  redirect ([#3586]):
+
+  ```rust
+  Router::new()
+      .route_with_tsr("/path", get(/* handler */))
+      .route_with_tsr("/path", post(/* handler */))
+  ```
+
+[#3599]: https://github.com/tokio-rs/axum/pull/3599
+[#3586]: https://github.com/tokio-rs/axum/pull/3586
+
 # 0.12.6
 
 - **fixed:** Escape backslashes and double quotes in `Content-Disposition` filenames

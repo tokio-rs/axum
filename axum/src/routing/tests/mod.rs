@@ -45,6 +45,30 @@ mod handle_error;
 mod merge;
 mod nest;
 
+#[cfg(all(feature = "tokio", debug_assertions))]
+#[test]
+fn take_route_or_internal_error_panics_on_second_call() {
+    let route = super::Route::new(service_fn(|_req: Request| async move {
+        Ok::<_, Infallible>("ok")
+    }));
+
+    let mut service = Some(route);
+    let _ = super::take_route_or_internal_error(&mut service);
+
+    let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _ = super::take_route_or_internal_error(&mut service);
+    }))
+    .expect_err("take_route_or_internal_error should panic on the second call in debug mode");
+
+    let panic_message = panic
+        .downcast_ref::<&str>()
+        .copied()
+        .or_else(|| panic.downcast_ref::<String>().map(String::as_str))
+        .unwrap_or("<non-string panic>");
+
+    assert_eq!(panic_message, super::TAKE_ONCE_ROUTE_PANIC_MSG);
+}
+
 #[crate::test]
 async fn hello_world() {
     async fn root(_: Request) -> &'static str {
@@ -408,6 +432,87 @@ async fn what_matches_wildcard() {
     assert_eq!(get("/x/a/").await, "x");
     assert_eq!(get("/x/a/b").await, "x");
     assert_eq!(get("/x/a/b/").await, "x");
+}
+
+#[should_panic(
+    expected = "Invalid route \"/{*wild}\": Insertion failed due to conflict with previously registered route: /{*__private__axum_fallback}"
+)]
+#[test]
+fn colliding_fallback_with_wildcard() {
+    _ = Router::<()>::new()
+        .fallback(|| async { "fallback" })
+        .route("/{*wild}", get(|| async { "wildcard" }));
+}
+
+// We might want to reject this too
+#[crate::test]
+async fn colliding_wildcard_with_fallback() {
+    let router = Router::new()
+        .route("/{*wild}", get(|| async { "wildcard" }))
+        .fallback(|| async { "fallback" });
+
+    let client = TestClient::new(router);
+
+    let res = client.get("/").await;
+    let body = res.text().await;
+    assert_eq!(body, "fallback");
+
+    let res = client.get("/x").await;
+    let body = res.text().await;
+    assert_eq!(body, "wildcard");
+}
+
+// We might want to reject this too
+#[crate::test]
+async fn colliding_fallback_with_fallback() {
+    let router = Router::new()
+        .fallback(|| async { "fallback1" })
+        .fallback(|| async { "fallback2" });
+
+    let client = TestClient::new(router);
+
+    let res = client.get("/").await;
+    let body = res.text().await;
+    assert_eq!(body, "fallback1");
+
+    let res = client.get("/x").await;
+    let body = res.text().await;
+    assert_eq!(body, "fallback1");
+}
+
+#[crate::test]
+async fn colliding_root_with_fallback() {
+    let router = Router::new()
+        .route("/", get(|| async { "root" }))
+        .fallback(|| async { "fallback" });
+
+    let client = TestClient::new(router);
+
+    let res = client.get("/").await;
+    let body = res.text().await;
+    assert_eq!(body, "root");
+
+    let res = client.get("/x").await;
+    let body = res.text().await;
+    assert_eq!(body, "fallback");
+}
+
+#[crate::test]
+async fn colliding_fallback_with_root() {
+    let router = Router::new()
+        .fallback(|| async { "fallback" })
+        .route("/", get(|| async { "root" }));
+
+    let client = TestClient::new(router);
+
+    // This works because fallback registers `any` so the `get` gets merged into it.
+    let res = client.get("/").await;
+    let body = res.text().await;
+    assert_eq!(body, "root");
+
+    let res = client.get("/x").await;
+    let body = res.text().await;
+    assert_eq!(body, "fallback");
 }
 
 #[crate::test]

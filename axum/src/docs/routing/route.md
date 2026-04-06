@@ -36,8 +36,7 @@ documentation for more details.
 It is not possible to create segments that only match some types like numbers or
 regular expression. You must handle that manually in your handlers.
 
-[`MatchedPath`](crate::extract::MatchedPath) can be used to extract the matched
-path rather than the actual path.
+[`MatchedPath`] can be used to extract the matched path rather than the actual path.
 
 # Wildcards
 

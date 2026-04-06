@@ -5,7 +5,8 @@ use axum::{
     handler::Handler,
     response::{IntoResponse, Response},
 };
-use futures_util::future::{BoxFuture, Either as EitherFuture, FutureExt, Map};
+use futures_core::future::BoxFuture;
+use futures_util::future::{Either as EitherFuture, FutureExt, Map};
 use std::{future::Future, marker::PhantomData};
 
 /// [`Handler`] that runs one [`Handler`] and if that rejects it'll fallback to another

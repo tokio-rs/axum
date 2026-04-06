@@ -34,8 +34,8 @@ impl Redirect {
     /// [`Redirect::temporary`] should be used instead.
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/303
-    pub fn to(uri: &str) -> Self {
-        Self::with_status_code(StatusCode::SEE_OTHER, uri)
+    pub fn to(uri: impl Into<String>) -> Self {
+        Self::with_status_code(StatusCode::SEE_OTHER, uri.into())
     }
 
     /// Create a new [`Redirect`] that uses a [`307 Temporary Redirect`][mdn] status code.
@@ -44,15 +44,15 @@ impl Redirect {
     /// method and body.
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
-    pub fn temporary(uri: &str) -> Self {
-        Self::with_status_code(StatusCode::TEMPORARY_REDIRECT, uri)
+    pub fn temporary(uri: impl Into<String>) -> Self {
+        Self::with_status_code(StatusCode::TEMPORARY_REDIRECT, uri.into())
     }
 
     /// Create a new [`Redirect`] that uses a [`308 Permanent Redirect`][mdn] status code.
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/308
-    pub fn permanent(uri: &str) -> Self {
-        Self::with_status_code(StatusCode::PERMANENT_REDIRECT, uri)
+    pub fn permanent(uri: impl Into<String>) -> Self {
+        Self::with_status_code(StatusCode::PERMANENT_REDIRECT, uri.into())
     }
 
     /// Returns the HTTP status code of the `Redirect`.
@@ -71,7 +71,7 @@ impl Redirect {
     // use the `Location` header, namely `304 Not Modified`.
     //
     // We're open to adding more constructors upon request, if they make sense :)
-    fn with_status_code(status_code: StatusCode, uri: &str) -> Self {
+    fn with_status_code(status_code: StatusCode, uri: String) -> Self {
         assert!(
             status_code.is_redirection(),
             "not a redirection status code"
@@ -79,7 +79,7 @@ impl Redirect {
 
         Self {
             status_code,
-            location: uri.to_owned(),
+            location: uri,
         }
     }
 }

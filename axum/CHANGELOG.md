@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Unreleased
+
+- **breaking:** Router fallbacks are now properly merged for nested routers ([#3158])
+- **breaking:** `#[from_request(via(Extractor))]` now uses the extractor's
+  rejection type instead of `axum::response::Response` ([#3261])
+- **breaking:** `axum::serve` now applies hyper's default `header_read_timeout` ([#3478])
+- **breaking:** `axum::serve` future output type has been adjusted to remove `io::Result`
+  (never returned `Err`) and be an uninhabited type if `with_graceful_shutdown` is not used
+  (because it was already never terminating if that method wasn't used) ([#3601])
+- **added:** New `ListenerExt::limit_connections` allows limiting concurrent `axum::serve` connections ([#3489])
+- **added:** `MethodRouter::method_filter` ([#3586])
+- **changed:** `serve` has an additional generic argument and can now work with any response body
+  type, not just `axum::body::Body` ([#3205])
+- **changed:** `Redirect` constructors now accept any `impl Into<String>` ([#3635])
+
+[#3158]: https://github.com/tokio-rs/axum/pull/3158
+[#3261]: https://github.com/tokio-rs/axum/pull/3261
+[#3205]: https://github.com/tokio-rs/axum/pull/3205
+[#3478]: https://github.com/tokio-rs/axum/pull/3478
+[#3601]: https://github.com/tokio-rs/axum/pull/3601
+[#3489]: https://github.com/tokio-rs/axum/pull/3489
+[#3586]: https://github.com/tokio-rs/axum/pull/3586
 
 # 0.8.9
 

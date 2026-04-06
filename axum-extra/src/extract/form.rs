@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use axum::extract::rejection::RawFormRejection;
 use axum::{
     extract::{FromRequest, RawForm, Request},
@@ -12,31 +14,16 @@ use serde_core::de::DeserializeOwned;
 ///
 /// `T` is expected to implement [`serde::Deserialize`].
 ///
-/// # Differences from `axum::extract::Form`
+/// # Deprecated
 ///
-/// This extractor uses [`serde_html_form`] under-the-hood which supports multi-value items. These
-/// are sent by multiple `<input>` attributes of the same name (e.g. checkboxes) and `<select>`s
-/// with the `multiple` attribute. Those values can be collected into a `Vec` or other sequential
-/// container.
+/// This extractor used to use a different deserializer under-the-hood but that
+/// is no longer the case. Now it only uses an older version of the same
+/// deserializer, purely for ease of transition to the latest version.
+/// Before switching to `axum::extract::Form`, it is recommended to read the
+/// [changelog for `serde_html_form v0.3.0`][changelog].
 ///
-/// # Example
-///
-/// ```rust,no_run
-/// use axum_extra::extract::Form;
-/// use serde::Deserialize;
-///
-/// #[derive(Deserialize)]
-/// struct Payload {
-///     #[serde(rename = "value")]
-///     values: Vec<String>,
-/// }
-///
-/// async fn accept_form(Form(payload): Form<Payload>) {
-///     // ...
-/// }
-/// ```
-///
-/// [`serde_html_form`]: https://crates.io/crates/serde_html_form
+/// [changelog]: https://github.com/jplatte/serde_html_form/blob/main/CHANGELOG.md#030
+#[deprecated = "see documentation"]
 #[derive(Debug, Clone, Copy, Default)]
 #[cfg(feature = "form")]
 pub struct Form<T>(pub T);
@@ -90,6 +77,7 @@ composite_rejection! {
     /// Rejection used for [`Form`].
     ///
     /// Contains one variant for each way the [`Form`] extractor can fail.
+    #[deprecated = "because Form is deprecated"]
     pub enum FormRejection {
         RawFormRejection,
         FailedToDeserializeForm,

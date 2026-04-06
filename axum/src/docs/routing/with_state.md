@@ -22,7 +22,7 @@ let routes = Router::new()
 
 # async {
 let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-axum::serve(listener, routes).await.unwrap();
+axum::serve(listener, routes).await;
 # };
 ```
 
@@ -48,7 +48,7 @@ let routes = routes().with_state(AppState {});
 
 # async {
 let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-axum::serve(listener, routes).await.unwrap();
+axum::serve(listener, routes).await;
 # };
 ```
 
@@ -71,7 +71,7 @@ let routes = routes(AppState {});
 
 # async {
 let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-axum::serve(listener, routes).await.unwrap();
+axum::serve(listener, routes).await;
 # };
 ```
 
@@ -98,7 +98,7 @@ let routes = Router::new().nest("/api", routes(AppState {}));
 
 # async {
 let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-axum::serve(listener, routes).await.unwrap();
+axum::serve(listener, routes).await;
 # };
 ```
 
@@ -131,7 +131,7 @@ let router: Router<()> = router.with_state(AppState {});
 // because it is still missing an `AppState`.
 # async {
 let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-axum::serve(listener, router).await.unwrap();
+axum::serve(listener, router).await;
 # };
 ```
 
@@ -160,7 +160,7 @@ let final_router: Router<()> = string_router.with_state("foo".to_owned());
 // Since we have a `Router<()>` we can run it.
 # async {
 let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-axum::serve(listener, final_router).await.unwrap();
+axum::serve(listener, final_router).await;
 # };
 ```
 
@@ -186,7 +186,7 @@ let app = routes(AppState {});
 // but `app` is a `Router<AppState>`
 # async {
 let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-axum::serve(listener, app).await.unwrap();
+axum::serve(listener, app).await;
 # };
 ```
 
@@ -209,7 +209,7 @@ let app = routes(AppState {});
 // We can now call `Router::into_make_service`
 # async {
 let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-axum::serve(listener, app).await.unwrap();
+axum::serve(listener, app).await;
 # };
 ```
 

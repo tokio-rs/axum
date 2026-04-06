@@ -15,7 +15,7 @@ use axum::{
     routing::get,
     Router,
 };
-use futures::{sink::SinkExt, stream::StreamExt};
+use futures_util::{sink::SinkExt, stream::StreamExt};
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex},
@@ -56,7 +56,7 @@ async fn main() {
         .await
         .unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app).await;
 }
 
 async fn websocket_handler(

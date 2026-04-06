@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 axum = { path = "../../axum" }
-futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 hyper = { version = "1.0.0", features = ["full"] }
 hyper-util = { version = "0.1" }
 openssl = "0.10"

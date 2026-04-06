@@ -34,7 +34,8 @@ use axum_core::{
     response::{IntoResponse, Response},
 };
 use bytes::{BufMut, BytesMut};
-use futures_util::stream::{Stream, TryStream};
+use futures_core::Stream;
+use futures_util::stream::TryStream;
 use http_body::Frame;
 use pin_project_lite::pin_project;
 use std::{
@@ -64,7 +65,7 @@ impl<S> Sse<S> {
         S: TryStream<Ok = Event> + Send + 'static,
         S::Error: Into<BoxError>,
     {
-        Sse { stream }
+        Self { stream }
     }
 
     /// Configure the interval between keep-alive messages.
@@ -155,12 +156,12 @@ impl Buffer {
     /// a new active buffer with the previous contents.
     fn as_mut(&mut self) -> &mut BytesMut {
         match self {
-            Buffer::Active(bytes_mut) => bytes_mut,
-            Buffer::Finalized(bytes) => {
-                *self = Buffer::Active(BytesMut::from(mem::take(bytes)));
+            Self::Active(bytes_mut) => bytes_mut,
+            Self::Finalized(bytes) => {
+                *self = Self::Active(BytesMut::from(mem::take(bytes)));
                 match self {
-                    Buffer::Active(bytes_mut) => bytes_mut,
-                    Buffer::Finalized(_) => unreachable!(),
+                    Self::Active(bytes_mut) => bytes_mut,
+                    Self::Finalized(_) => unreachable!(),
                 }
             }
         }
@@ -285,7 +286,7 @@ impl Event {
     ///
     /// Panics if `comment` contains any newlines or carriage returns, as they are not allowed in
     /// comments.
-    pub fn comment<T>(mut self, comment: T) -> Event
+    pub fn comment<T>(mut self, comment: T) -> Self
     where
         T: AsRef<str>,
     {
@@ -307,7 +308,7 @@ impl Event {
     ///
     /// - Panics if `event` contains any newlines or carriage returns.
     /// - Panics if this function has already been called on this event.
-    pub fn event<T>(mut self, event: T) -> Event
+    pub fn event<T>(mut self, event: T) -> Self
     where
         T: AsRef<str>,
     {
@@ -330,7 +331,7 @@ impl Event {
     /// # Panics
     ///
     /// Panics if this function has already been called on this event.
-    pub fn retry(mut self, duration: Duration) -> Event {
+    pub fn retry(mut self, duration: Duration) -> Self {
         if self.flags.contains(EventFlags::HAS_RETRY) {
             panic!("Called `Event::retry` multiple times");
         }
@@ -374,7 +375,7 @@ impl Event {
     ///
     /// - Panics if `id` contains any newlines, carriage returns or null characters.
     /// - Panics if this function has already been called on this event.
-    pub fn id<T>(mut self, id: T) -> Event
+    pub fn id<T>(mut self, id: T) -> Self
     where
         T: AsRef<str>,
     {
@@ -493,7 +494,7 @@ impl EventFlags {
     const HAS_RETRY: Self = Self::from_bits(0b0100);
     const HAS_ID: Self = Self::from_bits(0b1000);
 
-    const fn bits(&self) -> u8 {
+    const fn bits(self) -> u8 {
         self.0
     }
 
@@ -501,7 +502,7 @@ impl EventFlags {
         Self(bits)
     }
 
-    const fn contains(&self, other: Self) -> bool {
+    const fn contains(self, other: Self) -> bool {
         self.bits() & other.bits() == other.bits()
     }
 

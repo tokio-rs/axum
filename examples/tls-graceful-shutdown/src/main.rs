@@ -69,7 +69,7 @@ async fn main() {
         .unwrap();
 }
 
-async fn shutdown_signal(handle: axum_server::Handle) {
+async fn shutdown_signal(handle: axum_server::Handle<SocketAddr>) {
     let ctrl_c = async {
         signal::ctrl_c()
             .await
@@ -120,7 +120,7 @@ where
 
     let redirect = move |uri: Uri| async move {
         match make_https(uri, ports.https) {
-            Ok(uri) => Ok(Redirect::permanent(&uri.to_string())),
+            Ok(uri) => Ok(Redirect::permanent(uri.to_string())),
             Err(error) => {
                 tracing::warn!(%error, "failed to convert URI to HTTPS");
                 Err(StatusCode::BAD_REQUEST)
@@ -133,6 +133,5 @@ where
     tracing::debug!("listening on {addr}");
     axum::serve(listener, redirect.into_make_service())
         .with_graceful_shutdown(signal)
-        .await
-        .unwrap();
+        .await;
 }

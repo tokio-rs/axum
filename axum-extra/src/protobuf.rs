@@ -4,7 +4,7 @@ use axum_core::__composite_rejection as composite_rejection;
 use axum_core::__define_rejection as define_rejection;
 use axum_core::{
     extract::{rejection::BytesRejection, FromRequest, Request},
-    response::{IntoResponse, Response},
+    response::{IntoResponse, IntoResponseFailed, Response},
     RequestExt,
 };
 use bytes::BytesMut;
@@ -109,7 +109,7 @@ where
             .aggregate();
 
         match T::decode(&mut buf) {
-            Ok(value) => Ok(Protobuf(value)),
+            Ok(value) => Ok(Self(value)),
             Err(err) => Err(ProtobufDecodeError::from_err(err).into()),
         }
     }
@@ -131,7 +131,12 @@ where
         let mut buf = BytesMut::with_capacity(self.0.encoded_len());
         match &self.0.encode(&mut buf) {
             Ok(()) => buf.into_response(),
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                IntoResponseFailed,
+                err.to_string(),
+            )
+                .into_response(),
         }
     }
 }
@@ -161,6 +166,8 @@ mod tests {
     use super::*;
     use crate::test_helpers::*;
     use axum::{routing::post, Router};
+    use http::header::CONTENT_TYPE;
+    use http::StatusCode;
 
     #[tokio::test]
     async fn decode_body() {
@@ -172,7 +179,7 @@ mod tests {
 
         let app = Router::new().route(
             "/",
-            post(|input: Protobuf<Input>| async move { input.foo.to_owned() }),
+            post(|Protobuf(input): Protobuf<Input>| async move { input.foo }),
         );
 
         let input = Input {
@@ -182,9 +189,11 @@ mod tests {
         let client = TestClient::new(app);
         let res = client.post("/").body(input.encode_to_vec()).await;
 
+        let status = res.status();
         let body = res.text().await;
 
-        assert_eq!(body, "bar");
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, input.foo);
     }
 
     #[tokio::test]
@@ -211,6 +220,7 @@ mod tests {
         let res = client.post("/").body(input.encode_to_vec()).await;
 
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert!(res.text().await.starts_with("Failed to decode the body"));
     }
 
     #[tokio::test]
@@ -228,10 +238,8 @@ mod tests {
         }
 
         #[axum::debug_handler]
-        async fn handler(input: Protobuf<Input>) -> Protobuf<Output> {
-            let output = Output {
-                result: input.foo.to_owned(),
-            };
+        async fn handler(Protobuf(input): Protobuf<Input>) -> Protobuf<Output> {
+            let output = Output { result: input.foo };
 
             Protobuf(output)
         }
@@ -245,8 +253,13 @@ mod tests {
         let client = TestClient::new(app);
         let res = client.post("/").body(input.encode_to_vec()).await;
 
+        let content_type_header_value = res
+            .headers()
+            .get(CONTENT_TYPE)
+            .expect("missing expected header");
+
         assert_eq!(
-            res.headers()["content-type"],
+            content_type_header_value,
             mime::APPLICATION_OCTET_STREAM.as_ref()
         );
 
@@ -254,6 +267,6 @@ mod tests {
 
         let output = Output::decode(body).unwrap();
 
-        assert_eq!(output.result, "bar");
+        assert_eq!(output.result, input.foo);
     }
 }

@@ -40,8 +40,8 @@ impl<I> WithPosition<I>
 where
     I: Iterator,
 {
-    pub(crate) fn new(iter: impl IntoIterator<IntoIter = I>) -> WithPosition<I> {
-        WithPosition {
+    pub(crate) fn new(iter: impl IntoIterator<IntoIter = I>) -> Self {
+        Self {
             handled_first: false,
             peekable: iter.into_iter().fuse().peekable(),
         }
@@ -72,7 +72,7 @@ pub(crate) enum Position<T> {
 impl<T> Position<T> {
     pub(crate) fn into_inner(self) -> T {
         match self {
-            Position::First(x) | Position::Middle(x) | Position::Last(x) | Position::Only(x) => x,
+            Self::First(x) | Self::Middle(x) | Self::Last(x) | Self::Only(x) => x,
         }
     }
 }

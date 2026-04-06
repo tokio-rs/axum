@@ -137,7 +137,7 @@ where
             key,
             _marker: _,
         } = PrivateCookieJar::from_headers(&parts.headers, key);
-        Ok(PrivateCookieJar {
+        Ok(Self {
             jar,
             key,
             _marker: PhantomData,
@@ -274,7 +274,7 @@ impl<K> IntoResponseParts for PrivateCookieJar<K> {
     type Error = Infallible;
 
     fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
-        set_cookies(self.jar, res.headers_mut());
+        set_cookies(&self.jar, res.headers_mut());
         Ok(res)
     }
 }

@@ -88,10 +88,10 @@ where
     pub fn try_from_uri(value: &Uri) -> Result<Self, QueryRejection> {
         let query = value.query().unwrap_or_default();
         let deserializer =
-            serde_urlencoded::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
+            serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
         let params = serde_path_to_error::deserialize(deserializer)
             .map_err(FailedToDeserializeQueryString::from_err)?;
-        Ok(Query(params))
+        Ok(Self(params))
     }
 }
 

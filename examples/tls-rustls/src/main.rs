@@ -86,7 +86,7 @@ async fn redirect_http_to_https(ports: Ports) {
 
     let redirect = move |uri: Uri| async move {
         match make_https(uri, ports.https) {
-            Ok(uri) => Ok(Redirect::permanent(&uri.to_string())),
+            Ok(uri) => Ok(Redirect::permanent(uri.to_string())),
             Err(error) => {
                 tracing::warn!(%error, "failed to convert URI to HTTPS");
                 Err(StatusCode::BAD_REQUEST)
@@ -97,7 +97,5 @@ async fn redirect_http_to_https(ports: Ports) {
     let addr = SocketAddr::from(([127, 0, 0, 1], ports.http));
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, redirect.into_make_service())
-        .await
-        .unwrap();
+    axum::serve(listener, redirect.into_make_service()).await;
 }

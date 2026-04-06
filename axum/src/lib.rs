@@ -37,7 +37,7 @@
 //!
 //!     // run our app with hyper, listening globally on port 3000
 //!     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-//!     axum::serve(listener, app).await.unwrap();
+//!     axum::serve(listener, app).await;
 //! }
 //! ```
 //!
@@ -502,6 +502,7 @@ pub mod serve;
 
 #[cfg(any(test, feature = "__private"))]
 #[allow(missing_docs, missing_debug_implementations, clippy::print_stdout)]
+#[doc(hidden)]
 pub mod test_helpers;
 
 #[doc(no_inline)]

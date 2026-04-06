@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use axum_core::__composite_rejection as composite_rejection;
 use axum_core::__define_rejection as define_rejection;
 use axum_core::extract::FromRequestParts;
@@ -8,12 +10,13 @@ use serde_core::de::DeserializeOwned;
 ///
 /// `T` is expected to implement [`serde::Deserialize`].
 ///
-/// # Differences from `axum::extract::Query`
+/// # Deprecated
 ///
-/// This extractor uses [`serde_html_form`] under-the-hood which supports multi-value items. These
-/// are sent by multiple `<input>` attributes of the same name (e.g. checkboxes) and `<select>`s
-/// with the `multiple` attribute. Those values can be collected into a `Vec` or other sequential
-/// container.
+/// This extractor used to use a different deserializer under-the-hood but that
+/// is no longer the case. Now it only uses an older version of the same
+/// deserializer, purely for ease of transition to the latest version.
+/// Before switching to `axum::extract::Form`, it is recommended to read the
+/// [changelog for `serde_html_form v0.3.0`][changelog].
 ///
 /// # Example
 ///
@@ -91,7 +94,7 @@ where
             serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
         let value = serde_path_to_error::deserialize(deserializer)
             .map_err(FailedToDeserializeQueryString::from_err)?;
-        Ok(Query(value))
+        Ok(Self(value))
     }
 }
 
@@ -140,6 +143,7 @@ composite_rejection! {
     /// Rejection used for [`Query`].
     ///
     /// Contains one variant for each way the [`Query`] extractor can fail.
+    #[deprecated = "because Query is deprecated"]
     pub enum QueryRejection {
         FailedToDeserializeQueryString,
     }
@@ -147,7 +151,7 @@ composite_rejection! {
 
 /// Extractor that deserializes query strings into `None` if no query parameters are present.
 ///
-/// Otherwise behaviour is identical to [`Query`].
+/// Otherwise behaviour is identical to [`Query`][axum::extract::Query].
 /// `T` is expected to implement [`serde::Deserialize`].
 ///
 /// # Example
@@ -179,11 +183,6 @@ composite_rejection! {
 ///
 /// If the query string cannot be parsed it will reject the request with a `400
 /// Bad Request` response.
-///
-/// For handling values being empty vs missing see the [query-params-with-empty-strings][example]
-/// example.
-///
-/// [example]: https://github.com/tokio-rs/axum/blob/main/examples/query-params-with-empty-strings/src/main.rs
 #[cfg_attr(docsrs, doc(cfg(feature = "query")))]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct OptionalQuery<T>(pub Option<T>);
@@ -201,9 +200,9 @@ where
                 serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
             let value = serde_path_to_error::deserialize(deserializer)
                 .map_err(FailedToDeserializeQueryString::from_err)?;
-            Ok(OptionalQuery(Some(value)))
+            Ok(Self(Some(value)))
         } else {
-            Ok(OptionalQuery(None))
+            Ok(Self(None))
         }
     }
 }

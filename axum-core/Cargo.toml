@@ -9,7 +9,24 @@ license = "MIT"
 name = "axum-core"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.5.5" # remember to bump the version that axum and axum-extra depend on
+version = "0.5.6" # remember to bump the version that axum and axum-extra depend on
+
+[package.metadata.cargo_check_external_types]
+allowed_external_types = [
+    # not 1.0
+    "futures_core::*",
+    "tower_layer::*",
+    # >=1.0
+    "bytes::*",
+    "http::*",
+    "http_body::*",
+]
+
+[package.metadata.cargo-machete]
+ignored = ["tower-http"] # See __private_docs feature
+
+[package.metadata.docs.rs]
+all-features = true
 
 [features]
 tracing = ["dep:tracing"]
@@ -38,26 +55,9 @@ axum = { path = "../axum", features = ["__private"] }
 axum-extra = { path = "../axum-extra", features = ["typed-header"] }
 axum-macros = { path = "../axum-macros", features = ["__private"] }
 hyper = "1.0.0"
+serde = { version = "1.0.200", features = ["derive"] }
 tokio = { version = "1.25.0", features = ["macros"] }
 tower-http = { version = "0.6.0", features = ["limit"] }
 
 [lints]
 workspace = true
-
-[package.metadata.cargo-public-api-crates]
-allowed = [
-    # not 1.0
-    "futures_core",
-    "tower_layer",
-
-    # >=1.0
-    "bytes",
-    "http",
-    "http_body",
-]
-
-[package.metadata.cargo-machete]
-ignored = ["tower-http"] # See __private_docs feature
-
-[package.metadata.docs.rs]
-all-features = true

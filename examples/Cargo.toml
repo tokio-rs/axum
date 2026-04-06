@@ -1,0 +1,46 @@
+[workspace]
+members = ["*"]
+# Example has been deleted, but README.md remains
+exclude = ["async-graphql", "target"]
+resolver = "2"
+
+[workspace.package]
+rust-version = "1.75"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+rust_2018_idioms = { level = "warn", priority = -1 }
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+type_complexity = "allow"
+
+await_holding_lock = "warn"
+dbg_macro = "warn"
+empty_enum = "warn"
+enum_glob_use = "warn"
+exit = "warn"
+filter_map_next = "warn"
+fn_params_excessive_bools = "warn"
+if_let_mutex = "warn"
+imprecise_flops = "warn"
+inefficient_to_string = "warn"
+linkedlist = "warn"
+lossy_float_literal = "warn"
+macro_use_imports = "warn"
+match_wildcard_for_single_variants = "warn"
+mem_forget = "warn"
+needless_borrow = "warn"
+needless_continue = "warn"
+option_option = "warn"
+rest_pat_in_fully_bound_structs = "warn"
+str_to_string = "warn"
+suboptimal_flops = "warn"
+todo = "warn"
+uninlined_format_args = "warn"
+unnested_or_patterns = "warn"
+unused_self = "warn"
+verbose_file_reads = "warn"

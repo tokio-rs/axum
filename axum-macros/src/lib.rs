@@ -438,7 +438,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 ///     let app = Router::new().route("/", get(handler));
 ///
 ///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-///     axum::serve(listener, app).await.unwrap();
+///     axum::serve(listener, app).await;
 /// }
 ///
 /// fn handler() -> &'static str {
@@ -458,7 +458,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// #     let app = Router::new().route("/", get(handler));
 /// #
 /// #     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-/// #     axum::serve(listener, app).await.unwrap();
+/// #     axum::serve(listener, app).await;
 /// # }
 /// #
 /// #[debug_handler]
@@ -485,7 +485,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 ///     let app = Router::new().route("/", get(handler));
 ///
 ///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-///     axum::serve(listener, app).await.unwrap();
+///     axum::serve(listener, app).await;
 /// }
 ///
 /// #[debug_handler]
@@ -579,7 +579,7 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
     #[cfg(debug_assertions)]
     return expand_attr_with(_attr, input, |attrs, item_fn| {
-        debug_handler::expand(attrs, item_fn, FunctionKind::Handler)
+        debug_handler::expand(attrs, &item_fn, FunctionKind::Handler)
     });
 }
 
@@ -607,7 +607,7 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 ///         .layer(middleware::from_fn(my_middleware));
 ///
 ///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-///     axum::serve(listener, app).await.unwrap();
+///     axum::serve(listener, app).await;
 /// }
 ///
 /// // if this wasn't a valid middleware function #[debug_middleware] would
@@ -635,7 +635,7 @@ pub fn debug_middleware(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
     #[cfg(debug_assertions)]
     return expand_attr_with(_attr, input, |attrs, item_fn| {
-        debug_handler::expand(attrs, item_fn, FunctionKind::Middleware)
+        debug_handler::expand(attrs, &item_fn, FunctionKind::Middleware)
     });
 }
 
@@ -662,7 +662,7 @@ pub fn __private_axum_test(_attr: TokenStream, input: TokenStream) -> TokenStrea
 /// [`axum_extra::routing::TypedPath`]: https://docs.rs/axum-extra/latest/axum_extra/routing/trait.TypedPath.html
 #[proc_macro_derive(TypedPath, attributes(typed_path))]
 pub fn derive_typed_path(input: TokenStream) -> TokenStream {
-    expand_with(input, typed_path::expand)
+    expand_with(input, |item_struct| typed_path::expand(&item_struct))
 }
 
 /// Derive an implementation of [`FromRef`] for each field in a struct.

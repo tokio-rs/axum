@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2018"
 publish = false
 
+[package.metadata.cargo-machete]
+ignored = ["axum-extra"]
+
 [dependencies]
 # `default-features = false` to not depend on tokio features which don't support wasm
 # you can still pull in tokio manually and only add features that tokio supports for wasm
@@ -14,6 +17,3 @@ axum-extra = { path = "../../axum-extra", default-features = false }
 futures-executor = "0.3.21"
 http = "1.0.0"
 tower-service = "0.3.1"
-
-[package.metadata.cargo-machete]
-ignored = ["axum-extra"]

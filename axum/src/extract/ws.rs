@@ -94,10 +94,9 @@ use self::rejection::*;
 use super::FromRequestParts;
 use crate::{body::Bytes, response::Response, Error};
 use axum_core::body::Body;
-use futures_util::{
-    sink::{Sink, SinkExt},
-    stream::{FusedStream, Stream, StreamExt},
-};
+use futures_core::{FusedStream, Stream};
+use futures_sink::Sink;
+use futures_util::{sink::SinkExt, stream::StreamExt};
 use http::{
     header::{self, HeaderMap, HeaderName, HeaderValue},
     request::Parts,
@@ -452,11 +451,11 @@ where
                 return Err(MethodNotGet.into());
             }
 
-            if !header_contains(&parts.headers, header::CONNECTION, "upgrade") {
+            if !header_contains(&parts.headers, &header::CONNECTION, "upgrade") {
                 return Err(InvalidConnectionHeader.into());
             }
 
-            if !header_eq(&parts.headers, header::UPGRADE, "websocket") {
+            if !header_eq(&parts.headers, &header::UPGRADE, "websocket") {
                 return Err(InvalidUpgradeHeader.into());
             }
 
@@ -486,7 +485,7 @@ where
             None
         };
 
-        if !header_eq(&parts.headers, header::SEC_WEBSOCKET_VERSION, "13") {
+        if !header_eq(&parts.headers, &header::SEC_WEBSOCKET_VERSION, "13") {
             return Err(InvalidWebSocketVersionHeader.into());
         }
 
@@ -517,18 +516,16 @@ where
     }
 }
 
-fn header_eq(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool {
-    if let Some(header) = headers.get(&key) {
+fn header_eq(headers: &HeaderMap, key: &HeaderName, value: &'static str) -> bool {
+    if let Some(header) = headers.get(key) {
         header.as_bytes().eq_ignore_ascii_case(value.as_bytes())
     } else {
         false
     }
 }
 
-fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool {
-    let header = if let Some(header) = headers.get(&key) {
-        header
-    } else {
+fn header_contains(headers: &HeaderMap, key: &HeaderName, value: &'static str) -> bool {
+    let Some(header) = headers.get(key) else {
         return false;
     };
 
@@ -879,49 +876,49 @@ impl Message {
     }
 
     /// Create a new text WebSocket message from a stringable.
-    pub fn text<S>(string: S) -> Message
+    pub fn text<S>(string: S) -> Self
     where
         S: Into<Utf8Bytes>,
     {
-        Message::Text(string.into())
+        Self::Text(string.into())
     }
 
     /// Create a new binary WebSocket message by converting to `Bytes`.
-    pub fn binary<B>(bin: B) -> Message
+    pub fn binary<B>(bin: B) -> Self
     where
         B: Into<Bytes>,
     {
-        Message::Binary(bin.into())
+        Self::Binary(bin.into())
     }
 }
 
 impl From<String> for Message {
     fn from(string: String) -> Self {
-        Message::Text(string.into())
+        Self::Text(string.into())
     }
 }
 
 impl<'s> From<&'s str> for Message {
     fn from(string: &'s str) -> Self {
-        Message::Text(string.into())
+        Self::Text(string.into())
     }
 }
 
 impl<'b> From<&'b [u8]> for Message {
     fn from(data: &'b [u8]) -> Self {
-        Message::Binary(Bytes::copy_from_slice(data))
+        Self::Binary(Bytes::copy_from_slice(data))
     }
 }
 
 impl From<Bytes> for Message {
     fn from(data: Bytes) -> Self {
-        Message::Binary(data)
+        Self::Binary(data)
     }
 }
 
 impl From<Vec<u8>> for Message {
     fn from(data: Vec<u8>) -> Self {
-        Message::Binary(data.into())
+        Self::Binary(data.into())
     }
 }
 
