@@ -15,7 +15,7 @@ use axum_core::{body::Body, extract::Request, response::Response};
 use futures_util::FutureExt;
 use http_body::Body as HttpBody;
 use hyper::body::Incoming;
-use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
+use hyper_util::rt::{TokioIo, TokioTimer};
 #[cfg(any(feature = "http1", feature = "http2"))]
 use hyper_util::{server::conn::auto::Builder, service::TowerToHyperService};
 use tokio::sync::watch;
@@ -113,7 +113,7 @@ where
     Serve {
         listener,
         make_service,
-        executor: TokioExecutor::new(),
+        executor: TokioExecutor,
         _marker: PhantomData,
     }
 }
@@ -150,7 +150,6 @@ where
 /// If your executor is expensive to clone, wrap it in an [`Arc`] — a blanket
 /// implementation is provided for `Arc<T>` where `T: Executor`.
 ///
-/// [`TokioExecutor`]: hyper_util::rt::TokioExecutor
 /// [`Arc`]: std::sync::Arc
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 pub trait Executor: Clone + Send + Sync + 'static {
@@ -160,13 +159,18 @@ pub trait Executor: Clone + Send + Sync + 'static {
         Fut: Future<Output = ()> + Send + 'static;
 }
 
+/// The default executor, which delegates to [`tokio::spawn`].
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+#[derive(Clone, Debug)]
+pub struct TokioExecutor;
+
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 impl Executor for TokioExecutor {
     fn execute<Fut>(&self, fut: Fut)
     where
         Fut: Future<Output = ()> + Send + 'static,
     {
-        <Self as hyper::rt::Executor<Fut>>::execute(self, fut);
+        tokio::spawn(fut);
     }
 }
 
@@ -277,7 +281,6 @@ where
     /// # };
     /// ```
     ///
-    /// [`TokioExecutor`]: hyper_util::rt::TokioExecutor
     /// [`with_graceful_shutdown`]: Serve::with_graceful_shutdown
     pub fn with_executor<E2>(self, executor: E2) -> Serve<L, M, S, B, E2>
     where

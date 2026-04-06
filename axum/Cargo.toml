@@ -26,7 +26,6 @@ allowed_external_types = [
     "futures_core::*",
     "futures_sink::*",
     "futures_util::*",
-    "hyper_util::rt::tokio::TokioExecutor",
     "tower_layer::*",
     "tower_service::*",
     # >=1.0
