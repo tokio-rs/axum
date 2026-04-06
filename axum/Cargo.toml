@@ -52,7 +52,7 @@ __private_docs = [
 __private = ["tokio", "http1", "dep:reqwest"]
 
 [dependencies]
-axum-core = { path = "../axum-core", version = "0.5.6" }
+axum-core = { path = "../axum-core", version = "0.5.5" }
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "1.0.0"

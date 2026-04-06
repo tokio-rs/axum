@@ -339,7 +339,7 @@ dependencies = [
 
 [[package]]
 name = "axum-core"
-version = "0.5.6"
+version = "0.5.5"
 dependencies = [
  "axum",
  "axum-extra",
