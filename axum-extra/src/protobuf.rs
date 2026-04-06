@@ -4,7 +4,7 @@ use axum_core::__composite_rejection as composite_rejection;
 use axum_core::__define_rejection as define_rejection;
 use axum_core::{
     extract::{rejection::BytesRejection, FromRequest, Request},
-    response::{IntoResponse, IntoResponseFailed, Response},
+    response::{IntoResponse, Response},
     RequestExt,
 };
 use bytes::BytesMut;
@@ -131,12 +131,7 @@ where
         let mut buf = BytesMut::with_capacity(self.0.encoded_len());
         match &self.0.encode(&mut buf) {
             Ok(()) => buf.into_response(),
-            Err(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                IntoResponseFailed,
-                err.to_string(),
-            )
-                .into_response(),
+            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
         }
     }
 }
