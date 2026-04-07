@@ -7,11 +7,6 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- **fixed:** Escape backslashes and double quotes in `Content-Disposition` filenames
-  to prevent header parameter injection in `Attachment` and `FileStream` ([#3664])
-- `vpath!` macro now stops the compilation if your path is using deprecated
-  path variables in the old `107` format, such as `:var` and `*var`. the 
-  only allowed way now is `{var}`.
 - **breaking:** Remove the deprecated `Host`, `Scheme` and `OptionalPath`
   extractors ([#3599])
   - Also remove `HostRejection` which only had `FailedToResolveHost`
@@ -28,9 +23,21 @@ and this project adheres to [Semantic Versioning].
       .route_with_tsr("/path", post(/* handler */))
   ```
 
-[#3664]: https://github.com/tokio-rs/axum/pull/3664
 [#3599]: https://github.com/tokio-rs/axum/pull/3599
 [#3586]: https://github.com/tokio-rs/axum/pull/3586
+
+# 0.12.6
+
+- **fixed:** Escape backslashes and double quotes in `Content-Disposition` filenames
+  to prevent header parameter injection in `Attachment` and `FileStream` ([#3664])
+- `vpath!` macro now stops the compilation if your path is using deprecated
+  path variables in the old `107` format, such as `:var` and `*var`. the 
+  only allowed way now is `{var}`. ([#3618])
+- **fixed:** Return specific error message when multipart body limit is exceeded ([#3611])
+
+[#3664]: https://github.com/tokio-rs/axum/pull/3664
+[#3618]: https://github.com/tokio-rs/axum/pull/3618
+[#3611]: https://github.com/tokio-rs/axum/pull/3611
 
 # 0.12.5
 
