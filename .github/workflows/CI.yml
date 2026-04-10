@@ -142,6 +142,29 @@ jobs:
       - name: Run tests
         run: cargo +${{ env.MSRV }} test --locked --all-features
 
+  check-minimal-versions:
+    needs: check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@cargo-hack
+      - uses: taiki-e/install-action@cargo-minimal-versions
+      - name: Remove dev-dependencies
+        run: cargo hack --remove-dev-deps
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Check axum-core
+        run: cargo minimal-versions check --package axum-core --features tracing
+      - name: Check axum
+        run: cargo minimal-versions check --package axum --features form,http1,http2,json,macros,matched-path,multipart,original-uri,query,tokio,tower-log,tracing,ws
+      - name: Check axum-extra
+        run: cargo minimal-versions check --package axum-extra --features async-read-body,cached,file-stream,attachment,error-response,cookie,cookie-private,cookie-signed,cookie-key-expansion,erased-json,form,handler,json-deserializer,json-lines,middleware,multipart,protobuf,routing,query,tracing,typed-header,typed-routing,with-rejection
+      - name: Check axum-macros
+        run: cargo minimal-versions check --package axum-macros
+
   deny-check:
     name: cargo-deny check
     runs-on: ubuntu-24.04
