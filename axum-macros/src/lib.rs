@@ -17,6 +17,7 @@ mod axum_test;
 mod debug_handler;
 mod from_ref;
 mod from_request;
+mod typed_method;
 mod typed_path;
 mod with_position;
 
@@ -653,6 +654,16 @@ pub fn debug_middleware(_attr: TokenStream, input: TokenStream) -> TokenStream {
 #[doc(hidden)]
 pub fn __private_axum_test(_attr: TokenStream, input: TokenStream) -> TokenStream {
     expand_attr_with(_attr, input, axum_test::expand)
+}
+
+/// Derive an implementation of [`axum_extra::routing::TypedMethod`].
+///
+/// See that trait for more details.
+///
+/// [`axum_extra::routing::TypedMethod`]: https://docs.rs/axum-extra/latest/axum_extra/routing/trait.TypedMethod.html
+#[proc_macro_derive(TypedMethod, attributes(typed_method))]
+pub fn derive_typed_method(input: TokenStream) -> TokenStream {
+    expand_with(input, |item_struct| typed_method::expand(&item_struct))
 }
 
 /// Derive an implementation of [`axum_extra::routing::TypedPath`].
