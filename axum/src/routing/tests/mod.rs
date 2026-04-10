@@ -552,6 +552,42 @@ fn colliding_fallback_with_wildcard() {
         .route("/{*wild}", get(|| async { "wildcard" }));
 }
 
+#[should_panic(
+    expected = "Invalid route \"/{wild}-bar\": Insertion failed due to conflict with previously registered route: /foo-{wild}"
+)]
+#[test]
+fn colliding_prefix_suffix() {
+    _ = Router::<()>::new()
+        .route("/foo-{wild}", get(|| async { "wildcard" }))
+        .route("/foo", get(|| async { "wildcard" }))
+        .route("/{wild}", get(|| async { "wildcard" }))
+        .route("/{wild}-bar", get(|| async { "wildcard" }));
+}
+
+#[should_panic(
+    expected = "Invalid route \"/foo-{wild}\": Insertion failed due to conflict with previously registered route: /foo-{wild}-bar"
+)]
+#[test]
+fn colliding_prefixsuffix_prefix() {
+    _ = Router::<()>::new()
+        .route("/foo-{wild}-bar", get(|| async { "wildcard" }))
+        .route("/foo", get(|| async { "wildcard" }))
+        .route("/{wild}", get(|| async { "wildcard" }))
+        .route("/foo-{wild}", get(|| async { "wildcard" }));
+}
+
+#[should_panic(
+    expected = "Invalid route \"/{wild}-bar\": Insertion failed due to conflict with previously registered route: /foo-{wild}-bar"
+)]
+#[test]
+fn colliding_prefixsuffix_suffix() {
+    _ = Router::<()>::new()
+        .route("/foo-{wild}-bar", get(|| async { "wildcard" }))
+        .route("/foo", get(|| async { "wildcard" }))
+        .route("/{wild}", get(|| async { "wildcard" }))
+        .route("/{wild}-bar", get(|| async { "wildcard" }));
+}
+
 // We might want to reject this too
 #[crate::test]
 async fn colliding_wildcard_with_fallback() {
