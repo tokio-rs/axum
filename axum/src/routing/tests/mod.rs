@@ -434,6 +434,114 @@ async fn what_matches_wildcard() {
     assert_eq!(get("/x/a/b/").await, "x");
 }
 
+#[crate::test]
+async fn prefix_match() {
+    let app = Router::new()
+        .route("/{picture}.png", get(|| async { "picture" }))
+        .route("/{picture}.txt", get(|| async { "text" }))
+        .route("/logo.svg", get(|| async { "logo" }))
+        .fallback(|| async { "fallback" });
+
+    let client = TestClient::new(app);
+
+    let get = |path| {
+        let f = client.get(path);
+        async move { f.await.text().await }
+    };
+
+    assert_eq!(get("/").await, "fallback");
+    assert_eq!(get("/a/b.png").await, "fallback");
+    assert_eq!(get("/a.png/").await, "fallback");
+    assert_eq!(get("//a.png").await, "fallback");
+
+    // Empty capture is not allowed
+    assert_eq!(get("/.png").await, "fallback");
+    assert_eq!(get("/..png").await, "picture");
+    assert_eq!(get("/a.png").await, "picture");
+    assert_eq!(get("/b.png").await, "picture");
+
+    assert_eq!(get("/.txt").await, "fallback");
+    assert_eq!(get("/..txt").await, "text");
+    assert_eq!(get("/a.txt").await, "text");
+    assert_eq!(get("/b.txt").await, "text");
+
+    assert_eq!(get("/logo.svg").await, "logo");
+}
+
+#[crate::test]
+async fn suffix_match() {
+    let app = Router::new()
+        .route("/new-{id}", get(|| async { "new" }))
+        .route("/old-{id}", get(|| async { "old" }))
+        .route("/any", get(|| async { "any" }))
+        .fallback(|| async { "fallback" });
+
+    let client = TestClient::new(app);
+
+    let get = |path| {
+        let f = client.get(path);
+        async move { f.await.text().await }
+    };
+
+    assert_eq!(get("/").await, "fallback");
+    assert_eq!(get("/a/new-1").await, "fallback");
+    assert_eq!(get("/new-1/").await, "fallback");
+    assert_eq!(get("//new-1/").await, "fallback");
+
+    // Empty capture is not allowed
+    assert_eq!(get("/new-").await, "fallback");
+    assert_eq!(get("/new-1").await, "new");
+
+    assert_eq!(get("/old-").await, "fallback");
+    assert_eq!(get("/old-1").await, "old");
+
+    assert_eq!(get("/any").await, "any");
+}
+
+#[crate::test]
+async fn prefix_suffix_match() {
+    let app = Router::new()
+        .route("/start-{regex}-end", get(|| async { "regex" }))
+        .fallback(|| async { "fallback" });
+
+    let client = TestClient::new(app);
+
+    let get = |path| {
+        let f = client.get(path);
+        async move { f.await.text().await }
+    };
+
+    assert_eq!(get("/").await, "fallback");
+
+    // Empty capture is not allowed
+    assert_eq!(get("/start--end").await, "fallback");
+
+    assert_eq!(get("/start-regex-end").await, "regex");
+    assert_eq!(get("/foo/start-regex-end").await, "fallback");
+}
+
+#[crate::test]
+async fn prefix_suffix_nested_match() {
+    let app = Router::new()
+        .route("/{a}/a", get(|| async { "a" }))
+        .route("/{b}/b", get(|| async { "b" }))
+        .route("/a{c}c/a", get(|| async { "c" }))
+        .route("/a{d}c/{*anything}", get(|| async { "d" }))
+        .fallback(|| async { "fallback" });
+
+    let client = TestClient::new(app);
+
+    let get = |path| {
+        let f = client.get(path);
+        async move { f.await.text().await }
+    };
+
+    assert_eq!(get("/ac/a").await, "a");
+    assert_eq!(get("/ac/b").await, "b");
+    assert_eq!(get("/abc/a").await, "c");
+    assert_eq!(get("/abc/b").await, "d");
+}
+
 #[should_panic(
     expected = "Invalid route \"/{*wild}\": Insertion failed due to conflict with previously registered route: /{*__private__axum_fallback}"
 )]
@@ -442,6 +550,42 @@ fn colliding_fallback_with_wildcard() {
     _ = Router::<()>::new()
         .fallback(|| async { "fallback" })
         .route("/{*wild}", get(|| async { "wildcard" }));
+}
+
+#[should_panic(
+    expected = "Invalid route \"/{wild}-bar\": Insertion failed due to conflict with previously registered route: /foo-{wild}"
+)]
+#[test]
+fn colliding_prefix_suffix() {
+    _ = Router::<()>::new()
+        .route("/foo-{wild}", get(|| async { "wildcard" }))
+        .route("/foo", get(|| async { "wildcard" }))
+        .route("/{wild}", get(|| async { "wildcard" }))
+        .route("/{wild}-bar", get(|| async { "wildcard" }));
+}
+
+#[should_panic(
+    expected = "Invalid route \"/foo-{wild}\": Insertion failed due to conflict with previously registered route: /foo-{wild}-bar"
+)]
+#[test]
+fn colliding_prefixsuffix_prefix() {
+    _ = Router::<()>::new()
+        .route("/foo-{wild}-bar", get(|| async { "wildcard" }))
+        .route("/foo", get(|| async { "wildcard" }))
+        .route("/{wild}", get(|| async { "wildcard" }))
+        .route("/foo-{wild}", get(|| async { "wildcard" }));
+}
+
+#[should_panic(
+    expected = "Invalid route \"/{wild}-bar\": Insertion failed due to conflict with previously registered route: /foo-{wild}-bar"
+)]
+#[test]
+fn colliding_prefixsuffix_suffix() {
+    _ = Router::<()>::new()
+        .route("/foo-{wild}-bar", get(|| async { "wildcard" }))
+        .route("/foo", get(|| async { "wildcard" }))
+        .route("/{wild}", get(|| async { "wildcard" }))
+        .route("/{wild}-bar", get(|| async { "wildcard" }));
 }
 
 // We might want to reject this too
