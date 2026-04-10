@@ -3,11 +3,11 @@
 //! See [`Multipart`] for more details.
 
 use axum_core::{
-    RequestExt, __composite_rejection as composite_rejection,
-    __define_rejection as define_rejection,
+    __composite_rejection as composite_rejection, __define_rejection as define_rejection,
     body::Body,
     extract::FromRequest,
     response::{IntoResponse, Response},
+    RequestExt,
 };
 use bytes::Bytes;
 use futures_core::stream::Stream;

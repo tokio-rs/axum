@@ -1,6 +1,6 @@
 [package]
 name = "axum"
-version = "0.8.8" # remember to bump the version that axum-extra depends on
+version = "0.8.9" # remember to bump the version that axum-extra depends on
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "HTTP routing and request handling library that focuses on ergonomics and modularity"
 edition = "2021"
@@ -123,7 +123,7 @@ tower-layer = "0.3.2"
 tower-service = "0.3"
 
 # optional dependencies
-axum-macros = { path = "../axum-macros", version = "0.5.0", optional = true }
+axum-macros = { path = "../axum-macros", version = "0.5.1", optional = true }
 base64 = { version = "0.22.1", optional = true }
 form_urlencoded = { version = "1.1.0", optional = true }
 futures-sink = { version = "0.3", optional = true }
@@ -136,7 +136,7 @@ serde_json = { version = "1.0.29", features = ["raw_value"], optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }
 sha1 = { version = "0.10", optional = true }
 tokio = { package = "tokio", version = "1.44", features = ["time"], optional = true }
-tokio-tungstenite = { version = "0.28.0", optional = true }
+tokio-tungstenite = { version = "0.29.0", optional = true }
 tracing = { version = "0.1", default-features = false, optional = true }
 
 # doc dependencies
@@ -190,7 +190,7 @@ serde_json = { version = "1.0.29", features = ["raw_value"] }
 time = { version = "0.3", features = ["serde-human-readable"] }
 tokio = { package = "tokio", version = "1.44.2", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
 tokio-stream = "0.1"
-tokio-tungstenite = "0.28.0"
+tokio-tungstenite = "0.29.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.20", features = ["json"] }
 uuid = { version = "1.0", features = ["serde", "v4"] }

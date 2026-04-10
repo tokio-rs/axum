@@ -27,6 +27,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-casbin-auth](https://github.com/casbin-rs/axum-casbin-auth): Casbin access control middleware for axum
 - [aide](https://docs.rs/aide): Code-first Open API documentation generator with [axum integration](https://docs.rs/aide/latest/aide/axum/index.html).
 - [axum-typed-routing](https://docs.rs/axum-typed-routing/latest/axum_typed_routing/): Statically typed routing macros with OpenAPI generation using aide.
+- [rovo](https://docs.rs/rovo): Doc-comment-driven OpenAPI documentation generation for Axum web applications, built on top of aide.
 - [axum-jsonschema](https://docs.rs/axum-jsonschema/): A `Json<T>` extractor that does JSON schema validation of requests.
 - [axum-login](https://docs.rs/axum-login): Session-based user authentication for axum.
 - [axum-gate](https://docs.rs/axum-gate): JWT-based authentication and role-based authorization for axum (Cookie and Bearer, for monolithic and distributed applications).
@@ -82,13 +83,14 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [RUSTfulapi](https://github.com/robatipoor/rustfulapi): Reusable template for building REST Web Services in Rust. Uses axum and SeaORM.
 - [Jotsy](https://github.com/ohsayan/jotsy): Self-hosted notes app powered by Skytable, axum and Tokio
 - [Svix](https://www.svix.com) ([repository](https://github.com/svix/svix-webhooks)): Enterprise-ready webhook service
-- [emojied](https://emojied.net) ([repository](https://github.com/sekunho/emojied)): Shorten URLs to emojis!
+- [emojied](https://github.com/sekunho/emojied): Shorten URLs to emojis!
 - [CLOMonitor](https://clomonitor.io) ([repository](https://github.com/cncf/clomonitor)): Checks open source projects repositories to verify they meet certain best practices.
 - [Pinging.net](https://www.pinging.net) ([repository](https://github.com/benhansenslc/pinging)): A new way to check and monitor your internet connection.
 - [wastebin](https://github.com/matze/wastebin): A minimalist pastebin service.
 - [sandbox_axum_observability](https://github.com/davidB/sandbox_axum_observability) A Sandbox/showcase project to experiment axum and observability (tracing, opentelemetry, jaeger, grafana tempo,...)
 - [axum_admin](https://github.com/lingdu1234/axum_admin): An admin panel built with **axum**, Sea-orm and Vue 3.
-- [rgit](https://git.inept.dev/~doyle/rgit.git/about): A blazingly fast Git repository browser, compatible with- and heavily inspired by cgit.
+- [rgit](https://github.com/w4/rgit/): A blazingly fast Git repository browser, compatible with- and heavily inspired by cgit.
+- [gitore](https://codeberg.org/kallisti5/gitore): A fork of `rgit`.
 - [Petclinic](https://github.com/danipardo/petclinic): A port of Spring Framework's Petclinic showcase project to axum
 - [axum-middleware-example](https://github.com/casbin-rs/axum-middleware-example): A authorization application using axum, Casbin and Diesel, with JWT support.
 - [circleci-hook](https://github.com/DavidS/circleci-hook): Translate CircleCI WebHooks to OpenTelemetry traces to improve your test insights. Add detail with otel-cli to capture individual commands. Use the TRACEPARENT integration to add details from your tests.
