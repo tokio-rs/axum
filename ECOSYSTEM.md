@@ -64,6 +64,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-conditional-requests](https://crates.io/crates/axum-conditional-requests): A library for handling client-side caching HTTP headers
 - [sigterm](https://github.com/canmi21/sigterm): Signal-aware async control and cancellation primitives for Tokio.
 - [tower-resilience](https://github.com/joshrotenberg/tower-resilience): Resilience middleware for tower: circuit breaker, bulkhead, retry, rate limiter, and more.
+- [axum-helmet](https://github.com/danielkov/rust-helmet): A security middleware library for popular Rust web frameworks, with first-class `axum` support.
 
 ## Project showcase
 
