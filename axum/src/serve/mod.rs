@@ -123,37 +123,39 @@ where
 ///
 /// The default executor is [`TokioExecutor`], which delegates to
 /// [`tokio::spawn`]. Provide a custom implementation to instrument or
-/// intercept spawned tasks — for example, to add tracing or telemetry.
+/// intercept spawned tasks, e.g. to add tracing or telemetry.
 ///
 /// Spawned futures rely on Tokio primitives internally, so the executor
 /// must run them within a Tokio runtime context (e.g. via [`tokio::spawn`]).
 ///
 /// # Example
 ///
+/// An executor that wraps every spawned task in a [`tracing`] span.
+///
 /// ```
 /// use std::future::Future;
 /// use axum::serve::Executor;
+/// use tracing::Instrument;
 ///
 /// #[derive(Clone)]
-/// struct MyExecutor;
+/// struct InstrumentedExecutor;
 ///
-/// impl Executor for MyExecutor {
+/// impl Executor for InstrumentedExecutor {
 ///     fn execute<Fut>(&self, fut: Fut)
 ///     where
 ///         Fut: Future<Output = ()> + Send + 'static,
 ///     {
-///         tokio::spawn(fut);
+///         let span = tracing::info_span!("axum.serve.task");
+///         tokio::spawn(fut.instrument(span));
 ///     }
 /// }
 /// ```
 ///
-/// If your executor is expensive to clone, wrap it in an [`Arc`] — a blanket
-/// implementation is provided for `Arc<T>` where `T: Executor`.
-///
-/// [`Arc`]: std::sync::Arc
+/// If your executor is expensive to clone, wrap it in an `Arc`.
+/// A blanket implementation is provided for `Arc<T>` where `T: Executor`.
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 pub trait Executor: Clone + Send + Sync + 'static {
-    /// Execute a fire-and-forget task.
+    /// Execute a task.
     fn execute<Fut>(&self, fut: Fut)
     where
         Fut: Future<Output = ()> + Send + 'static;
@@ -248,29 +250,29 @@ where
     /// Provide a custom [`Executor`] to use for spawning connection tasks and
     /// hyper's internal tasks (e.g. HTTP/2).
     ///
-    /// By default, [`TokioExecutor`] is used. A custom executor can be used to
-    /// instrument or intercept spawned tasks.
+    /// The default is [`TokioExecutor`]. See the [`Executor`] docs for how to
+    /// implement a custom one.
     ///
     /// This method can be called before or after [`with_graceful_shutdown`].
     ///
     /// # Example
     ///
     /// ```
-    /// use std::future::Future;
     /// use axum::{Router, routing::get, serve::Executor};
-    ///
-    /// #[derive(Clone)]
-    /// struct MyExecutor;
-    ///
-    /// impl Executor for MyExecutor {
-    ///     fn execute<Fut>(&self, fut: Fut)
-    ///     where
-    ///         Fut: Future<Output = ()> + Send + 'static,
-    ///     {
-    ///         tokio::spawn(fut);
-    ///     }
-    /// }
-    ///
+    /// # use std::future::Future;
+    /// #
+    /// # #[derive(Clone)]
+    /// # struct MyExecutor;
+    /// #
+    /// # impl Executor for MyExecutor {
+    /// #     fn execute<Fut>(&self, fut: Fut)
+    /// #     where
+    /// #         Fut: Future<Output = ()> + Send + 'static,
+    /// #     {
+    /// #         tokio::spawn(fut);
+    /// #     }
+    /// # }
+    /// #
     /// # async {
     /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
     /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
@@ -405,7 +407,7 @@ where
     /// Provide a custom [`Executor`] to use for spawning connection tasks and
     /// hyper's internal tasks (e.g. HTTP/2).
     ///
-    /// See [`Serve::with_executor`] for details and examples.
+    /// See [`Serve::with_executor`] for details.
     pub fn with_executor<E2>(self, executor: E2) -> WithGracefulShutdown<L, M, S, F, B, E2>
     where
         E2: Executor,
@@ -533,7 +535,7 @@ where
     }
 }
 
-/// Adapts axum's [`Executor`] to Hyper's `Executor<Fut>` interface.
+/// Adapts axum's [`Executor`] to hyper's `Executor<Fut>` interface.
 #[derive(Clone)]
 struct HyperExecutor<E>(E);
 
@@ -1060,13 +1062,8 @@ mod tests {
         let body = String::from_utf8(body.to_vec()).unwrap();
         assert_eq!(body, "Hello, World!");
 
-        // Verify the custom executor was used for spawning the connection task.
-        // HTTP/1 should spawn exactly one task per connection.
-        assert_eq!(
-            executor.count(),
-            1,
-            "expected exactly one spawned task for the connection"
-        );
+        // One task per connection for HTTP/1.
+        assert_eq!(executor.count(), 1);
     }
 
     #[crate::test]
@@ -1103,14 +1100,8 @@ mod tests {
         let body = String::from_utf8(body.to_vec()).unwrap();
         assert_eq!(body, "Hello, World!");
 
-        // Verify the executor is used for both axum's connection task
-        // and hyper's internal HTTP/2 task (spawned via HyperExecutor).
-        assert_eq!(
-            executor.count(),
-            2,
-            "expected 2 spawned tasks for HTTP/2, got {}",
-            executor.count()
-        );
+        // Two tasks: axum's connection, and hyper's internal HTTP/2 task.
+        assert_eq!(executor.count(), 2);
     }
 
     #[crate::test]
