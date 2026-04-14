@@ -73,7 +73,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [notify.run](https://github.com/notify-run/notify-run-rs): HTTP-to-WebPush relay for sending desktop/mobile notifications to yourself, written in Rust.
 - [turbo.fish](https://turbo.fish/) ([repository](https://github.com/jplatte/turbo.fish)): Find out for yourself 😉
 - [Book Management](https://github.com/lz1998/axum-book-management): CRUD system of book-management with ORM and JWT for educational purposes.
-- [realworld-axum-sqlx](https://github.com/launchbadge/realworld-axum-sqlx): A Rust implementation of the [Realworld] demo app spec using axum and [SQLx].
+- [realworld-axum-sqlx](https://github.com/launchbadge/realworld-axum-sqlx): A Rust implementation of the [Realworld](https://github.com/gothinkster/realworld) demo app spec using axum and [SQLx](https://github.com/launchbadge/sqlx).
   See https://github.com/davidpdrsn/realworld-axum-sqlx for a fork with up to date dependencies.
 - [Rustapi](https://github.com/ndelvalle/rustapi): RESTful API template using MongoDB
 - [axum-postgres-template](https://github.com/koskeller/axum-postgres-template): Production-ready axum + PostgreSQL application template
@@ -111,9 +111,6 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [openapi-rs](https://github.com/baerwang/openapi-rs/tree/main/examples/axum) | This project adds a middleware layer to axum using openapi-rs, enabling automatic request validation and processing based on OpenAPI 3.1 specifications. It helps ensure that the server behavior strictly follows the OpenAPI contract.
 - [axum-rest-api-example](https://github.com/sheroz/axum-rest-api-sample): REST API Web service in Rust using axum, JSON Web Tokens (JWT), SQLx, PostgreSQL, Redis, Docker, structured error handling, and end-to-end API tests.
 - [tower-mcp](https://github.com/joshrotenberg/tower-mcp): Tower-native Model Context Protocol (MCP) implementation
-
-[Realworld]: https://github.com/gothinkster/realworld
-[SQLx]: https://github.com/launchbadge/sqlx
 
 ## Tutorials
 
