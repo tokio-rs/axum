@@ -18,7 +18,7 @@ use hyper::body::Incoming;
 use hyper_util::rt::{TokioIo, TokioTimer};
 #[cfg(any(feature = "http1", feature = "http2"))]
 use hyper_util::{server::conn::auto::Builder, service::TowerToHyperService};
-use tokio::sync::watch;
+use tokio::{sync::watch, task::JoinHandle};
 use tower::ServiceExt as _;
 use tower_service::Service;
 
@@ -118,12 +118,12 @@ where
     }
 }
 
-/// Executor used by [`serve`] to spawn connection tasks, graceful shutdown
+/// A Tokio executor used by [`serve`] to spawn connection tasks, graceful shutdown
 /// tasks, and hyper's internal tasks (e.g. HTTP/2 connection management).
 ///
-/// The default executor is [`TokioExecutor`], which delegates to
-/// [`tokio::spawn`]. Provide a custom implementation to instrument or
-/// intercept spawned tasks, e.g. to add tracing or telemetry.
+/// The default executor is [`TokioExecutor`], which simply calls to
+/// [`tokio::spawn`]. A custom implementation can be provided to wrap
+/// spawned tasks, e.g. to add tracing or telemetry.
 ///
 /// Spawned futures rely on Tokio primitives internally, so the executor
 /// must run them within a Tokio runtime context (e.g. via [`tokio::spawn`]).
@@ -135,18 +135,20 @@ where
 /// ```
 /// use std::future::Future;
 /// use axum::serve::Executor;
+/// use tokio::task::JoinHandle;
 /// use tracing::Instrument;
 ///
 /// #[derive(Clone)]
 /// struct InstrumentedExecutor;
 ///
 /// impl Executor for InstrumentedExecutor {
-///     fn execute<Fut>(&self, fut: Fut)
+///     fn execute<Fut>(&self, fut: Fut) -> JoinHandle<Fut::Output>
 ///     where
-///         Fut: Future<Output = ()> + Send + 'static,
+///         Fut: Future + Send + 'static,
+///         Fut::Output: Send + 'static,
 ///     {
 ///         let span = tracing::info_span!("axum.serve.task");
-///         tokio::spawn(fut.instrument(span));
+///         tokio::spawn(fut.instrument(span))
 ///     }
 /// }
 /// ```
@@ -156,23 +158,25 @@ where
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 pub trait Executor: Clone + Send + Sync + 'static {
     /// Execute a task.
-    fn execute<Fut>(&self, fut: Fut)
+    fn execute<Fut>(&self, fut: Fut) -> JoinHandle<Fut::Output>
     where
-        Fut: Future<Output = ()> + Send + 'static;
+        Fut: Future + Send + 'static,
+        Fut::Output: Send + 'static;
 }
 
-/// The default executor, which delegates to [`tokio::spawn`].
+/// The default executor, which uses [`tokio::spawn`].
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[derive(Clone, Debug)]
 pub struct TokioExecutor;
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 impl Executor for TokioExecutor {
-    fn execute<Fut>(&self, fut: Fut)
+    fn execute<Fut>(&self, fut: Fut) -> JoinHandle<Fut::Output>
     where
-        Fut: Future<Output = ()> + Send + 'static,
+        Fut: Future + Send + 'static,
+        Fut::Output: Send + 'static,
     {
-        tokio::spawn(fut);
+        tokio::spawn(fut)
     }
 }
 
@@ -181,11 +185,12 @@ impl<T> Executor for Arc<T>
 where
     T: Executor,
 {
-    fn execute<Fut>(&self, fut: Fut)
+    fn execute<Fut>(&self, fut: Fut) -> JoinHandle<Fut::Output>
     where
-        Fut: Future<Output = ()> + Send + 'static,
+        Fut: Future + Send + 'static,
+        Fut::Output: Send + 'static,
     {
-        self.as_ref().execute(fut);
+        self.as_ref().execute(fut)
     }
 }
 
@@ -260,16 +265,18 @@ where
     /// ```
     /// use axum::{Router, routing::get, serve::Executor};
     /// # use std::future::Future;
+    /// # use tokio::task::JoinHandle;
     /// #
     /// # #[derive(Clone)]
     /// # struct MyExecutor;
     /// #
     /// # impl Executor for MyExecutor {
-    /// #     fn execute<Fut>(&self, fut: Fut)
+    /// #     fn execute<Fut>(&self, fut: Fut) -> JoinHandle<Fut::Output>
     /// #     where
-    /// #         Fut: Future<Output = ()> + Send + 'static,
+    /// #         Fut: Future + Send + 'static,
+    /// #         Fut::Output: Send + 'static,
     /// #     {
-    /// #         tokio::spawn(fut);
+    /// #         tokio::spawn(fut)
     /// #     }
     /// # }
     /// #
@@ -535,7 +542,7 @@ where
     }
 }
 
-/// Adapts axum's [`Executor`] to hyper's `Executor<Fut>` interface.
+/// Adapts axum's [`Executor`] to hyper's `Executor<Fut>`.
 #[derive(Clone)]
 struct HyperExecutor<E>(E);
 
@@ -545,7 +552,7 @@ where
     Fut: Future<Output = ()> + Send + 'static,
 {
     fn execute(&self, fut: Fut) {
-        self.0.execute(fut);
+        drop(self.0.execute(fut));
     }
 }
 
@@ -696,6 +703,7 @@ mod tests {
     use tokio::{
         io::{self, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
         net::TcpListener,
+        task::JoinHandle,
     };
     use tower::ServiceBuilder;
 
@@ -902,12 +910,13 @@ mod tests {
     }
 
     impl super::Executor for TestExecutor {
-        fn execute<Fut>(&self, fut: Fut)
+        fn execute<Fut>(&self, fut: Fut) -> JoinHandle<Fut::Output>
         where
-            Fut: std::future::Future<Output = ()> + Send + 'static,
+            Fut: std::future::Future + Send + 'static,
+            Fut::Output: Send + 'static,
         {
             self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            tokio::spawn(fut);
+            tokio::spawn(fut)
         }
     }
 
