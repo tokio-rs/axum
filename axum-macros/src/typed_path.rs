@@ -176,7 +176,7 @@ fn expand_unnamed_fields(
     let num_captures = segments
         .iter()
         .filter(|segment| match segment {
-            Segment::Capture(_, _) => true,
+            Segment::Capture(_, _) | Segment::CaptureWithAffix { .. } => true,
             Segment::Static(_) => false,
         })
         .count();
@@ -195,7 +195,9 @@ fn expand_unnamed_fields(
     let destructure_self = segments
         .iter()
         .filter_map(|segment| match segment {
-            Segment::Capture(capture, _) => Some(capture),
+            Segment::Capture(capture, _) | Segment::CaptureWithAffix { capture, .. } => {
+                Some(capture)
+            }
             Segment::Static(_) => None,
         })
         .enumerate()
@@ -286,7 +288,7 @@ fn expand_unit_fields(
 ) -> syn::Result<TokenStream> {
     for segment in parse_path(path)? {
         match segment {
-            Segment::Capture(_, span) => {
+            Segment::Capture(_, span) | Segment::CaptureWithAffix { span, .. } => {
                 return Err(syn::Error::new(
                     span,
                     "Typed paths for unit structs cannot contain captures",
@@ -361,6 +363,12 @@ fn format_str_from_path(segments: &[Segment]) -> String {
         .map(|segment| match segment {
             Segment::Capture(capture, _) => format!("{{{capture}}}"),
             Segment::Static(segment) => segment.to_owned(),
+            Segment::CaptureWithAffix {
+                prefix,
+                capture,
+                suffix,
+                ..
+            } => format!("{prefix}{{{capture}}}{suffix}"),
         })
         .collect::<Vec<_>>()
         .join("/")
@@ -372,6 +380,9 @@ fn captures_from_path(segments: &[Segment]) -> Vec<syn::Ident> {
         .filter_map(|segment| match segment {
             Segment::Capture(capture, span) => Some(format_ident!("{}", capture, span = *span)),
             Segment::Static(_) => None,
+            Segment::CaptureWithAffix { capture, span, .. } => {
+                Some(format_ident!("{}", capture, span = *span))
+            }
         })
         .collect::<Vec<_>>()
 }
@@ -390,18 +401,31 @@ fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
     path.value()
         .split('/')
         .map(|segment| {
-            if let Some(capture) = segment
-                .strip_prefix('{')
-                .and_then(|segment| segment.strip_suffix('}'))
-                .and_then(|segment| {
-                    (!segment.starts_with('{') && !segment.ends_with('}')).then_some(segment)
-                })
-                .map(|capture| capture.strip_prefix('*').unwrap_or(capture))
-            {
-                Ok(Segment::Capture(capture.to_owned(), path.span()))
-            } else {
-                Ok(Segment::Static(segment.to_owned()))
+            if let Some(open) = segment.find('{') {
+                if let Some(close_offset) = segment[open..].find('}') {
+                    let close = open + close_offset;
+                    let inner = &segment[open + 1..close];
+                    let prefix = &segment[..open];
+                    let suffix = &segment[close + 1..];
+
+                    // Skip escaped braces like {{ or }}
+                    if !inner.is_empty() && !inner.starts_with('{') && !inner.ends_with('}') {
+                        let capture = inner.strip_prefix('*').unwrap_or(inner);
+
+                        if prefix.is_empty() && suffix.is_empty() {
+                            return Ok(Segment::Capture(capture.to_owned(), path.span()));
+                        } else {
+                            return Ok(Segment::CaptureWithAffix {
+                                prefix: prefix.to_owned(),
+                                capture: capture.to_owned(),
+                                suffix: suffix.to_owned(),
+                                span: path.span(),
+                            });
+                        }
+                    }
+                }
             }
+            Ok(Segment::Static(segment.to_owned()))
         })
         .collect()
 }
@@ -409,6 +433,12 @@ fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
 enum Segment {
     Capture(String, Span),
     Static(String),
+    CaptureWithAffix {
+        prefix: String,
+        capture: String,
+        suffix: String,
+        span: Span,
+    },
 }
 
 fn path_rejection() -> TokenStream {
