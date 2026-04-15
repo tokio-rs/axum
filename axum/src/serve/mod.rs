@@ -542,7 +542,7 @@ where
     }
 }
 
-/// Adapts axum's [`Executor`] to hyper's `Executor<Fut>`.
+/// Adapts axum's [`Executor`] to hyper's [`hyper::rt::Executor`].
 #[derive(Clone)]
 struct HyperExecutor<E>(E);
 
