@@ -15,6 +15,7 @@ help: the trait `IntoResponseParts` is not implemented for `CustomIntoResponse`
    |
 12 | struct CustomIntoResponse {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: See `https://docs.rs/axum/0.8/axum/response/trait.IntoResponseParts.html` for details
    = help: the following other types implement trait `IntoResponseParts`:
              ()
              (T1, T2)
@@ -42,6 +43,7 @@ help: the trait `IntoResponseParts` is not implemented for `CustomIntoResponse`
    |
 12 | struct CustomIntoResponse {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: See `https://docs.rs/axum/0.8/axum/response/trait.IntoResponseParts.html` for details
    = help: the following other types implement trait `IntoResponseParts`:
              ()
              (T1, T2)
