@@ -62,6 +62,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-conditional-requests](https://crates.io/crates/axum-conditional-requests): A library for handling client-side caching HTTP headers
 - [sigterm](https://github.com/canmi21/sigterm): Signal-aware async control and cancellation primitives for Tokio.
 - [tower-resilience](https://github.com/joshrotenberg/tower-resilience): Resilience middleware for tower: circuit breaker, bulkhead, retry, rate limiter, and more.
+- [seamjs](https://github.com/canmi21/seam): Compile-time rendering framework where UI Stack (e.g. React...) pages are pre-rendered at build time and Axum serves them via Rust-native HTML slot injection (~1ms/page), with typed RPC procedures codegen'd from a shared manifest.   
 
 ## Project showcase
 
