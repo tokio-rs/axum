@@ -70,6 +70,9 @@ use std::{convert::Infallible, fmt};
 ///     SetHeader("x-foo", "custom")
 /// }
 /// ```
+#[diagnostic::on_unimplemented(
+    note = "See `https://docs.rs/axum/0.8/axum/response/trait.IntoResponseParts.html` for details"
+)]
 pub trait IntoResponseParts {
     /// The type returned in the event of an error.
     ///
