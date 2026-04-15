@@ -2,7 +2,7 @@ error[E0277]: the trait bound `bool: FromRequest<(), axum_core::extract::private
  --> tests/debug_handler/fail/argument_not_extractor.rs:4:24
   |
 4 | async fn handler(_foo: bool) {}
-  |                        ^^^^ the trait `FromRequestParts<()>` is not implemented for `bool`, which is required by `bool: FromRequest<(), _>`
+  |                        ^^^^ the trait `FromRequestParts<()>` is not implemented for `bool`
   |
   = note: Function argument is not a valid axum extractor.
           See `https://docs.rs/axum/0.8/axum/extract/index.html` for details

@@ -4,6 +4,7 @@ error[E0277]: the trait bound `bool: IntoResponse` is not satisfied
 4 | async fn handler() -> bool {
   |                       ^^^^ the trait `IntoResponse` is not implemented for `bool`
   |
+  = note: See `https://docs.rs/axum/0.8/axum/response/trait.IntoResponse.html` for details
   = help: the following other types implement trait `IntoResponse`:
             &'static [u8; N]
             &'static [u8]
