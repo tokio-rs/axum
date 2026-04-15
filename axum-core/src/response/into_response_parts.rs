@@ -107,6 +107,18 @@ pub struct ResponseParts {
 }
 
 impl ResponseParts {
+    /// Gets the response status code.
+    #[must_use]
+    pub fn status(&self) -> StatusCode {
+        self.res.status()
+    }
+
+    /// Gets a mutable reference to the response status code.
+    #[must_use]
+    pub fn status_mut(&mut self) -> &mut StatusCode {
+        self.res.status_mut()
+    }
+
     /// Gets a reference to the response headers.
     #[must_use]
     pub fn headers(&self) -> &HeaderMap {
