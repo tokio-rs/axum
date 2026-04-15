@@ -808,6 +808,129 @@ mod tests {
     }
 
     #[crate::test]
+    async fn serve_post_with_body() {
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        let app = Router::new().route(
+            "/echo",
+            crate::routing::post(|body: String| async move { body }),
+        );
+
+        tokio::spawn(serve(listener, app).into_future());
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder()
+            .method("POST")
+            .uri("/echo")
+            .header("content-type", "text/plain")
+            .body(Body::from("hello axum"))
+            .unwrap();
+
+        let response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = Body::new(response.into_body());
+        let body = to_bytes(body, usize::MAX).await.unwrap();
+        assert_eq!(&body[..], b"hello axum");
+    }
+
+    #[crate::test]
+    async fn serve_not_found() {
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        let app = Router::new().route("/exists", get(|| async { "ok" }));
+
+        tokio::spawn(serve(listener, app).into_future());
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder()
+            .uri("/does-not-exist")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[crate::test]
+    async fn serve_multiple_routes() {
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        let app = Router::new()
+            .route("/a", get(|| async { "route a" }))
+            .route("/b", get(|| async { "route b" }));
+
+        tokio::spawn(serve(listener, app).into_future());
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        // First request to /a
+        let response = sender
+            .send_request(Request::builder().uri("/a").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(Body::new(response.into_body()), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"route a");
+
+        // Second request to /b on same connection
+        let response = sender
+            .send_request(Request::builder().uri("/b").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(Body::new(response.into_body()), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"route b");
+    }
+
+    #[crate::test]
+    async fn serve_with_state() {
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        let app = Router::new()
+            .route(
+                "/state",
+                get(|crate::extract::State(s): crate::extract::State<String>| async move { s }),
+            )
+            .with_state(String::from("shared state"));
+
+        tokio::spawn(serve(listener, app).into_future());
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder()
+            .uri("/state")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = to_bytes(Body::new(response.into_body()), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"shared state");
+    }
+
+    #[crate::test]
     async fn serving_with_custom_body_type() {
         struct CustomBody;
         impl http_body::Body for CustomBody {
