@@ -459,6 +459,734 @@ dependencies = [
 ]
 
 [[package]]
+name = "etcetera"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "136d1b5283a1ab77bd9257427ffd09d8667ced0570b6f938942bc7568ed5b943"
+dependencies = [
+ "cfg-if 1.0.0",
+ "home",
+ "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "event-listener"
+version = "2.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
+
+[[package]]
+name = "event-listener"
+version = "5.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6032be9bd27023a771701cc49f9f053c751055f71efb2e0ae5c15809093675ba"
+dependencies = [
+ "concurrent-queue",
+ "parking",
+ "pin-project-lite",
+]
+
+[[package]]
+name = "eventsource-stream"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74fef4569247a5f429d9156b9d0a2599914385dd189c539334c625d8099d90ab"
+dependencies = [
+ "futures-core",
+ "nom",
+ "pin-project-lite",
+]
+
+[[package]]
+name = "example-anyhow-error-response"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "http-body-util",
+ "tokio",
+ "tower 0.5.2",
+]
+
+[[package]]
+name = "example-chat"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "futures",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-compression"
+version = "0.1.0"
+dependencies = [
+ "assert-json-diff",
+ "axum",
+ "brotli 6.0.0",
+ "flate2",
+ "http 1.2.0",
+ "serde_json",
+ "tokio",
+ "tower 0.5.2",
+ "tower-http 0.6.2",
+ "tracing",
+ "tracing-subscriber",
+ "zstd",
+]
+
+[[package]]
+name = "example-consume-body-in-extractor-or-middleware"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "http-body-util",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-cors"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "tokio",
+ "tower-http 0.6.2",
+]
+
+[[package]]
+name = "example-customize-extractor-error"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-extra",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-customize-path-rejection"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-dependency-injection"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "example-diesel-async-postgres"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "bb8 0.8.6",
+ "diesel",
+ "diesel-async",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-diesel-postgres"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "deadpool-diesel",
+ "diesel",
+ "diesel_migrations",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-error-handling"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "serde",
+ "tokio",
+ "tower-http 0.6.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-form"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "http-body-util",
+ "mime",
+ "serde",
+ "tokio",
+ "tower 0.5.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-global-404-handler"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-graceful-shutdown"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "tokio",
+ "tower-http 0.6.2",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-handle-head-request"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "http-body-util",
+ "hyper 1.5.2",
+ "tokio",
+ "tower 0.5.2",
+]
+
+[[package]]
+name = "example-hello-world"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "tokio",
+]
+
+[[package]]
+name = "example-http-proxy"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "hyper 1.5.2",
+ "hyper-util",
+ "tokio",
+ "tower 0.5.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-jwt"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-extra",
+ "jsonwebtoken",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-key-value-store"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "tokio",
+ "tower 0.5.2",
+ "tower-http 0.6.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-low-level-native-tls"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "futures-util",
+ "hyper 1.5.2",
+ "hyper-util",
+ "tokio",
+ "tokio-native-tls",
+ "tower-service",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-low-level-openssl"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "futures-util",
+ "hyper 1.5.2",
+ "hyper-util",
+ "openssl",
+ "tokio",
+ "tokio-openssl",
+ "tower 0.5.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-low-level-rustls"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "futures-util",
+ "hyper 1.5.2",
+ "hyper-util",
+ "tokio",
+ "tokio-rustls 0.26.1",
+ "tower-service",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-mongodb"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "mongodb",
+ "serde",
+ "tokio",
+ "tower-http 0.6.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-multipart-form"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "tokio",
+ "tower-http 0.6.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-oauth"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-session",
+ "axum",
+ "axum-extra",
+ "http 1.2.0",
+ "oauth2",
+ "reqwest 0.12.12",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-parse-body-based-on-content-type"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-print-request-response"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "http-body-util",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-prometheus-metrics"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "metrics",
+ "metrics-exporter-prometheus",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-query-params-with-empty-strings"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "http-body-util",
+ "serde",
+ "tokio",
+ "tower 0.5.2",
+]
+
+[[package]]
+name = "example-readme"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-request-id"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "tokio",
+ "tower 0.5.2",
+ "tower-http 0.5.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-reqwest-response"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "reqwest 0.12.12",
+ "tokio",
+ "tokio-stream",
+ "tower-http 0.6.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-reverse-proxy"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "hyper 1.5.2",
+ "hyper-util",
+ "tokio",
+]
+
+[[package]]
+name = "example-routes-and-handlers-close-together"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "tokio",
+]
+
+[[package]]
+name = "example-serve-with-hyper"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "hyper 1.5.2",
+ "hyper-util",
+ "tokio",
+ "tower 0.5.2",
+]
+
+[[package]]
+name = "example-simple-router-wasm"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-extra",
+ "futures-executor",
+ "http 1.2.0",
+ "tower-service",
+]
+
+[[package]]
+name = "example-sqlx-postgres"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-sse"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-extra",
+ "eventsource-stream",
+ "futures",
+ "headers",
+ "reqwest 0.12.12",
+ "reqwest-eventsource",
+ "tokio",
+ "tokio-stream",
+ "tower-http 0.6.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-static-file-server"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "headers",
+ "http-body-util",
+ "mime",
+ "tokio",
+ "tower 0.5.2",
+ "tower-http 0.6.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-stream-to-file"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "futures",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-templates"
+version = "0.1.0"
+dependencies = [
+ "askama",
+ "axum",
+ "http-body-util",
+ "tokio",
+ "tower 0.5.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-templates-minijinja"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "minijinja",
+ "tokio",
+]
+
+[[package]]
+name = "example-testing"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "http-body-util",
+ "hyper-util",
+ "mime",
+ "serde_json",
+ "tokio",
+ "tower 0.5.2",
+ "tower-http 0.6.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-testing-websockets"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "futures",
+ "tokio",
+ "tokio-tungstenite",
+]
+
+[[package]]
+name = "example-tls-graceful-shutdown"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-extra",
+ "axum-server 0.7.1",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-tls-rustls"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-extra",
+ "axum-server 0.7.1",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-todos"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "serde",
+ "tokio",
+ "tower 0.5.2",
+ "tower-http 0.6.2",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "example-tokio-postgres"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "bb8 0.9.0",
+ "bb8-postgres",
+ "tokio",
+ "tokio-postgres",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-tokio-redis"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "bb8 0.8.6",
+ "bb8-redis",
+ "redis",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-tracing-aka-logging"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "tokio",
+ "tower-http 0.6.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-unix-domain-socket"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "http-body-util",
+ "hyper 1.5.2",
+ "hyper-util",
+ "tokio",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-validator"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "http-body-util",
+ "serde",
+ "thiserror 1.0.69",
+ "tokio",
+ "tower 0.5.2",
+ "tracing",
+ "tracing-subscriber",
+ "validator",
+]
+
+[[package]]
+name = "example-versioning"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "http-body-util",
+ "tokio",
+ "tower 0.5.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-websockets"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-extra",
+ "futures",
+ "futures-util",
+ "headers",
+ "tokio",
+ "tokio-tungstenite",
+ "tower-http 0.6.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-websockets-http2"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-server 0.6.0",
+ "tokio",
+ "tower-http 0.5.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "fallible-iterator"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
+
+[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
