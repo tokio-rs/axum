@@ -1504,6 +1504,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-rate-limiting"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "tokio",
+ "tower",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "example-readme"
 version = "0.1.0"
 dependencies = [
