@@ -37,6 +37,32 @@ allowed_external_types = [
 [features]
 default = ["tracing"]
 
+full = [
+    "async-read-body",
+    "cached",
+    "file-stream",
+    "attachment",
+    "error-response",
+    "cookie",
+    "cookie-private",
+    "cookie-signed",
+    "cookie-key-expansion",
+    "erased-json",
+    "form",
+    "handler",
+    "json-deserializer",
+    "json-lines",
+    "middleware",
+    "multipart",
+    "protobuf",
+    "routing",
+    "query",
+    "tracing",
+    "typed-header",
+    "typed-routing",
+    "with-rejection",
+]
+
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
 cached = ["dep:axum"]
 file-stream = [
