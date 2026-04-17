@@ -65,6 +65,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 
 ## Project showcase
 
+- [KeyCompute](https://github.com/aiqubits/keycompute): KeyCompute is a high-performance, scalable, and ready-to-use AI computing power service platform.
 - [webshelf](https://github.com/aiqubits/webshelf): 🤘 A convenient way to develop your web service with one click.
 - [HomeDisk](https://github.com/MedzikUser/HomeDisk): ☁️ Fast, lightweight and Open Source local cloud for your data.
 - [Houseflow](https://github.com/gbaranski/houseflow): House automation platform written in Rust.
