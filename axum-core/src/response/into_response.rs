@@ -109,6 +109,9 @@ use std::{
 /// let app = Router::new().route("/", get(|| async { MyBody }));
 /// # let _: Router = app;
 /// ```
+#[diagnostic::on_unimplemented(
+    note = "See `https://docs.rs/axum/0.8/axum/response/trait.IntoResponse.html` for details"
+)]
 pub trait IntoResponse {
     /// Create a response.
     #[must_use]
