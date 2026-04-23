@@ -62,6 +62,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-conditional-requests](https://crates.io/crates/axum-conditional-requests): A library for handling client-side caching HTTP headers
 - [sigterm](https://github.com/canmi21/sigterm): Signal-aware async control and cancellation primitives for Tokio.
 - [tower-resilience](https://github.com/joshrotenberg/tower-resilience): Resilience middleware for tower: circuit breaker, bulkhead, retry, rate limiter, and more.
+- [api-error](https://github.com/centreon/rs-api-error): A proc macro to define HTTP errors in a thiserror way. It automatically implements `IntoResponse` for your error types. Allowing you to directly return `Result<(), MyError` from your axum handlers.
 
 ## Project showcase
 
