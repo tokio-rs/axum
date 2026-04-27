@@ -22,11 +22,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // build our application with a route
-    let app = Router::new().route("/", get(handler));
-
-    // add a fallback service for handling routes to unknown paths
-    let app = app.fallback(handler_404);
+    let app = create_router();
 
     // run it
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
@@ -36,6 +32,14 @@ async fn main() {
     axum::serve(listener, app).await;
 }
 
+fn create_router() -> Router {
+    // build our application with a route
+    let app = Router::new().route("/", get(handler));
+
+    // add a fallback service for handling routes to unknown paths
+    app.fallback(handler_404)
+}
+
 async fn handler() -> Html<&'static str> {
     Html("<h1>Hello, World!</h1>")
 }
@@ -43,3 +47,6 @@ async fn handler() -> Html<&'static str> {
 async fn handler_404() -> impl IntoResponse {
     (StatusCode::NOT_FOUND, "nothing to see here")
 }
+
+#[cfg(test)]
+mod tests;
