@@ -28,7 +28,7 @@ jobs:
         with:
           toolchain: stable
       - name: Run release-plz
-        uses: release-plz/action@v0.5
+        uses: release-plz/action@1528104d2ca23787631a1c1f022abb64b34c1e11 # v0.5
         with:
           command: release
         env:
@@ -50,7 +50,7 @@ jobs:
       - *checkout
       - *install-rust
       - name: Run release-plz
-        uses: release-plz/action@v0.5
+        uses: release-plz/action@1528104d2ca23787631a1c1f022abb64b34c1e11 # v0.5
         with:
           command: release-pr
         env:
