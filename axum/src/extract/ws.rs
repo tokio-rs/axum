@@ -92,7 +92,7 @@
 
 use self::rejection::*;
 use super::FromRequestParts;
-use crate::{body::Bytes, response::Response, Error};
+use crate::{body::{Bytes,BytesMut}, response::Response, Error};
 use axum_core::body::Body;
 use futures_core::{FusedStream, Stream};
 use futures_sink::Sink;
@@ -771,6 +771,8 @@ pub enum Message {
     Text(Utf8Bytes),
     /// A binary WebSocket message
     Binary(Bytes),
+    /// Like Binary, but writes from a slice of buffers using write_vector
+    VecBinary(Vec<Bytes>),
     /// A ping message with the specified payload
     ///
     /// The payload here must have a length less than 125 bytes.
@@ -813,6 +815,7 @@ impl Message {
         match self {
             Self::Text(text) => ts::Message::Text(text.into_tungstenite()),
             Self::Binary(binary) => ts::Message::Binary(binary),
+            Self::VecBinary(vec) => ts::Message::VecBinary(vec),
             Self::Ping(ping) => ts::Message::Ping(ping),
             Self::Pong(pong) => ts::Message::Pong(pong),
             Self::Close(Some(close)) => ts::Message::Close(Some(ts::protocol::CloseFrame {
@@ -827,6 +830,7 @@ impl Message {
         match message {
             ts::Message::Text(text) => Some(Self::Text(Utf8Bytes(text))),
             ts::Message::Binary(binary) => Some(Self::Binary(binary)),
+            ts::Message::VecBinary(vec) => Some(Self::VecBinary(vec)),
             ts::Message::Ping(ping) => Some(Self::Ping(ping)),
             ts::Message::Pong(pong) => Some(Self::Pong(pong)),
             ts::Message::Close(Some(close)) => Some(Self::Close(Some(CloseFrame {
@@ -845,6 +849,7 @@ impl Message {
         match self {
             Self::Text(string) => Bytes::from(string),
             Self::Binary(data) | Self::Ping(data) | Self::Pong(data) => data,
+            Self::VecBinary(vec) => { concat_vec_bytes(&vec)},
             Self::Close(None) => Bytes::new(),
             Self::Close(Some(frame)) => Bytes::from(frame.reason),
         }
@@ -857,6 +862,9 @@ impl Message {
             Self::Binary(data) | Self::Ping(data) | Self::Pong(data) => {
                 Ok(Utf8Bytes::try_from(data).map_err(Error::new)?)
             }
+            Self::VecBinary(vec) => {
+                Ok(Utf8Bytes::try_from(concat_vec_bytes(&vec)).map_err(Error::new)?)
+            },
             Self::Close(None) => Ok(Utf8Bytes::default()),
             Self::Close(Some(frame)) => Ok(frame.reason),
         }
@@ -869,6 +877,10 @@ impl Message {
             Self::Text(ref string) => Ok(string.as_str()),
             Self::Binary(ref data) | Self::Ping(ref data) | Self::Pong(ref data) => {
                 Ok(std::str::from_utf8(data).map_err(Error::new)?)
+            }
+            Self::VecBinary(ref vec ) => {
+                let first: &[u8] = vec.first().map(|b| b.as_ref()).unwrap_or(&[]);
+                Ok(str::from_utf8(first).map_err(Error::new)?)
             }
             Self::Close(None) => Ok(""),
             Self::Close(Some(ref frame)) => Ok(&frame.reason),
@@ -926,6 +938,15 @@ impl From<Message> for Vec<u8> {
     fn from(msg: Message) -> Self {
         msg.into_data().to_vec()
     }
+}
+
+fn concat_vec_bytes(vec: &[Bytes]) -> Bytes {
+    let total: usize = vec.iter().map(|b| b.len()).sum();
+    let mut buf = BytesMut::with_capacity(total);
+    for bytes in vec {
+        buf.extend_from_slice(bytes);
+    }
+    buf.freeze()
 }
 
 fn sign(key: &[u8]) -> HeaderValue {
@@ -1209,7 +1230,7 @@ mod tests {
             assert_eq!(socket.protocol().unwrap(), "echo");
             while let Some(Ok(msg)) = socket.recv().await {
                 match msg {
-                    Message::Text(_) | Message::Binary(_) | Message::Close(_) => {
+                    Message::Text(_) | Message::Binary(_) | Message::Close(_) | Message::VecBinary(_) => {
                         if socket.send(msg).await.is_err() {
                             break;
                         }
