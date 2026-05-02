@@ -239,10 +239,70 @@ impl Future for InfallibleRouteFuture {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{routing::get, test_helpers::*, Router};
 
     #[test]
     fn traits() {
         use crate::test_helpers::*;
         assert_send::<Route<()>>();
+    }
+
+    #[crate::test]
+    async fn regression_3741() {
+        const BODY: &str = "Very expensive body.";
+        let content_length: HeaderValue = HeaderValue::from_str(&BODY.len().to_string()).unwrap();
+
+        async fn handler(method: http::Method) -> Response {
+            if method == http::Method::HEAD {
+                ().into_response()
+            } else {
+                BODY.into_response()
+            }
+        }
+
+        let client = TestClient::new(Router::new().route("/", get(handler)));
+
+        let get = client.get("/").await;
+        assert_eq!(get.status(), http::StatusCode::OK);
+        assert_eq!(get.headers().get(CONTENT_LENGTH), Some(&content_length));
+
+        let head = client.head("/").await;
+        assert_eq!(get.status(), http::StatusCode::OK);
+        assert_eq!(head.headers().get(CONTENT_LENGTH), None);
+    }
+
+    #[crate::test]
+    async fn head_content_length_default() {
+        const BODY: &str = "Hello world!";
+        let content_length: HeaderValue = HeaderValue::from_str(&BODY.len().to_string()).unwrap();
+
+        async fn handler() -> Response {
+            BODY.into_response()
+        }
+
+        let client = TestClient::new(Router::new().route("/", get(handler)));
+
+        let get = client.get("/").await;
+        assert_eq!(get.status(), http::StatusCode::OK);
+        assert_eq!(get.headers().get(CONTENT_LENGTH), Some(&content_length));
+
+        let head = client.head("/").await;
+        assert_eq!(head.status(), http::StatusCode::OK);
+        assert_eq!(head.headers().get(CONTENT_LENGTH), Some(&content_length));
+    }
+
+    #[crate::test]
+    async fn unit_content_length_zero() {
+        let content_length: HeaderValue = HeaderValue::from_static("0");
+
+        async fn handler() -> Response {
+            ().into_response()
+        }
+
+        let client = TestClient::new(Router::new().route("/", get(handler)));
+
+        let get = client.get("/").await;
+        assert_eq!(get.status(), http::StatusCode::OK);
+        assert_eq!(get.headers().get(CONTENT_LENGTH), Some(&content_length));
     }
 }
