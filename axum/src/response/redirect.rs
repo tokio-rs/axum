@@ -1,4 +1,4 @@
-use axum_core::response::{IntoResponse, Response};
+use axum_core::response::{IntoResponse, IntoResponseParts, Response, ResponseParts};
 use http::{header::LOCATION, HeaderValue, StatusCode};
 
 /// Response that redirects the request to another location.
@@ -93,11 +93,65 @@ impl IntoResponse for Redirect {
     }
 }
 
+impl IntoResponseParts for Redirect {
+    type Error = (StatusCode, String);
+
+    /// Sets the redirect status code and `Location` header on the response.
+    ///
+    /// This allows `Redirect` to be used as part of a response tuple, for example
+    /// to include a body alongside a redirect as recommended by
+    /// [RFC 9110 §15.4.4](https://datatracker.ietf.org/doc/html/rfc9110#name-303-see-other).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use axum::response::{Html, Redirect};
+    ///
+    /// let url = "https://example.com";
+    ///
+    /// // Return a redirect with a body
+    /// let response = (
+    ///     Redirect::to(url),
+    ///     Html(format!(
+    ///         r#"<p>Redirecting to <a href="{url}">{url}</a></p>"#,
+    ///     )),
+    /// );
+    /// ```
+    ///
+    /// Note that when used alongside an explicit [`StatusCode`] in a tuple, the
+    /// `StatusCode` takes precedence:
+    ///
+    /// ```rust
+    /// use axum::response::Redirect;
+    /// use axum::http::StatusCode;
+    ///
+    /// // The status will be 307, not 303
+    /// let response = (
+    ///     StatusCode::TEMPORARY_REDIRECT,
+    ///     Redirect::to("/new"),
+    ///     "redirecting...",
+    /// );
+    /// ```
+    fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+        let location = HeaderValue::try_from(self.location).map_err(|err| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("invalid redirect location: {err}"),
+            )
+        })?;
+
+        *res.status_mut() = self.status_code;
+        res.headers_mut().insert(LOCATION, location);
+
+        Ok(res)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Redirect;
     use axum_core::response::IntoResponse;
-    use http::StatusCode;
+    use http::{header::LOCATION, StatusCode};
 
     const EXAMPLE_URL: &str = "https://example.com";
 
@@ -132,6 +186,51 @@ mod tests {
     fn test_internal_error() {
         let response = Redirect::permanent("Axum is awesome, \n but newlines aren't allowed :(")
             .into_response();
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[test]
+    fn into_response_parts_sets_status_and_location() {
+        let response = (Redirect::to(EXAMPLE_URL), "body").into_response();
+
+        assert_eq!(response.status(), StatusCode::SEE_OTHER);
+        assert_eq!(response.headers().get(LOCATION).unwrap(), EXAMPLE_URL);
+    }
+
+    #[test]
+    fn into_response_parts_with_permanent_redirect() {
+        let response = (Redirect::permanent(EXAMPLE_URL), "body").into_response();
+
+        assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
+        assert_eq!(response.headers().get(LOCATION).unwrap(), EXAMPLE_URL);
+    }
+
+    #[test]
+    fn into_response_parts_with_temporary_redirect() {
+        let response = (Redirect::temporary(EXAMPLE_URL), "body").into_response();
+
+        assert_eq!(response.status(), StatusCode::TEMPORARY_REDIRECT);
+        assert_eq!(response.headers().get(LOCATION).unwrap(), EXAMPLE_URL);
+    }
+
+    #[test]
+    fn into_response_parts_explicit_status_overrides() {
+        // Explicit StatusCode in a tuple takes precedence over the Redirect status
+        let response = (
+            StatusCode::TEMPORARY_REDIRECT,
+            Redirect::to(EXAMPLE_URL),
+            "body",
+        )
+            .into_response();
+
+        assert_eq!(response.status(), StatusCode::TEMPORARY_REDIRECT);
+        assert_eq!(response.headers().get(LOCATION).unwrap(), EXAMPLE_URL);
+    }
+
+    #[test]
+    fn into_response_parts_invalid_location() {
+        let response = (Redirect::permanent("invalid\nlocation"), "body").into_response();
 
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
