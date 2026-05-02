@@ -1043,6 +1043,126 @@ mod tests {
         assert_eq!(body, "Hello, World!");
     }
 
+    // Asserts the documented `with_graceful_shutdown` drain semantics: after the
+    // signal fires, an already-in-flight request is allowed to run to completion
+    // and only then does the `serve` future resolve. The existing
+    // `test_with_graceful_shutdown_request_header_timeout` only covers stalled
+    // requests being killed by hyper's header read timeout.
+    #[crate::test]
+    async fn graceful_shutdown_completes_inflight_request() {
+        use std::sync::Arc;
+
+        let started = Arc::new(tokio::sync::Notify::new());
+        let release = Arc::new(tokio::sync::Notify::new());
+        let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+
+        let app = Router::new().route("/", {
+            let started = started.clone();
+            let release = release.clone();
+            get(move || {
+                let started = started.clone();
+                let release = release.clone();
+                async move {
+                    started.notify_one();
+                    release.notified().await;
+                    "done"
+                }
+            })
+        });
+
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        let server_task = tokio::spawn(
+            serve(listener, app)
+                .with_graceful_shutdown(async move {
+                    shutdown_rx.await.ok();
+                })
+                .into_future(),
+        );
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let request_fut = tokio::spawn(async move { sender.send_request(request).await });
+
+        // Wait until the handler is actually running.
+        started.notified().await;
+
+        // Signal graceful shutdown while the request is still in flight.
+        shutdown_tx.send(()).unwrap();
+
+        // Give the signal time to be observed by the accept loop. The server
+        // must NOT have completed yet because the in-flight request is held.
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        assert!(
+            !server_task.is_finished(),
+            "serve resolved before in-flight request completed",
+        );
+
+        // Release the handler. The in-flight request should now succeed.
+        release.notify_one();
+
+        let response = request_fut.await.unwrap().unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(Body::new(response.into_body()), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"done");
+
+        // And only after the in-flight request finished does serve resolve.
+        tokio::time::timeout(Duration::from_secs(2), server_task)
+            .await
+            .expect("serve future did not resolve after in-flight request finished")
+            .unwrap();
+    }
+
+    // Asserts that `ListenerExt::tap_io` invokes its closure on every accepted
+    // connection when used with `serve`. The sibling `ListenerExt::limit_connections`
+    // has a direct unit test (in `serve::listener::tests`); `tap_io` did not have
+    // a runtime test, so its documented contract was only covered at the type level
+    // by `if_it_compiles_it_works`.
+    #[crate::test]
+    async fn tap_io_runs_on_each_accepted_connection() {
+        use std::sync::{
+            atomic::{AtomicUsize, Ordering},
+            Arc,
+        };
+
+        let count = Arc::new(AtomicUsize::new(0));
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let counted = {
+            let count = count.clone();
+            listener.tap_io(move |_io| {
+                count.fetch_add(1, Ordering::SeqCst);
+            })
+        };
+
+        let app = Router::new().route("/", get(|| async { "ok" }));
+        tokio::spawn(serve(counted, app).into_future());
+
+        // Open two distinct TCP connections to force two accepts.
+        for _ in 0..2 {
+            let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+            let io = TokioIo::new(stream);
+            let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await.unwrap();
+            let conn_handle = tokio::spawn(conn);
+
+            let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+            let response = sender.send_request(request).await.unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+
+            drop(sender);
+            let _ = conn_handle.await;
+        }
+
+        assert_eq!(count.load(Ordering::SeqCst), 2);
+    }
+
     #[crate::test]
     async fn serving_with_custom_executor() {
         let (client, server) = io::duplex(1024);
