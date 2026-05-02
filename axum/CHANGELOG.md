@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** `MethodRouter::method_filter` ([#3586])
 - **added:** `serve::Executor` trait and `Serve::with_executor` for customizing how connection
   tasks are spawned, enabling use cases like tracing and telemetry instrumentation ([#3704])
+- **added:** `IntoResponseParts` impl for `Redirect`, allowing it to be combined
+  with a body in a response tuple ([#3721])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
 - **changed:** `Redirect` constructors now accept any `impl Into<String>` ([#3635])
@@ -32,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3586]: https://github.com/tokio-rs/axum/pull/3586
 [#3635]: https://github.com/tokio-rs/axum/pull/3635
 [#3702]: https://github.com/tokio-rs/axum/pull/3702
+[#3721]: https://github.com/tokio-rs/axum/pull/3721
 
 # 0.8.9
 
