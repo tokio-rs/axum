@@ -9,8 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** `ResponseParts::status` and `ResponseParts::status_mut` accessors,
   allowing `IntoResponseParts` implementations to set the response status ([#3721])
+- **added:** `Body::unknown` to model a body of unknown size, which can be
+  helpful handling `HEAD` requests. ([#3742])
+- **changed:** `impl IntoResponse for ()` (which gets called by
+  `impl IntoResponse for HeaderMap`, `impl IntoResponse for Extensions` and
+  others) now returns a body of unknown size.
 
 [#3721]: https://github.com/tokio-rs/axum/pull/3721
+[#3742]: https://github.com/tokio-rs/axum/pull/3742
 
 # 0.5.6
 
