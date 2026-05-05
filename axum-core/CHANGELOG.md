@@ -48,6 +48,19 @@ Yanked from crates.io due to unforeseen breaking change, see [#3190] for details
 
 # 0.5.0
 
+## [0.5.7](https://github.com/tokio-rs/axum/compare/axum-core-v0.5.6...axum-core-v0.5.7) - 2026-05-05
+
+### Added
+
+- impl IntoResponseParts for Redirect ([#3721](https://github.com/tokio-rs/axum/pull/3721))
+- add `#[diagnostic::on_unimplemented]` to `IntoResponse` and `IntoResponseParts` ([#3723](https://github.com/tokio-rs/axum/pull/3723))
+
+### Other
+
+- consolidate state management docs in crate root ([#3683](https://github.com/tokio-rs/axum/pull/3683))
+- Fix `IntoResponse` for tuples overriding error response codes ([#3603](https://github.com/tokio-rs/axum/pull/3603))
+- Stop calling axum a 'framework' ([#3616](https://github.com/tokio-rs/axum/pull/3616))
+
 ## since rc.1
 
 <details>

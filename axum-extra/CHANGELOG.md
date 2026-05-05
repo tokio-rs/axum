@@ -120,6 +120,12 @@ Released without changes to fix docs.rs build.
 
 # 0.10.0
 
+## [0.13.0](https://github.com/tokio-rs/axum/compare/axum-extra-v0.12.6...axum-extra-v0.13.0) - 2026-05-05
+
+### Other
+
+- Merge branch 'v0.8.x' into yanns/v0.8.9
+
 ## since rc.1
 
 <details>

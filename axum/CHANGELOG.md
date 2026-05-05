@@ -131,6 +131,23 @@ Yanked from crates.io due to unforeseen breaking change, see [#3190] for details
 
 # 0.8.0
 
+## [0.9.0](https://github.com/tokio-rs/axum/compare/axum-v0.8.9...axum-v0.9.0) - 2026-05-05
+
+### Added
+
+- impl IntoResponseParts for Redirect ([#3721](https://github.com/tokio-rs/axum/pull/3721))
+
+### Other
+
+- integrate release-plz ([#3739](https://github.com/tokio-rs/axum/pull/3739))
+- remove duplication between `IntoResponse` and `IntoResponseParts` for `Redirect` ([#3743](https://github.com/tokio-rs/axum/pull/3743))
+- Remove ECOSYSTEM.md mentions from README.md ([#3744](https://github.com/tokio-rs/axum/pull/3744))
+- add serve module integration tests ([#3724](https://github.com/tokio-rs/axum/pull/3724))
+- Add Serve::with_executor and Executor trait for custom task spawning ([#3704](https://github.com/tokio-rs/axum/pull/3704))
+- Add missing PR link to changelog ([#3635](https://github.com/tokio-rs/axum/pull/3635)) ([#3720](https://github.com/tokio-rs/axum/pull/3720))
+- Bump matchit to 0.9.2 ([#3702](https://github.com/tokio-rs/axum/pull/3702))
+- Merge branch 'v0.8.x' into yanns/v0.8.9
+
 ## since rc.1
 
 <details>
