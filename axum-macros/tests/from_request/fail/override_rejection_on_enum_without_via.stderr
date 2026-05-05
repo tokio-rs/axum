@@ -16,35 +16,28 @@ error[E0277]: the trait bound `fn(MyExtractor) -> impl Future<Output = ()> {hand
 note: required by a bound in `axum::routing::get`
   --> $WORKSPACE/axum/src/routing/method_routing.rs
    |
-   |             H: Handler<T, S>,
-   |                ^^^^^^^^^^^^^ required by this bound in `get`
-...
    | top_level_handler_fn!(get, GET);
-   | -------------------------------
+   | ^^^^^^^^^^^^^^^^^^^^^^---^^^^^^
    | |                     |
    | |                     required by a bound in this function
-   | in this macro invocation
+   | required by this bound in `get`
    = note: this error originates in the macro `top_level_handler_fn` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `fn(Result<MyExtractor, MyRejection>) -> impl Future<Output = ()> {handler_result}: Handler<_, _>` is not satisfied
   --> tests/from_request/fail/override_rejection_on_enum_without_via.rs:10:64
    |
 10 |     let _: Router = Router::new().route("/", get(handler).post(handler_result));
-   |                                                           ---- ^^^^^^^^^^^^^^ unsatisfied trait bound
+   |                                                           ---- ^^^^^^^^^^^^^^ the trait `Handler<_, _>` is not implemented for fn item `fn(Result<MyExtractor, MyRejection>) -> impl Future<Output = ()> {handler_result}`
    |                                                           |
    |                                                           required by a bound introduced by this call
    |
-   = help: the trait `Handler<_, _>` is not implemented for fn item `fn(Result<MyExtractor, MyRejection>) -> impl Future<Output = ()> {handler_result}`
    = note: Consider using `#[axum::debug_handler]` to improve the error message
 note: required by a bound in `MethodRouter::<S>::post`
   --> $WORKSPACE/axum/src/routing/method_routing.rs
    |
-   |             H: Handler<T, S>,
-   |                ^^^^^^^^^^^^^ required by this bound in `MethodRouter::<S>::post`
-...
    |     chained_handler_fn!(post, POST);
-   |     -------------------------------
+   |     ^^^^^^^^^^^^^^^^^^^^----^^^^^^^
    |     |                   |
    |     |                   required by a bound in this associated function
-   |     in this macro invocation
+   |     required by this bound in `MethodRouter::<S>::post`
    = note: this error originates in the macro `chained_handler_fn` (in Nightly builds, run with -Z macro-backtrace for more info)
