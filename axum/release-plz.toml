@@ -1,0 +1,8 @@
+[workspace]
+# Only release when the release PR is merged, not on every commit
+# https://release-plz.dev/docs/config#the-release_always-field
+release_always = false
+
+# Label release PRs for easy identification
+# https://release-plz.dev/docs/config#the-pr_labels-field
+pr_labels = ["release"]
