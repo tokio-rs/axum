@@ -86,7 +86,10 @@ impl Redirect {
 
 impl IntoResponse for Redirect {
     fn into_response(self) -> Response {
-        (self, ()).into_response()
+        match HeaderValue::try_from(self.location) {
+            Ok(location) => (self.status_code, [(LOCATION, location)]).into_response(),
+            Err(error) => (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()).into_response(),
+        }
     }
 }
 
@@ -130,17 +133,17 @@ impl IntoResponseParts for Redirect {
     /// );
     /// ```
     fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
-        match HeaderValue::try_from(self.location) {
-            Ok(location) => {
-                *res.status_mut() = self.status_code;
-                res.headers_mut().insert(LOCATION, location);
-                Ok(res)
-            }
-            Err(err) => Err((
+        let location = HeaderValue::try_from(self.location).map_err(|err| {
+            (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("invalid redirect location: {err}"),
-            )),
-        }
+            )
+        })?;
+
+        *res.status_mut() = self.status_code;
+        res.headers_mut().insert(LOCATION, location);
+
+        Ok(res)
     }
 }
 
