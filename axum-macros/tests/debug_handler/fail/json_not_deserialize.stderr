@@ -23,7 +23,6 @@ help: the trait `for<'de> serde_core::de::Deserialize<'de>` is not implemented f
           and $N others
   = note: required for `Struct` to implement `serde_core::de::DeserializeOwned`
   = note: required for `Json<Struct>` to implement `FromRequest<()>`
-  = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
   |
 1 + #![feature(trivial_bounds)]
