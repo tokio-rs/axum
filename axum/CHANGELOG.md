@@ -5,11 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# Unreleased
-
-- **changed:** Updated `matchit` allowing for routes with captures and static prefixes and suffixes ([#3702])
-
-[#3702]: https://github.com/tokio-rs/axum/pull/3702
 
 # 0.8.9
 
