@@ -7,12 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **added:** `IntoResponseParts` impl for `Redirect`, allowing it to be combined
-  with a body in a response tuple ([#3721])
 - **changed:** Updated `matchit` allowing for routes with captures and static prefixes and suffixes ([#3702])
 
 [#3702]: https://github.com/tokio-rs/axum/pull/3702
-[#3721]: https://github.com/tokio-rs/axum/pull/3721
 
 # 0.8.9
 
