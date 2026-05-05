@@ -23,6 +23,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 *No changes since alpha.1*
 
+## [0.5.2](https://github.com/tokio-rs/axum/compare/axum-macros-v0.5.1...axum-macros-v0.5.2) - 2026-05-05
+
+### Added
+
+- add `#[diagnostic::on_unimplemented]` to `IntoResponse` and `IntoResponseParts` ([#3723](https://github.com/tokio-rs/axum/pull/3723))
+
+### Other
+
+- use a more recent nightly for axum-macros tests
+
 ## full changelog
 
 - **breaking:** Update code generation for axum-core 0.5.0

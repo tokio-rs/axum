@@ -120,6 +120,12 @@ Released without changes to fix docs.rs build.
 
 # 0.10.0
 
+## [0.12.7](https://github.com/tokio-rs/axum/compare/axum-extra-v0.12.6...axum-extra-v0.12.7) - 2026-05-05
+
+### Other
+
+- updated the following local packages: axum-core, axum-macros, axum
+
 ## since rc.1
 
 <details>

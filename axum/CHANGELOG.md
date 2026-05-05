@@ -131,6 +131,18 @@ Yanked from crates.io due to unforeseen breaking change, see [#3190] for details
 
 # 0.8.0
 
+## [0.8.10](https://github.com/tokio-rs/axum/compare/axum-v0.8.9...axum-v0.8.10) - 2026-05-05
+
+### Added
+
+- impl IntoResponseParts for Redirect ([#3721](https://github.com/tokio-rs/axum/pull/3721))
+
+### Other
+
+- integrate release-plz ([#3739](https://github.com/tokio-rs/axum/pull/3739))
+- remove duplication between `IntoResponse` and `IntoResponseParts` for `Redirect` ([#3743](https://github.com/tokio-rs/axum/pull/3743))
+- Bump matchit to 0.9.2 ([#3702](https://github.com/tokio-rs/axum/pull/3702))
+
 ## since rc.1
 
 <details>
