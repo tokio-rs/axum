@@ -405,7 +405,6 @@ mod tests {
     async fn correct_rejection_status_code() {
         #[allow(dead_code)]
         #[derive(Deserialize)]
-        #[allow(dead_code)]
         struct Params {
             n: i32,
         }
@@ -552,17 +551,14 @@ mod tests {
         let app = Router::new().route(
             "/",
             get(|QueryList(params): QueryList<Param>| async move {
-                format!(
-                    "{}",
-                    params
-                        .iter()
-                        .map(|p| match p {
-                            Param::Id(id) => format!("id:{}", id),
-                            Param::Username(u) => format!("user:{}", u),
-                        })
-                        .collect::<Vec<_>>()
-                        .join("|")
-                )
+                params
+                    .iter()
+                    .map(|p| match p {
+                        Param::Id(id) => format!("id:{id}"),
+                        Param::Username(u) => format!("user:{u}"),
+                    })
+                    .collect::<Vec<_>>()
+                    .join("|")
             }),
         );
 
