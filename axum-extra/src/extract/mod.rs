@@ -41,10 +41,12 @@ pub use self::cookie::SignedCookieJar;
 pub use self::form::{Form, FormRejection};
 
 #[cfg(feature = "query")]
-pub use self::query::OptionalQuery;
+pub use self::query::{OptionalQuery, OptionalQueryList, QueryList};
 #[cfg(feature = "query")]
 #[allow(deprecated)]
-pub use self::query::{OptionalQueryRejection, Query, QueryRejection};
+pub use self::query::{
+    OptionalQueryListRejection, OptionalQueryRejection, Query, QueryListRejection, QueryRejection,
+};
 
 #[cfg(feature = "multipart")]
 pub use self::multipart::Multipart;

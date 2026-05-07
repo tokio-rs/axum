@@ -175,6 +175,196 @@ composite_rejection! {
     }
 }
 
+fn deserialize_pair<T: DeserializeOwned>(
+    key: String,
+    value: String,
+) -> Result<T, serde_json::Error> {
+    let mut map = serde_json::Map::new();
+    let parsed_value: serde_json::Value = match value.parse::<serde_json::Number>() {
+        Ok(num) => serde_json::Value::Number(num),
+        Err(_) => match value.as_str() {
+            "true" => serde_json::Value::Bool(true),
+            "false" => serde_json::Value::Bool(false),
+            "null" => serde_json::Value::Null,
+            _ => serde_json::Value::String(value),
+        },
+    };
+    map.insert(key, parsed_value);
+    serde_json::from_value(serde_json::Value::Object(map))
+}
+
+/// Extractor that deserializes query strings into `Vec<T>` where each query parameter
+/// becomes an enum variant.
+///
+/// This is useful for deserializing alternating query parameters of different types,
+/// like `?id=123&username=abc&id=456` into `Vec<List>` where `List` is an enum with
+/// `Id(u32)` and `Username(String)` variants.
+///
+/// `T` is expected to be an enum that implements the `Deserialize` trait with externally-tagged
+/// variants where each variant name matches a query parameter name.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use axum::{routing::get, Router};
+/// use axum_extra::extract::QueryList;
+/// use serde::Deserialize;
+///
+/// #[derive(Deserialize)]
+/// #[serde(rename_all = "lowercase")]
+/// enum Param {
+///     Id(u32),
+///     Username(String),
+/// }
+///
+/// async fn handler(QueryList(params): QueryList<Param>) {
+///     for param in params {
+///         match param {
+///             Param::Id(id) => println!("ID: {}", id),
+///             Param::Username(name) => println!("Username: {}", name),
+///         }
+///     }
+/// }
+///
+/// let app = Router::new().route("/", get(handler));
+/// # let _: Router = app;
+/// ```
+#[cfg_attr(docsrs, doc(cfg(feature = "query")))]
+#[derive(Debug, Clone, Default)]
+pub struct QueryList<T>(pub Vec<T>);
+
+impl<T, S> FromRequestParts<S> for QueryList<T>
+where
+    T: DeserializeOwned,
+    S: Send + Sync,
+{
+    type Rejection = QueryListRejection;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let query = parts.uri.query().unwrap_or_default();
+        let pairs: Vec<(String, String)> = form_urlencoded::parse(query.as_bytes())
+            .map(|(k, v)| (k.into_owned(), v.into_owned()))
+            .collect();
+
+        let mut result = Vec::new();
+        for (key, value) in pairs {
+            let item = deserialize_pair::<T>(key, value)
+                .map_err(FailedToDeserializeQueryString::from_err)?;
+            result.push(item);
+        }
+
+        Ok(Self(result))
+    }
+}
+
+impl<T> QueryList<T>
+where
+    T: DeserializeOwned,
+{
+    /// Attempts to construct a [`QueryList`] from a reference to a [`Uri`].
+    pub fn try_from_uri(value: &Uri) -> Result<Self, QueryListRejection> {
+        let query = value.query().unwrap_or_default();
+        let pairs: Vec<(String, String)> = form_urlencoded::parse(query.as_bytes())
+            .map(|(k, v)| (k.into_owned(), v.into_owned()))
+            .collect();
+
+        let mut result = Vec::new();
+        for (key, value) in pairs {
+            let item = deserialize_pair::<T>(key, value)
+                .map_err(FailedToDeserializeQueryString::from_err)?;
+            result.push(item);
+        }
+
+        Ok(Self(result))
+    }
+}
+
+impl<T> std::ops::Deref for QueryList<T> {
+    type Target = Vec<T>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> std::ops::DerefMut for QueryList<T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`QueryList`].
+    ///
+    /// Contains one variant for each way the [`QueryList`] extractor can fail.
+    pub enum QueryListRejection {
+        FailedToDeserializeQueryString,
+    }
+}
+
+/// Extractor that deserializes query strings into `Vec<T>` when parameters are present,
+/// or an empty `Vec` if no query parameters exist.
+///
+/// Otherwise behaviour is identical to [`QueryList`].
+/// `T` is expected to be an enum that implements the `Deserialize` trait.
+#[cfg_attr(docsrs, doc(cfg(feature = "query")))]
+#[derive(Debug, Clone, Default)]
+pub struct OptionalQueryList<T>(pub Vec<T>);
+
+impl<T, S> FromRequestParts<S> for OptionalQueryList<T>
+where
+    T: DeserializeOwned,
+    S: Send + Sync,
+{
+    type Rejection = OptionalQueryListRejection;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        if let Some(query) = parts.uri.query() {
+            let pairs: Vec<(String, String)> = form_urlencoded::parse(query.as_bytes())
+                .map(|(k, v)| (k.into_owned(), v.into_owned()))
+                .collect();
+
+            let mut result = Vec::new();
+            for (key, value) in pairs {
+                let item = deserialize_pair::<T>(key, value)
+                    .map_err(FailedToDeserializeQueryString::from_err)?;
+                result.push(item);
+            }
+
+            Ok(Self(result))
+        } else {
+            Ok(Self(Vec::new()))
+        }
+    }
+}
+
+impl<T> std::ops::Deref for OptionalQueryList<T> {
+    type Target = Vec<T>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> std::ops::DerefMut for OptionalQueryList<T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`OptionalQueryList`].
+    ///
+    /// Contains one variant for each way the [`OptionalQueryList`] extractor can fail.
+    pub enum OptionalQueryListRejection {
+        FailedToDeserializeQueryString,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -187,6 +377,7 @@ mod tests {
 
     #[tokio::test]
     async fn query_supports_multiple_values() {
+        #[allow(dead_code)]
         #[derive(Deserialize)]
         struct Data {
             #[serde(rename = "value")]
@@ -212,6 +403,7 @@ mod tests {
 
     #[tokio::test]
     async fn correct_rejection_status_code() {
+        #[allow(dead_code)]
         #[derive(Deserialize)]
         #[allow(dead_code)]
         struct Params {
@@ -233,6 +425,7 @@ mod tests {
 
     #[tokio::test]
     async fn optional_query_supports_multiple_values() {
+        #[allow(dead_code)]
         #[derive(Deserialize)]
         struct Data {
             #[serde(rename = "value")]
@@ -261,6 +454,7 @@ mod tests {
 
     #[tokio::test]
     async fn optional_query_deserializes_no_parameters_into_none() {
+        #[allow(dead_code)]
         #[derive(Deserialize)]
         struct Data {
             value: String,
@@ -286,6 +480,7 @@ mod tests {
 
     #[tokio::test]
     async fn optional_query_preserves_parsing_errors() {
+        #[allow(dead_code)]
         #[derive(Deserialize)]
         struct Data {
             value: String,
@@ -314,6 +509,7 @@ mod tests {
 
     #[test]
     fn test_try_from_uri() {
+        #[allow(dead_code)]
         #[derive(Deserialize)]
         struct TestQueryParams {
             foo: Vec<String>,
@@ -329,6 +525,7 @@ mod tests {
 
     #[test]
     fn test_try_from_uri_with_invalid_query() {
+        #[allow(dead_code)]
         #[derive(Deserialize)]
         struct TestQueryParams {
             _foo: String,
@@ -338,6 +535,222 @@ mod tests {
             .parse()
             .unwrap();
         let result: Result<Query<TestQueryParams>, _> = Query::try_from_uri(&uri);
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn query_list_deserializes_alternating_enum_variants() {
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize, PartialEq)]
+        #[serde(rename_all = "lowercase")]
+        enum Param {
+            Id(u32),
+            Username(String),
+        }
+
+        let app = Router::new().route(
+            "/",
+            get(|QueryList(params): QueryList<Param>| async move {
+                format!(
+                    "{}",
+                    params
+                        .iter()
+                        .map(|p| match p {
+                            Param::Id(id) => format!("id:{}", id),
+                            Param::Username(u) => format!("user:{}", u),
+                        })
+                        .collect::<Vec<_>>()
+                        .join("|")
+                )
+            }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/?id=123&username=alice&id=456").await;
+
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "id:123|user:alice|id:456");
+    }
+
+    #[tokio::test]
+    async fn query_list_maintains_order_with_repeated_variants() {
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize)]
+        #[serde(rename_all = "lowercase")]
+        enum Param {
+            Id(u32),
+            Name(String),
+        }
+
+        let app = Router::new().route(
+            "/",
+            get(|QueryList(params): QueryList<Param>| async move { format!("{}", params.len()) }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/?id=1&name=a&id=2&name=b&id=3").await;
+
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "5");
+    }
+
+    #[tokio::test]
+    async fn query_list_empty_when_no_params() {
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize)]
+        enum Param {
+            Id(u32),
+        }
+
+        let app = Router::new().route(
+            "/",
+            get(|QueryList(params): QueryList<Param>| async move { format!("{}", params.len()) }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/").await;
+
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "0");
+    }
+
+    #[tokio::test]
+    async fn query_list_rejects_unknown_variant() {
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize)]
+        #[serde(rename_all = "lowercase")]
+        enum Param {
+            Id(u32),
+        }
+
+        let app = Router::new().route("/", get(|_: QueryList<Param>| async move { "ok" }));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/?unknown=value").await;
+
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn query_list_rejects_invalid_type_in_variant() {
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize)]
+        enum Param {
+            Id(u32),
+        }
+
+        let app = Router::new().route("/", get(|_: QueryList<Param>| async move { "ok" }));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/?id=not_a_number").await;
+
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn optional_query_list_returns_empty_when_no_params() {
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize)]
+        enum Param {
+            Id(u32),
+        }
+
+        let app = Router::new().route(
+            "/",
+            get(
+                |OptionalQueryList(params): OptionalQueryList<Param>| async move {
+                    format!("{}", params.len())
+                },
+            ),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/").await;
+
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "0");
+    }
+
+    #[tokio::test]
+    async fn optional_query_list_deserializes_params_when_present() {
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize)]
+        #[serde(rename_all = "lowercase")]
+        enum Param {
+            Id(u32),
+            Name(String),
+        }
+
+        let app = Router::new().route(
+            "/",
+            get(
+                |OptionalQueryList(params): OptionalQueryList<Param>| async move {
+                    format!("{}", params.len())
+                },
+            ),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/?id=1&name=test").await;
+
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "2");
+    }
+
+    #[tokio::test]
+    async fn optional_query_list_rejects_invalid_param() {
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize)]
+        #[serde(rename_all = "lowercase")]
+        enum Param {
+            Id(u32),
+        }
+
+        let app = Router::new().route("/", get(|_: OptionalQueryList<Param>| async move { "ok" }));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/?id=invalid").await;
+
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn test_query_list_try_from_uri() {
+        #[allow(dead_code)]
+        #[derive(Deserialize)]
+        #[serde(rename_all = "lowercase")]
+        enum Param {
+            Id(u32),
+            Name(String),
+        }
+
+        let uri: Uri = "http://example.com/path?id=123&name=alice&id=456"
+            .parse()
+            .unwrap();
+        let result: QueryList<Param> = QueryList::try_from_uri(&uri).unwrap();
+        assert_eq!(result.len(), 3);
+    }
+
+    #[test]
+    fn test_query_list_try_from_uri_with_invalid_param() {
+        #[allow(dead_code)]
+        #[derive(Deserialize)]
+        #[serde(rename_all = "lowercase")]
+        enum Param {
+            Id(u32),
+        }
+
+        let uri: Uri = "http://example.com/path?id=invalid".parse().unwrap();
+        let result: Result<QueryList<Param>, _> = QueryList::try_from_uri(&uri);
 
         assert!(result.is_err());
     }
