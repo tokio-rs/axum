@@ -750,4 +750,248 @@ mod tests {
 
         assert!(result.is_err());
     }
+    #[tokio::test]
+    async fn query_list_decodes_url_encoded_whitespace() {
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize, PartialEq)]
+        #[serde(rename_all = "lowercase")]
+        enum Param {
+            Name(String),
+            Tag(String),
+        }
+
+        let app = Router::new().route(
+            "/",
+            get(|QueryList(params): QueryList<Param>| async move {
+                params
+                    .iter()
+                    .map(|p| match p {
+                        Param::Name(n) => format!("name:{n}"),
+                        Param::Tag(t) => format!("tag:{t}"),
+                    })
+                    .collect::<Vec<_>>()
+                    .join("|")
+            }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/?name=john%20doe&tag=hello%20world").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "name:john doe|tag:hello world");
+
+        let res = client.get("/?name=john+doe&tag=hello+world").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "name:john doe|tag:hello world");
+    }
+
+    #[tokio::test]
+    async fn query_list_decodes_url_encoded_ampersand() {
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize, PartialEq)]
+        #[serde(rename_all = "lowercase")]
+        enum Param {
+            Name(String),
+        }
+
+        let app = Router::new().route(
+            "/",
+            get(|QueryList(params): QueryList<Param>| async move {
+                params
+                    .iter()
+                    .map(|p| match p {
+                        Param::Name(n) => format!("name:{n}"),
+                    })
+                    .collect::<Vec<_>>()
+                    .join("|")
+            }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/?name=alice%26bob&name=charlie%26dave").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "name:alice&bob|name:charlie&dave");
+    }
+
+    #[tokio::test]
+    async fn query_list_decodes_url_encoded_equals_sign() {
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize, PartialEq)]
+        #[serde(rename_all = "lowercase")]
+        enum Param {
+            Expression(String),
+        }
+
+        let app = Router::new().route(
+            "/",
+            get(|QueryList(params): QueryList<Param>| async move {
+                params
+                    .iter()
+                    .map(|p| match p {
+                        Param::Expression(e) => format!("expr:{e}"),
+                    })
+                    .collect::<Vec<_>>()
+                    .join("|")
+            }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/?expression=x%3D5&expression=y%3D10").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "expr:x=5|expr:y=10");
+    }
+
+    #[tokio::test]
+    async fn query_list_decodes_url_encoded_plus_sign() {
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize, PartialEq)]
+        #[serde(rename_all = "lowercase")]
+        enum Param {
+            Math(String),
+        }
+
+        let app = Router::new().route(
+            "/",
+            get(|QueryList(params): QueryList<Param>| async move {
+                params
+                    .iter()
+                    .map(|p| match p {
+                        Param::Math(m) => format!("math:{m}"),
+                    })
+                    .collect::<Vec<_>>()
+                    .join("|")
+            }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/?math=1%2B2&math=3%2B4").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "math:1+2|math:3+4");
+    }
+
+    #[tokio::test]
+    async fn query_list_decodes_url_encoded_special_characters() {
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize, PartialEq)]
+        #[serde(rename_all = "lowercase")]
+        enum Param {
+            Url(String),
+            Path(String),
+            Percent(String),
+        }
+
+        let app = Router::new().route(
+            "/",
+            get(|QueryList(params): QueryList<Param>| async move {
+                params
+                    .iter()
+                    .map(|p| match p {
+                        Param::Url(u) => format!("url:{u}"),
+                        Param::Path(p) => format!("path:{p}"),
+                        Param::Percent(p) => format!("pct:{p}"),
+                    })
+                    .collect::<Vec<_>>()
+                    .join("|")
+            }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client
+            .get("/?url=https%3A%2F%2Fexample.com&path=foo%2Fbar&percent=100%25")
+            .await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(
+            res.text().await,
+            "url:https://example.com|path:foo/bar|pct:100%"
+        );
+    }
+
+    #[tokio::test]
+    async fn query_list_handles_mixed_encoded_and_plain_text() {
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize, PartialEq)]
+        #[serde(rename_all = "lowercase")]
+        enum Param {
+            Name(String),
+        }
+
+        let app = Router::new().route(
+            "/",
+            get(|QueryList(params): QueryList<Param>| async move {
+                params
+                    .iter()
+                    .map(|p| match p {
+                        Param::Name(n) => format!("name:{n}"),
+                    })
+                    .collect::<Vec<_>>()
+                    .join("|")
+            }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client
+            .get("/?name=simple&name=with%20space&name=with%26ampersand")
+            .await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(
+            res.text().await,
+            "name:simple|name:with space|name:with&ampersand"
+        );
+    }
+
+    #[tokio::test]
+    async fn optional_query_list_decodes_url_encoded_special_characters() {
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize, PartialEq)]
+        #[serde(rename_all = "lowercase")]
+        enum Param {
+            Name(String),
+            Tag(String),
+        }
+
+        let app = Router::new().route(
+            "/",
+            get(|OptionalQueryList(params): OptionalQueryList<Param>| async move {
+                params
+                    .iter()
+                    .map(|p| match p {
+                        Param::Name(n) => format!("name:{n}"),
+                        Param::Tag(t) => format!("tag:{t}"),
+                    })
+                    .collect::<Vec<_>>()
+                    .join("|")
+            }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client
+            .get("/?name=john%20doe&tag=hello%26world")
+            .await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "name:john doe|tag:hello&world");
+    }
+
+    #[test]
+    fn test_query_list_try_from_uri_with_encoded_special_characters() {
+        #[allow(dead_code)]
+        #[derive(Deserialize, PartialEq, Debug)]
+        #[serde(rename_all = "lowercase")]
+        enum Param {
+            Name(String),
+        }
+
+        let uri: Uri = "http://example.com/path?name=john%20doe&name=jane%20smith"
+            .parse()
+            .unwrap();
+        let result: QueryList<Param> = QueryList::try_from_uri(&uri).unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], Param::Name("john doe".to_string()));
+        assert_eq!(result[1], Param::Name("jane smith".to_string()));
+    }
 }
