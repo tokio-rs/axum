@@ -991,7 +991,7 @@ mod tests {
             .unwrap();
         let result: QueryList<Param> = QueryList::try_from_uri(&uri).unwrap();
         assert_eq!(result.len(), 2);
-        assert_eq!(result[0], Param::Name("john doe".to_string()));
-        assert_eq!(result[1], Param::Name("jane smith".to_string()));
+        assert_eq!(result[0], Param::Name("john doe".to_owned()));
+        assert_eq!(result[1], Param::Name("jane smith".to_owned()));
     }
 }
