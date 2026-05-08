@@ -956,23 +956,23 @@ mod tests {
 
         let app = Router::new().route(
             "/",
-            get(|OptionalQueryList(params): OptionalQueryList<Param>| async move {
-                params
-                    .iter()
-                    .map(|p| match p {
-                        Param::Name(n) => format!("name:{n}"),
-                        Param::Tag(t) => format!("tag:{t}"),
-                    })
-                    .collect::<Vec<_>>()
-                    .join("|")
-            }),
+            get(
+                |OptionalQueryList(params): OptionalQueryList<Param>| async move {
+                    params
+                        .iter()
+                        .map(|p| match p {
+                            Param::Name(n) => format!("name:{n}"),
+                            Param::Tag(t) => format!("tag:{t}"),
+                        })
+                        .collect::<Vec<_>>()
+                        .join("|")
+                },
+            ),
         );
 
         let client = TestClient::new(app);
 
-        let res = client
-            .get("/?name=john%20doe&tag=hello%26world")
-            .await;
+        let res = client.get("/?name=john%20doe&tag=hello%26world").await;
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "name:john doe|tag:hello&world");
     }
