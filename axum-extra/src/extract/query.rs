@@ -242,16 +242,12 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let query = parts.uri.query().unwrap_or_default();
-        let pairs: Vec<(String, String)> = form_urlencoded::parse(query.as_bytes())
-            .map(|(k, v)| (k.into_owned(), v.into_owned()))
-            .collect();
-
-        let mut result = Vec::new();
-        for (key, value) in pairs {
-            let item = deserialize_pair::<T>(key, value)
-                .map_err(FailedToDeserializeQueryString::from_err)?;
-            result.push(item);
-        }
+        let result = form_urlencoded::parse(query.as_bytes())
+            .map(|(k, v)| {
+                deserialize_pair::<T>(k.into_owned(), v.into_owned())
+                    .map_err(FailedToDeserializeQueryString::from_err)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(Self(result))
     }
@@ -264,16 +260,12 @@ where
     /// Attempts to construct a [`QueryList`] from a reference to a [`Uri`].
     pub fn try_from_uri(value: &Uri) -> Result<Self, QueryListRejection> {
         let query = value.query().unwrap_or_default();
-        let pairs: Vec<(String, String)> = form_urlencoded::parse(query.as_bytes())
-            .map(|(k, v)| (k.into_owned(), v.into_owned()))
-            .collect();
-
-        let mut result = Vec::new();
-        for (key, value) in pairs {
-            let item = deserialize_pair::<T>(key, value)
-                .map_err(FailedToDeserializeQueryString::from_err)?;
-            result.push(item);
-        }
+        let result = form_urlencoded::parse(query.as_bytes())
+            .map(|(k, v)| {
+                deserialize_pair::<T>(k.into_owned(), v.into_owned())
+                    .map_err(FailedToDeserializeQueryString::from_err)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(Self(result))
     }
@@ -322,16 +314,12 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         if let Some(query) = parts.uri.query() {
-            let pairs: Vec<(String, String)> = form_urlencoded::parse(query.as_bytes())
-                .map(|(k, v)| (k.into_owned(), v.into_owned()))
-                .collect();
-
-            let mut result = Vec::new();
-            for (key, value) in pairs {
-                let item = deserialize_pair::<T>(key, value)
-                    .map_err(FailedToDeserializeQueryString::from_err)?;
-                result.push(item);
-            }
+            let result = form_urlencoded::parse(query.as_bytes())
+                .map(|(k, v)| {
+                    deserialize_pair::<T>(k.into_owned(), v.into_owned())
+                        .map_err(FailedToDeserializeQueryString::from_err)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
 
             Ok(Self(result))
         } else {
