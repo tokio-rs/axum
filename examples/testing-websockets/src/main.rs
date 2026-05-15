@@ -69,7 +69,7 @@ async fn unit_testable_handler(ws: WebSocketUpgrade) -> Response {
     })
 }
 
-// The implementation is largely the same as `integration_testable_handle_socket` expect we call
+// The implementation is largely the same as `integration_testable_handle_socket` except we call
 // methods from `SinkExt` and `StreamExt`.
 async fn unit_testable_handle_socket<W, R>(mut write: W, mut read: R)
 where

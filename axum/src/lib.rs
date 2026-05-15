@@ -324,7 +324,7 @@
 //!
 //! ## Using task-local variables
 //!
-//! This also allows to share state with `IntoResponse` implementations:
+//! This also allows sharing state with `IntoResponse` implementations:
 //!
 //! ```rust,no_run
 //! use axum::{
@@ -352,7 +352,7 @@
 //!         .and_then(|header| header.to_str().ok())
 //!         .ok_or(StatusCode::UNAUTHORIZED)?;
 //!     if let Some(current_user) = authorize_current_user(auth_header).await {
-//!         // State is setup here in the middleware
+//!         // State is set up here in the middleware
 //!         Ok(USER.scope(current_user, next.run(req)).await)
 //!     } else {
 //!         Err(StatusCode::UNAUTHORIZED)

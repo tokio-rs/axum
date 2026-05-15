@@ -844,7 +844,7 @@ fn next_is_last_input(item_fn: &ItemFn) -> TokenStream {
         let (idx, arg) = &next_args[0];
         if *idx != item_fn.sig.inputs.len() - 1 {
             return quote_spanned! {arg.span()=>
-                compile_error!("`axum::middleware::Next` must the last argument");
+                compile_error!("`axum::middleware::Next` must be the last argument");
             };
         }
     }

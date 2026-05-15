@@ -266,7 +266,7 @@ let app = Router::new().route("/foo", post(foo));
 # Customizing extractor responses
 
 If an extractor fails it will return a response with the error and your
-handler will not be called. To customize the error response you have two 
+handler will not be called. To customize the error response you have two
 options:
 
 1. Use `Result<T, T::Rejection>` as your extractor like shown in
@@ -599,7 +599,7 @@ let app = Router::new().route("/", get(handler)).layer(Extension(state));
 # Request body limits
 
 For security reasons, [`Bytes`] will, by default, not accept bodies larger than
-2MB. This also applies to extractors that uses [`Bytes`] internally such as
+2MB. This also applies to extractors that use [`Bytes`] internally such as
 `String`, [`Json`], and [`Form`].
 
 For more details, including how to disable this limit, see [`DefaultBodyLimit`].

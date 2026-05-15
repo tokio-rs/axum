@@ -5,7 +5,7 @@ use tower_layer::Layer;
 /// Layer for configuring the default request body limit.
 ///
 /// For security reasons, [`Bytes`] will, by default, not accept bodies larger than 2MB. This also
-/// applies to extractors that uses [`Bytes`] internally such as `String`, [`Json`], and [`Form`].
+/// applies to extractors that use [`Bytes`] internally such as `String`, [`Json`], and [`Form`].
 ///
 /// This middleware provides ways to configure that.
 ///

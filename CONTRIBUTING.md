@@ -31,7 +31,7 @@ describes the _minimum_ behavior expected from all contributors.
 For any issue, there are fundamentally three ways an individual can contribute:
 
 1. By opening the issue for discussion: For instance, if you believe that you
-   have uncovered a bug in a `axum` crate, creating a new issue in the
+   have uncovered a bug in an `axum` crate, creating a new issue in the
    tokio-rs/axum [issue tracker][issues] is the way to report it.
 
 2. By helping to triage the issue: This can be done by providing

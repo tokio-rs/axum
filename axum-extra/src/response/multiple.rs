@@ -77,7 +77,7 @@ pub struct Part {
     // Handling for non-ascii field names is not done here, support for non-ascii characters may be encoded using
     // methodology described in RFC 2047.
     // - (optionally) a `Content-Type` header, which if not set, defaults to `text/plain`.
-    // If the field contains a file, then the file should be identified with that file's MIME type (eg: `image/gif`).
+    // If the field contains a file, then the file should be identified with that file's MIME type (e.g., `image/gif`).
     // If the `MIME` type is not known or specified, then the MIME type should be set to `application/octet-stream`.
     /// The name of the part in question
     name: String,
@@ -209,10 +209,10 @@ impl FromIterator<Part> for MultipartForm {
     }
 }
 
-/// A boundary is defined as a user defined (arbitrary) value that does not occur in any of the data.
+/// A boundary is defined as a user-defined (arbitrary) value that does not occur in any of the data.
 ///
 /// Because the specification does not clearly define a methodology for generating boundaries, this implementation
-/// follow's Reqwest's, and generates a boundary in the format of `XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX` where `XXXXXXXX`
+/// follows Reqwest's, and generates a boundary in the format of `XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX` where `XXXXXXXX`
 /// is a hexadecimal representation of a pseudo randomly generated u64.
 fn generate_boundary() -> String {
     let a = fastrand::u64(0..u64::MAX);
