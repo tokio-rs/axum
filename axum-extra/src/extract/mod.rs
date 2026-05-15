@@ -18,6 +18,9 @@ mod json_deserializer;
 #[cfg(feature = "query")]
 mod query;
 
+#[cfg(feature = "query")]
+mod query_list;
+
 #[cfg(feature = "multipart")]
 pub mod multipart;
 
@@ -45,6 +48,10 @@ pub use self::query::OptionalQuery;
 #[cfg(feature = "query")]
 #[allow(deprecated)]
 pub use self::query::{OptionalQueryRejection, Query, QueryRejection};
+#[cfg(feature = "query")]
+pub use self::query_list::QueryList;
+#[cfg(feature = "query")]
+pub use self::query_list::OptionalQueryList;
 
 #[cfg(feature = "multipart")]
 pub use self::multipart::Multipart;
