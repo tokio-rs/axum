@@ -57,8 +57,7 @@ where
 
         if result.len() > MAX {
             return Err(FailedToDeserializeQueryString::from_err(format!(
-                "too many query parameters, max allowed is {}",
-                MAX
+                "too many query parameters, max allowed is {MAX}"
             ))
             .into());
         }
@@ -94,8 +93,7 @@ where
 
         if result.len() > MAX {
             return Err(FailedToDeserializeQueryString::from_err(format!(
-                "too many query parameters, max allowed is {}",
-                MAX
+                "too many query parameters, max allowed is {MAX}"
             ))
             .into());
         }
