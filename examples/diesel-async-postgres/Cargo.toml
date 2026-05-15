@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 axum = { path = "../../axum", features = ["macros"] }
 diesel = "~2.3"
-diesel-async = { version = "0.8", features = ["postgres", "bb8", "migrations"] }
+diesel-async = { version = "0.9", features = ["postgres", "bb8", "migrations"] }
 diesel_migrations = "~2.3"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
