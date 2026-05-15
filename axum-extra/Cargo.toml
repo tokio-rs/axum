@@ -80,6 +80,7 @@ query = [
     "dep:serde_core",
     "dep:serde_html_form",
     "dep:serde_path_to_error",
+    "dep:serde_json",
 ]
 tracing = ["axum-core/tracing", "axum/tracing", "dep:tracing"]
 typed-header = ["dep:headers"]
