@@ -49,9 +49,9 @@ pub use self::query::OptionalQuery;
 #[allow(deprecated)]
 pub use self::query::{OptionalQueryRejection, Query, QueryRejection};
 #[cfg(feature = "query")]
-pub use self::query_list::QueryList;
-#[cfg(feature = "query")]
 pub use self::query_list::OptionalQueryList;
+#[cfg(feature = "query")]
+pub use self::query_list::QueryList;
 
 #[cfg(feature = "multipart")]
 pub use self::multipart::Multipart;
