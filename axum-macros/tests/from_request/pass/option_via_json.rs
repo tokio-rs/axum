@@ -8,7 +8,7 @@ use axum_macros::FromRequest;
 use serde::Deserialize;
 
 fn main() {
-    let _: Router = Router::new().route("/:something", post(handler));
+    let _: Router = Router::new().route("/{something}", post(handler));
 }
 
 async fn handler(_: Args) {}
