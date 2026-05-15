@@ -137,7 +137,6 @@ mod tests {
             .into_parts()
             .0;
         let result = QueryList::<List>::from_request_parts(&mut parts, &()).await;
-        dbg!(&result);
         assert!(result.is_ok());
     }
 
