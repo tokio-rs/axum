@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tasks are spawned, enabling use cases like tracing and telemetry instrumentation ([#3704])
 - **added:** `IntoResponseParts` impl for `Redirect`, allowing it to be combined
   with a body in a response tuple ([#3721])
+- **added:** Add `RawPathParams::from_request_extensions` ([#3757])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
 - **changed:** `Redirect` constructors now accept any `impl Into<String>` ([#3635])
@@ -37,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3702]: https://github.com/tokio-rs/axum/pull/3702
 [#3721]: https://github.com/tokio-rs/axum/pull/3721
 [#3742]: https://github.com/tokio-rs/axum/pull/3742
+[#3757]: https://github.com/tokio-rs/axum/pull/3757
 
 # 0.8.9
 
