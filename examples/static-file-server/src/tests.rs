@@ -6,9 +6,6 @@ use tower::ServiceExt;
 const INDEX_HTML_CONTENT: &str = include_str!("../assets/index.html");
 
 // Assets nested under `/assets` must not be reachable at the root.
-// Previously, `fallback_service(serve_dir)` served the whole assets directory
-// as a fallback, so `/script.js` would return the actual script.js instead of
-// the SPA fallback (index.html).
 #[tokio::test]
 async fn assets_not_served_at_root() {
     let app = using_serve_dir_with_assets_fallback();
