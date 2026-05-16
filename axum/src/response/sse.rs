@@ -32,6 +32,7 @@ use crate::{
 use axum_core::{
     body::Body,
     response::{IntoResponse, Response},
+    __private::SyncWrapper,
 };
 use bytes::{BufMut, BytesMut};
 use futures_core::Stream;
@@ -46,7 +47,6 @@ use std::{
     task::{ready, Context, Poll},
     time::Duration,
 };
-use sync_wrapper::SyncWrapper;
 
 /// An SSE response
 #[derive(Clone)]

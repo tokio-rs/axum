@@ -6,7 +6,7 @@ resolver = "2"
 rust-version = "1.80"
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+unsafe_code = "deny"
 
 rust_2018_idioms = { level = "warn", priority = -1 }
 missing_debug_implementations = "warn"
@@ -15,6 +15,8 @@ unreachable_pub = "warn"
 
 [workspace.lints.clippy]
 type_complexity = "allow"
+
+undocumented_unsafe_blocks = "deny"
 
 await_holding_lock = "warn"
 dbg_macro = "warn"

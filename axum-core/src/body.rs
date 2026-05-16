@@ -3,7 +3,7 @@
 mod unknown;
 pub(crate) use unknown::Unknown;
 
-use crate::{BoxError, Error};
+use crate::{BoxError, Error, SyncWrapper};
 use bytes::Bytes;
 use futures_core::{Stream, TryStream};
 use http_body::{Body as _, Frame};
@@ -11,7 +11,6 @@ use http_body_util::BodyExt;
 use pin_project_lite::pin_project;
 use std::pin::Pin;
 use std::task::{ready, Context, Poll};
-use sync_wrapper::SyncWrapper;
 
 type BoxBody = http_body_util::combinators::UnsyncBoxBody<Bytes, Error>;
 

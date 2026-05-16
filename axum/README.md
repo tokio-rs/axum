@@ -106,8 +106,9 @@ benchmarks [here](https://github.com/programatik29/rust-web-benchmarks) and
 
 ## Safety
 
-This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in
-100% safe Rust.
+`unsafe_code` is denied by default. Any `unsafe` must be opted in explicitly
+with `#[allow(unsafe_code)]` and must be accompanied by a `SAFETY` comment
+(enforced by `clippy::undocumented_unsafe_blocks`).
 
 ## Minimum supported Rust version
 

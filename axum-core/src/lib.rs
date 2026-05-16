@@ -17,11 +17,15 @@ pub(crate) mod macros;
 pub mod __private {
     #[cfg(feature = "tracing")]
     pub use tracing;
+
+    pub use crate::sync_wrapper::SyncWrapper;
 }
 
 mod error;
 mod ext_traits;
+mod sync_wrapper;
 pub use self::error::Error;
+pub(crate) use self::sync_wrapper::SyncWrapper;
 
 pub mod body;
 pub mod extract;
