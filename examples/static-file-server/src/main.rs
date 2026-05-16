@@ -11,6 +11,7 @@ use std::net::SocketAddr;
 use tower::ServiceExt;
 use tower_http::{
     services::{ServeDir, ServeFile},
+    set_status::SetStatus,
     trace::TraceLayer,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -47,8 +48,10 @@ fn using_serve_dir_with_assets_fallback() -> Router {
     // so with this `GET /assets/doesnt-exist.jpg` will return `index.html`
     // rather than a 404.
     // The `fallback_service` ensures that all other paths (the standard
-    // SPA pattern) also return `index.html` rather than 404.
-    let index_html = ServeFile::new("assets/index.html");
+    // SPA pattern) also return `index.html`. We wrap it in `SetStatus` so
+    // the response uses 404 instead of 200 -- the path wasn't found, the SPA
+    // just handles routing client-side.
+    let index_html = SetStatus::new(ServeFile::new("assets/index.html"), StatusCode::NOT_FOUND);
     let serve_dir = ServeDir::new("assets").not_found_service(index_html.clone());
 
     Router::new()
