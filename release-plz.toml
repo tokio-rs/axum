@@ -6,3 +6,7 @@ release_always = false
 # Label release PRs for easy identification
 # https://release-plz.dev/docs/config#the-pr_labels-field
 pr_labels = ["release"]
+
+# We write changelogs manually, at least for now
+# https://release-plz.dev/docs/config#the-changelog_update-field
+changelog_update = false
