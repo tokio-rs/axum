@@ -46,14 +46,15 @@ fn using_serve_dir_with_assets_fallback() -> Router {
     // `ServeDir` allows setting a fallback if an asset is not found
     // so with this `GET /assets/doesnt-exist.jpg` will return `index.html`
     // rather than a 404.
-    // The `fallback_service` ensures that all other paths (e.g. for a
-    // single-page application) also return `index.html` instead of 404.
-    let serve_dir = ServeDir::new("assets").not_found_service(ServeFile::new("assets/index.html"));
+    // The `fallback_service` ensures that all other paths (the standard
+    // SPA pattern) also return `index.html` rather than 404.
+    let index_html = ServeFile::new("assets/index.html");
+    let serve_dir = ServeDir::new("assets").not_found_service(index_html.clone());
 
     Router::new()
         .route("/foo", get(|| async { "Hi from /foo" }))
         .nest_service("/assets", serve_dir)
-        .fallback_service(ServeFile::new("assets/index.html"))
+        .fallback_service(index_html)
 }
 
 fn using_serve_dir_only_from_root_via_fallback() -> Router {
