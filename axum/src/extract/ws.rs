@@ -89,6 +89,24 @@
 //! ```
 //!
 //! [`StreamExt::split`]: https://docs.rs/futures/0.3.17/futures/stream/trait.StreamExt.html#method.split
+//!
+//! # Cancellation safety
+//!
+//! [`WebSocket::recv`] is cancel-safe: it forwards to [`StreamExt::next`], which only
+//! holds a reference to the stream, so dropping the future before it completes does not
+//! discard a received message. This makes it suitable for use in
+//! [`tokio::select!`](https://docs.rs/tokio/latest/tokio/macro.select.html) alongside
+//! other cancel-safe futures (for example [`broadcast::Receiver::recv`]).
+//!
+//! When using [`StreamExt::split`], the read half is a [`SplitStream`] that implements
+//! [`Stream`]; use [`StreamExt::next`] on it for the same cancel-safety guarantees.
+//!
+//! [`WebSocket::send`] uses the [`Sink`] implementation. See [`SinkExt::send`] for its
+//! cancellation semantics when used in `select!`.
+//!
+//! [`broadcast::Receiver::recv`]: https://docs.rs/tokio/latest/tokio/sync/broadcast/struct.Receiver.html#method.recv
+//! [`SplitStream`]: https://docs.rs/futures-util/latest/futures_util/stream/struct.SplitStream.html
+//! [`SinkExt::send`]: https://docs.rs/futures-util/latest/futures_util/sink/trait.SinkExt.html#method.send
 
 use self::rejection::*;
 use super::FromRequestParts;
@@ -549,6 +567,10 @@ impl WebSocket {
     /// Receive another message.
     ///
     /// Returns `None` if the stream has closed.
+    ///
+    /// # Cancel safety
+    ///
+    /// This method is cancel-safe (see [the module-level documentation](self#cancellation-safety)).
     pub async fn recv(&mut self) -> Option<Result<Message, Error>> {
         self.next().await
     }
