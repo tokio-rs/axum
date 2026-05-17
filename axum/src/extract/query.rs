@@ -36,6 +36,16 @@ use serde_core::de::DeserializeOwned;
 ///
 /// If the query string cannot be parsed it will reject the request with a `400
 /// Bad Request` response.
+///
+/// For handling values being empty vs missing see the [query-params-with-empty-strings][example]
+/// example.
+///
+/// [example]: https://github.com/tokio-rs/axum/blob/main/examples/query-params-with-empty-strings/src/main.rs
+///
+/// For handling multiple values for the same query parameter, in a `?foo=1&foo=2&foo=3`
+/// fashion, use [`axum_extra::extract::Query`] instead.
+///
+/// [`axum_extra::extract::Query`]: https://docs.rs/axum-extra/latest/axum_extra/extract/struct.Query.html
 #[cfg_attr(docsrs, doc(cfg(feature = "query")))]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Query<T>(pub T);
