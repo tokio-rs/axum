@@ -1508,7 +1508,6 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "tokio",
- "tower",
  "tracing",
  "tracing-subscriber",
 ]
