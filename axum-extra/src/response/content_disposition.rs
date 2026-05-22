@@ -5,9 +5,9 @@ use std::fmt::{self, Write};
 ///
 /// This prevents Content-Disposition header parameter injection
 /// (similar to CVE-2023-29401).
-pub(crate) struct EscapedFilename<'a>(pub &'a str);
+pub(crate) struct EscapedQuotedString<'a>(pub &'a str);
 
-impl fmt::Display for EscapedFilename<'_> {
+impl fmt::Display for EscapedQuotedString<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for c in self.0.chars() {
             if c == '\\' || c == '"' {
@@ -19,19 +19,24 @@ impl fmt::Display for EscapedFilename<'_> {
     }
 }
 
+#[cfg(any(feature = "multipart", test))]
+pub(crate) fn contains_newlines(value: &str) -> bool {
+    value.contains(['\r', '\n'])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn no_special_characters() {
-        assert_eq!(EscapedFilename("report.pdf").to_string(), "report.pdf");
+        assert_eq!(EscapedQuotedString("report.pdf").to_string(), "report.pdf");
     }
 
     #[test]
     fn escapes_double_quotes() {
         assert_eq!(
-            EscapedFilename("evil\"; filename*=UTF-8''pwned.txt; x=\"").to_string(),
+            EscapedQuotedString("evil\"; filename*=UTF-8''pwned.txt; x=\"").to_string(),
             "evil\\\"; filename*=UTF-8''pwned.txt; x=\\\"",
         );
     }
@@ -39,8 +44,15 @@ mod tests {
     #[test]
     fn escapes_backslashes() {
         assert_eq!(
-            EscapedFilename("file\\name.txt").to_string(),
+            EscapedQuotedString("file\\name.txt").to_string(),
             "file\\\\name.txt",
         );
+    }
+
+    #[test]
+    fn detects_newlines() {
+        assert!(contains_newlines("line\r\nbreak"));
+        assert!(contains_newlines("line\nbreak"));
+        assert!(!contains_newlines("report.pdf"));
     }
 }
