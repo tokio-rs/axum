@@ -54,15 +54,12 @@ impl IntoResponse for MultipartForm {
         for part in self.parts {
             // for each part, the boundary is preceded by two dashes
             serialized_form.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
-            let serialized_part = match part.serialize() {
-                Ok(serialized_part) => serialized_part,
-                Err(_) => {
-                    return (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "Invalid multipart field name or filename",
-                    )
-                        .into_response()
-                }
+            let Ok(serialized_part) = part.serialize() else {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Invalid multipart field name or filename",
+                )
+                    .into_response();
             };
             serialized_form.extend_from_slice(&serialized_part);
         }
