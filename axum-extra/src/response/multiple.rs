@@ -1,5 +1,6 @@
 //! Generate forms to use in responses.
 
+use super::content_disposition::{contains_newlines, EscapedQuotedString};
 use axum_core::response::{IntoResponse, Response};
 use fastrand;
 use http::{header, HeaderMap, StatusCode};
@@ -53,7 +54,17 @@ impl IntoResponse for MultipartForm {
         for part in self.parts {
             // for each part, the boundary is preceded by two dashes
             serialized_form.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
-            serialized_form.extend_from_slice(&part.serialize());
+            let serialized_part = match part.serialize() {
+                Ok(serialized_part) => serialized_part,
+                Err(_) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Invalid multipart field name or filename",
+                    )
+                        .into_response()
+                }
+            };
+            serialized_form.extend_from_slice(&serialized_part);
         }
         serialized_form.extend_from_slice(format!("--{boundary}--").as_bytes());
         (headers, serialized_form).into_response()
@@ -173,7 +184,7 @@ impl Part {
     }
 
     /// Serialize this part into a chunk that can be easily inserted into a larger form
-    pub(super) fn serialize(&self) -> Vec<u8> {
+    pub(super) fn serialize(&self) -> Result<Vec<u8>, &'static str> {
         // A part is serialized in this general format:
         // // the filename is optional
         // Content-Disposition: form-data; name="FIELD_NAME"; filename="FILENAME"\r\n
@@ -183,11 +194,21 @@ impl Part {
         // \r\n
         // CONTENTS\r\n
 
+        if contains_newlines(&self.name) {
+            return Err("Invalid multipart field name");
+        }
+
         // Format what we can as a string, then handle the rest at a byte level
-        let mut serialized_part = format!("Content-Disposition: form-data; name=\"{}\"", self.name);
+        let mut serialized_part = format!(
+            "Content-Disposition: form-data; name=\"{}\"",
+            EscapedQuotedString(&self.name)
+        );
         // specify a filename if one was set
         if let Some(filename) = &self.filename {
-            serialized_part += &format!("; filename=\"{filename}\"");
+            if contains_newlines(filename) {
+                return Err("Invalid multipart filename");
+            }
+            serialized_part += &format!("; filename=\"{}\"", EscapedQuotedString(filename));
         }
         serialized_part += "\r\n";
         // specify the MIME type
@@ -197,7 +218,7 @@ impl Part {
         part_bytes.extend_from_slice(&self.contents);
         part_bytes.extend_from_slice(b"\r\n");
 
-        part_bytes
+        Ok(part_bytes)
     }
 }
 
@@ -227,7 +248,7 @@ mod tests {
     use super::{generate_boundary, MultipartForm, Part};
     use axum::{body::Body, http};
     use axum::{routing::get, Router};
-    use http::{Request, Response};
+    use http::{Request, Response, StatusCode};
     use http_body_util::BodyExt;
     use mime::Mime;
     use tower::ServiceExt;
@@ -278,6 +299,45 @@ mod tests {
                 --{boundary}--",
             )
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn multipart_part_escapes_content_disposition_params() {
+        let part = Part::file(
+            "field\"; injected=\"1",
+            "evil\\name\"; filename*=UTF-8''pwned.txt; x=\"",
+            b"hi".to_vec(),
+        );
+
+        let body = String::from_utf8(part.serialize().unwrap()).unwrap();
+
+        assert!(body.starts_with(
+            "Content-Disposition: form-data; name=\"field\\\"; injected=\\\"1\"; filename=\"evil\\\\name\\\"; filename*=UTF-8''pwned.txt; x=\\\"\"\r\n"
+        ));
+    }
+
+    #[tokio::test]
+    async fn multipart_form_rejects_newlines_in_field_metadata(
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        async fn handle() -> MultipartForm {
+            MultipartForm::from_iter(vec![Part::file(
+                "bad\r\nx-extra: injected",
+                "file.txt",
+                b"hi".to_vec(),
+            )])
+        }
+
+        let app = Router::new().route("/", get(handle));
+        let response = app
+            .oneshot(Request::builder().uri("/").body(Body::empty())?)
+            .await?;
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let body = response.into_body().collect().await?.to_bytes();
+        assert_eq!(&body[..], b"Invalid multipart field name or filename");
 
         Ok(())
     }
