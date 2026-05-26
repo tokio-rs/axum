@@ -16,7 +16,9 @@ use axum_core::{body::Body, extract::Request, response::Response};
 use futures_util::{future::OptionFuture, FutureExt};
 use http_body::Body as HttpBody;
 use hyper::body::Incoming;
-use hyper_util::rt::{TokioIo, TokioTimer};
+use hyper_util::rt::TokioIo;
+#[cfg(feature = "http1")]
+use hyper_util::rt::TokioTimer;
 #[cfg(any(feature = "http1", feature = "http2"))]
 use hyper_util::{server::conn::auto::Builder, service::TowerToHyperService};
 use tokio::{sync::watch, task::JoinHandle};

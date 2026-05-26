@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** `IntoResponseParts` impl for `Redirect`, allowing it to be combined
   with a body in a response tuple ([#3721])
 - **added:** Add `RawPathParams::from_request_extensions` ([#3757])
+- **added:** `serve::ConnectionLimits` and `Serve::connection_limits` for bounding the lifetime of
+  individual connections (`max_connection_age`, `max_connection_age_jitter`,
+  `max_connection_age_grace`), forcing clients to rotate connections ([#3779])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
 - **changed:** `Redirect` constructors now accept any `impl Into<String>` ([#3635])
@@ -42,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3742]: https://github.com/tokio-rs/axum/pull/3742
 [#3836]: https://github.com/tokio-rs/axum/pull/3836
 [#3757]: https://github.com/tokio-rs/axum/pull/3757
+[#3779]: https://github.com/tokio-rs/axum/pull/3779
 
 # 0.8.9
 
