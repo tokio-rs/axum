@@ -549,6 +549,15 @@ impl WebSocket {
     /// Receive another message.
     ///
     /// Returns `None` if the stream has closed.
+    ///
+    /// # Cancel safety
+    ///
+    /// This method is cancel-safe. `recv` is `self.next().await` over the inner
+    /// [`WebSocketStream`], whose `Stream` impl gained a `# Cancel safety`
+    /// section in [snapview/tokio-tungstenite#378].
+    ///
+    /// [`WebSocketStream`]: https://docs.rs/tokio-tungstenite/latest/tokio_tungstenite/struct.WebSocketStream.html
+    /// [snapview/tokio-tungstenite#378]: https://github.com/snapview/tokio-tungstenite/pull/378
     pub async fn recv(&mut self) -> Option<Result<Message, Error>> {
         self.next().await
     }
