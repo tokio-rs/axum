@@ -5,6 +5,7 @@ use std::{
     error::Error as StdError,
     fmt::Debug,
     future::{Future, IntoFuture},
+    hash::{BuildHasher, Hasher},
     io,
     marker::PhantomData,
     pin::pin,
@@ -253,7 +254,6 @@ fn random_duration(max: Duration) -> Duration {
         return Duration::ZERO;
     }
 
-    use std::hash::{BuildHasher, Hasher};
     let rand = std::collections::hash_map::RandomState::new()
         .build_hasher()
         .finish();
