@@ -10,9 +10,10 @@ async-session = "3.0.0"
 axum = { path = "../../axum" }
 axum-extra = { path = "../../axum-extra", features = ["typed-header"] }
 http = "1.0.0"
-oauth2 = "5"
+oauth2 = { version = "5", default-features = false }
+oauth2-reqwest = "=0.1.0-alpha.3"
 # Use Rustls because it makes it easier to cross-compile on CI
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json"] }
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
