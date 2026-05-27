@@ -1,4 +1,4 @@
-use super::content_disposition::EscapedFilename;
+use super::content_disposition::EscapedQuotedString;
 use axum_core::response::IntoResponse;
 use http::{header, HeaderMap, HeaderValue};
 use tracing::error;
@@ -91,7 +91,10 @@ where
             let filename_str = filename
                 .to_str()
                 .expect("This was a HeaderValue so this can not fail");
-            let value = format!("attachment; filename=\"{}\"", EscapedFilename(filename_str));
+            let value = format!(
+                "attachment; filename=\"{}\"",
+                EscapedQuotedString(filename_str)
+            );
             HeaderValue::try_from(value).expect("This was a HeaderValue so this can not fail")
         } else {
             HeaderValue::from_static("attachment")
