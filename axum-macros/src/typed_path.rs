@@ -362,8 +362,7 @@ fn format_str_from_path(segments: &[Segment]) -> String {
             Segment::Capture(capture, _) => format!("{{{capture}}}"),
             Segment::Static(segment) => segment.to_owned(),
         })
-        .collect::<Vec<_>>()
-        .join("/")
+        .collect()
 }
 
 fn captures_from_path(segments: &[Segment]) -> Vec<syn::Ident> {
@@ -387,23 +386,43 @@ fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
         return Err(syn::Error::new_spanned(path, "paths must start with a `/`"));
     }
 
-    path.value()
-        .split('/')
-        .map(|segment| {
-            if let Some(capture) = segment
-                .strip_prefix('{')
-                .and_then(|segment| segment.strip_suffix('}'))
-                .and_then(|segment| {
-                    (!segment.starts_with('{') && !segment.ends_with('}')).then_some(segment)
-                })
-                .map(|capture| capture.strip_prefix('*').unwrap_or(capture))
+    let mut segments = Vec::new();
+    let mut rest = value.as_str();
+
+    while let Some(start) = rest.find('{') {
+        if start > 0 {
+            segments.push(Segment::Static(rest[..start].to_owned()));
+        }
+
+        rest = &rest[start + 1..];
+
+        if let Some(end) = rest.find('}') {
+            let capture = &rest[..end];
+            if capture.is_empty()
+                || capture.starts_with('{')
+                || capture.ends_with('}')
+                || capture.contains('{')
             {
-                Ok(Segment::Capture(capture.to_owned(), path.span()))
-            } else {
-                Ok(Segment::Static(segment.to_owned()))
+                return Err(syn::Error::new_spanned(path, "invalid capture in path"));
             }
-        })
-        .collect()
+
+            segments.push(Segment::Capture(
+                capture.strip_prefix('*').unwrap_or(capture).to_owned(),
+                path.span(),
+            ));
+
+            rest = &rest[end + 1..];
+        } else {
+            segments.push(Segment::Static(format!("{{{rest}")));
+            rest = "";
+        }
+    }
+
+    if !rest.is_empty() {
+        segments.push(Segment::Static(rest.to_owned()));
+    }
+
+    Ok(segments)
 }
 
 enum Segment {
