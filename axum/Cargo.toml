@@ -46,6 +46,7 @@ default = [
     "original-uri",
     "query",
     "tokio",
+    "tokio-net",
     "tower-log",
     "tracing",
 ]
@@ -69,10 +70,10 @@ query = [
     "dep:serde_path_to_error",
     "serde_html_form/de",
 ]
+tokio-net = ["tokio/net"]
 tokio = [
     "dep:hyper-util",
     "dep:tokio",
-    "tokio/net",
     "tokio/rt",
     "tower/make",
     "tokio/macros",
@@ -83,6 +84,7 @@ ws = [
     "dep:hyper",
     "dep:futures-sink",
     "tokio",
+    "tokio-net",
     "dep:tokio-tungstenite",
     "dep:sha1",
     "dep:base64",
@@ -100,7 +102,7 @@ __private_docs = [
 
 # This feature is used to enable private test helper usage
 # in `axum-core` and `axum-extra`.
-__private = ["tokio", "http1", "dep:reqwest"]
+__private = ["tokio", "tokio-net", "http1", "dep:reqwest"]
 
 [dependencies]
 axum-core = { path = "../axum-core", version = "0.5.6" }

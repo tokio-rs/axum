@@ -10,9 +10,11 @@ use std::{
 use pin_project_lite::pin_project;
 use tokio::{
     io::{self, AsyncRead, AsyncWrite},
-    net::{TcpListener, TcpStream},
     sync::{OwnedSemaphorePermit, Semaphore},
 };
+
+#[cfg(feature = "tokio-net")]
+use tokio::net::{TcpListener, TcpStream};
 
 /// Types that can listen for connections.
 pub trait Listener: Send + 'static {
@@ -32,6 +34,7 @@ pub trait Listener: Send + 'static {
     fn local_addr(&self) -> io::Result<Self::Addr>;
 }
 
+#[cfg(feature = "tokio-net")]
 impl Listener for TcpListener {
     type Io = TcpStream;
     type Addr = std::net::SocketAddr;
@@ -51,7 +54,7 @@ impl Listener for TcpListener {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "tokio-net"))]
 impl Listener for tokio::net::UnixListener {
     type Io = tokio::net::UnixStream;
     type Addr = tokio::net::unix::SocketAddr;
