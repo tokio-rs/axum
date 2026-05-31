@@ -4,7 +4,6 @@ use std::{
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
-    time::Duration,
 };
 
 use pin_project_lite::pin_project;
@@ -245,6 +244,7 @@ where
     }
 }
 
+#[cfg(feature = "tokio-net")]
 async fn handle_accept_error(e: io::Error) {
     if is_connection_error(&e) {
         return;
@@ -262,9 +262,10 @@ async fn handle_accept_error(e: io::Error) {
     //
     // hyper allowed customizing this but axum does not.
     error!("accept error: {e}");
-    tokio::time::sleep(Duration::from_secs(1)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 }
 
+#[cfg(feature = "tokio-net")]
 fn is_connection_error(e: &io::Error) -> bool {
     matches!(
         e.kind(),
