@@ -434,7 +434,6 @@
 //! `multipart` | Enables parsing `multipart/form-data` requests with [`Multipart`] |
 //! `original-uri` | Enables capturing of every request's original URI and the [`OriginalUri`] extractor | <span role="img" aria-label="Default feature">✔</span>
 //! `tokio` | Enables `tokio` as a dependency and `axum::serve`, `SSE` and `extract::connect_info` types. | <span role="img" aria-label="Default feature">✔</span>
-//! `tokio-net` | Enables tokio's `net` feature | <span role="img" aria-label="Default feature">✔</span>
 //! `tower-log` | Enables `tower`'s `log` feature | <span role="img" aria-label="Default feature">✔</span>
 //! `tracing` | Log rejections from built-in extractors | <span role="img" aria-label="Default feature">✔</span>
 //! `ws` | Enables WebSockets support via [`extract::ws`] |
