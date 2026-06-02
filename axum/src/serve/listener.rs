@@ -12,9 +12,6 @@ use tokio::{
     sync::{OwnedSemaphorePermit, Semaphore},
 };
 
-#[cfg(feature = "tokio-net")]
-use tokio::net::{TcpListener, TcpStream};
-
 /// Types that can listen for connections.
 pub trait Listener: Send + 'static {
     /// The listener's IO type.
@@ -33,9 +30,9 @@ pub trait Listener: Send + 'static {
     fn local_addr(&self) -> io::Result<Self::Addr>;
 }
 
-#[cfg(feature = "tokio-net")]
-impl Listener for TcpListener {
-    type Io = TcpStream;
+#[cfg(all(feature = "tokio", not(target_arch = "wasm32")))]
+impl Listener for tokio::net::TcpListener {
+    type Io = tokio::net::TcpStream;
     type Addr = std::net::SocketAddr;
 
     async fn accept(&mut self) -> (Self::Io, Self::Addr) {
@@ -53,7 +50,7 @@ impl Listener for TcpListener {
     }
 }
 
-#[cfg(all(unix, feature = "tokio-net"))]
+#[cfg(all(unix, feature = "tokio"))]
 impl Listener for tokio::net::UnixListener {
     type Io = tokio::net::UnixStream;
     type Addr = tokio::net::unix::SocketAddr;
@@ -244,7 +241,7 @@ where
     }
 }
 
-#[cfg(feature = "tokio-net")]
+#[cfg(all(feature = "tokio", not(target_arch = "wasm32")))]
 async fn handle_accept_error(e: io::Error) {
     if is_connection_error(&e) {
         return;
@@ -265,7 +262,7 @@ async fn handle_accept_error(e: io::Error) {
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 }
 
-#[cfg(feature = "tokio-net")]
+#[cfg(all(feature = "tokio", not(target_arch = "wasm32")))]
 fn is_connection_error(e: &io::Error) -> bool {
     matches!(
         e.kind(),
