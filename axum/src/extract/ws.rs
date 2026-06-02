@@ -550,6 +550,8 @@ impl WebSocket {
     ///
     /// Returns `None` if the stream has closed.
     ///
+    /// This method delegates to [`Stream`].
+    ///
     /// # Cancel safety
     ///
     /// This method is cancel safe. If used as a branch in [`tokio::select!`] and
@@ -561,6 +563,8 @@ impl WebSocket {
     }
 
     /// Send a message.
+    ///
+    /// This method delegates to [`Sink`].
     pub async fn send(&mut self, msg: Message) -> Result<(), Error> {
         self.inner
             .send(msg.into_tungstenite())
