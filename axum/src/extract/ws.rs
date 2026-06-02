@@ -549,6 +549,13 @@ impl WebSocket {
     /// Receive another message.
     ///
     /// Returns `None` if the stream has closed.
+    ///
+    /// # Cancel safety
+    ///
+    /// This method is cancel safe. If used as a branch in [`tokio::select!`] and
+    /// another branch completes first, then no message is received.
+    ///
+    /// [`tokio::select!`]: https://docs.rs/tokio/latest/tokio/macro.select.html
     pub async fn recv(&mut self) -> Option<Result<Message, Error>> {
         self.next().await
     }
