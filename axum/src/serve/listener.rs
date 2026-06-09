@@ -30,7 +30,7 @@ pub trait Listener: Send + 'static {
     fn local_addr(&self) -> io::Result<Self::Addr>;
 }
 
-#[cfg(all(feature = "tokio", not(target_arch = "wasm32")))]
+#[cfg(not(target_arch = "wasm32"))]
 impl Listener for tokio::net::TcpListener {
     type Io = tokio::net::TcpStream;
     type Addr = std::net::SocketAddr;
@@ -241,7 +241,7 @@ where
     }
 }
 
-#[cfg(all(feature = "tokio", not(target_arch = "wasm32")))]
+#[cfg(not(target_arch = "wasm32"))]
 async fn handle_accept_error(e: io::Error) {
     if is_connection_error(&e) {
         return;
@@ -262,7 +262,7 @@ async fn handle_accept_error(e: io::Error) {
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 }
 
-#[cfg(all(feature = "tokio", not(target_arch = "wasm32")))]
+#[cfg(not(target_arch = "wasm32"))]
 fn is_connection_error(e: &io::Error) -> bool {
     matches!(
         e.kind(),
