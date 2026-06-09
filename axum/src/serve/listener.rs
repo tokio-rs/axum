@@ -50,7 +50,7 @@ impl Listener for tokio::net::TcpListener {
     }
 }
 
-#[cfg(all(unix, feature = "tokio"))]
+#[cfg(unix)]
 impl Listener for tokio::net::UnixListener {
     type Io = tokio::net::UnixStream;
     type Addr = tokio::net::unix::SocketAddr;
