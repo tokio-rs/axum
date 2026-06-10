@@ -71,7 +71,7 @@ jobs:
         with:
           toolchain: nightly-2025-10-18
       - name: Install cargo-check-external-types
-        uses: taiki-e/cache-cargo-install-action@v2
+        uses: taiki-e/cache-cargo-install-action@v3
         with:
           tool: cargo-check-external-types@0.4.0
       - uses: taiki-e/install-action@cargo-hack
@@ -216,4 +216,4 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Check the spelling of the files in our repo
-        uses: crate-ci/typos@v1.29.4
+        uses: crate-ci/typos@v1.47.2

@@ -68,10 +68,7 @@ struct Input {
 
 async fn accept_form(Form(input): Form<Input>) -> Html<String> {
     dbg!(&input);
-    Html(format!(
-        "email='{}'\nname='{}'\n",
-        &input.email, &input.name
-    ))
+    Html(format!("email='{}'\nname='{}'\n", input.email, input.name))
 }
 
 #[cfg(test)]
