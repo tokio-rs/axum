@@ -1,0 +1,34 @@
+[package]
+name = "axum-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+axum = { path = "../axum" }
+http = "1"
+bytes = "1"
+tokio = { version = "1", features = ["rt", "macros"] }
+tower = { version = "0.5", features = ["util"] }
+
+[[bin]]
+name = "fuzz_request"
+path = "fuzz_targets/fuzz_request.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_uri"
+path = "fuzz_targets/fuzz_uri.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_headers"
+path = "fuzz_targets/fuzz_headers.rs"
+test = false
+doc = false
