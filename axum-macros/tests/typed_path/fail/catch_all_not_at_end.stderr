@@ -1,0 +1,5 @@
+error: Wildcards/catch-alls must be at the end of the path
+ --> tests/typed_path/fail/catch_all_not_at_end.rs:5:14
+  |
+5 | #[typed_path("/{*rest}/foo")]
+  |              ^^^^^^^^^^^^^^
