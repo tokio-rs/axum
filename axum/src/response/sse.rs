@@ -587,7 +587,8 @@ pin_project! {
 
 #[cfg(feature = "tokio")]
 impl<S> KeepAliveStream<S> {
-    fn new(keep_alive: KeepAlive, inner: S) -> Self {
+    /// Create a new `KeepAliveStream` from a `KeepAlive` configuration and stream to wrap.
+    pub fn new(keep_alive: KeepAlive, inner: S) -> Self {
         Self {
             alive_timer: tokio::time::sleep(keep_alive.max_interval),
             inner,
