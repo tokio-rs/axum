@@ -32,8 +32,14 @@ impl MultipartForm {
 
 impl IntoResponse for MultipartForm {
     fn into_response(self) -> Response {
-        // see RFC5758 for details
-        let boundary = generate_boundary();
+        // see RFC 7578 for details
+        let Some(boundary) = generate_boundary_for_parts(&self.parts) else {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Unable to generate multipart boundary",
+            )
+                .into_response();
+        };
         let mut headers = HeaderMap::new();
         let mime_type: Mime = match format!("multipart/form-data; boundary={boundary}").parse() {
             Ok(m) => m,
@@ -63,7 +69,7 @@ impl IntoResponse for MultipartForm {
 // Valid settings for that header are: "base64", "quoted-printable", "8bit", "7bit", and "binary".
 /// A single part of a multipart form as defined by
 /// <https://www.w3.org/TR/html401/interact/forms.html#h-17.13.4>
-/// and RFC5758.
+/// and RFC 7578.
 #[derive(Debug)]
 pub struct Part {
     // Every part is expected to contain:
@@ -199,6 +205,21 @@ impl Part {
 
         part_bytes
     }
+
+    fn contains_boundary(&self, boundary: &str) -> bool {
+        let boundary_bytes = boundary.as_bytes();
+
+        self.name.contains(boundary)
+            || self
+                .filename
+                .as_ref()
+                .is_some_and(|filename| filename.contains(boundary))
+            || self.mime_type.to_string().contains(boundary)
+            || self
+                .contents
+                .windows(boundary_bytes.len())
+                .any(|window| window == boundary_bytes)
+    }
 }
 
 impl FromIterator<Part> for MultipartForm {
@@ -207,6 +228,21 @@ impl FromIterator<Part> for MultipartForm {
             parts: iter.into_iter().collect(),
         }
     }
+}
+
+// Boundary collisions are extremely unlikely, but response generation should not loop forever
+// if the generated candidates keep colliding with part data.
+const BOUNDARY_GENERATION_ATTEMPTS: usize = 16;
+
+fn generate_boundary_for_parts(parts: &[Part]) -> Option<String> {
+    for _ in 0..BOUNDARY_GENERATION_ATTEMPTS {
+        let boundary = generate_boundary();
+        if !parts.iter().any(|part| part.contains_boundary(&boundary)) {
+            return Some(boundary);
+        }
+    }
+
+    None
 }
 
 /// A boundary is defined as a user-defined (arbitrary) value that does not occur in any of the data.
@@ -227,6 +263,7 @@ mod tests {
     use super::{generate_boundary, MultipartForm, Part};
     use axum::{body::Body, http};
     use axum::{routing::get, Router};
+    use axum_core::response::IntoResponse;
     use http::{Request, Response};
     use http_body_util::BodyExt;
     use mime::Mime;
@@ -293,5 +330,32 @@ mod tests {
                 "The generated boundary was unable to be parsed into a valid mime type."
             );
         }
+    }
+
+    #[tokio::test]
+    async fn generated_boundary_does_not_appear_in_part_contents() {
+        fastrand::seed(0);
+        let colliding_boundary = generate_boundary();
+        let colliding_boundary_marker = format!("--{colliding_boundary}");
+        let contents = format!("before\r\n{colliding_boundary_marker}\r\nafter");
+        let parts = vec![Part::text("part".to_owned(), &contents)];
+
+        fastrand::seed(0);
+        let response = MultipartForm::from_iter(parts).into_response();
+        let content_type = response
+            .headers()
+            .get("content-type")
+            .unwrap()
+            .to_str()
+            .unwrap();
+        let boundary = content_type.split("boundary=").nth(1).unwrap().to_owned();
+        assert_ne!(boundary, colliding_boundary);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let body = std::str::from_utf8(&body).unwrap();
+        let boundary_marker = format!("--{boundary}");
+
+        assert_eq!(body.matches(&boundary_marker).count(), 2);
+        assert_eq!(body.matches(&colliding_boundary_marker).count(), 1);
     }
 }
