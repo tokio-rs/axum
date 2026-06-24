@@ -21,7 +21,7 @@ pub(super) struct PathRouter<S> {
 
 fn validate_path(v7_checks: bool, path: &str) -> Result<(), &'static str> {
     if path.is_empty() {
-        return Err("Paths must start with a `/`. Use \"/\" for root routes");
+        return Ok(());
     } else if !path.starts_with('/') {
         return Err("Paths must start with a `/`");
     }
