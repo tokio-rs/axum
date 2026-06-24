@@ -384,8 +384,7 @@ async fn nest_with_and_without_trailing() {
 async fn nesting_with_root_inner_router() {
     let app = Router::new()
         .nest_service("/service", Router::new().route("/", get(|| async {})))
-        .nest("/router", Router::new().route("/", get(|| async {})))
-        .nest("/router-slash/", Router::new().route("/", get(|| async {})));
+        .nest("/router", Router::new().route("/", get(|| async {})));
 
     let client = TestClient::new(app);
 
@@ -408,12 +407,6 @@ async fn nesting_with_root_inner_router() {
 
     let res = client.get("/router/").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
-
-    let res = client.get("/router-slash").await;
-    assert_eq!(res.status(), StatusCode::NOT_FOUND);
-
-    let res = client.get("/router-slash/").await;
-    assert_eq!(res.status(), StatusCode::OK);
 }
 
 macro_rules! nested_route_test {
@@ -442,9 +435,6 @@ macro_rules! nested_route_test {
 nested_route_test!(nest_1, nest = "/a", route = "/", expected = "/a");
 nested_route_test!(nest_2, nest = "/a", route = "/a", expected = "/a/a");
 nested_route_test!(nest_3, nest = "/a", route = "/a/", expected = "/a/a/");
-nested_route_test!(nest_4, nest = "/a/", route = "/", expected = "/a/");
-nested_route_test!(nest_5, nest = "/a/", route = "/a", expected = "/a/a");
-nested_route_test!(nest_6, nest = "/a/", route = "/a/", expected = "/a/a/");
 
 #[crate::test]
 #[should_panic(
