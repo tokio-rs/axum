@@ -464,13 +464,8 @@ fn validate_nest_path(v7_checks: bool, path: &str) -> Result<&str, &'static str>
 
 pub(crate) fn path_for_nested_route<'a>(prefix: &'a str, path: &'a str) -> Cow<'a, str> {
     debug_assert!(prefix.starts_with('/'));
-    debug_assert!(path.starts_with('/'));
+    debug_assert!(path.starts_with('/') || path.is_empty());
+    debug_assert!(!prefix.ends_with('/'));
 
-    if prefix.ends_with('/') {
-        format!("{prefix}{}", path.trim_start_matches('/')).into()
-    } else if path == "/" {
-        prefix.into()
-    } else {
-        format!("{prefix}{path}").into()
-    }
+    format!("{prefix}{path}").into()
 }

@@ -1149,17 +1149,10 @@ fn method_router_fallback_with_state() {
 
 #[test]
 fn test_path_for_nested_route() {
-    assert_eq!(path_for_nested_route("/", "/"), "/");
-
-    assert_eq!(path_for_nested_route("/a", "/"), "/a");
-    assert_eq!(path_for_nested_route("/", "/b"), "/b");
-    assert_eq!(path_for_nested_route("/a/", "/"), "/a/");
-    assert_eq!(path_for_nested_route("/", "/b/"), "/b/");
-
+    assert_eq!(path_for_nested_route("/a", "/"), "/a/");
+    assert_eq!(path_for_nested_route("/a", ""), "/a");
     assert_eq!(path_for_nested_route("/a", "/b"), "/a/b");
-    assert_eq!(path_for_nested_route("/a/", "/b"), "/a/b");
     assert_eq!(path_for_nested_route("/a", "/b/"), "/a/b/");
-    assert_eq!(path_for_nested_route("/a/", "/b/"), "/a/b/");
 }
 
 #[crate::test]

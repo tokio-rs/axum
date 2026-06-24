@@ -64,10 +64,10 @@ async fn wrong_method_nest() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo").await;
+    let res = client.get("/foo/").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.post("/foo").await;
+    let res = client.post("/foo/").await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
     assert_eq!(res.headers()[ALLOW], "GET,HEAD");
 
@@ -432,9 +432,11 @@ macro_rules! nested_route_test {
 }
 
 // test cases taken from https://github.com/tokio-rs/axum/issues/714#issuecomment-1058144460
-nested_route_test!(nest_1, nest = "/a", route = "/", expected = "/a");
-nested_route_test!(nest_2, nest = "/a", route = "/a", expected = "/a/a");
-nested_route_test!(nest_3, nest = "/a", route = "/a/", expected = "/a/a/");
+// Amended for https://github.com/tokio-rs/axum/issues/2659
+nested_route_test!(nest_1, nest = "/a", route = "/", expected = "/a/");
+nested_route_test!(nest_2, nest = "/a", route = "", expected = "/a");
+nested_route_test!(nest_3, nest = "/a", route = "/a", expected = "/a/a");
+nested_route_test!(nest_4, nest = "/a", route = "/a/", expected = "/a/a/");
 
 #[crate::test]
 #[should_panic(
