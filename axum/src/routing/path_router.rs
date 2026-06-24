@@ -222,11 +222,7 @@ where
         let path = validate_nest_path(self.v7_checks, path_to_nest_at)?;
         let prefix = path;
 
-        let path = if path.ends_with('/') {
-            format!("{path}{{*{NEST_TAIL_PARAM}}}")
-        } else {
-            format!("{path}/{{*{NEST_TAIL_PARAM}}}")
-        };
+        let path = format!("{path}/{{*{NEST_TAIL_PARAM}}}");
 
         let layer = (
             StripPrefix::layer(prefix),
@@ -448,6 +444,9 @@ fn validate_nest_path(v7_checks: bool, path: &str) -> Result<&str, &'static str>
     }
     if path.len() < 2 {
         return Err("Nesting at `/` is not supported.");
+    }
+    if path.ends_with("/") {
+        return Err("Nesting paths must not end with a `/`.");
     }
 
     if path.split('/').any(|segment| {

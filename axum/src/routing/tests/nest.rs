@@ -118,6 +118,12 @@ fn nest_service_no_slash() {
 }
 
 #[crate::test]
+#[should_panic(expected = "Nesting paths must not end with a `/`.")]
+async fn nest_no_ending_slash() {
+    let _: Router = Router::new().nest("/x/", Router::new());
+}
+
+#[crate::test]
 async fn nested_url_extractor() {
     let app = Router::new().nest(
         "/foo",
