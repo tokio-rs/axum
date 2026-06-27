@@ -1601,6 +1601,90 @@ mod tests {
         );
     }
 
+    // Regression test for the interaction between the global graceful-shutdown
+    // signal and the per-connection age grace timer.
+    //
+    // Once the server-wide shutdown signal fires and `graceful_shutdown()` is
+    // called on a connection, the per-connection age timer must not
+    // subsequently arm the grace timer and force-close that connection.
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_age_grace_does_not_cut_global_graceful_drain() {
+        use std::sync::Arc;
+        use tokio::sync::Notify;
+
+        let started = Arc::new(Notify::new());
+        let released = Arc::new(Notify::new());
+        let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+
+        let app = Router::new().route("/", {
+            let started = started.clone();
+            let released = released.clone();
+            get(move || {
+                let started = started.clone();
+                let released = released.clone();
+                async move {
+                    started.notify_one();
+                    released.notified().await;
+                    "done"
+                }
+            })
+        });
+
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        // Global shutdown fires at t=55s; age limit is 60s with 5s grace.
+        // The signal arrives *before* the age timer, so the age-based grace
+        // period must not subsequently cut the in-flight request.
+        tokio::spawn(
+            serve(listener, app)
+                .connection_limits(
+                    ConnectionLimits::new()
+                        .max_connection_age(Duration::from_secs(60))
+                        .max_connection_age_grace(Duration::from_secs(5)),
+                )
+                .with_graceful_shutdown(async move {
+                    shutdown_rx.await.ok();
+                })
+                .into_future(),
+        );
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let send = tokio::spawn(async move { sender.send_request(request).await });
+
+        // Wait until the handler is actually running.
+        started.notified().await;
+
+        // Signal graceful shutdown while the request is still in flight.
+        shutdown_tx.send(()).unwrap();
+
+        // Advance paused time well past age(60s) + grace(5s) = 65s. With the
+        // bug, the age timer fires at t=60s (signal at t=55s did not disarm
+        // it), arms the grace timer, which then force-closes the connection at
+        // t=65s — before the handler has had a chance to respond.
+        tokio::time::sleep(Duration::from_secs(66)).await;
+
+        // Release the handler. Under correct behaviour the connection is still
+        // alive (the age-based grace timer was suppressed after the global
+        // signal arrived), so the response is delivered successfully.
+        released.notify_one();
+
+        let result = tokio::time::timeout(Duration::from_secs(5), send)
+            .await
+            .expect("send task did not complete")
+            .unwrap();
+
+        assert!(
+            result.is_ok(),
+            "expected in-flight request to succeed after global graceful shutdown, \
+             but the age-based grace timer force-closed the connection: {result:?}",
+        );
+    }
+
     // The HTTP/2 equivalent of `max_connection_age_closes_idle_connection`: the
     // server sends GOAWAY once the age limit elapses, completing the client's
     // connection task.
