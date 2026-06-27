@@ -822,6 +822,7 @@ async fn handle_connection<L, M, S, B, E>(
                 }
                 _ = &mut signal_closed => {
                     trace!("signal received in task, starting graceful shutdown");
+                    age_fired = true;
                     conn.as_mut().graceful_shutdown();
                 }
                 Some(()) = age_timer.as_mut(), if !age_fired => {
