@@ -148,12 +148,12 @@ where
     ///
     /// * `file_path` - The path of the file to be streamed
     /// * `start` - The start position of the range
-    /// * `end` - The end position of the range
+    /// * `end` - The inclusive end position of the range
     ///
     /// # Note
     ///
-    /// * If `end` is 0, then it is used as `file_size - 1`
-    /// * If `start` > `file_size` or `start` > `end`, then `Range Not Satisfiable` is returned
+    /// * If `start` >= `file_size` or `start` > `end`, then `Range Not Satisfiable` is returned
+    /// * Use [`FileStream::try_range_response_open_ended`] for `bytes={start}-` style ranges
     ///
     /// # Examples
     ///
@@ -184,7 +184,62 @@ where
     pub async fn try_range_response(
         file_path: impl AsRef<Path>,
         start: u64,
-        mut end: u64,
+        end: u64,
+    ) -> io::Result<Response> {
+        Self::try_range_response_with_end(file_path, start, Some(end)).await
+    }
+
+    /// Attempts to return open-ended RANGE requests directly from the file path.
+    ///
+    /// This can be used for `bytes={start}-` style ranges that extend to the end of the file.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_path` - The path of the file to be streamed
+    /// * `start` - The start position of the range
+    ///
+    /// # Note
+    ///
+    /// * If `start` >= `file_size`, then `Range Not Satisfiable` is returned
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use axum::{
+    ///     http::StatusCode,
+    ///     response::IntoResponse,
+    ///     Router,
+    ///     routing::get
+    /// };
+    /// use axum_extra::response::file_stream::FileStream;
+    /// use tokio::fs::File;
+    /// use tokio_util::io::ReaderStream;
+    ///
+    /// async fn range_stream() -> impl IntoResponse {
+    ///     let range_start = 0;
+    ///
+    ///     FileStream::<ReaderStream<File>>::try_range_response_open_ended(
+    ///         "CHANGELOG.md",
+    ///         range_start,
+    ///     )
+    ///     .await
+    ///     .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))
+    /// }
+    ///
+    /// let app = Router::new().route("/file-stream", get(range_stream));
+    /// # let _: Router = app;
+    /// ```
+    pub async fn try_range_response_open_ended(
+        file_path: impl AsRef<Path>,
+        start: u64,
+    ) -> io::Result<Response> {
+        Self::try_range_response_with_end(file_path, start, None).await
+    }
+
+    async fn try_range_response_with_end(
+        file_path: impl AsRef<Path>,
+        start: u64,
+        end: Option<u64>,
     ) -> io::Result<Response> {
         let mut file = File::open(file_path).await?;
 
@@ -195,11 +250,9 @@ where
             return Ok((StatusCode::RANGE_NOT_SATISFIABLE, "Range Not Satisfiable").into_response());
         }
 
-        if end == 0 {
-            end = total_size - 1;
-        }
+        let end = end.unwrap_or(total_size - 1);
 
-        if start > total_size {
+        if start >= total_size {
             return Ok((StatusCode::RANGE_NOT_SATISFIABLE, "Range Not Satisfiable").into_response());
         }
         if start > end {
@@ -582,26 +635,101 @@ mod tests {
                 return (StatusCode::RANGE_NOT_SATISFIABLE, "Invalid Range").into_response();
             }
         } else {
-            (0, 0) // default range end = 0, if end = 0 end == file size - 1
+            (0, None)
         };
 
-        FileStream::<ReaderStream<File>>::try_range_response(Path::new("CHANGELOG.md"), start, end)
+        if let Some(end) = end {
+            FileStream::<ReaderStream<File>>::try_range_response(
+                Path::new("CHANGELOG.md"),
+                start,
+                end,
+            )
             .await
             .unwrap()
+        } else {
+            FileStream::<ReaderStream<File>>::try_range_response_open_ended(
+                Path::new("CHANGELOG.md"),
+                start,
+            )
+            .await
+            .unwrap()
+        }
     }
 
-    fn parse_range_header(range: &str) -> Option<(u64, u64)> {
+    fn parse_range_header(range: &str) -> Option<(u64, Option<u64>)> {
         let range = range.strip_prefix("bytes=")?;
         let mut parts = range.split('-');
         let start = parts.next()?.parse::<u64>().ok()?;
-        let end = parts
-            .next()
-            .and_then(|s| s.parse::<u64>().ok())
-            .unwrap_or(0);
-        if start > end {
-            return None;
+        let end = match parts.next()? {
+            "" => None,
+            end => Some(end.parse::<u64>().ok()?),
+        };
+        if let Some(end) = end {
+            if start > end {
+                return None;
+            }
         }
         Some((start, end))
+    }
+
+    #[tokio::test]
+    async fn response_range_first_byte_file() -> Result<(), Box<dyn std::error::Error>> {
+        let response =
+            FileStream::<ReaderStream<File>>::try_range_response(Path::new("CHANGELOG.md"), 0, 0)
+                .await?;
+
+        assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
+
+        let file_contents = tokio::fs::read("CHANGELOG.md").await?;
+        let content_length = file_contents.len() as u64;
+
+        assert_eq!(
+            response
+                .headers()
+                .get("content-range")
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            format!("bytes 0-0/{content_length}")
+        );
+
+        let body = response.into_body().collect().await?.to_bytes();
+        assert_eq!(&body[..], &file_contents[..1]);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn response_range_open_ended_file() -> Result<(), Box<dyn std::error::Error>> {
+        let app = Router::new().route("/range_response", get(range_stream));
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/range_response")
+                    .header(header::RANGE, "bytes=20-")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
+
+        let file = File::open("CHANGELOG.md").await.unwrap();
+        let content_length = file.metadata().await.unwrap().len();
+
+        assert_eq!(
+            response
+                .headers()
+                .get("content-range")
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            format!("bytes 20-{}/{content_length}", content_length - 1)
+        );
+
+        Ok(())
     }
 
     #[tokio::test]
@@ -680,12 +808,17 @@ mod tests {
                                 .into_response();
                         }
                     } else {
-                        (0, 0)
+                        (0, None)
                     };
 
-                    FileStream::<ReaderStream<File>>::try_range_response(path, start, end)
-                        .await
-                        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+                    let response = if let Some(end) = end {
+                        FileStream::<ReaderStream<File>>::try_range_response(path, start, end).await
+                    } else {
+                        FileStream::<ReaderStream<File>>::try_range_response_open_ended(path, start)
+                            .await
+                    };
+
+                    response.unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
                 }
             }),
         );
