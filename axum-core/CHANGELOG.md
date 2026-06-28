@@ -14,9 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **changed:** `impl IntoResponse for ()` (which gets called by
   `impl IntoResponse for HeaderMap`, `impl IntoResponse for Extensions` and
   others) now returns a body of unknown size.
+- **fixed:** Make the `BytesMut` extractor skip non-data body frames instead
+  of truncating the remaining buffered data ([#3811])
 
 [#3721]: https://github.com/tokio-rs/axum/pull/3721
 [#3742]: https://github.com/tokio-rs/axum/pull/3742
+[#3811]: https://github.com/tokio-rs/axum/pull/3811
 
 # 0.5.6
 
