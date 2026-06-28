@@ -22,9 +22,12 @@ and this project adheres to [Semantic Versioning].
       .route_with_tsr("/path", get(/* handler */))
       .route_with_tsr("/path", post(/* handler */))
   ```
+- **fixed:** Let `FileStream::try_range_response(..., 0, 0)` return the first
+  byte and add `try_range_response_open_ended` for open-ended ranges ([#3810])
 
 [#3599]: https://github.com/tokio-rs/axum/pull/3599
 [#3586]: https://github.com/tokio-rs/axum/pull/3586
+[#3810]: https://github.com/tokio-rs/axum/pull/3810
 
 # 0.12.6
 
