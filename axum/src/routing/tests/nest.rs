@@ -380,33 +380,24 @@ async fn nest_with_and_without_trailing() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[crate::test]
 async fn nesting_with_root_inner_router() {
-    let app = Router::new()
-        .nest_service("/service", Router::new().route("/", get(|| async {})))
-        .nest("/router", Router::new().route("/", get(|| async {})));
+    let app = Router::new().nest(
+        "/router",
+        Router::new()
+            .route("/", get(|| async { "slash" }))
+            .route("", get(|| async { "no-slash" })),
+    );
 
     let client = TestClient::new(app);
 
-    // `/service/` does match the `/service` prefix and the remaining path is technically
-    // empty, which is the same as `/` which matches `.route("/", _)`
-    let res = client.get("/service").await;
-    assert_eq!(res.status(), StatusCode::OK);
-
-    // `/service/` does match the `/service` prefix and the remaining path is `/`
-    // which matches `.route("/", _)`
-    //
-    // this is perhaps a little surprising but don't think there is much we can do
-    let res = client.get("/service/").await;
-    assert_eq!(res.status(), StatusCode::OK);
-
-    // at least it does work like you'd expect when using `nest`
-
+    // `route("")` maps to `/router` (no trailing slash)
     let res = client.get("/router").await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "no-slash");
 
+    // `route("/")` maps to `/router/` (with trailing slash)
     let res = client.get("/router/").await;
-    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    assert_eq!(res.text().await, "slash");
 }
 
 macro_rules! nested_route_test {
