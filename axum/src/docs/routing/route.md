@@ -134,6 +134,17 @@ let app = Router::new()
 # async fn delete_root() {}
 ```
 
+# Empty paths
+
+The empty path `""` is allowed. On its own it is unreachable, since request
+paths always start with `/`, so registering `route("", _)` on a top-level
+router will never match anything.
+
+It is meant to be used together with [`Router::nest`](crate::Router::nest): an
+inner `route("", _)` nested at `/foo` matches `/foo` exactly (with no trailing
+slash), whereas `route("/", _)` nested at `/foo` matches `/foo/`.
+
+
 # More examples
 
 ```rust
@@ -176,6 +187,8 @@ let app = Router::new()
 The static route `/foo` and the dynamic route `/{key}` are not considered to
 overlap and `/foo` will take precedence.
 
-Also panics if `path` is empty or does not start with `/` (for example `"Cargo.lock"`).
-When nesting routers with [`Router::nest`](crate::Router::nest), nested paths are still
-relative segments and must start with `/` (use `"/Cargo.lock"` rather than `"Cargo.lock"`).
+Also panics if `path` is non-empty and does not start with `/` (for example
+`"Cargo.lock"`). The empty path `""` is allowed; see [Empty paths](#empty-paths)
+above. When nesting routers with [`Router::nest`](crate::Router::nest), nested
+paths are still relative segments and must start with `/` (use `"/Cargo.lock"`
+rather than `"Cargo.lock"`).
