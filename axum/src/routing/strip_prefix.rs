@@ -86,25 +86,15 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
                     break;
                 }
             }
-            // the path has a trailing slash, but the prefix doesn't, so we don't
-            // remove it
-            //
-            // For example
-            // prefix = /foo
-            // path = /foo/
-            //
-            // The prefix matches, and the new path should be `/`
-            Item::First("") => {
-                *matching_prefix_length.as_mut().unwrap() -= 1;
-                break;
-            }
             // the path had more segments than the prefix but we got a match.
+            // Stop just before the `/` separating the matched prefix from the
+            // rest, so the remainder keeps its leading slash. This handles both
+            // a longer path and a bare trailing slash uniformly:
             //
-            // For example:
-            //
-            // prefix = /foo
-            // path   = /foo/bar
+            // prefix = /foo, path = /foo/bar  -> remainder `/bar`
+            // prefix = /foo, path = /foo/     -> remainder `/`
             Item::First(_) => {
+                *matching_prefix_length.as_mut().unwrap() -= 1;
                 break;
             }
             // the prefix had more segments than the path so there is no match
