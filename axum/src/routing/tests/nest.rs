@@ -64,10 +64,10 @@ async fn wrong_method_nest() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo").await;
+    let res = client.get("/foo/").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.post("/foo").await;
+    let res = client.post("/foo/").await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
     assert_eq!(res.headers()[ALLOW], "GET,HEAD");
 
@@ -115,6 +115,12 @@ fn nest_no_slash() {
 #[should_panic(expected = "Nesting paths must start with a `/`.")]
 fn nest_service_no_slash() {
     let _: Router = Router::new().nest_service("x", get(|| async {}));
+}
+
+#[crate::test]
+#[should_panic(expected = "Nesting paths must not end with a `/`.")]
+async fn nest_no_ending_slash() {
+    let _: Router = Router::new().nest("/x/", Router::new());
 }
 
 #[crate::test]
@@ -374,40 +380,24 @@ async fn nest_with_and_without_trailing() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[crate::test]
 async fn nesting_with_root_inner_router() {
-    let app = Router::new()
-        .nest_service("/service", Router::new().route("/", get(|| async {})))
-        .nest("/router", Router::new().route("/", get(|| async {})))
-        .nest("/router-slash/", Router::new().route("/", get(|| async {})));
+    let app = Router::new().nest(
+        "/router",
+        Router::new()
+            .route("/", get(|| async { "slash" }))
+            .route("", get(|| async { "no-slash" })),
+    );
 
     let client = TestClient::new(app);
 
-    // `/service/` does match the `/service` prefix and the remaining path is technically
-    // empty, which is the same as `/` which matches `.route("/", _)`
-    let res = client.get("/service").await;
-    assert_eq!(res.status(), StatusCode::OK);
-
-    // `/service/` does match the `/service` prefix and the remaining path is `/`
-    // which matches `.route("/", _)`
-    //
-    // this is perhaps a little surprising but don't think there is much we can do
-    let res = client.get("/service/").await;
-    assert_eq!(res.status(), StatusCode::OK);
-
-    // at least it does work like you'd expect when using `nest`
-
+    // `route("")` maps to `/router` (no trailing slash)
     let res = client.get("/router").await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "no-slash");
 
+    // `route("/")` maps to `/router/` (with trailing slash)
     let res = client.get("/router/").await;
-    assert_eq!(res.status(), StatusCode::NOT_FOUND);
-
-    let res = client.get("/router-slash").await;
-    assert_eq!(res.status(), StatusCode::NOT_FOUND);
-
-    let res = client.get("/router-slash/").await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "slash");
 }
 
 macro_rules! nested_route_test {
@@ -433,12 +423,11 @@ macro_rules! nested_route_test {
 }
 
 // test cases taken from https://github.com/tokio-rs/axum/issues/714#issuecomment-1058144460
-nested_route_test!(nest_1, nest = "/a", route = "/", expected = "/a");
-nested_route_test!(nest_2, nest = "/a", route = "/a", expected = "/a/a");
-nested_route_test!(nest_3, nest = "/a", route = "/a/", expected = "/a/a/");
-nested_route_test!(nest_4, nest = "/a/", route = "/", expected = "/a/");
-nested_route_test!(nest_5, nest = "/a/", route = "/a", expected = "/a/a");
-nested_route_test!(nest_6, nest = "/a/", route = "/a/", expected = "/a/a/");
+// Amended for https://github.com/tokio-rs/axum/issues/2659
+nested_route_test!(nest_1, nest = "/a", route = "/", expected = "/a/");
+nested_route_test!(nest_2, nest = "/a", route = "", expected = "/a");
+nested_route_test!(nest_3, nest = "/a", route = "/a", expected = "/a/a");
+nested_route_test!(nest_4, nest = "/a", route = "/a/", expected = "/a/a/");
 
 #[crate::test]
 #[should_panic(
