@@ -5,13 +5,21 @@ use axum_core::{
 };
 use bytes::Bytes;
 use futures_core::TryStream;
-use http::{header, StatusCode};
-use std::{io, path::Path};
+use futures_util::{stream, TryStreamExt};
+use http::{header, HeaderValue, StatusCode};
+use std::{
+    io,
+    path::{Path, PathBuf},
+};
 use tokio::{
     fs::File,
     io::{AsyncReadExt, AsyncSeekExt},
 };
 use tokio_util::io::ReaderStream;
+
+mod range;
+
+use self::range::{normalize_range_specs, RangeSpecs, MAX_RANGES};
 
 /// Encapsulate the file stream.
 ///
@@ -126,6 +134,8 @@ where
     pub fn into_range_response(self, start: u64, end: u64, total_size: u64) -> Response {
         let mut resp = Response::builder().header(header::CONTENT_TYPE, "application/octet-stream");
         resp = resp.status(StatusCode::PARTIAL_CONTENT);
+        resp = resp.header(header::ACCEPT_RANGES, "bytes");
+        resp = resp.header(header::CONTENT_LENGTH, end - start + 1);
 
         resp = resp.header(
             header::CONTENT_RANGE,
@@ -142,39 +152,31 @@ where
             })
     }
 
-    /// Attempts to return RANGE requests directly from the file path.
+    /// Attempts to return a response for an HTTP `Range` header directly from the file path.
     ///
     /// # Arguments
     ///
     /// * `file_path` - The path of the file to be streamed
-    /// * `start` - The start position of the range
-    /// * `end` - The end position of the range
-    ///
-    /// # Note
-    ///
-    /// * If `end` is 0, then it is used as `file_size - 1`
-    /// * If `start` > `file_size` or `start` > `end`, then `Range Not Satisfiable` is returned
+    /// * `range` - The value returned by `headers.get(header::RANGE)`
     ///
     /// # Examples
     ///
     /// ```
     /// use axum::{
-    ///     http::StatusCode,
+    ///     http::{header, HeaderMap, StatusCode},
     ///     response::IntoResponse,
     ///     Router,
     ///     routing::get
     /// };
-    /// use std::path::Path;
     /// use axum_extra::response::file_stream::FileStream;
     /// use tokio::fs::File;
     /// use tokio_util::io::ReaderStream;
-    /// use tokio::io::AsyncSeekExt;
     ///
-    /// async fn range_stream() -> impl IntoResponse {
-    ///     let range_start = 0;
-    ///     let range_end = 1024;
-    ///
-    ///     FileStream::<ReaderStream<File>>::try_range_response("CHANGELOG.md", range_start, range_end).await
+    /// async fn range_stream(headers: HeaderMap) -> impl IntoResponse {
+    ///     FileStream::<ReaderStream<File>>::try_range_response(
+    ///         "CHANGELOG.md",
+    ///         headers.get(header::RANGE),
+    ///     ).await
     ///         .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))
     /// }
     ///
@@ -183,38 +185,171 @@ where
     /// ```
     pub async fn try_range_response(
         file_path: impl AsRef<Path>,
-        start: u64,
-        mut end: u64,
+        range: Option<&HeaderValue>,
     ) -> io::Result<Response> {
-        let mut file = File::open(file_path).await?;
+        let path = file_path.as_ref();
+        let Some(range) = range else {
+            return full_file_response(path).await;
+        };
 
+        let range_values = match range
+            .to_str()
+            .ok()
+            .and_then(|range| range.trim().split_once('='))
+        {
+            Some((unit, _)) if !unit.trim().eq_ignore_ascii_case("bytes") => {
+                return full_file_response(path).await;
+            }
+            Some((_, range_values)) => Some(range_values),
+            None => None,
+        };
+
+        let file = File::open(path).await?;
         let metadata = file.metadata().await?;
         let total_size = metadata.len();
+        let Some(range_values) = range_values else {
+            return Ok(response_416(total_size));
+        };
+        let Ok(range_specs) = RangeSpecs::try_from(range_values) else {
+            return Ok(response_416(total_size));
+        };
+        let (ranges, len) = normalize_range_specs(&range_specs, total_size);
 
-        if total_size == 0 {
-            return Ok((StatusCode::RANGE_NOT_SATISFIABLE, "Range Not Satisfiable").into_response());
+        if len == 0 {
+            return Ok(response_416(total_size));
         }
 
-        if end == 0 {
-            end = total_size - 1;
+        if len == 1 {
+            let (start, end) = ranges[0];
+            return single_range_response(file, start, end, total_size).await;
         }
 
-        if start > total_size {
-            return Ok((StatusCode::RANGE_NOT_SATISFIABLE, "Range Not Satisfiable").into_response());
-        }
-        if start > end {
-            return Ok((StatusCode::RANGE_NOT_SATISFIABLE, "Range Not Satisfiable").into_response());
-        }
-        if end >= total_size {
-            return Ok((StatusCode::RANGE_NOT_SATISFIABLE, "Range Not Satisfiable").into_response());
-        }
-
-        file.seek(std::io::SeekFrom::Start(start)).await?;
-
-        let stream = ReaderStream::new(file.take(end - start + 1));
-
-        Ok(FileStream::new(stream).into_range_response(start, end, total_size))
+        Ok(multipart_range_response(
+            path.to_owned(),
+            ranges,
+            len,
+            total_size,
+        ))
     }
+}
+
+async fn full_file_response(path: impl AsRef<Path>) -> io::Result<Response> {
+    Ok(FileStream::<ReaderStream<File>>::from_path(path)
+        .await?
+        .into_response())
+}
+
+async fn single_range_response(
+    mut file: File,
+    start: u64,
+    end: u64,
+    total_size: u64,
+) -> io::Result<Response> {
+    file.seek(std::io::SeekFrom::Start(start)).await?;
+    let stream = ReaderStream::new(file.take(end - start + 1));
+    Ok(FileStream::new(stream).into_range_response(start, end, total_size))
+}
+
+fn multipart_range_response(
+    path: PathBuf,
+    ranges: [(u64, u64); MAX_RANGES],
+    len: usize,
+    total_size: u64,
+) -> Response {
+    let boundary = multipart_boundary(total_size, len);
+    let content_type = format!("multipart/byteranges; boundary={boundary}");
+    let multipart_stream = stream::try_unfold(
+        (
+            path,
+            ranges,
+            len,
+            total_size,
+            boundary,
+            0usize,
+            0u8,
+            None::<ReaderStream<tokio::io::Take<File>>>,
+        ),
+        |(path, ranges, len, total_size, boundary, index, phase, reader)| async move {
+            if index == len {
+                if phase == 2 {
+                    return Ok::<_, io::Error>(None);
+                }
+
+                return Ok::<_, io::Error>(Some((
+                    Bytes::from(format!("--{boundary}--\r\n")),
+                    (path, ranges, len, total_size, boundary, index, 2, None),
+                )));
+            }
+
+            let (start, end) = ranges[index];
+            if phase == 0 {
+                return Ok::<_, io::Error>(Some((
+                    Bytes::from(format!(
+                        "--{boundary}\r\nContent-Type: application/octet-stream\r\nContent-Range: bytes {start}-{end}/{total_size}\r\n\r\n"
+                    )),
+                    (path, ranges, len, total_size, boundary, index, 1, None),
+                )));
+            }
+
+            let mut reader = if let Some(reader) = reader {
+                reader
+            } else {
+                let mut file = File::open(&path).await?;
+                file.seek(std::io::SeekFrom::Start(start)).await?;
+                ReaderStream::new(file.take(end - start + 1))
+            };
+
+            match reader.try_next().await? {
+                Some(bytes) => Ok::<_, io::Error>(Some((
+                    bytes,
+                    (
+                        path,
+                        ranges,
+                        len,
+                        total_size,
+                        boundary,
+                        index,
+                        1,
+                        Some(reader),
+                    ),
+                ))),
+                None => Ok::<_, io::Error>(Some((
+                    Bytes::from_static(b"\r\n"),
+                    (path, ranges, len, total_size, boundary, index + 1, 0, None),
+                ))),
+            }
+        },
+    );
+
+    Response::builder()
+        .status(StatusCode::PARTIAL_CONTENT)
+        .header(header::CONTENT_TYPE, content_type)
+        .header(header::ACCEPT_RANGES, "bytes")
+        .body(body::Body::from_stream(multipart_stream))
+        .unwrap_or_else(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("build FileStream response error: {e}"),
+            )
+                .into_response()
+        })
+}
+
+fn multipart_boundary(total_size: u64, len: usize) -> String {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |duration| duration.as_nanos());
+    format!("axum-extra-boundary-{total_size}-{len}-{nanos}")
+}
+
+fn response_416(total_size: u64) -> Response {
+    let mut response = StatusCode::RANGE_NOT_SATISFIABLE.into_response();
+    if let Ok(content_range) = HeaderValue::try_from(format!("bytes */{total_size}")) {
+        response
+            .headers_mut()
+            .insert(header::CONTENT_RANGE, content_range);
+    }
+    response
 }
 
 // Split because the general impl requires to specify `S` and this one does not.
@@ -303,9 +438,8 @@ mod tests {
     use super::*;
     use axum::{extract::Request, routing::get, Router};
     use body::Body;
-    use http::HeaderMap;
     use http_body_util::BodyExt;
-    use std::io::Cursor;
+    use std::io::{Cursor, Write};
     use tokio_util::io::ReaderStream;
     use tower::ServiceExt;
 
@@ -530,78 +664,123 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn response_range_file() -> Result<(), Box<dyn std::error::Error>> {
-        let app = Router::new().route("/range_response", get(range_stream));
+    async fn response_range_header_single_ranges() -> Result<(), Box<dyn std::error::Error>> {
+        let file = test_file(b"0123456789")?;
 
-        // Simulating a GET request
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/range_response")
-                    .header(header::RANGE, "bytes=20-1000")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        for (range_header, content_range, expected_body) in [
+            ("bytes=0-0", "bytes 0-0/10", "0"),
+            ("bytes=4-", "bytes 4-9/10", "456789"),
+            ("bytes=-4", "bytes 6-9/10", "6789"),
+            ("bytes=-999", "bytes 0-9/10", "0123456789"),
+            ("bytes=0-999", "bytes 0-9/10", "0123456789"),
+        ] {
+            let response = response_from_range_header(file.path(), Some(range_header)).await?;
+            let headers = response.headers().clone();
+            assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
+            assert_eq!(headers.get(header::ACCEPT_RANGES).unwrap(), "bytes");
+            assert_eq!(headers.get(header::CONTENT_RANGE).unwrap(), content_range);
+            assert_eq!(
+                headers.get(header::CONTENT_LENGTH).unwrap(),
+                &expected_body.len().to_string()
+            );
+            assert_eq!(body_text(response).await?, expected_body);
+        }
 
-        // Validate Response Status Code
-        assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
-
-        // Validate Response Headers
-        assert_eq!(
-            response.headers().get("content-type").unwrap(),
-            "application/octet-stream"
-        );
-
-        let file = File::open("CHANGELOG.md").await.unwrap();
-        // get file size
-        let content_length = file.metadata().await.unwrap().len();
-
-        assert_eq!(
-            response
-                .headers()
-                .get("content-range")
-                .unwrap()
-                .to_str()
-                .unwrap(),
-            format!("bytes 20-1000/{content_length}")
-        );
         Ok(())
     }
 
-    async fn range_stream(headers: HeaderMap) -> Response {
-        let range_header = headers
-            .get(header::RANGE)
-            .and_then(|value| value.to_str().ok());
+    #[tokio::test]
+    async fn response_range_header_unsatisfiable() -> Result<(), Box<dyn std::error::Error>> {
+        let file = test_file(b"0123456789")?;
+        let response = response_from_range_header(file.path(), Some("bytes=99-100")).await?;
 
-        let (start, end) = if let Some(range) = range_header {
-            if let Some(range) = parse_range_header(range) {
-                range
-            } else {
-                return (StatusCode::RANGE_NOT_SATISFIABLE, "Invalid Range").into_response();
-            }
-        } else {
-            (0, 0) // default range end = 0, if end = 0 end == file size - 1
-        };
-
-        FileStream::<ReaderStream<File>>::try_range_response(Path::new("CHANGELOG.md"), start, end)
-            .await
-            .unwrap()
+        assert_eq!(response.status(), StatusCode::RANGE_NOT_SATISFIABLE);
+        assert_eq!(
+            response.headers().get(header::CONTENT_RANGE).unwrap(),
+            "bytes */10"
+        );
+        assert_eq!(body_text(response).await?, "");
+        Ok(())
     }
 
-    fn parse_range_header(range: &str) -> Option<(u64, u64)> {
-        let range = range.strip_prefix("bytes=")?;
-        let mut parts = range.split('-');
-        let start = parts.next()?.parse::<u64>().ok()?;
-        let end = parts
-            .next()
-            .and_then(|s| s.parse::<u64>().ok())
-            .unwrap_or(0);
-        if start > end {
-            return None;
+    #[tokio::test]
+    async fn response_range_header_malformed() -> Result<(), Box<dyn std::error::Error>> {
+        let file = test_file(b"0123456789")?;
+
+        for range_header in [
+            "bytes=5-3",
+            "bytes=-0",
+            "bytes=abc-def",
+            "bytes=9223372036854775808-",
+        ] {
+            let response = response_from_range_header(file.path(), Some(range_header)).await?;
+            assert_eq!(response.status(), StatusCode::RANGE_NOT_SATISFIABLE);
+            assert_eq!(
+                response.headers().get(header::CONTENT_RANGE).unwrap(),
+                "bytes */10"
+            );
         }
-        Some((start, end))
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn response_range_header_limits_ranges() -> Result<(), Box<dyn std::error::Error>> {
+        let file = test_file(b"0123456789")?;
+        let response = response_from_range_header(
+            file.path(),
+            Some("bytes=0-0,1-1,2-2,3-3,4-4,5-5,6-6,7-7,8-8"),
+        )
+        .await?;
+
+        assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
+        let body = body_text(response).await?;
+        assert_eq!(body.matches("Content-Range:").count(), MAX_RANGES);
+        assert!(body.contains("Content-Range: bytes 7-7/10"));
+        assert!(!body.contains("Content-Range: bytes 8-8/10"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn response_range_header_unknown_unit() -> Result<(), Box<dyn std::error::Error>> {
+        let file = test_file(b"0123456789")?;
+
+        for range_header in [None, Some("items=0-3")] {
+            let response = response_from_range_header(file.path(), range_header).await?;
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(body_text(response).await?, "0123456789");
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn response_range_header_multiple_ranges() -> Result<(), Box<dyn std::error::Error>> {
+        let file = test_file(b"0123456789")?;
+        let response = response_from_range_header(file.path(), Some("bytes=0-0,8-9")).await?;
+        let headers = response.headers().clone();
+        let content_type = headers
+            .get(header::CONTENT_TYPE)
+            .unwrap()
+            .to_str()?
+            .to_owned();
+        let boundary = content_type
+            .strip_prefix("multipart/byteranges; boundary=")
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
+        assert_eq!(headers.get(header::ACCEPT_RANGES).unwrap(), "bytes");
+        assert!(headers.get(header::CONTENT_RANGE).is_none());
+
+        let body = body_text(response).await?;
+        assert!(body.contains(&format!(
+            "--{boundary}\r\nContent-Type: application/octet-stream\r\nContent-Range: bytes 0-0/10\r\n\r\n0\r\n"
+        )));
+        assert!(body.contains(&format!(
+            "--{boundary}\r\nContent-Type: application/octet-stream\r\nContent-Range: bytes 8-9/10\r\n\r\n89\r\n"
+        )));
+        assert!(body.ends_with(&format!("--{boundary}--\r\n")));
+        Ok(())
     }
 
     #[tokio::test]
@@ -662,46 +841,37 @@ mod tests {
         let file = tempfile::NamedTempFile::new()?;
         file.as_file().set_len(0)?;
         let path = file.path().to_owned();
+        let range = HeaderValue::from_static("bytes=0-");
 
-        let app = Router::new().route(
-            "/range_empty",
-            get(move |headers: HeaderMap| {
-                let path = path.clone();
-                async move {
-                    let range_header = headers
-                        .get(header::RANGE)
-                        .and_then(|value| value.to_str().ok());
-
-                    let (start, end) = if let Some(range) = range_header {
-                        if let Some(range) = parse_range_header(range) {
-                            range
-                        } else {
-                            return (StatusCode::RANGE_NOT_SATISFIABLE, "Invalid Range")
-                                .into_response();
-                        }
-                    } else {
-                        (0, 0)
-                    };
-
-                    FileStream::<ReaderStream<File>>::try_range_response(path, start, end)
-                        .await
-                        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
-                }
-            }),
-        );
-
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/range_empty")
-                    .header(header::RANGE, "bytes=0-")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
+        let response = FileStream::<ReaderStream<File>>::try_range_response(path, Some(&range))
             .await
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::RANGE_NOT_SATISFIABLE);
+        assert_eq!(
+            response.headers().get(header::CONTENT_RANGE).unwrap(),
+            "bytes */0"
+        );
         Ok(())
+    }
+
+    fn test_file(contents: &[u8]) -> Result<tempfile::NamedTempFile, Box<dyn std::error::Error>> {
+        let mut file = tempfile::NamedTempFile::new()?;
+        file.write_all(contents)?;
+        Ok(file)
+    }
+
+    async fn response_from_range_header(
+        path: &Path,
+        range: Option<&'static str>,
+    ) -> Result<Response, Box<dyn std::error::Error>> {
+        let range = range.map(HeaderValue::from_static);
+        Ok(FileStream::<ReaderStream<File>>::try_range_response(path, range.as_ref()).await?)
+    }
+
+    async fn body_text(response: Response) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(String::from_utf8(
+            response.into_body().collect().await?.to_bytes().to_vec(),
+        )?)
     }
 }
