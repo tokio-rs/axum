@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   type, not just `axum::body::Body` ([#3205])
 - **changed:** Reduced contention in `axum::serve` shutdown notification with many
   active connections ([#3867])
+- **changed:** The implementation behind `axum::serve` now lives in the new `axum-serve` crate.
+  `axum::serve` and its associated types (`Serve`, `Listener`, `ListenerExt`, `IncomingStream`,
+  etc.) keep their paths and signatures, so this is not a breaking change ([#3433])
 - **changed:** `Redirect` constructors now accept any `impl Into<String>` ([#3635])
 - **changed:** Updated `matchit` allowing for routes with captures and static prefixes and suffixes ([#3702])
 - **fixed:** Responses to `HEAD` will not accidentally reply with `content-length: 0` anymore ([#3742])
@@ -68,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3779]: https://github.com/tokio-rs/axum/pull/3779
 [#3928]: https://github.com/tokio-rs/axum/pull/3928
 [#3907]: https://github.com/tokio-rs/axum/pull/3907
+[#3433]: https://github.com/tokio-rs/axum/issues/3433
 
 # 0.8.9
 
