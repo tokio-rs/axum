@@ -46,12 +46,6 @@ tokio = [
 ]
 tracing = ["dep:tracing"]
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { package = "tokio", version = "1.44", features = ["io-util", "time", "net", "sync"] }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-tokio = { package = "tokio", version = "1.44", features = ["io-util", "time", "sync"] }
-
 [dependencies]
 # required unconditionally: `Listener`/`ListenerExt`/`ConnLimiter` need these
 # regardless of which features are enabled.
@@ -66,11 +60,17 @@ futures-core = { version = "0.3", optional = true }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"], optional = true }
 http = { version = "1.0.0", optional = true }
 http-body = { version = "1.0.0", optional = true }
-tower = { version = "0.5.2", default-features = false, features = ["util"], optional = true }
-tower-service = { version = "0.3", optional = true }
 hyper = { version = "1.4.0", optional = true }
 hyper-util = { version = "0.1.4", features = ["tokio", "server", "service"], optional = true }
+tower = { version = "0.5.2", default-features = false, features = ["util"], optional = true }
+tower-service = { version = "0.3", optional = true }
 tracing = { version = "0.1", default-features = false, optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { package = "tokio", version = "1.44", features = ["io-util", "time", "net", "sync"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+tokio = { package = "tokio", version = "1.44", features = ["io-util", "time", "sync"] }
 
 [dev-dependencies]
 axum = { path = "../axum", features = ["__private", "http2"] }
