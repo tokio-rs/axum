@@ -105,6 +105,7 @@ dependencies = [
  "axum-core",
  "axum-extra",
  "axum-macros",
+ "axum-serve",
  "base64",
  "bytes",
  "form_urlencoded",
@@ -227,6 +228,27 @@ dependencies = [
  "syn",
  "tokio",
  "trybuild",
+]
+
+[[package]]
+name = "axum-serve"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "axum-core",
+ "bytes",
+ "futures-core",
+ "futures-util",
+ "http",
+ "http-body",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "pin-project-lite",
+ "tokio",
+ "tower",
+ "tower-service",
+ "tracing",
 ]
 
 [[package]]
