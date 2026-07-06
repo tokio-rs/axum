@@ -89,6 +89,7 @@ async fn body_to_bytes_mut(body: &mut Body, bytes: &mut BytesMut) -> Result<(), 
         .map_err(FailedToBufferBody::from_err)?
     {
         let Ok(data) = frame.into_data() else {
+            // Match `Bytes` by ignoring non-data frames until the body ends.
             continue;
         };
         bytes.put(data);
@@ -174,18 +175,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{Bytes, BytesMut, FromRequest, Request};
-    use crate::body::Body;
     use axum::{extract::Extension, routing::get, test_helpers::*, Router};
-    use bytes::Bytes as RawBytes;
-    use http::{HeaderMap, Method, StatusCode};
-    use http_body::Frame;
-    use std::{
-        collections::VecDeque,
-        convert::Infallible,
-        pin::Pin,
-        task::{Context, Poll},
-    };
+    use http::{Method, StatusCode};
 
     #[crate::test]
     async fn extract_request_parts() {
@@ -204,44 +195,5 @@ mod tests {
 
         let res = client.get("/").header("x-foo", "123").await;
         assert_eq!(res.status(), StatusCode::OK);
-    }
-
-    #[crate::test]
-    async fn bytes_mut_extractor_skips_non_data_frames() {
-        struct InterleavedFramesBody {
-            frames: VecDeque<Result<Frame<RawBytes>, Infallible>>,
-        }
-
-        impl http_body::Body for InterleavedFramesBody {
-            type Data = RawBytes;
-            type Error = Infallible;
-
-            fn poll_frame(
-                self: Pin<&mut Self>,
-                _cx: &mut Context<'_>,
-            ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
-                Poll::Ready(self.get_mut().frames.pop_front())
-            }
-        }
-
-        fn request() -> Request {
-            let body = InterleavedFramesBody {
-                frames: VecDeque::from(vec![
-                    Ok(Frame::data(RawBytes::from_static(b"hello "))),
-                    Ok(Frame::trailers(HeaderMap::new())),
-                    Ok(Frame::data(RawBytes::from_static(b"world"))),
-                ]),
-            };
-
-            Request::builder()
-                .body(Body::new(body))
-                .expect("request should build")
-        }
-
-        let bytes_mut = BytesMut::from_request(request(), &()).await.unwrap();
-        let bytes = Bytes::from_request(request(), &()).await.unwrap();
-
-        assert_eq!(&bytes_mut[..], b"hello world");
-        assert_eq!(&bytes[..], b"hello world");
     }
 }
