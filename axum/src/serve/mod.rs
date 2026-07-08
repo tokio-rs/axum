@@ -143,8 +143,12 @@ where
 /// - **HTTP/1**: the next response gets a `Connection: close` header and the
 ///   connection is closed once the in-flight request finishes.
 /// - **HTTP/2** (including gRPC): a `GOAWAY` is sent, so new streams are refused
-///   while in-flight streams are given up to [`max_connection_age_grace`] to
-///   finish.
+///   while in-flight streams are allowed to finish.
+///
+/// In both cases in-flight work is waited on for as long as it takes, unless
+/// [`max_connection_age_grace`] is set: once the grace period elapses the
+/// connection is closed even if a request is still in flight. See
+/// [`max_connection_age_grace`] for the trade-off.
 ///
 /// Note that this is distinct from [`ListenerExt::limit_connections`], which
 /// bounds the *number* of concurrent connections rather than their lifetime.
@@ -230,9 +234,16 @@ impl ConnectionLimits {
     /// Set a hard cap on how long to wait for in-flight work after
     /// [`max_connection_age`] fires before forcibly closing the connection.
     ///
-    /// This primarily matters for HTTP/2, where in-flight streams are allowed to
-    /// finish after the `GOAWAY` is sent; once this grace period elapses the
-    /// connection is closed regardless. Mirrors `tonic`'s
+    /// Without a grace period, [`max_connection_age`] is purely a soft cap: the
+    /// server waits however long it takes for in-flight work to finish before
+    /// closing the connection. Setting a grace period turns
+    /// `max_connection_age` (+ jitter) + grace into a hard deadline: when it
+    /// elapses the connection is closed *even if a request is still in flight*,
+    /// and the client never receives a response for it. This applies to HTTP/1
+    /// requests as well as HTTP/2 streams, so a handler that runs longer than
+    /// the age limit plus the grace period will never complete successfully.
+    /// Only set a grace period if bounding connection lifetime matters more
+    /// than letting slow requests finish. Mirrors `tonic`'s
     /// `max_connection_age_grace`.
     ///
     /// This has no effect unless [`max_connection_age`] is also set.
@@ -819,13 +830,13 @@ async fn handle_connection<L, M, S, B, E>(
         // elapses we start a graceful shutdown of this connection and re-arm the
         // timer with the grace period (if any), which then bounds how long we
         // wait before forcibly closing.
-        let mut timer = pin!(sleep_or_pending(connection_limits.max_connection_age.map(
-            |age| {
-                age + connection_limits
-                    .max_connection_age_jitter
-                    .map_or(Duration::ZERO, random_duration)
-            }
-        )));
+        let max_age = connection_limits.max_connection_age.map(|age| {
+            let jitter = connection_limits
+                .max_connection_age_jitter
+                .map_or(Duration::ZERO, random_duration);
+            age.saturating_add(jitter)
+        });
+        let mut timer = pin!(sleep_or_pending(max_age));
         let mut age_fired = false;
 
         loop {
@@ -1620,6 +1631,67 @@ mod tests {
             result.is_err(),
             "expected the in-flight request to fail when the connection is force-closed",
         );
+    }
+
+    // Without a grace period, `max_connection_age` is a soft cap: a request
+    // that is still in flight when the age limit fires keeps the connection
+    // alive for as long as it needs and still completes successfully. Only
+    // `max_connection_age_grace` opts into force-closing in-flight work.
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_age_without_grace_lets_inflight_request_finish() {
+        use std::sync::Arc;
+
+        use tokio::sync::Notify;
+
+        let started = Arc::new(Notify::new());
+        let released = Arc::new(Notify::new());
+
+        let app = Router::new().route("/", {
+            let started = started.clone();
+            let released = released.clone();
+            get(move || {
+                let started = started.clone();
+                let released = released.clone();
+                async move {
+                    started.notify_one();
+                    released.notified().await;
+                    "done"
+                }
+            })
+        });
+
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_limits(
+                    ConnectionLimits::new().max_connection_age(Duration::from_secs(10)),
+                )
+                .into_future(),
+        );
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let send = tokio::spawn(async move { sender.send_request(request).await });
+
+        // Wait until the handler is actually running, then advance (paused)
+        // time well past the age limit while the request is still in flight.
+        started.notified().await;
+        tokio::time::sleep(Duration::from_secs(60)).await;
+
+        // Release the handler; the response must still arrive because the age
+        // limit alone never cuts in-flight requests.
+        released.notify_one();
+        let response = tokio::time::timeout(Duration::from_secs(5), send)
+            .await
+            .expect("in-flight request did not resolve after the age limit fired")
+            .unwrap()
+            .expect("in-flight request failed: the age limit must not cut in-flight requests");
+        assert_eq!(response.status(), StatusCode::OK);
     }
 
     // The HTTP/2 equivalent of `max_connection_age_closes_idle_connection`: the
