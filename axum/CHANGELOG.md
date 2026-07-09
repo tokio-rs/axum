@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **breaking:** Requests using an unrecognized HTTP method now receive `501 Not
+  Implemented` instead of `405 Method Not Allowed` from `MethodRouter`'s default
+  fallback, per RFC 9110. Routing custom methods via `any` or a custom fallback
+  is unaffected
 - **breaking:** Router fallbacks are now properly merged for nested routers ([#3158])
 - **breaking:** `#[from_request(via(Extractor))]` now uses the extractor's
   rejection type instead of `axum::response::Response` ([#3261])

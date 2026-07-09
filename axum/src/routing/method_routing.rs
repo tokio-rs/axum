@@ -794,11 +794,17 @@ impl<S, E> MethodRouter<S, E>
 where
     S: Clone,
 {
-    /// Create a default `MethodRouter` that will respond with `405 Method Not Allowed` to all
-    /// requests.
+    /// Create a default `MethodRouter` that will respond with `405 Method Not Allowed` to
+    /// requests using a known method, and `501 Not Implemented` to requests using an
+    /// unknown method.
     pub fn new() -> Self {
-        let fallback = Route::new(service_fn(|_: Request| async {
-            Ok(StatusCode::METHOD_NOT_ALLOWED)
+        let fallback = Route::new(service_fn(|req: Request| async move {
+            let status = if MethodFilter::try_from(req.method().clone()).is_ok() {
+                StatusCode::METHOD_NOT_ALLOWED
+            } else {
+                StatusCode::NOT_IMPLEMENTED
+            };
+            Ok(status)
         }));
 
         Self {
@@ -1404,6 +1410,29 @@ mod tests {
         let (status, _, body) = call(Method::GET, &mut svc).await;
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
         assert!(body.is_empty());
+    }
+
+    #[crate::test]
+    async fn unknown_method_not_implemented_by_default() {
+        let mut svc = MethodRouter::new().get(ok);
+        let (status, _, body) = call(Method::from_bytes(b"UNKNOWN").unwrap(), &mut svc).await;
+        assert_eq!(status, StatusCode::NOT_IMPLEMENTED);
+        assert!(body.is_empty());
+    }
+
+    #[crate::test]
+    async fn any_accepts_unknown_methods() {
+        let mut svc = any(ok);
+        let (status, _, body) = call(Method::from_bytes(b"UNKNOWN").unwrap(), &mut svc).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, "ok");
+    }
+
+    #[crate::test]
+    async fn custom_fallback_accepts_unknown_methods() {
+        let mut svc = MethodRouter::new().get(ok).fallback(created);
+        let (status, _, _) = call(Method::from_bytes(b"UNKNOWN").unwrap(), &mut svc).await;
+        assert_eq!(status, StatusCode::CREATED);
     }
 
     #[crate::test]
