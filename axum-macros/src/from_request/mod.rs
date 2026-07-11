@@ -227,6 +227,52 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
     }
 }
 
+struct StructGenerics {
+    type_params: Vec<syn::TypeParam>,
+    where_predicates: Vec<syn::WherePredicate>,
+}
+
+fn parse_generics_on_struct(
+    generics: syn::Generics,
+    tr: Trait,
+) -> syn::Result<StructGenerics> {
+    let where_predicates = if let Some(where_clause) = generics.where_clause {
+        where_clause.predicates.into_iter().collect::<Vec<_>>()
+    } else {
+        vec![]
+    };
+
+    let mut type_params = vec![];
+    for param in generics.params {
+        match param {
+            syn::GenericParam::Type(ty) => type_params.push(ty),
+            syn::GenericParam::Lifetime(lifetime) => {
+                return Err(syn::Error::new_spanned(
+                    lifetime,
+                    format_args!(
+                        "#[derive({tr})] doesn't support structs \
+                             that are generic over lifetimes"
+                    ),
+                ));
+            }
+            syn::GenericParam::Const(konst) => {
+                return Err(syn::Error::new_spanned(
+                    konst,
+                    format_args!(
+                        "#[derive({tr})] doesn't support structs \
+                             that have const generics"
+                    ),
+                ));
+            }
+        }
+    };
+
+    Ok(StructGenerics {
+        type_params,
+        where_predicates,
+    })
+}
+
 fn parse_single_generic_type_on_struct(
     generics: syn::Generics,
     fields: &syn::Fields,
