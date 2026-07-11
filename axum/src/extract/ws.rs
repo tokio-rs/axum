@@ -89,6 +89,79 @@
 //! ```
 //!
 //! [`StreamExt::split`]: https://docs.rs/futures/0.3.17/futures/stream/trait.StreamExt.html#method.split
+//!
+//! # Testing
+//!
+//! WebSocket routes can be tested without a real TCP server by inserting a
+//! [`MockUpgrade`] extension into the request. The extractor will then perform
+//! the upgrade over the I/O you provide — typically one end of a
+//! [`tokio::io::duplex`](https://docs.rs/tokio/latest/tokio/io/fn.duplex.html) pair — while the other end is driven as the client:
+//!
+//! ```
+//! use axum::{
+//!     body::Body,
+//!     extract::ws::{MockUpgrade, WebSocket, WebSocketUpgrade},
+//!     response::Response,
+//!     routing::any,
+//!     Router,
+//! };
+//! use axum::http::{Request, StatusCode};
+//! use futures_util::{SinkExt, StreamExt};
+//! use tokio_tungstenite::tungstenite::{
+//!     protocol::Role, Message as ClientMessage, Utf8Bytes,
+//! };
+//! use tower::ServiceExt; // for `oneshot`
+//!
+//! # #[tokio::main]
+//! # async fn main() {
+//! // The route under test: echo every message back to the client.
+//! async fn handler(ws: WebSocketUpgrade) -> Response {
+//!     ws.on_upgrade(|mut socket: WebSocket| async move {
+//!         while let Some(Ok(msg)) = socket.recv().await {
+//!             if socket.send(msg).await.is_err() {
+//!                 break;
+//!             }
+//!         }
+//!     })
+//! }
+//!
+//! let app = Router::new().route("/ws", any(handler));
+//!
+//! // One end feeds the route, the other plays the client.
+//! let (client, server) = tokio::io::duplex(1024);
+//!
+//! // A valid WebSocket handshake request, plus the `MockUpgrade` extension.
+//! let request = Request::builder()
+//!     .method("GET")
+//!     .uri("/ws")
+//!     .header("host", "example.com")
+//!     .header("connection", "upgrade")
+//!     .header("upgrade", "websocket")
+//!     .header("sec-websocket-version", "13")
+//!     .header("sec-websocket-key", "dGhlIHNhbXBsZSBub25jZQ==")
+//!     .extension(MockUpgrade::new(server))
+//!     .body(Body::empty())
+//!     .unwrap();
+//!
+//! let response = app.oneshot(request).await.unwrap();
+//! assert_eq!(response.status(), StatusCode::SWITCHING_PROTOCOLS);
+//!
+//! // Drive the client side over the other half of the duplex.
+//! let mut client = tokio_tungstenite::WebSocketStream::from_raw_socket(
+//!     client,
+//!     Role::Client,
+//!     None,
+//! )
+//! .await;
+//!
+//! client
+//!     .send(ClientMessage::Text(Utf8Bytes::from_static("hello")))
+//!     .await
+//!     .unwrap();
+//! let echoed = client.next().await.unwrap().unwrap();
+//! assert_eq!(echoed, ClientMessage::Text(Utf8Bytes::from_static("hello")));
+//! # }
+//! ```
 
 use self::rejection::*;
 use super::FromRequestParts;
@@ -108,10 +181,13 @@ use std::{
     borrow::Cow,
     collections::BTreeSet,
     future::Future,
+    io,
     pin::Pin,
     str,
+    sync::{Arc, Mutex},
     task::{ready, Context, Poll},
 };
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio_tungstenite::{
     tungstenite::{
         self as ts,
@@ -137,9 +213,17 @@ pub struct WebSocketUpgrade<F = DefaultOnFailedUpgrade> {
     protocol: Option<HeaderValue>,
     /// `None` if HTTP/2+ WebSockets are used.
     sec_websocket_key: Option<HeaderValue>,
-    on_upgrade: hyper::upgrade::OnUpgrade,
+    upgrade: UpgradeSource,
     on_failed_upgrade: F,
     sec_websocket_protocol: BTreeSet<HeaderValue>,
+}
+
+// Where a `WebSocketUpgrade` gets the I/O to run the connection over.
+enum UpgradeSource {
+    // The normal path: hyper's connection-upgrade machinery.
+    Hyper(hyper::upgrade::OnUpgrade),
+    // The testing path: a caller-provided I/O object. See [`MockUpgrade`].
+    Mock(MockUpgrade),
 }
 
 impl<F> std::fmt::Debug for WebSocketUpgrade<F> {
@@ -334,7 +418,7 @@ impl<F> WebSocketUpgrade<F> {
             config: self.config,
             protocol: self.protocol,
             sec_websocket_key: self.sec_websocket_key,
-            on_upgrade: self.on_upgrade,
+            upgrade: self.upgrade,
             on_failed_upgrade: callback,
             sec_websocket_protocol: self.sec_websocket_protocol,
         }
@@ -349,25 +433,41 @@ impl<F> WebSocketUpgrade<F> {
         Fut: Future<Output = ()> + Send + 'static,
         F: OnFailedUpgrade,
     {
-        let on_upgrade = self.on_upgrade;
+        let source = self.upgrade;
         let config = self.config;
         let on_failed_upgrade = self.on_failed_upgrade;
 
         let protocol = self.protocol.clone();
 
         tokio::spawn(async move {
-            let upgraded = match on_upgrade.await {
-                Ok(upgraded) => upgraded,
-                Err(err) => {
-                    on_failed_upgrade.call(Error::new(err));
-                    return;
+            let io = match source {
+                UpgradeSource::Hyper(on_upgrade) => {
+                    let upgraded = match on_upgrade.await {
+                        Ok(upgraded) => upgraded,
+                        Err(err) => {
+                            on_failed_upgrade.call(Error::new(err));
+                            return;
+                        }
+                    };
+                    UpgradedIo::Hyper(TokioIo::new(upgraded))
+                }
+                UpgradeSource::Mock(mock) => {
+                    // Take the caller-provided I/O out of the shared slot. The
+                    // lock is held only for this synchronous `take()`, never
+                    // across an `.await`, so it can neither deadlock nor block
+                    // the runtime.
+                    let io = mock.io.lock().unwrap_or_else(|e| e.into_inner()).take();
+                    if let Some(io) = io {
+                        UpgradedIo::Mock(io)
+                    } else {
+                        on_failed_upgrade.call(Error::new(MockUpgradeAlreadyUsed));
+                        return;
+                    }
                 }
             };
-            let upgraded = TokioIo::new(upgraded);
 
             let socket =
-                WebSocketStream::from_raw_socket(upgraded, protocol::Role::Server, Some(config))
-                    .await;
+                WebSocketStream::from_raw_socket(io, protocol::Role::Server, Some(config)).await;
             let socket = WebSocket {
                 inner: socket,
                 protocol,
@@ -439,6 +539,81 @@ impl OnFailedUpgrade for DefaultOnFailedUpgrade {
     fn call(self, _error: Error) {}
 }
 
+/// Request extension that lets [`WebSocketUpgrade`] perform the upgrade over a
+/// caller-provided I/O object instead of hyper's connection-upgrade machinery.
+///
+/// This exists primarily to make WebSocket routes testable without spinning up
+/// a real TCP server. Insert a `MockUpgrade` into the request extensions and the
+/// [`WebSocketUpgrade`] extractor will run the connection over its I/O rather
+/// than requiring hyper's [`OnUpgrade`](hyper::upgrade::OnUpgrade) extension.
+/// Pair it with one end of a [`tokio::io::duplex`](https://docs.rs/tokio/latest/tokio/io/fn.duplex.html) stream and drive the other
+/// end as the client — see the [`Testing`](self#testing) section of the module
+/// docs for a complete example, e.g. with [`tower::ServiceExt::oneshot`].
+///
+/// If both a hyper `OnUpgrade` and a `MockUpgrade` are present on a request, the
+/// real `OnUpgrade` takes precedence, so this never interferes with a running
+/// server.
+///
+/// # Handshake still required
+///
+/// `MockUpgrade` only replaces the connection-upgrade step, not the handshake
+/// validation. The request must still carry a valid WebSocket handshake — the
+/// correct method, the `Connection`/`Upgrade` headers, `Sec-WebSocket-Version:
+/// 13`, and (over HTTP/1.1) a `Sec-WebSocket-Key` header — or the extractor will
+/// reject it just as it would a real request.
+///
+/// [`tower::ServiceExt::oneshot`]: https://docs.rs/tower/latest/tower/trait.ServiceExt.html#method.oneshot
+#[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
+#[derive(Clone)]
+pub struct MockUpgrade {
+    // Wrapped in `Arc<Mutex<Option<..>>>` for two reasons:
+    //
+    // * `http::Extensions` requires `T: Clone`, so we cannot move the boxed I/O
+    //   straight out of the extension; the `Arc` gives us a cheap `Clone`.
+    // * The I/O must be `take`n exactly once, when the upgrade actually runs.
+    //
+    // The mutex is a plain `std` mutex, locked only for the synchronous `take()`
+    // in `WebSocketUpgrade::on_upgrade`; it is never held across an `.await`.
+    io: Arc<Mutex<Option<Box<dyn AsyncReadWrite>>>>,
+}
+
+impl MockUpgrade {
+    /// Create a `MockUpgrade` from any duplex I/O object.
+    ///
+    /// Typically this is one end of a [`tokio::io::duplex`](https://docs.rs/tokio/latest/tokio/io/fn.duplex.html) pair; the other end
+    /// is driven by the test as the WebSocket client.
+    pub fn new<IO>(io: IO) -> Self
+    where
+        IO: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    {
+        Self {
+            io: Arc::new(Mutex::new(Some(Box::new(io)))),
+        }
+    }
+}
+
+impl std::fmt::Debug for MockUpgrade {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MockUpgrade").finish_non_exhaustive()
+    }
+}
+
+/// Error passed to [`OnFailedUpgrade`] when a [`MockUpgrade`]'s I/O has already
+/// been consumed by an earlier upgrade.
+#[derive(Debug)]
+struct MockUpgradeAlreadyUsed;
+
+impl std::fmt::Display for MockUpgradeAlreadyUsed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(
+            "the `MockUpgrade` I/O has already been taken by a previous upgrade; \
+             each `MockUpgrade` can only drive a single WebSocket connection",
+        )
+    }
+}
+
+impl std::error::Error for MockUpgradeAlreadyUsed {}
+
 impl<S> FromRequestParts<S> for WebSocketUpgrade<DefaultOnFailedUpgrade>
 where
     S: Send + Sync,
@@ -489,10 +664,18 @@ where
             return Err(InvalidWebSocketVersionHeader.into());
         }
 
-        let on_upgrade = parts
-            .extensions
-            .remove::<hyper::upgrade::OnUpgrade>()
-            .ok_or(ConnectionNotUpgradable)?;
+        // Prefer hyper's real connection upgrade when it is present so an
+        // injected `MockUpgrade` can never shadow a live server connection.
+        // Fall back to a caller-provided `MockUpgrade` (used for testing), and
+        // only then reject if neither is available.
+        let upgrade =
+            if let Some(on_upgrade) = parts.extensions.remove::<hyper::upgrade::OnUpgrade>() {
+                UpgradeSource::Hyper(on_upgrade)
+            } else if let Some(mock) = parts.extensions.remove::<MockUpgrade>() {
+                UpgradeSource::Mock(mock)
+            } else {
+                return Err(ConnectionNotUpgradable.into());
+            };
 
         let sec_websocket_protocol = parts
             .headers
@@ -509,7 +692,7 @@ where
             config: Default::default(),
             protocol: None,
             sec_websocket_key,
-            on_upgrade,
+            upgrade,
             sec_websocket_protocol,
             on_failed_upgrade: DefaultOnFailedUpgrade,
         })
@@ -536,12 +719,100 @@ fn header_contains(headers: &HeaderMap, key: &HeaderName, value: &'static str) -
     }
 }
 
+// Object-safe bundle of the I/O requirements a WebSocket connection needs.
+//
+// Used only to erase the concrete I/O type behind a `Box<dyn ..>` so the hyper
+// upgrade and a caller-provided [`MockUpgrade`] can share the same `WebSocket`.
+trait AsyncReadWrite: AsyncRead + AsyncWrite + Unpin + Send {}
+
+impl<T> AsyncReadWrite for T where T: AsyncRead + AsyncWrite + Unpin + Send {}
+
+// The I/O a `WebSocket` runs over.
+//
+// Either hyper's upgraded connection (the normal server path) or a
+// caller-provided stream (the testing path, via `MockUpgrade`). Both
+// `TokioIo<Upgraded>` and `Box<dyn AsyncReadWrite>` are `Unpin`, so the
+// `AsyncRead`/`AsyncWrite` impls below just delegate through `Pin::new` on
+// `self.get_mut()` — no pin-projection and no `unsafe`. The only added cost over
+// the previous concrete type is one enum-discriminant branch per poll.
+enum UpgradedIo {
+    Hyper(TokioIo<hyper::upgrade::Upgraded>),
+    Mock(Box<dyn AsyncReadWrite>),
+}
+
+impl std::fmt::Debug for UpgradedIo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Hyper(_) => f.write_str("UpgradedIo::Hyper(..)"),
+            Self::Mock(_) => f.write_str("UpgradedIo::Mock(..)"),
+        }
+    }
+}
+
+impl AsyncRead for UpgradedIo {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<io::Result<()>> {
+        match self.get_mut() {
+            Self::Hyper(io) => Pin::new(io).poll_read(cx, buf),
+            Self::Mock(io) => Pin::new(&mut **io).poll_read(cx, buf),
+        }
+    }
+}
+
+impl AsyncWrite for UpgradedIo {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<io::Result<usize>> {
+        match self.get_mut() {
+            Self::Hyper(io) => Pin::new(io).poll_write(cx, buf),
+            Self::Mock(io) => Pin::new(&mut **io).poll_write(cx, buf),
+        }
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        match self.get_mut() {
+            Self::Hyper(io) => Pin::new(io).poll_flush(cx),
+            Self::Mock(io) => Pin::new(&mut **io).poll_flush(cx),
+        }
+    }
+
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        match self.get_mut() {
+            Self::Hyper(io) => Pin::new(io).poll_shutdown(cx),
+            Self::Mock(io) => Pin::new(&mut **io).poll_shutdown(cx),
+        }
+    }
+
+    fn poll_write_vectored(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        bufs: &[io::IoSlice<'_>],
+    ) -> Poll<io::Result<usize>> {
+        match self.get_mut() {
+            Self::Hyper(io) => Pin::new(io).poll_write_vectored(cx, bufs),
+            Self::Mock(io) => Pin::new(&mut **io).poll_write_vectored(cx, bufs),
+        }
+    }
+
+    fn is_write_vectored(&self) -> bool {
+        match self {
+            Self::Hyper(io) => io.is_write_vectored(),
+            Self::Mock(io) => (**io).is_write_vectored(),
+        }
+    }
+}
+
 /// A stream of WebSocket messages.
 ///
 /// See [the module level documentation](self) for more details.
 #[derive(Debug)]
 pub struct WebSocket {
-    inner: WebSocketStream<TokioIo<hyper::upgrade::Upgraded>>,
+    inner: WebSocketStream<UpgradedIo>,
     protocol: Option<HeaderValue>,
 }
 
@@ -1263,5 +1534,134 @@ mod tests {
             output,
             tungstenite::Message::Pong(Bytes::from_static(b"ping"))
         );
+    }
+
+    // The RFC 6455 example key and its corresponding `Sec-WebSocket-Accept`.
+    const TEST_MOCK_KEY: &str = "dGhlIHNhbXBsZSBub25jZQ==";
+    const TEST_MOCK_ACCEPT: &str = "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=";
+
+    // Build a valid HTTP/1.1 WebSocket handshake request carrying a `MockUpgrade`.
+    fn mock_ws_request(mock: MockUpgrade, subprotocol: Option<&str>) -> Request<Body> {
+        let mut builder = Request::builder()
+            .method(Method::GET)
+            .uri("/echo")
+            .header("host", "example.com")
+            .header("connection", "upgrade")
+            .header("upgrade", "websocket")
+            .header("sec-websocket-version", "13")
+            .header("sec-websocket-key", TEST_MOCK_KEY);
+        if let Some(protocol) = subprotocol {
+            builder = builder.header("sec-websocket-protocol", protocol);
+        }
+        builder.extension(mock).body(Body::empty()).unwrap()
+    }
+
+    // Full echo round-trip over `tokio::io::duplex` via `oneshot` — no TCP server.
+    #[crate::test]
+    async fn mock_upgrade_echo_round_trip() {
+        let (client, server) = tokio::io::duplex(1024);
+
+        let req = mock_ws_request(MockUpgrade::new(server), Some(TEST_ECHO_APP_REQ_SUBPROTO));
+        let res = echo_app().oneshot(req).await.unwrap();
+
+        assert_eq!(res.status(), StatusCode::SWITCHING_PROTOCOLS);
+        // The accept header is derived from the fixed key exactly as RFC 6455 requires.
+        assert_eq!(
+            res.headers()[header::SEC_WEBSOCKET_ACCEPT],
+            TEST_MOCK_ACCEPT
+        );
+        assert_eq!(
+            res.headers()[header::SEC_WEBSOCKET_ACCEPT],
+            sign(TEST_MOCK_KEY.as_bytes())
+        );
+
+        let headers = res.headers().clone();
+        let client = WebSocketStream::from_raw_socket(client, protocol::Role::Client, None).await;
+        // Reuse the shared assertions: text echo both ways plus ping/pong.
+        test_echo_app(client, &headers).await;
+    }
+
+    // The mock path still enforces full handshake validation. A request missing
+    // `Sec-WebSocket-Key` over HTTP/1.1 must be rejected even with a `MockUpgrade`
+    // present, matching the rejection semantics of a real request.
+    #[crate::test]
+    async fn mock_upgrade_still_validates_handshake() {
+        let (_client, server) = tokio::io::duplex(1024);
+
+        let req = Request::builder()
+            .method(Method::GET)
+            .uri("/echo")
+            .header("host", "example.com")
+            .header("connection", "upgrade")
+            .header("upgrade", "websocket")
+            .header("sec-websocket-version", "13")
+            // deliberately no `sec-websocket-key`
+            .extension(MockUpgrade::new(server))
+            .body(Body::empty())
+            .unwrap();
+
+        let res = echo_app().oneshot(req).await.unwrap();
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    // Running the upgrade after the mock I/O was already consumed invokes the
+    // `on_failed_upgrade` callback instead of panicking or hanging.
+    #[crate::test]
+    async fn mock_upgrade_reuse_fires_on_failed_upgrade() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        let (_client, server) = tokio::io::duplex(1024);
+        let mock = MockUpgrade::new(server);
+        // Simulate a previous upgrade having already taken the I/O.
+        let _ = mock.io.lock().unwrap().take();
+
+        let failed = Arc::new(AtomicBool::new(false));
+        let failed_in_handler = Arc::clone(&failed);
+
+        let app = Router::new().route(
+            "/echo",
+            any(move |ws: WebSocketUpgrade| {
+                let failed = Arc::clone(&failed_in_handler);
+                ready(
+                    ws.on_failed_upgrade(move |_error: Error| {
+                        failed.store(true, Ordering::SeqCst);
+                    })
+                    .on_upgrade(|_socket| async {}),
+                )
+            }),
+        );
+
+        let res = app.oneshot(mock_ws_request(mock, None)).await.unwrap();
+        // The handshake itself still succeeds; the failure surfaces in the task.
+        assert_eq!(res.status(), StatusCode::SWITCHING_PROTOCOLS);
+
+        // Let the spawned upgrade task run; it should call `on_failed_upgrade`.
+        for _ in 0..100 {
+            if failed.load(Ordering::SeqCst) {
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+        assert!(
+            failed.load(Ordering::SeqCst),
+            "on_failed_upgrade was not called after the mock I/O was consumed"
+        );
+    }
+
+    // Subprotocol negotiation works over the mock path.
+    #[crate::test]
+    async fn mock_upgrade_negotiates_subprotocol() {
+        let (_client, server) = tokio::io::duplex(1024);
+
+        let app = Router::new().route(
+            "/echo",
+            any(|ws: WebSocketUpgrade| ready(ws.protocols(["a"]).on_upgrade(|_socket| async {}))),
+        );
+
+        let req = mock_ws_request(MockUpgrade::new(server), Some("a, b"));
+        let res = app.oneshot(req).await.unwrap();
+
+        assert_eq!(res.status(), StatusCode::SWITCHING_PROTOCOLS);
+        assert_eq!(res.headers()[header::SEC_WEBSOCKET_PROTOCOL], "a");
     }
 }
