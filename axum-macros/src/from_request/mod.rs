@@ -103,7 +103,7 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                 struct_token: _,
             } = item;
 
-            let generic_ident = parse_single_generic_type_on_struct(generics, &fields, tr)?;
+            let struct_generics = parse_generics_on_struct(generics, tr)?;
 
             let FromRequestContainerAttrs {
                 via,
@@ -136,12 +136,26 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                     fields,
                     &via,
                     rejection.as_ref(),
-                    generic_ident.as_ref(),
+                    struct_generics,
                     &state,
                     tr,
                 )?,
                 (None, rejection) => {
-                    error_on_generic_ident(generic_ident, tr)?;
+                    if let Some(ty) = struct_generics.type_params.first() {
+                        return Err(syn::Error::new_spanned(
+                            ty,
+                            format_args!(
+                                "#[derive({tr})] only supports generics when used with #[from_request(via)]"
+                            ),
+                        ))
+                    } else if let Some(wh) = struct_generics.where_predicates.first() {
+                        return Err(syn::Error::new_spanned(
+                            wh,
+                            format_args!(
+                                "#[derive({tr})] only supports generics when used with #[from_request(via)]"
+                            ),
+                        ))
+                    }
                     impl_struct_by_extracting_each_field(&ident, &fields, rejection, &state, tr)?
                 }
             };
@@ -271,93 +285,6 @@ fn parse_generics_on_struct(
         type_params,
         where_predicates,
     })
-}
-
-fn parse_single_generic_type_on_struct(
-    generics: syn::Generics,
-    fields: &syn::Fields,
-    tr: Trait,
-) -> syn::Result<Option<Ident>> {
-    if let Some(where_clause) = generics.where_clause {
-        return Err(syn::Error::new_spanned(
-            where_clause,
-            format_args!("#[derive({tr})] doesn't support structs with `where` clauses"),
-        ));
-    }
-
-    match generics.params.len() {
-        0 => Ok(None),
-        1 => {
-            let param = generics.params.first().unwrap();
-            let ty_ident = match param {
-                syn::GenericParam::Type(ty) => &ty.ident,
-                syn::GenericParam::Lifetime(lifetime) => {
-                    return Err(syn::Error::new_spanned(
-                        lifetime,
-                        format_args!(
-                            "#[derive({tr})] doesn't support structs \
-                             that are generic over lifetimes"
-                        ),
-                    ));
-                }
-                syn::GenericParam::Const(konst) => {
-                    return Err(syn::Error::new_spanned(
-                        konst,
-                        format_args!(
-                            "#[derive({tr})] doesn't support structs \
-                             that have const generics"
-                        ),
-                    ));
-                }
-            };
-
-            match fields {
-                syn::Fields::Named(fields_named) => {
-                    return Err(syn::Error::new_spanned(
-                        fields_named,
-                        format_args!(
-                            "#[derive({tr})] doesn't support named fields \
-                             for generic structs. Use a tuple struct instead"
-                        ),
-                    ));
-                }
-                syn::Fields::Unnamed(fields_unnamed) => {
-                    if fields_unnamed.unnamed.len() != 1 {
-                        return Err(syn::Error::new_spanned(
-                            fields_unnamed,
-                            format_args!(
-                                "#[derive({tr})] only supports generics on \
-                                 tuple structs that have exactly one field"
-                            ),
-                        ));
-                    }
-
-                    let field = fields_unnamed.unnamed.first().unwrap();
-
-                    if let syn::Type::Path(type_path) = &field.ty {
-                        if type_path.path.get_ident() != Some(ty_ident) {
-                            return Err(syn::Error::new_spanned(
-                                type_path,
-                                format_args!(
-                                    "#[derive({tr})] only supports generics on \
-                                     tuple structs that have exactly one field of the generic type"
-                                ),
-                            ));
-                        }
-                    } else {
-                        return Err(syn::Error::new_spanned(&field.ty, "Expected type path"));
-                    }
-                }
-                syn::Fields::Unit => return Ok(None),
-            }
-
-            Ok(Some(ty_ident.clone()))
-        }
-        _ => Err(syn::Error::new_spanned(
-            generics,
-            format_args!("#[derive({tr})] only supports 0 or 1 generic type parameters"),
-        )),
-    }
 }
 
 fn error_on_generic_ident(generic_ident: Option<Ident>, tr: Trait) -> syn::Result<()> {
@@ -759,7 +686,7 @@ fn impl_struct_by_extracting_all_at_once(
     fields: syn::Fields,
     via_path: &syn::Path,
     rejection: Option<&syn::Path>,
-    generic_ident: Option<&Ident>,
+    struct_generics: StructGenerics,
     state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
@@ -802,42 +729,52 @@ fn impl_struct_by_extracting_all_at_once(
         None
     };
 
+    let ident_generics = struct_generics.type_params
+        .iter()
+        .map(|ty| -> syn::Type{
+            let ident = &ty.ident;
+            parse_quote!(#ident)
+        })
+        .collect::<Punctuated<Type, Token![,]>>();
+
     let impl_generics = via_marker_type
         .iter()
         .cloned()
         .chain(state.impl_generics())
-        .chain(generic_ident.is_some().then(|| parse_quote!(T)))
-        .collect::<Punctuated<Type, Token![,]>>();
+        .map(|ty| -> syn::GenericParam {
+            let ident = match ty {
+                Type::Path(path) => path.path.segments.last().unwrap().ident.clone(),
+                _ => panic!("expected identifier type"),
+            };
+
+            syn::GenericParam::Type(syn::TypeParam {
+                attrs: vec![],
+                ident,
+                colon_token: None,
+                bounds: Default::default(),
+                eq_token: None,
+                default: None,
+            })
+        })
+        .chain(struct_generics.type_params.into_iter().map(|mut param| {
+            param.default = None;
+            syn::GenericParam::Type(param)
+        }))
+        .collect::<Punctuated<syn::GenericParam, Token![,]>>();
 
     let trait_generics = state
         .trait_generics()
         .chain(via_marker_type)
         .collect::<Punctuated<Type, Token![,]>>();
 
-    let ident_generics = if generic_ident.is_some() {
-        quote! { <T> }
-    } else {
-        TokenStream::new()
-    };
-
     let rejection_bound = rejection.as_ref().map(|rejection| {
-        match (tr, generic_ident.is_some()) {
-            (Trait::FromRequest, true) => {
-                quote! {
-                    #rejection: ::std::convert::From<<#via_path<T> as ::axum::extract::FromRequest<#trait_generics>>::Rejection>,
-                }
-            },
-            (Trait::FromRequest, false) => {
+        match tr {
+            Trait::FromRequest => {
                 quote! {
                     #rejection: ::std::convert::From<<#via_path<Self> as ::axum::extract::FromRequest<#trait_generics>>::Rejection>,
                 }
             },
-            (Trait::FromRequestParts, true) => {
-                quote! {
-                    #rejection: ::std::convert::From<<#via_path<T> as ::axum::extract::FromRequestParts<#trait_generics>>::Rejection>,
-                }
-            },
-            (Trait::FromRequestParts, false) => {
+            Trait::FromRequestParts => {
                 quote! {
                     #rejection: ::std::convert::From<<#via_path<Self> as ::axum::extract::FromRequestParts<#trait_generics>>::Rejection>,
                 }
@@ -845,34 +782,24 @@ fn impl_struct_by_extracting_all_at_once(
         }
     }).unwrap_or_default();
 
-    let via_type_generics = if generic_ident.is_some() {
-        quote! { T }
-    } else {
-        quote! { Self }
-    };
-
     let associated_rejection_type = if let Some(rejection) = &rejection {
         quote! { #rejection }
     } else {
         match tr {
             Trait::FromRequest => quote! {
-                <#via_path<#via_type_generics> as ::axum::extract::FromRequest<#trait_generics>>::Rejection
+                <#via_path<Self> as ::axum::extract::FromRequest<#trait_generics>>::Rejection
             },
             Trait::FromRequestParts => quote! {
-                <#via_path<#via_type_generics> as ::axum::extract::FromRequestParts<#trait_generics>>::Rejection
+                <#via_path<Self> as ::axum::extract::FromRequestParts<#trait_generics>>::Rejection
             },
         }
-    };
-
-    let value_to_self = if generic_ident.is_some() {
-        quote! {
-            #ident(value)
-        }
-    } else {
-        quote! { value }
     };
 
     let state_bounds = state.bounds();
+    let where_bounds = struct_generics
+        .where_predicates
+        .into_iter()
+        .collect::<Punctuated<syn::WherePredicate, Token![,]>>();
 
     let tokens = match tr {
         Trait::FromRequest => {
@@ -880,9 +807,10 @@ fn impl_struct_by_extracting_all_at_once(
                 #[automatically_derived]
                 impl<#impl_generics> ::axum::extract::FromRequest<#trait_generics> for #ident #ident_generics
                 where
-                    #via_path<#via_type_generics>: ::axum::extract::FromRequest<#trait_generics>,
+                    #via_path<Self>: ::axum::extract::FromRequest<#trait_generics>,
                     #rejection_bound
                     #state_bounds
+                    #where_bounds
                 {
                     type Rejection = #associated_rejection_type;
 
@@ -890,9 +818,9 @@ fn impl_struct_by_extracting_all_at_once(
                         req: ::axum::http::Request<::axum::body::Body>,
                         state: &#state,
                     ) -> ::std::result::Result<Self, Self::Rejection> {
-                        <#via_path<#via_type_generics> as ::axum::extract::FromRequest<_, _>>::from_request(req, state)
+                        <#via_path<Self> as ::axum::extract::FromRequest<_, _>>::from_request(req, state)
                             .await
-                            .map(|#via_path(value)| #value_to_self)
+                            .map(|#via_path(value)| value)
                             .map_err(::std::convert::From::from)
                     }
                 }
@@ -903,9 +831,10 @@ fn impl_struct_by_extracting_all_at_once(
                 #[automatically_derived]
                 impl<#impl_generics> ::axum::extract::FromRequestParts<#trait_generics> for #ident #ident_generics
                 where
-                    #via_path<#via_type_generics>: ::axum::extract::FromRequestParts<#trait_generics>,
+                    #via_path<Self>: ::axum::extract::FromRequestParts<#trait_generics>,
                     #rejection_bound
                     #state_bounds
+                    #where_bounds
                 {
                     type Rejection = #associated_rejection_type;
 
@@ -913,9 +842,9 @@ fn impl_struct_by_extracting_all_at_once(
                         parts: &mut ::axum::http::request::Parts,
                         state: &#state,
                     ) -> ::std::result::Result<Self, Self::Rejection> {
-                        <#via_path<#via_type_generics> as ::axum::extract::FromRequestParts<_>>::from_request_parts(parts, state)
+                        <#via_path<Self> as ::axum::extract::FromRequestParts<_>>::from_request_parts(parts, state)
                             .await
-                            .map(|#via_path(value)| #value_to_self)
+                            .map(|#via_path(value)| value)
                             .map_err(::std::convert::From::from)
                     }
                 }
