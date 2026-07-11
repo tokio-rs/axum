@@ -600,6 +600,10 @@ where
 /// [`WebSocketUpgrade`]: crate::extract::ws::WebSocketUpgrade
 /// [`guard`]: GracefulPeer::guard
 /// [`shutdown`]: GracefulPeer::shutdown
+// The only reader of these fields is the `ws` extractor; without the `ws`
+// feature they are write-only. That is fine: `guard` does its job by being
+// dropped (RAII), and `shutdown` is carried for the consumer.
+#[cfg_attr(not(feature = "ws"), allow(dead_code))]
 #[derive(Clone, Debug)]
 pub(crate) struct GracefulPeer {
     /// Resolves (with `Ok`) or errors once a graceful shutdown has begun.
