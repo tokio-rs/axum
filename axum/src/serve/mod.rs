@@ -230,10 +230,25 @@ where
     /// }
     /// ```
     ///
+    /// # WebSocket connections
+    ///
+    /// WebSocket connections (via [`WebSocketUpgrade`]) participate in the
+    /// shutdown: once the signal fires each open socket is sent a Close frame,
+    /// and this future waits for the WebSocket handler tasks to finish before
+    /// resolving. A well-behaved handler that reads with
+    /// `while let Some(msg) = socket.recv().await` observes the stream end and
+    /// returns on its own.
+    ///
+    /// A handler that ignores socket closure — never polling the socket and
+    /// never returning — will still block shutdown, the same trust model as any
+    /// other in-flight response body (Server-Sent Events behave this way too).
+    ///
     /// # Return Value
     ///
     /// Similarly to [`serve`], although this future resolves to `io::Result<()>`, it will never
     /// error. It returns `Ok(())` only after the `signal` future completes.
+    ///
+    /// [`WebSocketUpgrade`]: crate::extract::ws::WebSocketUpgrade
     pub fn with_graceful_shutdown<F>(self, signal: F) -> WithGracefulShutdown<L, M, S, F, B, E>
     where
         F: Future<Output = ()> + Send + 'static,
@@ -335,6 +350,7 @@ where
                 &mut make_service,
                 &signal_tx,
                 &close_rx,
+                None,
                 io,
                 remote_addr,
                 &executor,
@@ -454,9 +470,19 @@ where
         } = self;
 
         let (signal_tx, signal_rx) = watch::channel(());
+        // A second channel dedicated to telling upgraded connections (e.g.
+        // WebSockets) that shutdown has begun. `signal_rx` being dropped wakes
+        // the per-connection tasks so hyper can start its graceful shutdown,
+        // but an upgraded connection's io has been handed off and is no longer
+        // tracked by hyper, so it needs its own notification.
+        let (shutdown_tx, shutdown_rx) = watch::channel(());
         executor.execute(async move {
             signal.await;
             trace!("received graceful shutdown signal. Telling tasks to shutdown");
+            // Tell upgraded connections to start closing. Receivers treat a
+            // `changed()` error (all senders dropped) the same as a received
+            // value, so it is fine for `shutdown_tx` to drop with this task.
+            let _ = shutdown_tx.send(());
             drop(signal_rx);
         });
 
@@ -475,6 +501,10 @@ where
                 &mut make_service,
                 &signal_tx,
                 &close_rx,
+                Some(GracefulPeer {
+                    shutdown: shutdown_rx.clone(),
+                    guard: close_rx.clone(),
+                }),
                 io,
                 remote_addr,
                 &executor,
@@ -556,10 +586,34 @@ where
     }
 }
 
+/// Handle to let an upgraded connection (e.g. a WebSocket) participate in
+/// graceful shutdown.
+///
+/// When [`Serve::with_graceful_shutdown`] is used, a `GracefulPeer` is inserted
+/// into the request extensions of upgrade requests (see [`handle_connection`]).
+/// [`WebSocketUpgrade`] picks it up so that:
+///
+/// * holding [`guard`] (a clone of the connection's `close_rx`) keeps
+///   `close_tx.closed()` from resolving until the upgraded task finishes, and
+/// * observing [`shutdown`] lets the socket start closing when shutdown begins.
+///
+/// [`WebSocketUpgrade`]: crate::extract::ws::WebSocketUpgrade
+/// [`guard`]: GracefulPeer::guard
+/// [`shutdown`]: GracefulPeer::shutdown
+#[derive(Clone, Debug)]
+pub(crate) struct GracefulPeer {
+    /// Resolves (with `Ok`) or errors once a graceful shutdown has begun.
+    pub(crate) shutdown: watch::Receiver<()>,
+    /// A clone of the connection's `close_rx`; keeping it alive blocks
+    /// `close_tx.closed()`.
+    pub(crate) guard: watch::Receiver<()>,
+}
+
 async fn handle_connection<L, M, S, B, E>(
     make_service: &mut M,
     signal_tx: &watch::Sender<()>,
     close_rx: &watch::Receiver<()>,
+    graceful: Option<GracefulPeer>,
     io: <L as Listener>::Io,
     remote_addr: <L as Listener>::Addr,
     executor: &E,
@@ -591,7 +645,21 @@ async fn handle_connection<L, M, S, B, E>(
         })
         .await
         .unwrap_or_else(|err| match err {})
-        .map_request(|req: Request<Incoming>| req.map(Body::new));
+        .map_request(move |req: Request<Incoming>| {
+            let mut req = req.map(Body::new);
+            // When graceful shutdown is configured, let upgrade requests (e.g.
+            // WebSockets) opt into the shutdown machinery by inserting a
+            // `GracefulPeer` into their extensions. The non-upgrade hot path
+            // pays only a single header lookup and no allocation.
+            if let Some(graceful) = &graceful {
+                if req.headers().contains_key(http::header::UPGRADE)
+                    || req.method() == http::Method::CONNECT
+                {
+                    req.extensions_mut().insert(graceful.clone());
+                }
+            }
+            req
+        });
 
     let hyper_service = TowerToHyperService::new(tower_service);
     let signal_tx = signal_tx.clone();
