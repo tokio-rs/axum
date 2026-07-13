@@ -92,16 +92,14 @@
 //!
 //! When the server is run with [`axum::serve`] and
 //! [`Serve::with_graceful_shutdown`], WebSocket connections take part in the
-//! shutdown. Once the shutdown signal fires, each open [`WebSocket`] sends a
-//! Close frame to its peer, and the server waits for the handler tasks to
-//! finish before resolving.
+//! shutdown: once the signal fires each open [`WebSocket`] sends a Close frame
+//! to its peer, and the server waits for the handler tasks to finish before
+//! resolving.
 //!
-//! In practice this means a handler with the usual read loop needs no changes:
-//! after the Close handshake completes, [`WebSocket::recv`] returns `None` and
-//! the loop ends. Handlers should treat `None` (or an `Err`) from `recv` as a
-//! signal to return. A handler that never polls the socket and never returns
-//! will still hold shutdown open, just like any other in-flight response body
-//! (Server-Sent Events behave the same way).
+//! A handler with the usual read loop needs no changes — after the Close
+//! handshake [`WebSocket::recv`] returns `None`, so the loop ends and the task
+//! returns. A handler that never polls the socket and never returns will still
+//! hold shutdown open, like any other in-flight response body.
 //!
 //! [`StreamExt::split`]: https://docs.rs/futures/0.3.17/futures/stream/trait.StreamExt.html#method.split
 //! [`axum::serve`]: crate::serve()
@@ -372,21 +370,10 @@ impl<F> WebSocketUpgrade<F> {
     ///
     /// # Graceful shutdown
     ///
-    /// When the server is run with [`axum::serve`] and
-    /// [`with_graceful_shutdown`], the spawned handler task participates in the
-    /// shutdown:
-    ///
-    /// * the server waits for this task to finish before resolving, and
-    /// * once shutdown begins the [`WebSocket`] automatically sends a Close
-    ///   frame to the peer.
-    ///
-    /// A handler that reads from the socket in the usual way — e.g.
-    /// `while let Some(msg) = socket.recv().await { .. }` — will therefore
-    /// observe the stream end and return on its own. A handler that never polls
-    /// the socket and never returns will still block shutdown, the same as any
-    /// other in-flight response body.
-    ///
-    /// See the [module docs](self) and [`axum::serve`] for details.
+    /// Under [`axum::serve`] with [`with_graceful_shutdown`], the spawned task
+    /// takes part in the shutdown: the server waits for it to finish, and the
+    /// [`WebSocket`] is sent a Close frame once shutdown begins. See the
+    /// [module docs](self#graceful-shutdown) for the handler implications.
     ///
     /// [`axum::serve`]: crate::serve()
     /// [`with_graceful_shutdown`]: crate::serve::Serve::with_graceful_shutdown
@@ -403,18 +390,15 @@ impl<F> WebSocketUpgrade<F> {
 
         let protocol = self.protocol.clone();
 
-        // Derive the graceful-shutdown observer and the guard that keeps the
-        // server draining until this task ends. Both are `None` (a no-op) when
-        // graceful shutdown is not configured.
+        // With graceful shutdown configured, `shutdown` resolves once it begins
+        // and `guard` keeps the server draining until this task ends; both are
+        // `None` (a no-op) otherwise.
         #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
         let (shutdown, guard) = match self.graceful {
             Some(peer) => {
-                let mut rx = peer.shutdown;
-                let shutdown: Pin<Box<dyn Future<Output = ()> + Send>> = Box::pin(async move {
-                    // Either a value is sent or all senders drop; both mean
-                    // "shutdown has begun".
-                    let _ = rx.changed().await;
-                });
+                let signal = peer.shutdown;
+                let shutdown: Pin<Box<dyn Future<Output = ()> + Send>> =
+                    Box::pin(async move { signal.closed().await });
                 (Some(shutdown), Some(peer.guard))
             }
             None => (None, None),
@@ -701,11 +685,10 @@ impl Stream for WebSocket {
         // `WebSocket` is `Unpin`, so we can operate on the fields directly.
         let this = self.get_mut();
 
-        // If a graceful shutdown has begun, kick off the WebSocket closing
-        // handshake by sending a Close frame. This is best-effort: reads keep
-        // flowing afterwards, so the peer's Close response is still observed and
-        // the stream terminates, ending typical `recv` loops. A socket that is
-        // already closing simply skips this.
+        // Once graceful shutdown begins, start the closing handshake by sending
+        // a Close frame. Reads keep flowing afterwards, so the peer's Close
+        // reply is still observed and the stream terminates, ending typical
+        // `recv` loops.
         let shutdown_fired = match this.shutdown.as_mut() {
             Some(shutdown) => shutdown.as_mut().poll(cx).is_ready(),
             None => false,
