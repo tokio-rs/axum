@@ -424,34 +424,40 @@ fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
 }
 
 fn validate_path_segments(value: &str, path: &LitStr) -> syn::Result<()> {
+    let mut wildcard_seen = false;
+
     for segment in value.split('/') {
+        if wildcard_seen {
+            return Err(syn::Error::new_spanned(
+                path,
+                "Wildcards must be at the end of the path",
+            ));
+        }
+
         let mut capture_count = 0;
         let mut rest = segment;
         while let Some(start) = find_first_not_double(b'{', rest.as_bytes()) {
             capture_count += 1;
             rest = &rest[start + 1..];
+
+            if rest.starts_with('*') {
+                wildcard_seen = true;
+                // a wildcard capture must cover its entire segment
+                if start != 0 || rest.find('}') != Some(rest.len() - 1) {
+                    return Err(syn::Error::new_spanned(
+                        path,
+                        "Wildcards must be at the end of the path",
+                    ));
+                }
+            }
         }
+
         if capture_count > 1 {
             return Err(syn::Error::new_spanned(
                 path,
                 "Cannot have multiple path parameters in a single segment",
             ));
         }
-    }
-
-    let mut rest = value;
-    while let Some(start) = find_first_not_double(b'{', rest.as_bytes()) {
-        rest = &rest[start + 1..];
-        let Some(end) = rest.find('}') else {
-            break;
-        };
-        if rest[..end].starts_with('*') && rest.len() != end + 1 {
-            return Err(syn::Error::new_spanned(
-                path,
-                "Wildcards must be at the end of the path",
-            ));
-        }
-        rest = &rest[end + 1..];
     }
 
     Ok(())
