@@ -230,22 +230,10 @@ where
     /// }
     /// ```
     ///
-    /// # WebSocket connections
-    ///
-    /// WebSocket connections (via [`WebSocketUpgrade`]) take part in the
-    /// shutdown: once the signal fires each open socket is sent a Close frame,
-    /// and this future waits for the handler tasks to finish before resolving.
-    /// A handler that never returns still blocks shutdown, like any other
-    /// in-flight response body. See the [`ws` module docs] for details.
-    ///
-    /// [`ws` module docs]: crate::extract::ws#graceful-shutdown
-    ///
     /// # Return Value
     ///
     /// Similarly to [`serve`], although this future resolves to `io::Result<()>`, it will never
     /// error. It returns `Ok(())` only after the `signal` future completes.
-    ///
-    /// [`WebSocketUpgrade`]: crate::extract::ws::WebSocketUpgrade
     pub fn with_graceful_shutdown<F>(self, signal: F) -> WithGracefulShutdown<L, M, S, F, B, E>
     where
         F: Future<Output = ()> + Send + 'static,
@@ -347,7 +335,6 @@ where
                 &mut make_service,
                 &signal_tx,
                 &close_rx,
-                None,
                 io,
                 remote_addr,
                 &executor,
@@ -488,10 +475,6 @@ where
                 &mut make_service,
                 &signal_tx,
                 &close_rx,
-                Some(GracefulPeer {
-                    shutdown: signal_tx.clone(),
-                    guard: close_rx.clone(),
-                }),
                 io,
                 remote_addr,
                 &executor,
@@ -574,22 +557,17 @@ where
 }
 
 /// Lets an upgraded connection (e.g. a WebSocket) take part in graceful
-/// shutdown. Inserted into the extensions of upgrade requests by
-/// [`handle_connection`] when [`Serve::with_graceful_shutdown`] is used, and
-/// read by [`WebSocketUpgrade`].
+/// shutdown. Inserted into every request's extensions and read by
+/// [`WebSocketUpgrade`].
 ///
 /// [`WebSocketUpgrade`]: crate::extract::ws::WebSocketUpgrade
-// The `ws` extractor is the only reader; without the `ws` feature the fields
-// are written but never read, so the lint would fire on this shared code.
+// Only read by the `ws` extractor.
 #[cfg_attr(not(feature = "ws"), allow(dead_code))]
 #[derive(Clone, Debug)]
 pub(crate) struct GracefulPeer {
-    /// A sender for the accept loop's signal channel. Awaiting its `closed()`
-    /// resolves once shutdown begins — the same edge the accept loop and the
-    /// per-connection tasks already wait on (the sole receiver is dropped).
+    /// Resolves via `closed()` when shutdown begins.
     pub(crate) shutdown: watch::Sender<()>,
-    /// A clone of the connection's `close_rx`; holding it keeps
-    /// `close_tx.closed()` from resolving until the upgraded task finishes.
+    /// Held by the upgraded task to keep the drain open.
     pub(crate) guard: watch::Receiver<()>,
 }
 
@@ -597,7 +575,6 @@ async fn handle_connection<L, M, S, B, E>(
     make_service: &mut M,
     signal_tx: &watch::Sender<()>,
     close_rx: &watch::Receiver<()>,
-    graceful: Option<GracefulPeer>,
     io: <L as Listener>::Io,
     remote_addr: <L as Listener>::Addr,
     executor: &E,
@@ -622,6 +599,12 @@ async fn handle_connection<L, M, S, B, E>(
         .await
         .unwrap_or_else(|err| match err {});
 
+    // Attached to every request; inert unless graceful shutdown is running.
+    let graceful = GracefulPeer {
+        shutdown: signal_tx.clone(),
+        guard: close_rx.clone(),
+    };
+
     let tower_service = make_service
         .call(IncomingStream {
             io: &io,
@@ -631,15 +614,7 @@ async fn handle_connection<L, M, S, B, E>(
         .unwrap_or_else(|err| match err {})
         .map_request(move |req: Request<Incoming>| {
             let mut req = req.map(Body::new);
-            // On upgrade requests, hand the upgraded task (e.g. a WebSocket) a
-            // `GracefulPeer` so it can take part in graceful shutdown.
-            if let Some(graceful) = &graceful {
-                if req.headers().contains_key(http::header::UPGRADE)
-                    || req.method() == http::Method::CONNECT
-                {
-                    req.extensions_mut().insert(graceful.clone());
-                }
-            }
+            req.extensions_mut().insert(graceful.clone());
             req
         });
 

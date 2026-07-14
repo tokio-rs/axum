@@ -108,8 +108,7 @@
 use self::rejection::*;
 use super::FromRequestParts;
 use crate::{body::Bytes, response::Response, Error};
-// Only available when `axum::serve` is compiled in; the `ws` feature does not
-// imply `http1`/`http2`, so this must be gated exactly like the `serve` module.
+// Gated like `axum::serve` itself; the `ws` feature does not imply `http1`/`http2`.
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 use crate::serve::GracefulPeer;
 use axum_core::body::Body;
@@ -159,8 +158,7 @@ pub struct WebSocketUpgrade<F = DefaultOnFailedUpgrade> {
     on_upgrade: hyper::upgrade::OnUpgrade,
     on_failed_upgrade: F,
     sec_websocket_protocol: BTreeSet<HeaderValue>,
-    /// Set when `axum::serve` is running with graceful shutdown; lets the
-    /// resulting socket participate in it. See [`GracefulPeer`].
+    /// Graceful-shutdown handle for the socket, if any. See [`GracefulPeer`].
     #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
     graceful: Option<GracefulPeer>,
 }
@@ -370,10 +368,9 @@ impl<F> WebSocketUpgrade<F> {
     ///
     /// # Graceful shutdown
     ///
-    /// Under [`axum::serve`] with [`with_graceful_shutdown`], the spawned task
-    /// takes part in the shutdown: the server waits for it to finish, and the
-    /// [`WebSocket`] is sent a Close frame once shutdown begins. See the
-    /// [module docs](self#graceful-shutdown) for the handler implications.
+    /// Under [`axum::serve`] with [`with_graceful_shutdown`] the spawned task
+    /// joins the shutdown and the socket is sent a Close frame once it begins.
+    /// See the [module docs](self#graceful-shutdown) for details.
     ///
     /// [`axum::serve`]: crate::serve()
     /// [`with_graceful_shutdown`]: crate::serve::Serve::with_graceful_shutdown
@@ -390,9 +387,6 @@ impl<F> WebSocketUpgrade<F> {
 
         let protocol = self.protocol.clone();
 
-        // With graceful shutdown configured, `shutdown` resolves once it begins
-        // and `guard` keeps the server draining until this task ends; both are
-        // `None` (a no-op) otherwise.
         #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
         let (shutdown, guard) = match self.graceful {
             Some(peer) => {
@@ -407,8 +401,7 @@ impl<F> WebSocketUpgrade<F> {
         let shutdown: Option<Pin<Box<dyn Future<Output = ()> + Send>>> = None;
 
         tokio::spawn(async move {
-            // Hold the guard (if any) for the whole task so that
-            // `close_tx.closed()` in `axum::serve` waits for this handler.
+            // Held for the task's lifetime to keep the shutdown drain open.
             #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
             let _guard = guard;
 
@@ -607,24 +600,19 @@ fn header_contains(headers: &HeaderMap, key: &HeaderName, value: &'static str) -
 pub struct WebSocket {
     inner: WebSocketStream<TokioIo<hyper::upgrade::Upgraded>>,
     protocol: Option<HeaderValue>,
-    /// Resolves once a graceful shutdown has begun, prompting the socket to
-    /// send a Close frame. `None` when graceful shutdown is not configured, in
-    /// which case the socket behaves exactly as before.
+    /// Resolves when graceful shutdown begins; `None` if not configured.
     shutdown: Option<Pin<Box<dyn Future<Output = ()> + Send>>>,
-    /// Tracks progress of the shutdown-initiated Close handshake.
     close_state: CloseState,
 }
 
-/// Progress of the Close frame that the socket sends when graceful shutdown
-/// begins. See [`WebSocket`]'s [`Stream`] implementation.
+/// Progress of the Close frame sent when graceful shutdown begins.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum CloseState {
-    /// No Close has been initiated (the default, and the terminal state once
-    /// the Close has been handed off or abandoned).
+    /// No Close queued (also the terminal state).
     Idle,
-    /// Shutdown observed; a Close frame still needs to be enqueued.
+    /// Shutdown seen; Close needs enqueuing.
     Queued,
-    /// Close frame enqueued; flushing it out (best-effort).
+    /// Close enqueued; flushing it out.
     Flushing,
 }
 
@@ -682,19 +670,15 @@ impl Stream for WebSocket {
     type Item = Result<Message, Error>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        // `WebSocket` is `Unpin`, so we can operate on the fields directly.
         let this = self.get_mut();
 
-        // Once graceful shutdown begins, start the closing handshake by sending
-        // a Close frame. Reads keep flowing afterwards, so the peer's Close
-        // reply is still observed and the stream terminates, ending typical
-        // `recv` loops.
+        // On shutdown, send a Close frame but keep reading so the peer's Close
+        // reply still ends the stream. Best-effort, so any failure falls through.
         let shutdown_fired = match this.shutdown.as_mut() {
             Some(shutdown) => shutdown.as_mut().poll(cx).is_ready(),
             None => false,
         };
         if shutdown_fired {
-            // Do not poll the completed future again.
             this.shutdown = None;
             this.close_state = CloseState::Queued;
         }
@@ -704,24 +688,16 @@ impl Stream for WebSocket {
                 Poll::Ready(Ok(())) => {
                     this.close_state = match this.inner.start_send_unpin(ts::Message::Close(None)) {
                         Ok(()) => CloseState::Flushing,
-                        // Socket already closing/closed; nothing more to do.
                         Err(_) => CloseState::Idle,
                     };
                 }
-                // Already closing/closed; give up on sending our own Close.
                 Poll::Ready(Err(_)) => this.close_state = CloseState::Idle,
-                // Cannot buffer the Close yet; retry on a later poll. Fall
-                // through to reading so the connection keeps making progress.
                 Poll::Pending => {}
             }
         }
 
-        if this.close_state == CloseState::Flushing {
-            // Best-effort: if the flush is still pending the frame stays
-            // buffered and is driven out as the stream continues to be polled.
-            if this.inner.poll_flush_unpin(cx).is_ready() {
-                this.close_state = CloseState::Idle;
-            }
+        if this.close_state == CloseState::Flushing && this.inner.poll_flush_unpin(cx).is_ready() {
+            this.close_state = CloseState::Idle;
         }
 
         loop {
@@ -1452,12 +1428,9 @@ mod tests {
             assert_eq!(count, 1, "WebSocket handler task did not finish");
         }
 
-        // Regression test for https://github.com/tokio-rs/axum/issues/3003.
-        //
-        // A WebSocket handler looping on `recv()` used to be ignored by graceful
-        // shutdown: the upgraded task was detached, so the `serve` future
-        // returned while the handler kept running. Now the socket is sent a
-        // Close frame and the server waits for the handler task to finish.
+        // Regression test for https://github.com/tokio-rs/axum/issues/3003. A
+        // recv() loop used to be detached and outlive graceful shutdown. Now it
+        // is sent a Close frame and the server waits for it.
         #[crate::test]
         async fn waits_for_websocket_and_closes_it() {
             let marker = Arc::new(());
@@ -1470,9 +1443,7 @@ mod tests {
                         let marker = marker.clone();
                         async move {
                             ws.on_upgrade(move |mut socket| async move {
-                                // Held for the lifetime of the handler task so
-                                // we can observe (via strong_count) that it
-                                // really finished.
+                                // Kept so strong_count proves the task finished.
                                 let _marker = marker;
                                 while let Some(Ok(_)) = socket.recv().await {}
                             })

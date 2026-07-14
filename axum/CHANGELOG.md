@@ -25,12 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   type, not just `axum::body::Body` ([#3205])
 - **changed:** `Redirect` constructors now accept any `impl Into<String>` ([#3635])
 - **changed:** Updated `matchit` allowing for routes with captures and static prefixes and suffixes ([#3702])
-- **changed:** `Serve::with_graceful_shutdown` now includes WebSocket connections in the drain:
-  open sockets are sent a close frame and the server waits for their handler tasks. A handler
-  that never returns will now hold shutdown open (as with any in-flight response body) ([#3831])
 - **fixed:** Responses to `HEAD` will not accidentally reply with `content-length: 0` anymore ([#3742])
-- **fixed:** graceful shutdown no longer ignores WebSocket handler tasks; the server now waits
-  for them and initiates a close handshake on open sockets ([#3831])
+- **fixed:** `Serve::with_graceful_shutdown` now waits for WebSocket handler tasks and sends open
+  sockets a close frame, rather than leaving them running once the server has shut down. A handler
+  that never returns will now hold shutdown open, as with any in-flight response body ([#3831])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
