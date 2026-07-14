@@ -574,10 +574,25 @@ impl AllowHeader {
             (Self::Skip, _) | (_, Self::Skip) => Self::Skip,
             (Self::None, Self::None) => Self::None,
             (Self::None, Self::Bytes(pick)) | (Self::Bytes(pick), Self::None) => Self::Bytes(pick),
-            (Self::Bytes(mut a), Self::Bytes(b)) => {
-                a.extend_from_slice(b",");
-                a.extend_from_slice(&b);
-                Self::Bytes(a)
+            (mut this @ Self::Bytes(_), Self::Bytes(b)) => {
+                // `b`'s methods can already be present in `this` — most notably
+                // `HEAD`, which `get` adds implicitly alongside `GET`. Fold them in
+                // through the same de-duplicating path used while building a router
+                // so a merged `Allow` header never lists a method twice.
+                match std::str::from_utf8(&b) {
+                    Ok(methods) => {
+                        for method in methods.split(',') {
+                            append_allow_header(&mut this, method);
+                        }
+                    }
+                    #[cfg(debug_assertions)]
+                    Err(_) => {
+                        panic!("`allow_header` contained invalid utf-8. This should never happen")
+                    }
+                    #[cfg(not(debug_assertions))]
+                    Err(_) => {}
+                }
+                this
             }
         }
     }
@@ -1222,7 +1237,7 @@ where
     }
 }
 
-fn append_allow_header(allow_header: &mut AllowHeader, method: &'static str) {
+fn append_allow_header(allow_header: &mut AllowHeader, method: &str) {
     match allow_header {
         AllowHeader::None => {
             *allow_header = AllowHeader::Bytes(BytesMut::from(method));
@@ -1543,6 +1558,20 @@ mod tests {
         let (status, headers, _) = call(Method::DELETE, &mut svc).await;
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
         assert_eq!(headers[ALLOW], "PUT,PATCH,GET,HEAD");
+    }
+
+    #[crate::test]
+    async fn allow_header_merging_get_into_head() {
+        // `get` also serves `HEAD`, so its allow header is already `GET,HEAD`.
+        // Merging it with a separately built `head` route must not list `HEAD`
+        // twice.
+        let a = get(ok);
+        let b = head(created);
+        let mut svc = a.merge(b);
+
+        let (status, headers, _) = call(Method::DELETE, &mut svc).await;
+        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(headers[ALLOW], "GET,HEAD");
     }
 
     #[crate::test]
