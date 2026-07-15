@@ -575,22 +575,16 @@ impl AllowHeader {
             (Self::None, Self::None) => Self::None,
             (Self::None, Self::Bytes(pick)) | (Self::Bytes(pick), Self::None) => Self::Bytes(pick),
             (mut this @ Self::Bytes(_), Self::Bytes(b)) => {
-                // `b`'s methods can already be present in `this` — most notably
-                // `HEAD`, which `get` adds implicitly alongside `GET`. Fold them in
-                // through the same de-duplicating path used while building a router
-                // so a merged `Allow` header never lists a method twice.
                 match std::str::from_utf8(&b) {
                     Ok(methods) => {
                         for method in methods.split(',') {
                             append_allow_header(&mut this, method);
                         }
                     }
-                    #[cfg(debug_assertions)]
                     Err(_) => {
+                        #[cfg(debug_assertions)]
                         panic!("`allow_header` contained invalid utf-8. This should never happen")
                     }
-                    #[cfg(not(debug_assertions))]
-                    Err(_) => {}
                 }
                 this
             }
@@ -1562,9 +1556,6 @@ mod tests {
 
     #[crate::test]
     async fn allow_header_merging_get_into_head() {
-        // `get` also serves `HEAD`, so its allow header is already `GET,HEAD`.
-        // Merging it with a separately built `head` route must not list `HEAD`
-        // twice.
         let a = get(ok);
         let b = head(created);
         let mut svc = a.merge(b);
