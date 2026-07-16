@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** `Serve::with_graceful_shutdown` now waits for WebSocket handler tasks and sends open
   sockets a close frame, rather than leaving them running once the server has shut down. A handler
   that never returns will now hold shutdown open, as with any in-flight response body ([#3831])
+- **fixed:** `MethodRouter::merge` no longer lists a method twice in the `Allow`
+  header after merging `get` and `head` ([#3836])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
@@ -41,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3702]: https://github.com/tokio-rs/axum/pull/3702
 [#3721]: https://github.com/tokio-rs/axum/pull/3721
 [#3742]: https://github.com/tokio-rs/axum/pull/3742
+[#3836]: https://github.com/tokio-rs/axum/pull/3836
 [#3757]: https://github.com/tokio-rs/axum/pull/3757
 [#3831]: https://github.com/tokio-rs/axum/pull/3831
 
