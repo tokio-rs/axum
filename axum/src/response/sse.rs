@@ -24,6 +24,37 @@
 //! }
 //! # let _: Router = app;
 //! ```
+//!
+//! # Custom event payloads
+//!
+//! Sometimes a client expects a payload other than the standard `data: ` framing — for
+//! example, a pre-serialized event, or a raw text chunk for a client that doesn't speak
+//! `EventSource` framing at all. [`Event::raw`] hands you full control over the bytes written
+//! to the wire for that event, while `Sse` still takes care of the response headers and, if
+//! configured, [`KeepAlive`]:
+//!
+//! ```
+//! use axum::{
+//!     Router,
+//!     routing::get,
+//!     response::sse::{Event, KeepAlive, Sse},
+//! };
+//! use std::{time::Duration, convert::Infallible};
+//! use tokio_stream::StreamExt as _ ;
+//! use futures_util::stream::{self, Stream};
+//!
+//! let app = Router::new().route("/sse", get(sse_handler));
+//!
+//! async fn sse_handler() -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+//!     // A pre-serialized event, sent on the wire exactly as given.
+//!     let stream = stream::repeat_with(|| Event::raw("data: hi\n\n"))
+//!         .map(Ok)
+//!         .throttle(Duration::from_secs(1));
+//!
+//!     Sse::new(stream).keep_alive(KeepAlive::default())
+//! }
+//! # let _: Router = app;
+//! ```
 
 use crate::{
     body::{Bytes, HttpBody},
@@ -206,6 +237,41 @@ impl Event {
             buffer: Buffer::Finalized(bytes),
             flags: EventFlags::from_bits(0),
         }
+    }
+
+    /// Create an event whose payload is emitted on the wire exactly as provided.
+    ///
+    /// The given `bytes` are sent as a single body frame, verbatim: there is no `data: `
+    /// framing, no validation of field syntax, and no terminating empty line is added. If the
+    /// event needs to be understood by a standard [`EventSource`] client, the caller is
+    /// responsible for providing the complete event, terminator included — for example
+    /// `"data: hi\n\n"`.
+    ///
+    /// This is meant as an escape hatch for nonstandard event formats (such as clients that
+    /// don't accept the usual SSE framing) while still keeping [`Sse`]'s handling of the
+    /// `content-type`/`cache-control` headers and its [`KeepAlive`] support.
+    ///
+    /// Like any other event, a raw event resets the keep-alive timer when sent through
+    /// [`Sse::keep_alive`].
+    ///
+    /// Note that calling further builder methods, such as [`Event::comment`], after `raw` will
+    /// append their fields *after* the raw bytes and re-add a terminating newline. That's
+    /// allowed, but usually not what you want.
+    ///
+    /// [`EventSource`]: https://developer.mozilla.org/en-US/docs/Web/API/EventSource
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::response::sse::Event;
+    ///
+    /// let event = Event::raw("data: hi\n\n");
+    /// ```
+    pub fn raw<T>(bytes: T) -> Self
+    where
+        T: Into<Bytes>,
+    {
+        Self::finalized(bytes.into())
     }
 
     /// Use this [`Event`] as a [`EventDataWriter`] to write custom data.
@@ -691,6 +757,27 @@ mod tests {
         );
     }
 
+    #[test]
+    fn raw_event_round_trips_bytes_exactly() {
+        let event = Event::raw(b"data: hi\n\n".as_slice());
+        assert_eq!(&*event.finalize(), b"data: hi\n\n");
+
+        let empty = Event::raw(Bytes::new());
+        assert_eq!(&*empty.finalize(), b"");
+
+        // No trailing `\n` is appended, unlike an `Active` buffer.
+        let no_trailing_newline = Event::raw(b"data: hi".as_slice());
+        assert_eq!(&*no_trailing_newline.finalize(), b"data: hi");
+    }
+
+    #[test]
+    fn raw_event_then_comment_appends_and_reterminates() {
+        // Once further builder methods are called, the `Finalized` buffer is converted back
+        // into an `Active` one, so a trailing `\n` is added again on top of the appended field.
+        let event = Event::raw(b"data: hi\n\n".as_slice()).comment("x");
+        assert_eq!(&*event.finalize(), b"data: hi\n\n: x\n\n");
+    }
+
     #[crate::test]
     async fn basic() {
         let app = Router::new().route(
@@ -734,6 +821,33 @@ mod tests {
         assert!(stream.chunk_text().await.is_none());
     }
 
+    #[crate::test]
+    async fn raw_events() {
+        let app = Router::new().route(
+            "/",
+            get(|| async {
+                let stream = stream::iter(vec![
+                    Event::raw(Bytes::from_static(b"data: one\n\n")),
+                    Event::raw(Bytes::from_static(b":raw two\n\n")),
+                ])
+                .map(Ok::<_, Infallible>);
+                Sse::new(stream)
+            }),
+        );
+
+        let client = TestClient::new(app);
+        let mut stream = client.get("/").await;
+
+        assert_eq!(stream.headers()["content-type"], "text/event-stream");
+        assert_eq!(stream.headers()["cache-control"], "no-cache");
+
+        // Chunks are received byte-exact: no `data:` framing or extra newline is added.
+        assert_eq!(stream.chunk_text().await.unwrap(), "data: one\n\n");
+        assert_eq!(stream.chunk_text().await.unwrap(), ":raw two\n\n");
+
+        assert!(stream.chunk_text().await.is_none());
+    }
+
     #[tokio::test(start_paused = true)]
     async fn keep_alive() {
         const DELAY: Duration = Duration::from_secs(5);
@@ -762,6 +876,43 @@ mod tests {
             assert_eq!(event_fields.get("data").unwrap(), "msg");
 
             // then 4 seconds of keep-alive messages
+            for _ in 0..4 {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                let event_fields = parse_event(&stream.chunk_text().await.unwrap());
+                assert_eq!(event_fields.get("comment").unwrap(), "keep-alive-text");
+            }
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn keep_alive_with_raw_events() {
+        const DELAY: Duration = Duration::from_secs(5);
+
+        let app = Router::new().route(
+            "/",
+            get(|| async {
+                let stream =
+                    stream::repeat_with(|| Event::raw(Bytes::from_static(b"data: raw\n\n")))
+                        .map(Ok::<_, Infallible>)
+                        .throttle(DELAY);
+
+                Sse::new(stream).keep_alive(
+                    KeepAlive::new()
+                        .interval(Duration::from_secs(1))
+                        .text("keep-alive-text"),
+                )
+            }),
+        );
+
+        let client = TestClient::new(app);
+        let mut stream = client.get("/").await;
+
+        for _ in 0..5 {
+            // first message should be a raw event, sent byte-exact
+            assert_eq!(stream.chunk_text().await.unwrap(), "data: raw\n\n");
+
+            // then 4 seconds of keep-alive messages: a raw event resets the timer just like
+            // any other event
             for _ in 0..4 {
                 tokio::time::sleep(Duration::from_secs(1)).await;
                 let event_fields = parse_event(&stream.chunk_text().await.unwrap());
