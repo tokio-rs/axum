@@ -13,7 +13,7 @@ use axum_core::{
     response::{IntoResponse, Response},
     RequestPartsExt as _,
 };
-use http::{request::Parts, StatusCode};
+use http::{request::Parts, Extensions, StatusCode};
 use serde_core::de::DeserializeOwned;
 use std::{fmt, sync::Arc};
 
@@ -507,24 +507,28 @@ where
     type Rejection = RawPathParamsRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let params = match parts.extensions.get::<UrlParams>() {
-            Some(UrlParams::Params(params)) => params,
-            Some(UrlParams::InvalidUtf8InPathParam { key }) => {
-                return Err(InvalidUtf8InPathParam {
-                    key: Arc::clone(key),
-                }
-                .into());
-            }
-            None => {
-                return Err(MissingPathParams.into());
-            }
-        };
-
-        Ok(Self(params.clone()))
+        Self::from_request_extensions(&parts.extensions)
     }
 }
 
 impl RawPathParams {
+    /// Construct a `RawPathParams<T>` from request extensions.
+    ///
+    /// Most users should prefer to use the `FromRequestParts` impl but special cases may require
+    /// extracting `RawPathParams` outside of an async context.
+    pub fn from_request_extensions(
+        extensions: &Extensions,
+    ) -> Result<Self, RawPathParamsRejection> {
+        match extensions.get::<UrlParams>() {
+            Some(UrlParams::Params(params)) => Ok(Self(params.clone())),
+            Some(UrlParams::InvalidUtf8InPathParam { key }) => Err(InvalidUtf8InPathParam {
+                key: Arc::clone(key),
+            }
+            .into()),
+            None => Err(MissingPathParams.into()),
+        }
+    }
+
     /// Get an iterator over the path parameters.
     #[must_use]
     pub fn iter(&self) -> RawPathParamsIter<'_> {

@@ -20,7 +20,7 @@ impl FailedToBufferBody {
         E: Into<BoxError>,
     {
         // two layers of boxes here because `with_limited_body`
-        // wraps the `http_body_util::Limited` in a `axum_core::Body`
+        // wraps the `http_body_util::Limited` in an `axum_core::Body`
         // which also wraps the error type
         let box_error = match err.into().downcast::<Error>() {
             Ok(err) => err.into_inner(),

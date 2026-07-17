@@ -128,7 +128,7 @@ impl IntoResponse for StatusCode {
 
 impl IntoResponse for () {
     fn into_response(self) -> Response {
-        Body::empty().into_response()
+        Body::unknown().into_response()
     }
 }
 

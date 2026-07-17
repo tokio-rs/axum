@@ -4,13 +4,11 @@ use std::{
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
-    time::Duration,
 };
 
 use pin_project_lite::pin_project;
 use tokio::{
     io::{self, AsyncRead, AsyncWrite},
-    net::{TcpListener, TcpStream},
     sync::{OwnedSemaphorePermit, Semaphore},
 };
 
@@ -32,8 +30,9 @@ pub trait Listener: Send + 'static {
     fn local_addr(&self) -> io::Result<Self::Addr>;
 }
 
-impl Listener for TcpListener {
-    type Io = TcpStream;
+#[cfg(not(target_arch = "wasm32"))]
+impl Listener for tokio::net::TcpListener {
+    type Io = tokio::net::TcpStream;
     type Addr = std::net::SocketAddr;
 
     async fn accept(&mut self) -> (Self::Io, Self::Addr) {
@@ -242,6 +241,7 @@ where
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 async fn handle_accept_error(e: io::Error) {
     if is_connection_error(&e) {
         return;
@@ -259,9 +259,10 @@ async fn handle_accept_error(e: io::Error) {
     //
     // hyper allowed customizing this but axum does not.
     error!("accept error: {e}");
-    tokio::time::sleep(Duration::from_secs(1)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn is_connection_error(e: &io::Error) -> bool {
     matches!(
         e.kind(),

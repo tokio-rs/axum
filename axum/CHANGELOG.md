@@ -16,10 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (because it was already never terminating if that method wasn't used) ([#3601])
 - **added:** New `ListenerExt::limit_connections` allows limiting concurrent `axum::serve` connections ([#3489])
 - **added:** `MethodRouter::method_filter` ([#3586])
+- **added:** `serve::Executor` trait and `Serve::with_executor` for customizing how connection
+  tasks are spawned, enabling use cases like tracing and telemetry instrumentation ([#3704])
+- **added:** `IntoResponseParts` impl for `Redirect`, allowing it to be combined
+  with a body in a response tuple ([#3721])
+- **added:** Add `RawPathParams::from_request_extensions` ([#3757])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
 - **changed:** `Redirect` constructors now accept any `impl Into<String>` ([#3635])
 - **changed:** Updated `matchit` allowing for routes with captures and static prefixes and suffixes ([#3702])
+- **fixed:** Responses to `HEAD` will not accidentally reply with `content-length: 0` anymore ([#3742])
+- **fixed:** `MethodRouter::merge` no longer lists a method twice in the `Allow`
+  header after merging `get` and `head` ([#3836])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
@@ -30,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3586]: https://github.com/tokio-rs/axum/pull/3586
 [#3635]: https://github.com/tokio-rs/axum/pull/3635
 [#3702]: https://github.com/tokio-rs/axum/pull/3702
+[#3721]: https://github.com/tokio-rs/axum/pull/3721
+[#3742]: https://github.com/tokio-rs/axum/pull/3742
+[#3836]: https://github.com/tokio-rs/axum/pull/3836
+[#3757]: https://github.com/tokio-rs/axum/pull/3757
 
 # 0.8.9
 
@@ -43,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3620]: https://github.com/tokio-rs/axum/pull/3620
 [#3656]: https://github.com/tokio-rs/axum/pull/3656
 [#3611]: https://github.com/tokio-rs/axum/pull/3611
+[#3704]: https://github.com/tokio-rs/axum/pull/3704
 
 # 0.8.8
 

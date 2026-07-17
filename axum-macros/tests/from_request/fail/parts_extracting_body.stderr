@@ -16,9 +16,3 @@ error[E0277]: the trait bound `String: FromRequestParts<_>` is not satisfied
             `OriginalUri` implements `FromRequestParts<S>`
             `Query<T>` implements `FromRequestParts<S>`
           and $N others
-
-error[E0282]: type annotations needed
- --> tests/from_request/fail/parts_extracting_body.rs:5:11
-  |
-5 |     body: String,
-  |           ^^^^^^ cannot infer type

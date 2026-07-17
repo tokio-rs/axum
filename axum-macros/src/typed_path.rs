@@ -362,8 +362,7 @@ fn format_str_from_path(segments: &[Segment]) -> String {
             Segment::Capture(capture, _) => format!("{{{capture}}}"),
             Segment::Static(segment) => segment.to_owned(),
         })
-        .collect::<Vec<_>>()
-        .join("/")
+        .collect()
 }
 
 fn captures_from_path(segments: &[Segment]) -> Vec<syn::Ident> {
@@ -387,23 +386,100 @@ fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
         return Err(syn::Error::new_spanned(path, "paths must start with a `/`"));
     }
 
-    path.value()
-        .split('/')
-        .map(|segment| {
-            if let Some(capture) = segment
-                .strip_prefix('{')
-                .and_then(|segment| segment.strip_suffix('}'))
-                .and_then(|segment| {
-                    (!segment.starts_with('{') && !segment.ends_with('}')).then_some(segment)
-                })
-                .map(|capture| capture.strip_prefix('*').unwrap_or(capture))
-            {
-                Ok(Segment::Capture(capture.to_owned(), path.span()))
-            } else {
-                Ok(Segment::Static(segment.to_owned()))
+    validate_path_segments(&value, path)?;
+
+    let mut segments = Vec::new();
+    let mut rest = value.as_str();
+
+    while let Some(start) = find_first_not_double(b'{', rest.as_bytes()) {
+        if start > 0 {
+            segments.push(Segment::Static(rest[..start].to_owned()));
+        }
+
+        rest = &rest[start + 1..];
+
+        if let Some(end) = rest.find('}') {
+            let capture = &rest[..end];
+            if capture.is_empty() || capture.contains('{') {
+                return Err(syn::Error::new_spanned(path, "invalid capture in path"));
             }
-        })
-        .collect()
+
+            segments.push(Segment::Capture(
+                capture.strip_prefix('*').unwrap_or(capture).to_owned(),
+                path.span(),
+            ));
+
+            rest = &rest[end + 1..];
+        } else {
+            segments.push(Segment::Static(format!("{{{rest}")));
+            rest = "";
+        }
+    }
+
+    if !rest.is_empty() {
+        segments.push(Segment::Static(rest.to_owned()));
+    }
+
+    Ok(segments)
+}
+
+fn validate_path_segments(value: &str, path: &LitStr) -> syn::Result<()> {
+    let mut wildcard_seen = false;
+
+    for segment in value.split('/') {
+        if wildcard_seen {
+            return Err(syn::Error::new_spanned(
+                path,
+                "Wildcards must be at the end of the path",
+            ));
+        }
+
+        let mut capture_count = 0;
+        let mut rest = segment;
+        while let Some(start) = find_first_not_double(b'{', rest.as_bytes()) {
+            capture_count += 1;
+            rest = &rest[start + 1..];
+
+            if rest.starts_with('*') {
+                wildcard_seen = true;
+                // a wildcard capture must cover its entire segment
+                if start != 0 || rest.find('}') != Some(rest.len() - 1) {
+                    return Err(syn::Error::new_spanned(
+                        path,
+                        "Wildcards must be at the end of the path",
+                    ));
+                }
+            }
+        }
+
+        if capture_count > 1 {
+            return Err(syn::Error::new_spanned(
+                path,
+                "Cannot have multiple path parameters in a single segment",
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn find_first_not_double(needle: u8, haystack: &[u8]) -> Option<usize> {
+    let mut possible_capture = 0;
+    while let Some(index) = haystack
+        .get(possible_capture..)
+        .and_then(|haystack| haystack.iter().position(|byte| byte == &needle))
+    {
+        let index = index + possible_capture;
+
+        if haystack.get(index + 1) == Some(&needle) {
+            possible_capture = index + 2;
+            continue;
+        }
+
+        return Some(index);
+    }
+
+    None
 }
 
 enum Segment {

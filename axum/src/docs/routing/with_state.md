@@ -135,7 +135,7 @@ axum::serve(listener, router).await;
 # };
 ```
 
-Perhaps a little counter intuitively, `Router::with_state` doesn't always return a
+Perhaps a little counterintuitively, `Router::with_state` doesn't always return a
 `Router<()>`. Instead you get to pick what the new missing state type is:
 
 ```rust
@@ -150,7 +150,7 @@ let router: Router<AppState> = Router::new()
 // Here we pick `String`.
 let string_router: Router<String> = router.with_state(AppState {});
 
-// That allows us to add new routes that uses `String` as the state type
+// That allows us to add new routes that use `String` as the state type
 let string_router = string_router
     .route("/needs-string", get(|_: State<String>| async {}));
 

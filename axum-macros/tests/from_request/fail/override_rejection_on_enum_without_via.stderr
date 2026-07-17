@@ -16,11 +16,14 @@ error[E0277]: the trait bound `fn(MyExtractor) -> impl Future<Output = ()> {hand
 note: required by a bound in `axum::routing::get`
   --> $WORKSPACE/axum/src/routing/method_routing.rs
    |
+   |             H: Handler<T, S>,
+   |                ^^^^^^^^^^^^^ required by this bound in `get`
+...
    | top_level_handler_fn!(get, GET);
-   | ^^^^^^^^^^^^^^^^^^^^^^---^^^^^^
+   | -------------------------------
    | |                     |
    | |                     required by a bound in this function
-   | required by this bound in `get`
+   | in this macro invocation
    = note: this error originates in the macro `top_level_handler_fn` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `fn(Result<MyExtractor, MyRejection>) -> impl Future<Output = ()> {handler_result}: Handler<_, _>` is not satisfied
@@ -35,9 +38,12 @@ error[E0277]: the trait bound `fn(Result<MyExtractor, MyRejection>) -> impl Futu
 note: required by a bound in `MethodRouter::<S>::post`
   --> $WORKSPACE/axum/src/routing/method_routing.rs
    |
+   |             H: Handler<T, S>,
+   |                ^^^^^^^^^^^^^ required by this bound in `MethodRouter::<S>::post`
+...
    |     chained_handler_fn!(post, POST);
-   |     ^^^^^^^^^^^^^^^^^^^^----^^^^^^^
+   |     -------------------------------
    |     |                   |
    |     |                   required by a bound in this associated function
-   |     required by this bound in `MethodRouter::<S>::post`
+   |     in this macro invocation
    = note: this error originates in the macro `chained_handler_fn` (in Nightly builds, run with -Z macro-backtrace for more info)

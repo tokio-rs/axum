@@ -176,4 +176,6 @@ let app = Router::new()
 The static route `/foo` and the dynamic route `/{key}` are not considered to
 overlap and `/foo` will take precedence.
 
-Also panics if `path` is empty.
+Also panics if `path` is empty or does not start with `/` (for example `"Cargo.lock"`).
+When nesting routers with [`Router::nest`](crate::Router::nest), nested paths are still
+relative segments and must start with `/` (use `"/Cargo.lock"` rather than `"Cargo.lock"`).

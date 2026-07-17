@@ -58,6 +58,11 @@ async fn main() {
     let app = Router::new()
         // A dummy route that accepts some JSON but sometimes fails
         .route("/users", post(users_create))
+        // Layers wraps from the inside out, each new .layer() call becomes the outer one.
+        // Putting TraceLayer outermost means its `request` span is entered before
+        // log_app_errors runs, so our tracing::error! events inherit that span and get
+        // prefixed with `request{method=… uri=… matched_path=…}:`.
+        .layer(from_fn(log_app_errors)) // <- Inner layer
         .layer(
             TraceLayer::new_for_http()
                 // Create our own span for the request and include the matched path. The matched
@@ -77,15 +82,14 @@ async fn main() {
                 // By default `TraceLayer` will log 5xx responses but we're doing our specific
                 // logging of errors so disable that
                 .on_failure(()),
-        )
-        .layer(from_fn(log_app_errors))
+        ) // <- Outer layer
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app).await;
+    let _ = axum::serve(listener, app).await;
 }
 
 #[derive(Default, Clone)]
