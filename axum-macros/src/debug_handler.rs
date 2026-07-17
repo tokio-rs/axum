@@ -311,14 +311,24 @@ fn check_inputs_impls_from_request(
             quote_spanned! {span=>
                 #ty: ::axum::extract::FromRequest<#state_ty> + Send
             }
-        } else if let Some((inner_ty, _)) = extract_with_rejection_types(&ty) {
+        } else if let Some((inner_ty, rejection_ty)) = extract_with_rejection_types(&ty) {
             // When the extractor is `WithRejection<T, E>`, check the inner type T
             // directly instead of the whole `WithRejection<T, E>`. This produces
             // clear error messages because T (e.g. `Query<Foo>`) typically only
             // implements one of FromRequest/FromRequestParts, so rustc can resolve
-            // `M` unambiguously and give specific trait-bound diagnostics.
+            // `M` unambiguously and give specific trait-bound diagnostics. We also
+            // require `E: From<T::Rejection>` here, under the same inferred `M`,
+            // since that is exactly the bound `WithRejection<T, E>`'s own
+            // `FromRequest`/`FromRequestParts` impl needs. Checking it in this
+            // generic check function (rather than leaving it to the real handler
+            // bound) means a missing conversion is reported with a targeted error
+            // pointing at this check function, instead of an ambiguous one on the
+            // handler itself.
             quote_spanned! {span=>
-                #inner_ty: ::axum::extract::FromRequest<#state_ty, M> + Send
+                #inner_ty: ::axum::extract::FromRequest<#state_ty, M> + Send,
+                #rejection_ty: ::std::convert::From<
+                    <#inner_ty as ::axum::extract::FromRequest<#state_ty, M>>::Rejection
+                >
             }
         } else {
             quote_spanned! {span=>
