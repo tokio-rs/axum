@@ -562,6 +562,14 @@ impl OnFailedUpgrade for DefaultOnFailedUpgrade {
 /// 13`, and (over HTTP/1.1) a `Sec-WebSocket-Key` header — or the extractor will
 /// reject it just as it would a real request.
 ///
+/// # One-shot I/O
+///
+/// `MockUpgrade` is [`Clone`] because `http::Extensions` requires it, but every
+/// clone shares the same single-use I/O. Whichever request upgrades first takes
+/// it; a later upgrade from another clone finds the I/O already gone and fails
+/// through [`WebSocketUpgrade::on_failed_upgrade`] rather than opening a second
+/// connection. Use a fresh `MockUpgrade` for each WebSocket connection under test.
+///
 /// [`tower::ServiceExt::oneshot`]: https://docs.rs/tower/latest/tower/trait.ServiceExt.html#method.oneshot
 #[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
 #[derive(Clone)]
@@ -581,7 +589,8 @@ impl MockUpgrade {
     /// Create a `MockUpgrade` from any duplex I/O object.
     ///
     /// Typically this is one end of a [`tokio::io::duplex`](https://docs.rs/tokio/latest/tokio/io/fn.duplex.html) pair; the other end
-    /// is driven by the test as the WebSocket client.
+    /// is driven by the test as the WebSocket client. The I/O is single-use even
+    /// across clones — see the [type-level docs](Self#one-shot-io).
     pub fn new<IO>(io: IO) -> Self
     where
         IO: AsyncRead + AsyncWrite + Unpin + Send + 'static,
@@ -1645,6 +1654,85 @@ mod tests {
         assert!(
             failed.load(Ordering::SeqCst),
             "on_failed_upgrade was not called after the mock I/O was consumed"
+        );
+    }
+
+    // Cloning a `MockUpgrade` does not clone its I/O: two requests carrying
+    // clones of the same `MockUpgrade` both get a `101 Switching Protocols`
+    // handshake response, but only the first clone's upgrade task actually
+    // drives a connection. The second finds the shared I/O already taken and
+    // reports the failure through `on_failed_upgrade`, exactly as documented
+    // on the `MockUpgrade` type.
+    #[crate::test]
+    async fn mock_upgrade_clone_shares_single_use_io() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        let (_client, server) = tokio::io::duplex(1024);
+        let mock = MockUpgrade::new(server);
+
+        let failed = Arc::new(AtomicBool::new(false));
+        let failed_in_handler = Arc::clone(&failed);
+
+        // A single handler used for both requests: it always installs the
+        // `on_failed_upgrade` callback, so whichever request loses the race for
+        // the shared I/O will flip the flag.
+        let app = Router::new().route(
+            "/echo",
+            any(move |ws: WebSocketUpgrade| {
+                let failed = Arc::clone(&failed_in_handler);
+                ready(
+                    ws.on_failed_upgrade(move |_error: Error| {
+                        failed.store(true, Ordering::SeqCst);
+                    })
+                    .on_upgrade(|_socket| async {}),
+                )
+            }),
+        );
+
+        // Request #1 carries a clone of `mock`. The handshake succeeds …
+        let res = app
+            .clone()
+            .oneshot(mock_ws_request(mock.clone(), None))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::SWITCHING_PROTOCOLS);
+
+        // … and, once the spawned upgrade task actually runs, it takes the
+        // shared I/O out of `mock` for real (not via the manual `.take()`
+        // shortcut used in `mock_upgrade_reuse_fires_on_failed_upgrade`).
+        for _ in 0..100 {
+            if mock.io.lock().unwrap().is_none() {
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+        assert!(
+            mock.io.lock().unwrap().is_none(),
+            "request #1's upgrade task did not consume the shared mock I/O in time"
+        );
+
+        // Request #2 carries another clone of the same `mock`. The handshake
+        // still reports success — that is the surprising part the reviewer
+        // flagged — because `MockUpgrade` only fails at the point the upgrade
+        // task tries to take I/O that is no longer there.
+        let res = app
+            .oneshot(mock_ws_request(mock.clone(), None))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::SWITCHING_PROTOCOLS);
+
+        // Let request #2's spawned task run; it must find the I/O already gone
+        // and report the failure through `on_failed_upgrade`.
+        for _ in 0..100 {
+            if failed.load(Ordering::SeqCst) {
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+        assert!(
+            failed.load(Ordering::SeqCst),
+            "on_failed_upgrade was not called for the second clone, \
+             even though the first clone had already taken the shared I/O"
         );
     }
 
