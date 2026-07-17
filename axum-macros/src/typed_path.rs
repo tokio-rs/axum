@@ -386,6 +386,8 @@ fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
         return Err(syn::Error::new_spanned(path, "paths must start with a `/`"));
     }
 
+    validate_path_segments(&value, path)?;
+
     let mut segments = Vec::new();
     let mut rest = value.as_str();
 
@@ -419,6 +421,46 @@ fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
     }
 
     Ok(segments)
+}
+
+fn validate_path_segments(value: &str, path: &LitStr) -> syn::Result<()> {
+    let mut wildcard_seen = false;
+
+    for segment in value.split('/') {
+        if wildcard_seen {
+            return Err(syn::Error::new_spanned(
+                path,
+                "Wildcards must be at the end of the path",
+            ));
+        }
+
+        let mut capture_count = 0;
+        let mut rest = segment;
+        while let Some(start) = find_first_not_double(b'{', rest.as_bytes()) {
+            capture_count += 1;
+            rest = &rest[start + 1..];
+
+            if rest.starts_with('*') {
+                wildcard_seen = true;
+                // a wildcard capture must cover its entire segment
+                if start != 0 || rest.find('}') != Some(rest.len() - 1) {
+                    return Err(syn::Error::new_spanned(
+                        path,
+                        "Wildcards must be at the end of the path",
+                    ));
+                }
+            }
+        }
+
+        if capture_count > 1 {
+            return Err(syn::Error::new_spanned(
+                path,
+                "Cannot have multiple path parameters in a single segment",
+            ));
+        }
+    }
+
+    Ok(())
 }
 
 fn find_first_not_double(needle: u8, haystack: &[u8]) -> Option<usize> {
