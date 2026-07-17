@@ -20,7 +20,6 @@ help: the trait `IntoResponse` is not implemented for `BadRejection`
              (Response<()>, T1, R)
              (Response<()>, T1, T2, R)
            and $N others
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
  1 + #![feature(trivial_bounds)]
