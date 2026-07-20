@@ -81,6 +81,15 @@ impl TestClient {
     }
 
     #[allow(dead_code)]
+    pub fn request(&self, method: http::Method, url: &str) -> RequestBuilder {
+        RequestBuilder {
+            builder: self
+                .client
+                .request(method, format!("http://{}{url}", self.addr)),
+        }
+    }
+
+    #[allow(dead_code)]
     #[must_use]
     pub fn server_port(&self) -> u16 {
         self.addr.port()

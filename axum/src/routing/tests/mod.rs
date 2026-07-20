@@ -1352,3 +1352,18 @@ async fn middleware_adding_body() {
 
     assert_eq!(res.text().await, "…");
 }
+
+#[crate::test]
+async fn query_method_routing() {
+    use crate::routing::query;
+
+    let app = Router::new().route("/", query(|| async { "query handler" }));
+
+    let client = TestClient::new(app);
+
+    let query_method = Method::from_bytes(b"QUERY").unwrap();
+
+    let res = client.request(query_method, "/").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "query handler");
+}

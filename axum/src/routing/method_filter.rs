@@ -43,6 +43,8 @@ impl MethodFilter {
     pub const PUT: Self = Self::from_bits(0b0_1000_0000);
     /// Match `TRACE` requests.
     pub const TRACE: Self = Self::from_bits(0b1_0000_0000);
+    /// Match `QUERY` requests.
+    pub const QUERY: Self = Self::from_bits(0b10_0000_0000);
 
     const fn bits(self) -> u16 {
         let bits = self;
@@ -99,6 +101,7 @@ impl TryFrom<Method> for MethodFilter {
             Method::POST => Ok(Self::POST),
             Method::PUT => Ok(Self::PUT),
             Method::TRACE => Ok(Self::TRACE),
+            other if other.as_str() == "QUERY" => Ok(Self::QUERY),
             other => Err(NoMatchingMethodFilter { method: other }),
         }
     }
@@ -153,6 +156,11 @@ mod tests {
         assert_eq!(
             MethodFilter::try_from(Method::TRACE).unwrap(),
             MethodFilter::TRACE
+        );
+
+        assert_eq!(
+            MethodFilter::try_from(Method::from_bytes(b"QUERY").unwrap()).unwrap(),
+            MethodFilter::QUERY
         );
 
         assert!(
