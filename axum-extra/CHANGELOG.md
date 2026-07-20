@@ -22,9 +22,12 @@ and this project adheres to [Semantic Versioning].
       .route_with_tsr("/path", get(/* handler */))
       .route_with_tsr("/path", post(/* handler */))
   ```
+- **fixed:** Escape multipart `Content-Disposition` parameters and reject
+  newlines in field names and filenames ([#3776])
 
 [#3599]: https://github.com/tokio-rs/axum/pull/3599
 [#3586]: https://github.com/tokio-rs/axum/pull/3586
+[#3776]: https://github.com/tokio-rs/axum/pull/3776
 
 # 0.12.6
 
