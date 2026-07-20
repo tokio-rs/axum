@@ -274,6 +274,7 @@ version = "0.8.9"
 dependencies = [
  "axum-core",
  "axum-macros",
+ "axum-serve",
  "base64 0.22.1",
  "bytes",
  "form_urlencoded",
@@ -350,6 +351,24 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "axum-serve"
+version = "0.1.0"
+dependencies = [
+ "axum-core",
+ "futures-core",
+ "futures-util",
+ "http",
+ "http-body",
+ "hyper",
+ "hyper-util",
+ "pin-project-lite",
+ "tokio",
+ "tower",
+ "tower-service",
+ "tracing",
 ]
 
 [[package]]
