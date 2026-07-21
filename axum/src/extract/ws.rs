@@ -65,8 +65,54 @@
 //!
 //! # Read and write concurrently
 //!
-//! If you need to read and write concurrently from a [`WebSocket`] you can use
-//! [`StreamExt::split`]:
+//! To read and write concurrently it's not necessary to split the socket into
+//! separate halves. Instead, have a single task own the [`WebSocket`] — the
+//! [actor pattern] — and use [`select!`] to race receiving a message from the
+//! socket against other event sources, such as an [`mpsc`] channel that other
+//! tasks use to send messages to the client. [`WebSocket::recv`] is cancel
+//! safe, so it can be used as a `select!` branch directly:
+//!
+//! ```rust,no_run
+//! use axum::extract::ws::{Message, WebSocket};
+//! use tokio::sync::mpsc;
+//!
+//! async fn handle_socket(mut socket: WebSocket) {
+//!     let (tx, mut rx) = mpsc::channel::<Message>(32);
+//!
+//!     // give `tx` to tasks that want to send messages to the client
+//!     tokio::spawn(background_task(tx));
+//!
+//!     loop {
+//!         tokio::select! {
+//!             msg = socket.recv() => {
+//!                 match msg {
+//!                     Some(Ok(msg)) => {
+//!                         // handle the message received from the client
+//!                         # _ = msg;
+//!                     }
+//!                     // client disconnected or an error occurred
+//!                     _ => return,
+//!                 }
+//!             }
+//!             Some(msg) = rx.recv() => {
+//!                 if socket.send(msg).await.is_err() {
+//!                     // client disconnected
+//!                     return;
+//!                 }
+//!             }
+//!         }
+//!     }
+//! }
+//!
+//! async fn background_task(tx: mpsc::Sender<Message>) {
+//!     // ...
+//! }
+//! ```
+//!
+//! Alternatively you can use [`StreamExt::split`] to split the socket into a
+//! sender and a receiver half that can be moved to independent tasks. Note
+//! that each half is protected by a lock that must be acquired for every
+//! operation, so prefer the actor pattern where possible:
 //!
 //! ```rust,no_run
 //! use axum::{Error, extract::ws::{WebSocket, Message}};
@@ -88,6 +134,9 @@
 //! }
 //! ```
 //!
+//! [actor pattern]: https://ryhl.io/blog/actors-with-tokio/
+//! [`mpsc`]: https://docs.rs/tokio/latest/tokio/sync/mpsc/index.html
+//! [`select!`]: https://docs.rs/tokio/latest/tokio/macro.select.html
 //! [`StreamExt::split`]: https://docs.rs/futures/0.3.17/futures/stream/trait.StreamExt.html#method.split
 
 use self::rejection::*;
