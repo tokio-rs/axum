@@ -71,7 +71,7 @@
 //!
 #![doc = include_str!("docs/handlers_intro.md")]
 //!
-//! See [`handler`](crate::handler) for more details on handlers.
+//! See [`handler`] for more details on handlers.
 //!
 //! # Extractors
 //!
@@ -94,7 +94,7 @@
 //! async fn json(Json(payload): Json<serde_json::Value>) {}
 //! ```
 //!
-//! See [`extract`](crate::extract) for more details on extractors.
+//! See [`extract`] for more details on extractors.
 //!
 //! # Responses
 //!
@@ -126,7 +126,7 @@
 //! # let _: Router = app;
 //! ```
 //!
-//! See [`response`](crate::response) for more details on building responses.
+//! See [`response`] for more details on building responses.
 //!
 //! # Error handling
 //!
