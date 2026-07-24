@@ -20,9 +20,9 @@ let app = Router::new()
     .route(
         // Any request to `/` goes to a service
         "/",
-        // Services whose response body is not `axum::body::BoxBody`
-        // can be wrapped in `axum::routing::any_service` (or one of the other routing filters)
-        // to have the response body mapped
+        // Services whose responses implement `axum::response::IntoResponse` can
+        // be wrapped in `axum::routing::any_service` (or one of the other routing filters)
+        // to turn them into routes.
         any_service(service_fn(|_: Request| async {
             let res = Response::new(Body::from("Hi from `GET /`"));
             Ok::<_, Infallible>(res)
@@ -30,8 +30,8 @@ let app = Router::new()
     )
     .route_service(
         "/foo",
-        // This service's response body is `axum::body::BoxBody` so
-        // it can be routed to directly.
+        // This service's request body is `axum::body::Body`, and its response
+        // can be any type that implements `axum::response::IntoResponse`.
         service_fn(|req: Request| async move {
             let body = Body::from(format!("Hi from `{} /foo`", req.method()));
             let res = Response::new(body);
