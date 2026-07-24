@@ -883,6 +883,48 @@ mod tests {
     }
 
     #[crate::test]
+    async fn deserialize_wildcard_into_vec() {
+        let app = Router::new().route(
+            "/files/{*path}",
+            get(|Path(segments): Path<Vec<String>>| async move { segments.join(",") }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/files/a/b/c").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "a,b,c");
+
+        // captures are percent-decoded before they are split, so an encoded
+        // slash also separates segments
+        let res = client.get("/files/a%20b/c%2Fd").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "a b,c,d");
+    }
+
+    #[crate::test]
+    async fn deserialize_wildcard_into_vec_in_struct() {
+        #[derive(Deserialize)]
+        struct Params {
+            bucket: String,
+            key: Vec<u32>,
+        }
+
+        let app = Router::new().route(
+            "/{bucket}/{*key}",
+            get(|Path(Params { bucket, key }): Path<Params>| async move {
+                assert_eq!(bucket, "my-bucket");
+                assert_eq!(key, [1, 2, 3]);
+            }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/my-bucket/1/2/3").await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
     async fn type_that_uses_deserialize_any() {
         use time::Date;
 
