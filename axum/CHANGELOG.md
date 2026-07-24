@@ -26,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **changed:** `Redirect` constructors now accept any `impl Into<String>` ([#3635])
 - **changed:** Updated `matchit` allowing for routes with captures and static prefixes and suffixes ([#3702])
 - **fixed:** Responses to `HEAD` will not accidentally reply with `content-length: 0` anymore ([#3742])
+- **fixed:** `Serve::with_graceful_shutdown` now waits for WebSocket handler tasks and sends open
+  sockets a close frame, rather than leaving them running once the server has shut down. A handler
+  that never returns will now hold shutdown open, as with any in-flight response body ([#3831])
 - **fixed:** `MethodRouter::merge` no longer lists a method twice in the `Allow`
   header after merging `get` and `head` ([#3836])
 
@@ -42,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3742]: https://github.com/tokio-rs/axum/pull/3742
 [#3836]: https://github.com/tokio-rs/axum/pull/3836
 [#3757]: https://github.com/tokio-rs/axum/pull/3757
+[#3831]: https://github.com/tokio-rs/axum/pull/3831
 
 # 0.8.9
 

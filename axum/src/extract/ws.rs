@@ -88,11 +88,29 @@
 //! }
 //! ```
 //!
+//! # Graceful shutdown
+//!
+//! When the server is run with [`axum::serve`] and
+//! [`Serve::with_graceful_shutdown`], WebSocket connections take part in the
+//! shutdown: once the signal fires each open [`WebSocket`] sends a Close frame
+//! to its peer, and the server waits for the handler tasks to finish before
+//! resolving.
+//!
+//! A handler with the usual read loop needs no changes — after the Close
+//! handshake [`WebSocket::recv`] returns `None`, so the loop ends and the task
+//! returns. A handler that never polls the socket and never returns will still
+//! hold shutdown open, like any other in-flight response body.
+//!
 //! [`StreamExt::split`]: https://docs.rs/futures/0.3.17/futures/stream/trait.StreamExt.html#method.split
+//! [`axum::serve`]: crate::serve()
+//! [`Serve::with_graceful_shutdown`]: crate::serve::Serve::with_graceful_shutdown
 
 use self::rejection::*;
 use super::FromRequestParts;
 use crate::{body::Bytes, response::Response, Error};
+// Gated like `axum::serve` itself; the `ws` feature does not imply `http1`/`http2`.
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+use crate::serve::GracefulPeer;
 use axum_core::body::Body;
 use futures_core::{FusedStream, Stream};
 use futures_sink::Sink;
@@ -140,6 +158,9 @@ pub struct WebSocketUpgrade<F = DefaultOnFailedUpgrade> {
     on_upgrade: hyper::upgrade::OnUpgrade,
     on_failed_upgrade: F,
     sec_websocket_protocol: BTreeSet<HeaderValue>,
+    /// Graceful-shutdown handle for the socket, if any. See [`GracefulPeer`].
+    #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+    graceful: Option<GracefulPeer>,
 }
 
 impl<F> std::fmt::Debug for WebSocketUpgrade<F> {
@@ -337,11 +358,22 @@ impl<F> WebSocketUpgrade<F> {
             on_upgrade: self.on_upgrade,
             on_failed_upgrade: callback,
             sec_websocket_protocol: self.sec_websocket_protocol,
+            #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+            graceful: self.graceful,
         }
     }
 
     /// Finalize upgrading the connection and call the provided callback with
     /// the stream.
+    ///
+    /// # Graceful shutdown
+    ///
+    /// Under [`axum::serve`] with [`with_graceful_shutdown`] the spawned task
+    /// joins the shutdown and the socket is sent a Close frame once it begins.
+    /// See the [module docs](self#graceful-shutdown) for details.
+    ///
+    /// [`axum::serve`]: crate::serve()
+    /// [`with_graceful_shutdown`]: crate::serve::Serve::with_graceful_shutdown
     #[must_use = "to set up the WebSocket connection, this response must be returned"]
     pub fn on_upgrade<C, Fut>(self, callback: C) -> Response
     where
@@ -355,7 +387,24 @@ impl<F> WebSocketUpgrade<F> {
 
         let protocol = self.protocol.clone();
 
+        #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+        let (shutdown, guard) = match self.graceful {
+            Some(peer) => {
+                let signal = peer.shutdown;
+                let shutdown: Pin<Box<dyn Future<Output = ()> + Send>> =
+                    Box::pin(async move { signal.closed().await });
+                (Some(shutdown), Some(peer.guard))
+            }
+            None => (None, None),
+        };
+        #[cfg(not(all(feature = "tokio", any(feature = "http1", feature = "http2"))))]
+        let shutdown: Option<Pin<Box<dyn Future<Output = ()> + Send>>> = None;
+
         tokio::spawn(async move {
+            // Held for the task's lifetime to keep the shutdown drain open.
+            #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+            let _guard = guard;
+
             let upgraded = match on_upgrade.await {
                 Ok(upgraded) => upgraded,
                 Err(err) => {
@@ -371,6 +420,8 @@ impl<F> WebSocketUpgrade<F> {
             let socket = WebSocket {
                 inner: socket,
                 protocol,
+                shutdown,
+                close_state: CloseState::Idle,
             };
             callback(socket).await;
         });
@@ -494,6 +545,11 @@ where
             .remove::<hyper::upgrade::OnUpgrade>()
             .ok_or(ConnectionNotUpgradable)?;
 
+        // Present only when `axum::serve` is draining gracefully; see
+        // `GracefulPeer`.
+        #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+        let graceful = parts.extensions.get::<GracefulPeer>().cloned();
+
         let sec_websocket_protocol = parts
             .headers
             .get_all(header::SEC_WEBSOCKET_PROTOCOL)
@@ -512,6 +568,8 @@ where
             on_upgrade,
             sec_websocket_protocol,
             on_failed_upgrade: DefaultOnFailedUpgrade,
+            #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+            graceful,
         })
     }
 }
@@ -539,10 +597,33 @@ fn header_contains(headers: &HeaderMap, key: &HeaderName, value: &'static str) -
 /// A stream of WebSocket messages.
 ///
 /// See [the module level documentation](self) for more details.
-#[derive(Debug)]
 pub struct WebSocket {
     inner: WebSocketStream<TokioIo<hyper::upgrade::Upgraded>>,
     protocol: Option<HeaderValue>,
+    /// Resolves when graceful shutdown begins; `None` if not configured.
+    shutdown: Option<Pin<Box<dyn Future<Output = ()> + Send>>>,
+    close_state: CloseState,
+}
+
+/// Progress of the Close frame sent when graceful shutdown begins.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CloseState {
+    /// No Close queued (also the terminal state).
+    Idle,
+    /// Shutdown seen; Close needs enqueuing.
+    Queued,
+    /// Close enqueued; flushing it out.
+    Flushing,
+}
+
+impl std::fmt::Debug for WebSocket {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WebSocket")
+            .field("inner", &self.inner)
+            .field("protocol", &self.protocol)
+            .field("close_state", &self.close_state)
+            .finish_non_exhaustive()
+    }
 }
 
 impl WebSocket {
@@ -588,9 +669,39 @@ impl FusedStream for WebSocket {
 impl Stream for WebSocket {
     type Item = Result<Message, Error>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
+
+        // On shutdown, send a Close frame but keep reading so the peer's Close
+        // reply still ends the stream. Best-effort, so any failure falls through.
+        let shutdown_fired = match this.shutdown.as_mut() {
+            Some(shutdown) => shutdown.as_mut().poll(cx).is_ready(),
+            None => false,
+        };
+        if shutdown_fired {
+            this.shutdown = None;
+            this.close_state = CloseState::Queued;
+        }
+
+        if this.close_state == CloseState::Queued {
+            match this.inner.poll_ready_unpin(cx) {
+                Poll::Ready(Ok(())) => {
+                    this.close_state = match this.inner.start_send_unpin(ts::Message::Close(None)) {
+                        Ok(()) => CloseState::Flushing,
+                        Err(_) => CloseState::Idle,
+                    };
+                }
+                Poll::Ready(Err(_)) => this.close_state = CloseState::Idle,
+                Poll::Pending => {}
+            }
+        }
+
+        if this.close_state == CloseState::Flushing && this.inner.poll_flush_unpin(cx).is_ready() {
+            this.close_state = CloseState::Idle;
+        }
+
         loop {
-            match ready!(self.inner.poll_next_unpin(cx)) {
+            match ready!(this.inner.poll_next_unpin(cx)) {
                 Some(Ok(msg)) => {
                     if let Some(msg) = Message::from_tungstenite(msg) {
                         return Poll::Ready(Some(Ok(msg)));
@@ -1263,5 +1374,199 @@ mod tests {
             output,
             tungstenite::Message::Pong(Bytes::from_static(b"ping"))
         );
+    }
+
+    // Graceful-shutdown interaction. These need `axum::serve`, which is only
+    // available with `http1`/`http2` (the `ws` feature alone does not imply it).
+    #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+    mod graceful_shutdown {
+        use super::*;
+        use crate::routing::any;
+        use std::future::IntoFuture as _;
+        use std::sync::Arc;
+        use std::time::Duration;
+        use tokio::net::{TcpListener, TcpStream};
+
+        async fn connect(addr: std::net::SocketAddr) -> WebSocketStream<TcpStream> {
+            let uri: http::Uri = format!("ws://{addr}/ws").try_into().unwrap();
+            let req = tungstenite::client::ClientRequestBuilder::new(uri);
+            let tcp = TcpStream::connect(addr).await.unwrap();
+            let (client, _resp) = tokio_tungstenite::client_async(req, tcp).await.unwrap();
+            client
+        }
+
+        // Drives the client to completion, returning whether a Close frame was
+        // observed. Reading to the end also flushes the client's own Close reply
+        // so the server's handshake (and thus the server) can complete.
+        async fn drain_until_closed(mut client: WebSocketStream<TcpStream>) -> bool {
+            let mut saw_close = false;
+            loop {
+                let next = tokio::time::timeout(Duration::from_secs(5), client.next())
+                    .await
+                    .expect("timed out waiting for client to read");
+                match next {
+                    Some(Ok(msg)) => {
+                        if msg.is_close() {
+                            saw_close = true;
+                        }
+                    }
+                    Some(Err(_)) | None => break,
+                }
+            }
+            saw_close
+        }
+
+        async fn assert_finished(marker: &Arc<()>) {
+            let mut count = Arc::strong_count(marker);
+            for _ in 0..50 {
+                if count == 1 {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+                count = Arc::strong_count(marker);
+            }
+            assert_eq!(count, 1, "WebSocket handler task did not finish");
+        }
+
+        // Regression test for https://github.com/tokio-rs/axum/issues/3003. A
+        // recv() loop used to be detached and outlive graceful shutdown. Now it
+        // is sent a Close frame and the server waits for it.
+        #[crate::test]
+        async fn waits_for_websocket_and_closes_it() {
+            let marker = Arc::new(());
+
+            let app = {
+                let marker = marker.clone();
+                crate::Router::new().route(
+                    "/ws",
+                    any(move |ws: WebSocketUpgrade| {
+                        let marker = marker.clone();
+                        async move {
+                            ws.on_upgrade(move |mut socket| async move {
+                                // Kept so strong_count proves the task finished.
+                                let _marker = marker;
+                                while let Some(Ok(_)) = socket.recv().await {}
+                            })
+                        }
+                    }),
+                )
+            };
+
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+
+            let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+            let server = tokio::spawn(
+                crate::serve(listener, app)
+                    .with_graceful_shutdown(async move {
+                        let _ = shutdown_rx.await;
+                    })
+                    .into_future(),
+            );
+
+            let client = connect(addr).await;
+
+            // Make sure the upgrade task is running and parked on `recv()`.
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
+            // Trigger graceful shutdown.
+            shutdown_tx.send(()).unwrap();
+
+            let client_task = tokio::spawn(drain_until_closed(client));
+
+            // (b) the serve future completes within the timeout.
+            tokio::time::timeout(Duration::from_secs(5), server)
+                .await
+                .expect("serve future did not complete after graceful shutdown")
+                .expect("server task panicked");
+
+            // (a) the client observed a Close frame.
+            let saw_close = tokio::time::timeout(Duration::from_secs(5), client_task)
+                .await
+                .expect("client task hung")
+                .unwrap();
+            assert!(saw_close, "client never observed a Close frame");
+
+            // (c) the handler task finished and dropped its state.
+            assert_finished(&marker).await;
+        }
+
+        // As above, but the handler also sends messages periodically. Once the
+        // socket has sent its Close frame, further sends error and `recv` yields
+        // `None`, so the handler still terminates.
+        #[crate::test]
+        async fn waits_for_sending_websocket() {
+            let marker = Arc::new(());
+
+            let app = {
+                let marker = marker.clone();
+                crate::Router::new().route(
+                    "/ws",
+                    any(move |ws: WebSocketUpgrade| {
+                        let marker = marker.clone();
+                        async move {
+                            ws.on_upgrade(move |mut socket| async move {
+                                let _marker = marker;
+                                loop {
+                                    match tokio::time::timeout(
+                                        Duration::from_millis(20),
+                                        socket.recv(),
+                                    )
+                                    .await
+                                    {
+                                        Ok(Some(Ok(_))) => {}
+                                        Ok(Some(Err(_)) | None) => break,
+                                        // Idle: send a keep-alive tick.
+                                        Err(_) => {
+                                            if socket.send(Message::text("tick")).await.is_err() {
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            })
+                        }
+                    }),
+                )
+            };
+
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+
+            let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+            let server = tokio::spawn(
+                crate::serve(listener, app)
+                    .with_graceful_shutdown(async move {
+                        let _ = shutdown_rx.await;
+                    })
+                    .into_future(),
+            );
+
+            let mut client = connect(addr).await;
+
+            // Read a couple of ticks so we know the handler is live and sending.
+            for _ in 0..2 {
+                tokio::time::timeout(Duration::from_secs(5), client.next())
+                    .await
+                    .expect("timed out reading tick");
+            }
+
+            shutdown_tx.send(()).unwrap();
+
+            let client_task = tokio::spawn(drain_until_closed(client));
+
+            tokio::time::timeout(Duration::from_secs(5), server)
+                .await
+                .expect("serve future did not complete after graceful shutdown")
+                .expect("server task panicked");
+
+            let saw_close = tokio::time::timeout(Duration::from_secs(5), client_task)
+                .await
+                .expect("client task hung")
+                .unwrap();
+            assert!(saw_close, "client never observed a Close frame");
+
+            assert_finished(&marker).await;
+        }
     }
 }
