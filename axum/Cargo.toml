@@ -72,9 +72,7 @@ query = [
 tokio = [
     "dep:hyper-util",
     "dep:tokio",
-    "tokio/rt",
     "tower/make",
-    "tokio/macros",
 ]
 tower-log = ["tower/log"]
 tracing = ["dep:tracing", "axum-core/tracing"]
@@ -102,10 +100,10 @@ __private_docs = [
 __private = ["tokio", "http1", "dep:reqwest"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { package = "tokio", version = "1.44", features = ["time", "net"], optional = true }
+tokio = { package = "tokio", version = "1.44", features = ["time", "rt", "net"], optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-tokio = { package = "tokio", version = "1.44", features = ["time"], optional = true }
+tokio = { package = "tokio", version = "1.44", features = ["time", "rt"], optional = true }
 
 [dependencies]
 axum-core = { path = "../axum-core", version = "0.5.6" }
