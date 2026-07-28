@@ -556,6 +556,21 @@ where
     }
 }
 
+/// Lets an upgraded connection (e.g. a WebSocket) take part in graceful
+/// shutdown. Inserted into every request's extensions and read by
+/// [`WebSocketUpgrade`].
+///
+/// [`WebSocketUpgrade`]: crate::extract::ws::WebSocketUpgrade
+// Only read by the `ws` extractor.
+#[cfg_attr(not(feature = "ws"), allow(dead_code))]
+#[derive(Clone, Debug)]
+pub(crate) struct GracefulPeer {
+    /// Resolves via `closed()` when shutdown begins.
+    pub(crate) shutdown: watch::Sender<()>,
+    /// Held by the upgraded task to keep the drain open.
+    pub(crate) guard: watch::Receiver<()>,
+}
+
 async fn handle_connection<L, M, S, B, E>(
     make_service: &mut M,
     signal_tx: &watch::Sender<()>,
@@ -584,6 +599,12 @@ async fn handle_connection<L, M, S, B, E>(
         .await
         .unwrap_or_else(|err| match err {});
 
+    // Attached to every request; inert unless graceful shutdown is running.
+    let graceful = GracefulPeer {
+        shutdown: signal_tx.clone(),
+        guard: close_rx.clone(),
+    };
+
     let tower_service = make_service
         .call(IncomingStream {
             io: &io,
@@ -591,7 +612,11 @@ async fn handle_connection<L, M, S, B, E>(
         })
         .await
         .unwrap_or_else(|err| match err {})
-        .map_request(|req: Request<Incoming>| req.map(Body::new));
+        .map_request(move |req: Request<Incoming>| {
+            let mut req = req.map(Body::new);
+            req.extensions_mut().insert(graceful.clone());
+            req
+        });
 
     let hyper_service = TowerToHyperService::new(tower_service);
     let signal_tx = signal_tx.clone();
