@@ -89,7 +89,8 @@ async fn body_to_bytes_mut(body: &mut Body, bytes: &mut BytesMut) -> Result<(), 
         .map_err(FailedToBufferBody::from_err)?
     {
         let Ok(data) = frame.into_data() else {
-            return Ok(());
+            // Match `Bytes` by ignoring non-data frames until the body ends.
+            continue;
         };
         bytes.put(data);
     }
