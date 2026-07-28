@@ -96,7 +96,7 @@
 //! to its peer, and the server waits for the handler tasks to finish before
 //! resolving.
 //!
-//! A handler with the usual read loop needs no changes — after the Close
+//! A handler with the usual read loop needs no changes. After the Close
 //! handshake [`WebSocket::recv`] returns `None`, so the loop ends and the task
 //! returns. A handler that never polls the socket and never returns will still
 //! hold shutdown open, like any other in-flight response body.
