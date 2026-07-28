@@ -197,9 +197,11 @@
 //! ### Using `&'static` state
 //!
 //! For state built once and intended to live until the process exits, [`Box::leak`]
-//! or a static [`LazyLock`] can provide a `&'static AppState` to the
-//! router.[^static-state] This is useful for state built from runtime configuration,
-//! database pools, or service clients:
+//! or a static [`LazyLock`] can provide a `&'static AppState` to the router. Use
+//! `Box::leak` for state initialized in `main`, including when state initialization
+//! requires asynchronous work; use a static `LazyLock` for global state with a
+//! synchronous lazy initializer. This is useful for state built from runtime
+//! configuration, database pools, or service clients:
 //!
 //! ```rust
 //! use axum::{
@@ -216,14 +218,17 @@
 //!     async fn work(&self) {}
 //! }
 //!
-//! let app_state = AppState {
-//!     // Initialize fields at startup.
-//! };
-//! let app_state: &'static AppState = Box::leak(Box::new(app_state));
+//! fn main() {
+//!     let app_state = AppState {
+//!         // Initialize fields at startup.
+//!     };
+//!     let app_state: &'static AppState = Box::leak(Box::new(app_state));
 //!
-//! let app = Router::new()
-//!     .route("/", get(handler))
-//!     .with_state(app_state);
+//!     let app = Router::new()
+//!         .route("/", get(handler))
+//!         .with_state(app_state);
+//!     # let _: Router = app;
+//! }
 //!
 //! async fn handler(State(state): State<&'static AppState>) {
 //!     let _task = tokio::spawn(async move {
@@ -233,7 +238,6 @@
 //!     // `state` is still available in the handler because it was copied.
 //!     state.work().await;
 //! }
-//! # let _: Router = app;
 //! ```
 //!
 //! Like every shared reference, a `&'static T` is `Copy`, so axum can clone it for
@@ -248,12 +252,6 @@
 //! `Box::leak` deliberately leaks its allocation, and state held by a static
 //! `LazyLock` is likewise never dropped. Use either only for process-lifetime state.
 //! Use `Arc` when the state needs a managed lifetime.
-//!
-//! [^static-state]: `Box::leak` converts state initialized in `main` into a
-//!     `&'static T`, including state initialized asynchronously. A static `LazyLock`
-//!     instead initializes its value on first access using a synchronous
-//!     initializer that cannot capture local values. Prefer it when global, lazy
-//!     initialization is appropriate.
 //!
 //! [`Arc::clone`]: https://doc.rust-lang.org/std/sync/struct.Arc.html#method.clone
 //! [`Box::leak`]: https://doc.rust-lang.org/std/boxed/struct.Box.html#method.leak
