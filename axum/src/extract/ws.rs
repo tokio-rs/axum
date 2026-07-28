@@ -94,8 +94,8 @@
 //!
 //! WebSocket routes can be tested without a real TCP server by inserting a
 //! [`MockUpgrade`] extension into the request. The extractor will then perform
-//! the upgrade over the I/O you provide — typically one end of a
-//! [`tokio::io::duplex`](https://docs.rs/tokio/latest/tokio/io/fn.duplex.html) pair — while the other end is driven as the client:
+//! the upgrade over the I/O you provide, typically one end of a
+//! [`tokio::io::duplex`](https://docs.rs/tokio/latest/tokio/io/fn.duplex.html) pair, while the other end is driven as the client:
 //!
 //! ```
 //! use axum::{
@@ -547,7 +547,7 @@ impl OnFailedUpgrade for DefaultOnFailedUpgrade {
 /// [`WebSocketUpgrade`] extractor will run the connection over its I/O rather
 /// than requiring hyper's [`OnUpgrade`](hyper::upgrade::OnUpgrade) extension.
 /// Pair it with one end of a [`tokio::io::duplex`](https://docs.rs/tokio/latest/tokio/io/fn.duplex.html) stream and drive the other
-/// end as the client — see the [`Testing`](self#testing) section of the module
+/// end as the client. See the [`Testing`](self#testing) section of the module
 /// docs for a complete example, e.g. with [`tower::ServiceExt::oneshot`].
 ///
 /// If both a hyper `OnUpgrade` and a `MockUpgrade` are present on a request, the
@@ -557,10 +557,10 @@ impl OnFailedUpgrade for DefaultOnFailedUpgrade {
 /// # Handshake still required
 ///
 /// `MockUpgrade` only replaces the connection-upgrade step, not the handshake
-/// validation. The request must still carry a valid WebSocket handshake — the
+/// validation. The request must still carry a valid WebSocket handshake, with the
 /// correct method, the `Connection`/`Upgrade` headers, `Sec-WebSocket-Version:
-/// 13`, and (over HTTP/1.1) a `Sec-WebSocket-Key` header — or the extractor will
-/// reject it just as it would a real request.
+/// 13`, and (over HTTP/1.1) a `Sec-WebSocket-Key` header. Without those the
+/// extractor rejects it just as it would a real request.
 ///
 /// # One-shot I/O
 ///
@@ -590,7 +590,7 @@ impl MockUpgrade {
     ///
     /// Typically this is one end of a [`tokio::io::duplex`](https://docs.rs/tokio/latest/tokio/io/fn.duplex.html) pair; the other end
     /// is driven by the test as the WebSocket client. The I/O is single-use even
-    /// across clones — see the [type-level docs](Self#one-shot-io).
+    /// across clones. See the [type-level docs](Self#one-shot-io).
     pub fn new<IO>(io: IO) -> Self
     where
         IO: AsyncRead + AsyncWrite + Unpin + Send + 'static,
@@ -742,8 +742,8 @@ impl<T> AsyncReadWrite for T where T: AsyncRead + AsyncWrite + Unpin + Send {}
 // caller-provided stream (the testing path, via `MockUpgrade`). Both
 // `TokioIo<Upgraded>` and `Box<dyn AsyncReadWrite>` are `Unpin`, so the
 // `AsyncRead`/`AsyncWrite` impls below just delegate through `Pin::new` on
-// `self.get_mut()` — no pin-projection and no `unsafe`. The only added cost over
-// the previous concrete type is one enum-discriminant branch per poll.
+// `self.get_mut()`, with no pin-projection and no `unsafe`. The only added cost
+// over the previous concrete type is one enum-discriminant branch per poll.
 enum UpgradedIo {
     Hyper(TokioIo<hyper::upgrade::Upgraded>),
     Mock(Box<dyn AsyncReadWrite>),
@@ -1565,7 +1565,7 @@ mod tests {
         builder.extension(mock).body(Body::empty()).unwrap()
     }
 
-    // Full echo round-trip over `tokio::io::duplex` via `oneshot` — no TCP server.
+    // Full echo round-trip over `tokio::io::duplex` via `oneshot`, no TCP server.
     #[crate::test]
     async fn mock_upgrade_echo_round_trip() {
         let (client, server) = tokio::io::duplex(1024);
@@ -1712,8 +1712,8 @@ mod tests {
         );
 
         // Request #2 carries another clone of the same `mock`. The handshake
-        // still reports success — that is the surprising part the reviewer
-        // flagged — because `MockUpgrade` only fails at the point the upgrade
+        // still reports success, which is the surprising part the reviewer
+        // flagged, because `MockUpgrade` only fails at the point the upgrade
         // task tries to take I/O that is no longer there.
         let res = app
             .oneshot(mock_ws_request(mock.clone(), None))
