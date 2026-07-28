@@ -1,0 +1,5 @@
+error: Cannot have multiple path parameters in a single segment
+ --> tests/typed_path/fail/multiple_params_in_segment.rs:5:14
+  |
+5 | #[typed_path("/user-{first}-{last}")]
+  |              ^^^^^^^^^^^^^^^^^^^^^^
