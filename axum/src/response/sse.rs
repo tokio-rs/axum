@@ -27,8 +27,8 @@
 //!
 //! # Custom event payloads
 //!
-//! Sometimes a client expects a payload other than the standard `data: ` framing — for
-//! example, a pre-serialized event, or a raw text chunk for a client that doesn't speak
+//! Sometimes a client expects a payload other than the standard `data: ` framing, such as
+//! a pre-serialized event, or a raw text chunk for a client that doesn't speak
 //! `EventSource` framing at all. [`Event::raw`] hands you full control over the bytes written
 //! to the wire for that event, while `Sse` still takes care of the response headers and, if
 //! configured, [`KeepAlive`]:
@@ -244,7 +244,7 @@ impl Event {
     /// The given `bytes` are sent as a single body frame, verbatim: there is no `data: `
     /// framing, no validation of field syntax, and no terminating empty line is added. If the
     /// event needs to be understood by a standard [`EventSource`] client, the caller is
-    /// responsible for providing the complete event, terminator included — for example
+    /// responsible for providing the complete event including its terminator, such as
     /// `"data: hi\n\n"`.
     ///
     /// This is meant as an escape hatch for nonstandard event formats (such as clients that
