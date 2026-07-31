@@ -1571,7 +1571,6 @@ dependencies = [
  "axum-extra",
  "http",
  "oauth2",
- "oauth2-reqwest",
  "reqwest",
  "serde",
  "tokio",
@@ -3167,16 +3166,6 @@ dependencies = [
  "sha2 0.10.9",
  "thiserror 1.0.69",
  "url",
-]
-
-[[package]]
-name = "oauth2-reqwest"
-version = "0.1.0-alpha.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "234fb5c965bbce983ee5de636a7a51d6a3223da8067ea02f9ab2d2d78ac08be2"
-dependencies = [
- "oauth2",
- "reqwest",
 ]
 
 [[package]]
