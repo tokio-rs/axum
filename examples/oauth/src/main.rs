@@ -8,6 +8,8 @@
 //! CLIENT_ID=REPLACE_ME CLIENT_SECRET=REPLACE_ME cargo run -p example-oauth
 //! ```
 
+mod oauth2_reqwest;
+
 use anyhow::{anyhow, Context, Result};
 use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
