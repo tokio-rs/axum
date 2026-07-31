@@ -100,7 +100,7 @@ pub use self::listener::{ConnLimiter, ConnLimiterIo, Listener, ListenerExt, TapI
 /// [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: crate::handler::HandlerWithoutStateExt::into_make_service_with_connect_info
 /// [`HandlerService::into_make_service_with_connect_info`]: crate::handler::HandlerService::into_make_service_with_connect_info
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-pub fn serve<L, M, S, B>(listener: L, make_service: M) -> Serve<L, M, S, B, TokioExecutor>
+pub fn serve<L, M, S, B>(listener: L, make_service: M) -> Serve<L, M, S, B>
 where
     L: Listener,
     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S>,
@@ -114,6 +114,7 @@ where
         listener,
         make_service,
         executor: TokioExecutor,
+        configure_hyper: (),
         _marker: PhantomData,
     }
 }
@@ -197,15 +198,17 @@ where
 /// Future returned by [`serve`].
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[must_use = "futures must be awaited or polled"]
-pub struct Serve<L, M, S, B, E = TokioExecutor> {
+pub struct Serve<L, M, S, B, E = TokioExecutor, H = ()> {
     listener: L,
     make_service: M,
     executor: E,
+    configure_hyper: H,
     _marker: PhantomData<fn(B) -> S>,
 }
 
+// Methods available on any Serve (regardless of H).
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, B, E> Serve<L, M, S, B, E>
+impl<L, M, S, B, E, H> Serve<L, M, S, B, E, H>
 where
     L: Listener,
 {
@@ -234,7 +237,7 @@ where
     ///
     /// Similarly to [`serve`], although this future resolves to `io::Result<()>`, it will never
     /// error. It returns `Ok(())` only after the `signal` future completes.
-    pub fn with_graceful_shutdown<F>(self, signal: F) -> WithGracefulShutdown<L, M, S, F, B, E>
+    pub fn with_graceful_shutdown<F>(self, signal: F) -> WithGracefulShutdown<L, M, S, F, B, E, H>
     where
         F: Future<Output = ()> + Send + 'static,
     {
@@ -243,6 +246,7 @@ where
             make_service: self.make_service,
             executor: self.executor,
             signal,
+            configure_hyper: self.configure_hyper,
             _marker: PhantomData,
         }
     }
@@ -252,13 +256,61 @@ where
         self.listener.local_addr()
     }
 
+    /// Provide a closure to configure the underlying
+    /// [`hyper_util::server::conn::auto::Builder`].
+    ///
+    /// When set, the default configuration (HTTP/1 header-read timeout and
+    /// HTTP/2 CONNECT protocol support) is **not** applied — the closure has
+    /// full control over the builder.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::{Router, routing::get};
+    /// use hyper_util::rt::TokioTimer;
+    ///
+    /// # async {
+    /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    ///
+    /// axum::serve(listener, router)
+    ///     .with_hyper_configuration(|builder| {
+    ///         // Re-apply the default HTTP/1 timer and add custom settings.
+    ///         builder.http1().timer(TokioTimer::new());
+    ///     })
+    ///     .await;
+    /// # };
+    /// ```
+    pub fn with_hyper_configuration<H2>(self, configure_hyper: H2) -> Serve<L, M, S, B, E, H2>
+    where
+        H2: Fn(&mut Builder<HyperExecutor<E>>) + Clone + Send + 'static,
+    {
+        Serve {
+            listener: self.listener,
+            make_service: self.make_service,
+            executor: self.executor,
+            configure_hyper,
+            _marker: PhantomData,
+        }
+    }
+}
+
+// `with_executor` is only available when no hyper configuration has been set (H = ()).
+// This prevents calling `with_executor` after `with_hyper_configuration`, which would
+// invalidate the closure's type (it captures `HyperExecutor<E>` in its signature).
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl<L, M, S, B, E> Serve<L, M, S, B, E, ()>
+where
+    L: Listener,
+{
     /// Provide a custom [`Executor`] to use for spawning connection tasks and
     /// hyper's internal tasks (e.g. HTTP/2).
     ///
     /// The default is [`TokioExecutor`]. See the [`Executor`] docs for how to
     /// implement a custom one.
     ///
-    /// This method can be called before or after [`with_graceful_shutdown`].
+    /// This method must be called before [`with_hyper_configuration`], since
+    /// that locks the executor type.
     ///
     /// # Example
     ///
@@ -290,8 +342,8 @@ where
     /// # };
     /// ```
     ///
-    /// [`with_graceful_shutdown`]: Serve::with_graceful_shutdown
-    pub fn with_executor<E2>(self, executor: E2) -> Serve<L, M, S, B, E2>
+    /// [`with_hyper_configuration`]: Serve::with_hyper_configuration
+    pub fn with_executor<E2>(self, executor: E2) -> Serve<L, M, S, B, E2, ()>
     where
         E2: Executor,
     {
@@ -299,13 +351,14 @@ where
             listener: self.listener,
             make_service: self.make_service,
             executor,
+            configure_hyper: (),
             _marker: PhantomData,
         }
     }
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, B, E> Serve<L, M, S, B, E>
+impl<L, M, S, B, E, H> Serve<L, M, S, B, E, H>
 where
     L: Listener,
     L::Addr: Debug,
@@ -317,12 +370,14 @@ where
     B::Data: Send,
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
     E: Executor,
+    H: HyperConfigure<E>,
 {
     async fn run(self) -> ! {
         let Self {
             mut listener,
             mut make_service,
             executor,
+            configure_hyper,
             _marker,
         } = self;
 
@@ -338,6 +393,7 @@ where
                 io,
                 remote_addr,
                 &executor,
+                &configure_hyper,
             )
             .await;
         }
@@ -345,7 +401,7 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, B, E> Debug for Serve<L, M, S, B, E>
+impl<L, M, S, B, E, H> Debug for Serve<L, M, S, B, E, H>
 where
     L: Debug + 'static,
     M: Debug,
@@ -356,6 +412,7 @@ where
             listener,
             make_service,
             executor,
+            configure_hyper: _,
             _marker: _,
         } = self;
 
@@ -369,7 +426,7 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, B, E> IntoFuture for Serve<L, M, S, B, E>
+impl<L, M, S, B, E, H> IntoFuture for Serve<L, M, S, B, E, H>
 where
     L: Listener,
     L::Addr: Debug,
@@ -381,6 +438,7 @@ where
     B::Data: Send,
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
     E: Executor,
+    H: HyperConfigure<E>,
 {
     type Output = Infallible;
     type IntoFuture = private::ServeFuture;
@@ -393,16 +451,17 @@ where
 /// Serve future with graceful shutdown enabled.
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[must_use = "futures must be awaited or polled"]
-pub struct WithGracefulShutdown<L, M, S, F, B, E = TokioExecutor> {
+pub struct WithGracefulShutdown<L, M, S, F, B, E = TokioExecutor, H = ()> {
     listener: L,
     make_service: M,
     executor: E,
     signal: F,
+    configure_hyper: H,
     _marker: PhantomData<fn(B) -> S>,
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F, B, E> WithGracefulShutdown<L, M, S, F, B, E>
+impl<L, M, S, F, B, E, H> WithGracefulShutdown<L, M, S, F, B, E, H>
 where
     L: Listener,
 {
@@ -411,11 +470,38 @@ where
         self.listener.local_addr()
     }
 
-    /// Provide a custom [`Executor`] to use for spawning connection tasks and
-    /// hyper's internal tasks (e.g. HTTP/2).
+    /// Provide a closure to configure the underlying
+    /// [`hyper_util::server::conn::auto::Builder`].
+    ///
+    /// See [`Serve::with_hyper_configuration`] for details.
+    pub fn with_hyper_configuration<H2>(
+        self,
+        configure_hyper: H2,
+    ) -> WithGracefulShutdown<L, M, S, F, B, E, H2>
+    where
+        H2: Fn(&mut Builder<HyperExecutor<E>>) + Clone + Send + Sync + 'static,
+    {
+        WithGracefulShutdown {
+            listener: self.listener,
+            make_service: self.make_service,
+            executor: self.executor,
+            signal: self.signal,
+            configure_hyper,
+            _marker: PhantomData,
+        }
+    }
+}
+
+// `with_executor` is only available when no hyper configuration has been set (H = ()).
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl<L, M, S, F, B, E> WithGracefulShutdown<L, M, S, F, B, E, ()>
+where
+    L: Listener,
+{
+    /// Provide a custom [`Executor`].
     ///
     /// See [`Serve::with_executor`] for details.
-    pub fn with_executor<E2>(self, executor: E2) -> WithGracefulShutdown<L, M, S, F, B, E2>
+    pub fn with_executor<E2>(self, executor: E2) -> WithGracefulShutdown<L, M, S, F, B, E2, ()>
     where
         E2: Executor,
     {
@@ -424,13 +510,14 @@ where
             make_service: self.make_service,
             executor,
             signal: self.signal,
+            configure_hyper: (),
             _marker: PhantomData,
         }
     }
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F, B, E> WithGracefulShutdown<L, M, S, F, B, E>
+impl<L, M, S, F, B, E, H> WithGracefulShutdown<L, M, S, F, B, E, H>
 where
     L: Listener,
     L::Addr: Debug,
@@ -443,6 +530,7 @@ where
     B::Data: Send,
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
     E: Executor,
+    H: HyperConfigure<E>,
 {
     async fn run(self) {
         let Self {
@@ -450,6 +538,7 @@ where
             mut make_service,
             executor,
             signal,
+            configure_hyper,
             _marker,
         } = self;
 
@@ -478,6 +567,7 @@ where
                 io,
                 remote_addr,
                 &executor,
+                &configure_hyper,
             )
             .await;
         }
@@ -494,7 +584,7 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F, B, E> Debug for WithGracefulShutdown<L, M, S, F, B, E>
+impl<L, M, S, F, B, E, H> Debug for WithGracefulShutdown<L, M, S, F, B, E, H>
 where
     L: Debug + 'static,
     M: Debug,
@@ -508,6 +598,7 @@ where
             make_service,
             executor: _,
             signal,
+            configure_hyper: _,
             _marker: _,
         } = self;
 
@@ -520,7 +611,7 @@ where
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<L, M, S, F, B, E> IntoFuture for WithGracefulShutdown<L, M, S, F, B, E>
+impl<L, M, S, F, B, E, H> IntoFuture for WithGracefulShutdown<L, M, S, F, B, E, H>
 where
     L: Listener,
     L::Addr: Debug,
@@ -533,6 +624,7 @@ where
     B::Data: Send,
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
     E: Executor,
+    H: HyperConfigure<E>,
 {
     type Output = ();
     type IntoFuture = private::ServeFuture<()>;
@@ -542,9 +634,14 @@ where
     }
 }
 
-/// Adapts axum's [`Executor`] to hyper's [`hyper::rt::Executor`].
-#[derive(Clone)]
-struct HyperExecutor<E>(E);
+/// Adapter type that wraps an axum [`Executor`] into hyper's
+/// [`hyper::rt::Executor`] interface.
+///
+/// This type appears in the closure signatures of
+/// [`Serve::with_hyper_configuration`], but you never need to name it
+/// explicitly — Rust's type inference handles it for you.
+#[derive(Clone, Debug)]
+pub struct HyperExecutor<E>(E);
 
 impl<E, Fut> hyper::rt::Executor<Fut> for HyperExecutor<E>
 where
@@ -556,13 +653,55 @@ where
     }
 }
 
-async fn handle_connection<L, M, S, B, E>(
+/// Sealed trait that controls how the [`hyper_util::server::conn::auto::Builder`]
+/// is configured for each connection.
+///
+/// This trait is sealed — it cannot be implemented outside of axum. The two
+/// implementations are:
+/// - `()`: applies axum's default configuration (HTTP/1 header-read timeout,
+///   HTTP/2 CONNECT protocol).
+/// - Any closure `Fn(&mut Builder<HyperExecutor<E>>)`: gives full control over
+///   the builder, replacing axum's defaults.
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+pub trait HyperConfigure<E>: private::Sealed<E> + Clone + Send + Sync + 'static {
+    /// Apply configuration to the builder.
+    fn configure(&self, builder: &mut Builder<HyperExecutor<E>>);
+}
+
+/// `()` applies axum's default hyper configuration.
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl<E: Executor> HyperConfigure<E> for () {
+    fn configure(&self, _builder: &mut Builder<HyperExecutor<E>>) {
+        // Enable Hyper's default HTTP/1 request header timeout.
+        #[cfg(feature = "http1")]
+        _builder.http1().timer(TokioTimer::new());
+
+        // CONNECT protocol needed for HTTP/2 websockets
+        #[cfg(feature = "http2")]
+        _builder.http2().enable_connect_protocol();
+    }
+}
+
+/// A closure replaces axum's defaults entirely.
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl<E, F> HyperConfigure<E> for F
+where
+    E: Executor,
+    F: Fn(&mut Builder<HyperExecutor<E>>) + Clone + Send + Sync + 'static,
+{
+    fn configure(&self, builder: &mut Builder<HyperExecutor<E>>) {
+        self(builder);
+    }
+}
+
+async fn handle_connection<L, M, S, B, E, H>(
     make_service: &mut M,
     signal_tx: &watch::Sender<()>,
     close_rx: &watch::Receiver<()>,
     io: <L as Listener>::Io,
     remote_addr: <L as Listener>::Addr,
     executor: &E,
+    configure_hyper: &H,
 ) where
     L: Listener,
     L::Addr: Debug,
@@ -574,6 +713,7 @@ async fn handle_connection<L, M, S, B, E>(
     B::Data: Send,
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
     E: Executor,
+    H: HyperConfigure<E>,
 {
     let io = TokioIo::new(io);
 
@@ -598,17 +738,12 @@ async fn handle_connection<L, M, S, B, E>(
     let close_rx = close_rx.clone();
 
     let hyper_executor = HyperExecutor(executor.clone());
+    let configure_hyper = configure_hyper.clone();
     executor.execute(async move {
         #[allow(unused_mut)]
         let mut builder = Builder::new(hyper_executor);
 
-        // Enable Hyper's default HTTP/1 request header timeout.
-        #[cfg(feature = "http1")]
-        builder.http1().timer(TokioTimer::new());
-
-        // CONNECT protocol needed for HTTP/2 websockets
-        #[cfg(feature = "http2")]
-        builder.http2().enable_connect_protocol();
+        configure_hyper.configure(&mut builder);
 
         let mut conn = pin!(builder.serve_connection_with_upgrades(io, hyper_service));
         let mut signal_closed = pin!(signal_tx.closed().fuse());
@@ -668,6 +803,27 @@ mod private {
         pin::Pin,
         task::{Context, Poll},
     };
+
+    #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+    use hyper_util::server::conn::auto::Builder;
+
+    #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+    use super::{Executor, HyperExecutor};
+
+    /// Sealed supertrait — prevents external implementations of [`HyperConfigure`].
+    #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+    pub trait Sealed<E> {}
+
+    #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+    impl<E> Sealed<E> for () {}
+
+    #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+    impl<E, F> Sealed<E> for F
+    where
+        E: Executor,
+        F: Fn(&mut Builder<HyperExecutor<E>>) + Clone + Send + Sync + 'static,
+    {
+    }
 
     pub struct ServeFuture<T = Infallible>(pub(super) futures_core::future::BoxFuture<'static, T>);
 
@@ -892,6 +1048,21 @@ mod tests {
             handler.into_make_service(),
         )
         .with_executor(exec);
+
+        // with_hyper_configuration
+        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .with_hyper_configuration(|_b| {});
+        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .with_hyper_configuration(|_b| {})
+            .with_graceful_shutdown(std::future::pending());
+        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .with_graceful_shutdown(std::future::pending())
+            .with_hyper_configuration(|_b| {});
+        // with_executor + with_hyper_configuration
+        let exec = TestExecutor::new();
+        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .with_executor(exec)
+            .with_hyper_configuration(|_b| {});
     }
 
     async fn handler() {}
@@ -1231,6 +1402,61 @@ mod tests {
 
         // Two tasks: axum's connection, and hyper's internal HTTP/2 task.
         assert_eq!(executor.count(), 2);
+    }
+
+    // Verifies that `with_hyper_configuration` actually applies to connections.
+    // We set a very short header_read_timeout (2s) and confirm a stalled request
+    // is killed faster than the default 30s.
+    #[tokio::test(start_paused = true)]
+    async fn with_hyper_configuration_applies_custom_timeout() {
+        use hyper_util::rt::TokioTimer;
+
+        let (mut client, server) = io::duplex(1024);
+        // Send a partial request line to stall the connection.
+        client.write_all(b"GET / HT").await.unwrap();
+
+        let server_task = async {
+            serve(ReadyListener(Some(server)), Router::new())
+                .with_hyper_configuration(|builder| {
+                    builder
+                        .http1()
+                        .timer(TokioTimer::new())
+                        .header_read_timeout(Duration::from_secs(2));
+                })
+                .with_graceful_shutdown(tokio::time::sleep(Duration::from_secs(3)))
+                .await;
+        };
+
+        // The server should close the stalled connection after 2s,
+        // well before the default 30s.
+        tokio::time::timeout(Duration::from_secs(4), server_task)
+            .await
+            .expect("server_task didn't exit in time — custom timeout not applied");
+    }
+
+    // Verifies that `with_hyper_configuration` on `WithGracefulShutdown` works.
+    #[tokio::test(start_paused = true)]
+    async fn with_hyper_configuration_on_graceful_shutdown() {
+        use hyper_util::rt::TokioTimer;
+
+        let (mut client, server) = io::duplex(1024);
+        client.write_all(b"GET / HT").await.unwrap();
+
+        let server_task = async {
+            serve(ReadyListener(Some(server)), Router::new())
+                .with_graceful_shutdown(tokio::time::sleep(Duration::from_secs(3)))
+                .with_hyper_configuration(|builder| {
+                    builder
+                        .http1()
+                        .timer(TokioTimer::new())
+                        .header_read_timeout(Duration::from_secs(2));
+                })
+                .await;
+        };
+
+        tokio::time::timeout(Duration::from_secs(4), server_task)
+            .await
+            .expect("server_task didn't exit in time — custom timeout not applied");
     }
 
     #[crate::test]
