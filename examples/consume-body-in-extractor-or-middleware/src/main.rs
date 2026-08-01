@@ -38,6 +38,7 @@ async fn main() {
 }
 
 // middleware that shows how to consume the request body upfront
+#[allow(clippy::result_large_err)]
 async fn print_request_body(request: Request, next: Next) -> Result<impl IntoResponse, Response> {
     let request = buffer_request_body(request).await?;
 
@@ -46,6 +47,7 @@ async fn print_request_body(request: Request, next: Next) -> Result<impl IntoRes
 
 // the trick is to take the request apart, buffer the body, do what you need to do, then put
 // the request back together
+#[allow(clippy::result_large_err)]
 async fn buffer_request_body(request: Request) -> Result<Request, Response> {
     let (parts, body) = request.into_parts();
 

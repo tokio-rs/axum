@@ -165,10 +165,10 @@ A good commit message should describe what changed and why.
 ### Opening the Pull Request
 
 From within GitHub, opening a new Pull Request will present you with a
-[template] that should be filled out. Please try to do your best at filling out
+[template][pr_template] that should be filled out. Please try to do your best at filling out
 the details, but feel free to skip parts if you're not sure what to put.
 
-[template]: .github/PULL_REQUEST_TEMPLATE.md
+[pr_template]: .github/PULL_REQUEST_TEMPLATE.md
 
 ### Discuss and update
 
