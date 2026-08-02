@@ -45,6 +45,8 @@ jobs:
         run: cargo doc --package axum --all-features --no-deps
       - name: cargo doc -p axum-extra
         run: cargo doc --package axum-extra --all-features --no-deps
+      - name: cargo doc -p axum-serve
+        run: cargo doc --package axum-serve --all-features --no-deps
     env:
       RUSTDOCFLAGS: "-D rustdoc::all -A rustdoc::private-doc-tests"
 
