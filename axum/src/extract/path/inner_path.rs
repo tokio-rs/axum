@@ -1,10 +1,7 @@
-use crate::extract::path::{
-    de, ErrorKind, FailedToDeserializePathParams, PathDeserializationError,
-};
-use crate::extract::rejection::{InnerPathRejection, MissingPathParams};
+use crate::extract::path::{get_params, serialize_path_params};
+use crate::extract::rejection::InnerPathRejection;
 use crate::extract::FromRequestParts;
 use crate::routing::strip_prefix::count_captures;
-use crate::routing::url_params::UrlParams;
 use crate::util::PercentDecodedStr;
 use axum_core::extract::{OptionalFromRequestParts, Request};
 use axum_core::RequestPartsExt;
@@ -151,44 +148,26 @@ where
     type Rejection = InnerPathRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        // Extracted into separate fn so it's only compiled once for all T.
-        fn get_params(
+        // Non-T computation is in standalone function preventing monomorphization over T
+        fn get_inner_params(
             parts: &Parts,
         ) -> Result<&[(Arc<str>, PercentDecodedStr)], InnerPathRejection> {
-            match parts.extensions.get::<UrlParams>() {
-                Some(UrlParams::Params(params)) => {
-                    let EnclosingCapturesCount(enclosing_captures_count) = parts
-                        .extensions
-                        .get::<EnclosingCapturesCount>()
-                        .copied()
-                        .unwrap_or_default();
+            let EnclosingCapturesCount(enclosing_captures_count) = parts
+                .extensions
+                .get::<EnclosingCapturesCount>()
+                .copied()
+                .unwrap_or_default();
 
-                    let inner_params = params
-                        .get(enclosing_captures_count..)
-                        .expect("Mismatch between url params and count of captures. This is bug in axum. Please file an issue.");
+            let inner_params = get_params::<InnerPathRejection>(parts)?
+                .get(enclosing_captures_count..)
+                .expect("Mismatch between url params and count of captures. This is bug in axum. Please file an issue.");
 
-                    Ok(inner_params)
-                }
-                Some(UrlParams::InvalidUtf8InPathParam { key }) => {
-                    let err = PathDeserializationError {
-                        kind: ErrorKind::InvalidUtf8InPathParam {
-                            key: key.to_string(),
-                        },
-                    };
-                    Err(FailedToDeserializePathParams(err).into())
-                }
-                None => Err(MissingPathParams.into()),
-            }
+            Ok(inner_params)
         }
 
-        fn failed_to_deserialize_path_params(err: PathDeserializationError) -> InnerPathRejection {
-            InnerPathRejection::FailedToDeserializePathParams(FailedToDeserializePathParams(err))
-        }
-
-        match T::deserialize(de::PathDeserializer::new(get_params(parts)?)) {
-            Ok(val) => Ok(Self(val)),
-            Err(e) => Err(failed_to_deserialize_path_params(e)),
-        }
+        get_inner_params(parts)
+            .and_then(serialize_path_params)
+            .map(Self)
     }
 }
 
@@ -206,7 +185,7 @@ where
         match parts.extract::<Self>().await {
             Ok(Self(params)) => Ok(Some(Self(params))),
             Err(InnerPathRejection::FailedToDeserializePathParams(e))
-                if matches!(e.kind(), ErrorKind::WrongNumberOfParameters { got: 0, .. }) =>
+                if e.kind().is_zero_params() =>
             {
                 Ok(None)
             }

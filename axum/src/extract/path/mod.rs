@@ -6,9 +6,9 @@ mod de;
 #[cfg(feature = "inner-path")]
 pub(crate) mod inner_path;
 
+use crate::routing::url_params::UrlParams;
 use crate::{
     extract::{rejection::*, FromRequestParts},
-    routing::url_params::UrlParams,
     util::PercentDecodedStr,
 };
 use axum_core::{
@@ -171,30 +171,9 @@ where
     type Rejection = PathRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        // Extracted into separate fn so it's only compiled once for all T.
-        fn get_params(parts: &Parts) -> Result<&[(Arc<str>, PercentDecodedStr)], PathRejection> {
-            match parts.extensions.get::<UrlParams>() {
-                Some(UrlParams::Params(params)) => Ok(params),
-                Some(UrlParams::InvalidUtf8InPathParam { key }) => {
-                    let err = PathDeserializationError {
-                        kind: ErrorKind::InvalidUtf8InPathParam {
-                            key: key.to_string(),
-                        },
-                    };
-                    Err(FailedToDeserializePathParams(err).into())
-                }
-                None => Err(MissingPathParams.into()),
-            }
-        }
-
-        fn failed_to_deserialize_path_params(err: PathDeserializationError) -> PathRejection {
-            PathRejection::FailedToDeserializePathParams(FailedToDeserializePathParams(err))
-        }
-
-        match T::deserialize(de::PathDeserializer::new(get_params(parts)?)) {
-            Ok(val) => Ok(Self(val)),
-            Err(e) => Err(failed_to_deserialize_path_params(e)),
-        }
+        get_params::<PathRejection>(parts)
+            .and_then(serialize_path_params)
+            .map(Self)
     }
 }
 
@@ -211,9 +190,7 @@ where
     ) -> Result<Option<Self>, Self::Rejection> {
         match parts.extract::<Self>().await {
             Ok(Self(params)) => Ok(Some(Self(params))),
-            Err(PathRejection::FailedToDeserializePathParams(e))
-                if matches!(e.kind(), ErrorKind::WrongNumberOfParameters { got: 0, .. }) =>
-            {
+            Err(PathRejection::FailedToDeserializePathParams(e)) if e.kind().is_zero_params() => {
                 Ok(None)
             }
             Err(e) => Err(e),
@@ -363,6 +340,12 @@ pub enum ErrorKind {
     Message(String),
 }
 
+impl ErrorKind {
+    fn is_zero_params(&self) -> bool {
+        matches!(&self, Self::WrongNumberOfParameters { got: 0, .. })
+    }
+}
+
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -478,6 +461,12 @@ impl fmt::Display for FailedToDeserializePathParams {
 }
 
 impl std::error::Error for FailedToDeserializePathParams {}
+
+impl From<PathDeserializationError> for FailedToDeserializePathParams {
+    fn from(error: PathDeserializationError) -> Self {
+        Self(error)
+    }
+}
 
 /// Extractor that will get captures from the URL without deserializing them.
 ///
@@ -608,6 +597,46 @@ impl IntoResponse for InvalidUtf8InPathParam {
         );
         (self.status(), body).into_response()
     }
+}
+
+fn get_params<E>(parts: &Parts) -> Result<&[(Arc<str>, PercentDecodedStr)], E>
+where
+    E: From<FailedToDeserializePathParams> + From<MissingPathParams>,
+{
+    let url_params = parts
+        .extensions
+        .get::<UrlParams>()
+        .ok_or(MissingPathParams)?;
+
+    match url_params {
+        UrlParams::Params(params) => Ok(params),
+        UrlParams::InvalidUtf8InPathParam { key } => {
+            let error = PathDeserializationError {
+                kind: ErrorKind::InvalidUtf8InPathParam {
+                    key: key.to_string(),
+                },
+            };
+            Err(into_path_rejection(error))
+        }
+    }
+}
+
+fn serialize_path_params<T, E>(params: &[(Arc<str>, PercentDecodedStr)]) -> Result<T, E>
+where
+    T: DeserializeOwned + Send,
+    E: From<FailedToDeserializePathParams>,
+{
+    // Non-T computation is in standalone function preventing monomorphization over T
+    let deserializer = de::PathDeserializer::new(params);
+    T::deserialize(deserializer).map_err(into_path_rejection)
+}
+
+fn into_path_rejection<T, U>(error: T) -> U
+where
+    T: Into<FailedToDeserializePathParams>,
+    U: From<FailedToDeserializePathParams>,
+{
+    error.into().into()
 }
 
 #[cfg(test)]
