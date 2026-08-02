@@ -194,4 +194,5 @@ router.
 
 [`OriginalUri`]: crate::extract::OriginalUri
 [`InnerPath`]: crate::extract::InnerPath
+[`Path`]: crate::extract::Path
 [fallbacks]: Router::fallback

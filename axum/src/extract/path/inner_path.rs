@@ -135,6 +135,8 @@ use tower_service::Service;
 /// [`serde`]: https://crates.io/crates/serde
 /// [`serde::Deserialize`]: https://docs.rs/serde/1.0.127/serde/trait.Deserialize.html
 /// [`customize-path-rejection`]: https://github.com/tokio-rs/axum/blob/main/examples/customize-path-rejection/src/main.rs
+/// [`Path`]: crate::extract::Path
+/// [`nest`]: crate::routing::Router::nest
 #[derive(Debug)]
 pub struct InnerPath<T>(pub T);
 

@@ -158,6 +158,8 @@ use std::{fmt, sync::Arc};
 /// [`serde`]: https://crates.io/crates/serde
 /// [`serde::Deserialize`]: https://docs.rs/serde/1.0.127/serde/trait.Deserialize.html
 /// [`customize-path-rejection`]: https://github.com/tokio-rs/axum/blob/main/examples/customize-path-rejection/src/main.rs
+/// [`InnerPath`]: crate::extract::InnerPath
+/// [`nest`]: crate::routing::Router::nest
 #[derive(Debug)]
 pub struct Path<T>(pub T);
 
