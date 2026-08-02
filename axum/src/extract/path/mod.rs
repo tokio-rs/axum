@@ -3,6 +3,9 @@
 
 mod de;
 
+#[cfg(feature = "inner-path")]
+pub(crate) mod inner_path;
+
 use crate::{
     extract::{rejection::*, FromRequestParts},
     routing::url_params::UrlParams,
@@ -140,6 +143,12 @@ use std::{fmt, sync::Arc};
 ///     .route("/users/{user_id}/team/{team_id}", get(params_map).post(params_vec));
 /// # let _: Router = app;
 /// ```
+///
+/// # [`InnerPath`] vs `Path`
+/// `Path` gives you every capture in the request path, including those matched by enclosing
+/// [`nest`] calls. [`InnerPath`] gives you only the ones from the route the innermost router
+/// matched. If the router isn't nested, or is nested only at static paths, [`InnerPath`] and `Path` see
+/// exactly the same captures.
 ///
 /// # Providing detailed rejection output
 ///

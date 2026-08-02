@@ -159,6 +159,19 @@ composite_rejection! {
     }
 }
 
+#[cfg(feature = "inner-path")]
+composite_rejection! {
+    /// Rejection used for [`InnerPath`](super::InnerPath).
+    ///
+    /// Contains one variant for each way the [`InnerPath`](super::InnerPath) extractor
+    /// can fail.
+    #[cfg_attr(docsrs, doc(cfg(feature = "inner-path")))]
+    pub enum InnerPathRejection {
+        FailedToDeserializePathParams,
+        MissingPathParams,
+    }
+}
+
 composite_rejection! {
     /// Rejection used for [`RawPathParams`](super::RawPathParams).
     ///

@@ -428,6 +428,7 @@
 //! ---|---|---
 //! `http1` | Enables hyper's `http1` feature | <span role="img" aria-label="Default feature">✔</span>
 //! `http2` | Enables hyper's `http2` feature |
+//! `inner-path` | Enables tracking of which captures came from `nest` prefixes and the [`InnerPath`] extractor |
 //! `json` | Enables the [`Json`] type and some similar convenience functionality | <span role="img" aria-label="Default feature">✔</span>
 //! `macros` | Enables optional utility macros |
 //! `matched-path` | Enables capturing of every request's router path and the [`MatchedPath`] extractor | <span role="img" aria-label="Default feature">✔</span>
@@ -440,6 +441,7 @@
 //! `form` | Enables the `Form` extractor | <span role="img" aria-label="Default feature">✔</span>
 //! `query` | Enables the `Query` extractor | <span role="img" aria-label="Default feature">✔</span>
 //!
+//! [`InnerPath`]: crate::extract::InnerPath
 //! [`MatchedPath`]: crate::extract::MatchedPath
 //! [`Multipart`]: crate::extract::Multipart
 //! [`OriginalUri`]: crate::extract::OriginalUri

@@ -44,6 +44,11 @@ where
     }
 }
 
+#[cfg(feature = "inner-path")]
+pub(crate) fn count_captures(path: &str) -> usize {
+    segments(path).filter_map(capture_prefix_suffix).count()
+}
+
 fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
     let path_and_query = uri.path_and_query()?;
 
@@ -440,6 +445,15 @@ mod tests {
         let UriAndPrefix { uri, prefix } = uri_and_prefix;
         strip_prefix(&uri, &prefix);
         true
+    }
+
+    #[test]
+    #[cfg(feature = "inner-path")]
+    fn count_captures_counts_correctly() {
+        assert_eq!(count_captures("/index.html"), 0);
+        assert_eq!(count_captures("/api/v{version}"), 1);
+        assert_eq!(count_captures("/api/{version}/users/{id}"), 2);
+        assert_eq!(count_captures("/{{brackets}}/{version}/users/{id}"), 2);
     }
 
     #[derive(Clone, Debug)]
