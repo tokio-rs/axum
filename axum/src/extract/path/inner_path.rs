@@ -230,10 +230,15 @@ where
     }
 
     fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        let previous = req
-            .extensions_mut()
-            .get_or_insert_default::<EnclosingCapturesCount>();
-        previous.0 += self.additional_captures_count;
+        let extensions = req.extensions_mut();
+        let EnclosingCapturesCount(previous) = extensions
+            .get::<EnclosingCapturesCount>()
+            .copied()
+            .unwrap_or_default();
+
+        extensions.insert(EnclosingCapturesCount(
+            previous + self.additional_captures_count,
+        ));
 
         self.inner.call(req)
     }
