@@ -77,6 +77,34 @@ Note that `/{*key}` doesn't match empty segments. Thus:
 - `/{*key}` doesn't match `/` but does match `/a`, `/a/`, etc.
 - `/x/{*key}` doesn't match `/x` or `/x/` but does match `/x/a`, `/x/a/`, etc.
 
+Wildcard captures can be extracted as one string or deserialized into a
+sequence of segments:
+
+```rust
+use axum::{
+    Router,
+    routing::get,
+    extract::Path,
+};
+
+let app: Router = Router::new()
+    .route("/assets/{*path}", get(|Path(path): Path<String>| async move {
+        // for `/assets/css/main.css`, `path` is "css/main.css"
+    }))
+    .route("/files/{*segments}", get(|Path(segments): Path<Vec<String>>| async move {
+        // for `/files/foo/bar/baz`, `segments` is `["foo", "bar", "baz"]`
+    }));
+```
+
+When deserializing into a sequence, the capture is split on `/` and empty
+segments are skipped. Since captures are percent-decoded before they are
+split, a percent-encoded slash (`%2F`) also separates segments; this applies
+to any route with a single capture, not just wildcards. Note that
+`Vec<(String, String)>` keeps deserializing into the list of `(name, value)`
+pairs of all captures in the path, and that a top-level `Vec` of segments
+only applies to routes with a single capture — combine the wildcard with
+other captures using a tuple or struct instead.
+
 Wildcard captures can also be extracted using [`Path`](crate::extract::Path):
 
 ```rust
