@@ -24,8 +24,8 @@ pub use axum_macros::{TypedMethod, TypedPath};
 
 #[cfg(feature = "typed-routing")]
 pub use self::typed::{
-    Connect, Delete, Get, Head, Options, Patch, Post, Put, Query, SecondElementIs, Trace,
-    TypedMethod, TypedPath,
+    Connect, Delete, Get, Head, MethodlessTypedPath, Options, Patch, Post, Put, Query,
+    SecondElementIs, Trace, TypedMethod, TypedPath,
 };
 
 // Validates a path at compile time, used with the vpath macro.
@@ -119,9 +119,8 @@ macro_rules! vpath {
 
 /// Extension trait that adds additional methods to [`Router`].
 ///
-/// The typed routing traits are composable: the `typed_*` methods use only [`TypedPath`], while
-/// [`RouterExt::typed`] combines [`TypedPath`] with [`TypedMethod`] to infer both path and method
-/// from the handler's first argument. A type implementing both traits can be used with either API.
+/// The `typed_*` methods accept methodless [`TypedPath`] inputs. Endpoints that implement
+/// [`TypedMethod`] must use [`RouterExt::typed`] so their method metadata is honored.
 ///
 /// [`TypedMethod`]: crate::routing::TypedMethod
 /// [`RouterExt::typed`]: RouterExt::typed
@@ -130,8 +129,9 @@ pub trait RouterExt<S>: sealed::Sealed {
     /// Add a route whose path and method are inferred from the handler's first input, which must
     /// implement both [`TypedPath`] and [`TypedMethod`].
     ///
-    /// The method-specific [`RouterExt::typed_get`], [`RouterExt::typed_post`], etc. methods
-    /// remain available for any [`TypedPath`] input and choose their method explicitly.
+    /// The first argument to the handler must implement [`TypedMethod`]. The method-specific
+    /// [`RouterExt::typed_get`], [`RouterExt::typed_post`], etc. methods are for methodless
+    /// [`TypedPath`] inputs.
     ///
     /// [`TypedMethod`]: crate::routing::TypedMethod
     /// [`RouterExt::typed_get`]: RouterExt::typed_get
@@ -146,7 +146,8 @@ pub trait RouterExt<S>: sealed::Sealed {
     /// Add a typed `GET` route to the router.
     ///
     /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
+    /// implement [`TypedPath`] without a [`TypedMethod`]. Use [`RouterExt::typed`] for typed
+    /// method endpoints.
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
@@ -154,12 +155,13 @@ pub trait RouterExt<S>: sealed::Sealed {
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath;
+        P: MethodlessTypedPath;
 
     /// Add a typed `DELETE` route to the router.
     ///
     /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
+    /// implement [`TypedPath`] without a [`TypedMethod`]. Use [`RouterExt::typed`] for typed
+    /// method endpoints.
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
@@ -167,12 +169,13 @@ pub trait RouterExt<S>: sealed::Sealed {
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath;
+        P: MethodlessTypedPath;
 
     /// Add a typed `HEAD` route to the router.
     ///
     /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
+    /// implement [`TypedPath`] without a [`TypedMethod`]. Use [`RouterExt::typed`] for typed
+    /// method endpoints.
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
@@ -180,12 +183,13 @@ pub trait RouterExt<S>: sealed::Sealed {
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath;
+        P: MethodlessTypedPath;
 
     /// Add a typed `OPTIONS` route to the router.
     ///
     /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
+    /// implement [`TypedPath`] without a [`TypedMethod`]. Use [`RouterExt::typed`] for typed
+    /// method endpoints.
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
@@ -193,12 +197,13 @@ pub trait RouterExt<S>: sealed::Sealed {
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath;
+        P: MethodlessTypedPath;
 
     /// Add a typed `PATCH` route to the router.
     ///
     /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
+    /// implement [`TypedPath`] without a [`TypedMethod`]. Use [`RouterExt::typed`] for typed
+    /// method endpoints.
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
@@ -206,12 +211,13 @@ pub trait RouterExt<S>: sealed::Sealed {
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath;
+        P: MethodlessTypedPath;
 
     /// Add a typed `POST` route to the router.
     ///
     /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
+    /// implement [`TypedPath`] without a [`TypedMethod`]. Use [`RouterExt::typed`] for typed
+    /// method endpoints.
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
@@ -219,12 +225,13 @@ pub trait RouterExt<S>: sealed::Sealed {
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath;
+        P: MethodlessTypedPath;
 
     /// Add a typed `PUT` route to the router.
     ///
     /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
+    /// implement [`TypedPath`] without a [`TypedMethod`]. Use [`RouterExt::typed`] for typed
+    /// method endpoints.
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
@@ -232,12 +239,13 @@ pub trait RouterExt<S>: sealed::Sealed {
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath;
+        P: MethodlessTypedPath;
 
     /// Add a typed `TRACE` route to the router.
     ///
     /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
+    /// implement [`TypedPath`] without a [`TypedMethod`]. Use [`RouterExt::typed`] for typed
+    /// method endpoints.
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
@@ -245,12 +253,13 @@ pub trait RouterExt<S>: sealed::Sealed {
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath;
+        P: MethodlessTypedPath;
 
     /// Add a typed `CONNECT` route to the router.
     ///
     /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
+    /// implement [`TypedPath`] without a [`TypedMethod`]. Use [`RouterExt::typed`] for typed
+    /// method endpoints.
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
@@ -258,12 +267,13 @@ pub trait RouterExt<S>: sealed::Sealed {
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath;
+        P: MethodlessTypedPath;
 
     /// Add a typed `QUERY` route to the router.
     ///
     /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
+    /// implement [`TypedPath`] without a [`TypedMethod`]. Use [`RouterExt::typed`] for typed
+    /// method endpoints.
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
@@ -271,7 +281,7 @@ pub trait RouterExt<S>: sealed::Sealed {
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath;
+        P: MethodlessTypedPath;
 
     /// Add another route to the router with an additional "trailing slash redirect" route.
     ///
@@ -332,7 +342,7 @@ where
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath,
+        P: MethodlessTypedPath,
     {
         self.route(P::PATH, axum::routing::get(handler))
     }
@@ -342,7 +352,7 @@ where
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath,
+        P: MethodlessTypedPath,
     {
         self.route(P::PATH, axum::routing::delete(handler))
     }
@@ -352,7 +362,7 @@ where
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath,
+        P: MethodlessTypedPath,
     {
         self.route(P::PATH, axum::routing::head(handler))
     }
@@ -362,7 +372,7 @@ where
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath,
+        P: MethodlessTypedPath,
     {
         self.route(P::PATH, axum::routing::options(handler))
     }
@@ -372,7 +382,7 @@ where
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath,
+        P: MethodlessTypedPath,
     {
         self.route(P::PATH, axum::routing::patch(handler))
     }
@@ -382,7 +392,7 @@ where
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath,
+        P: MethodlessTypedPath,
     {
         self.route(P::PATH, axum::routing::post(handler))
     }
@@ -392,7 +402,7 @@ where
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath,
+        P: MethodlessTypedPath,
     {
         self.route(P::PATH, axum::routing::put(handler))
     }
@@ -402,7 +412,7 @@ where
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath,
+        P: MethodlessTypedPath,
     {
         self.route(P::PATH, axum::routing::trace(handler))
     }
@@ -412,7 +422,7 @@ where
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath,
+        P: MethodlessTypedPath,
     {
         self.route(P::PATH, axum::routing::connect(handler))
     }
@@ -422,7 +432,7 @@ where
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedPath,
+        P: MethodlessTypedPath,
     {
         self.route(P::PATH, axum::routing::query(handler))
     }

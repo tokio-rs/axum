@@ -8,11 +8,13 @@ use super::sealed::Sealed;
 use http::Uri;
 use serde_core::Serialize;
 
-/// A typed route whose HTTP method is associated with a handler.
+/// A typed route whose HTTP method is associated with its endpoint type.
 ///
-/// Use [`RouterExt::typed`] when the method should be inferred from this metadata together with a
-/// [`TypedPath`] handler argument. The method-specific `RouterExt::typed_*` helpers remain
-/// available because they choose the method explicitly and require only [`TypedPath`].
+/// Types implementing this trait must be added to a router with [`RouterExt::typed`].
+/// `TypedMethod` is independent from [`TypedPath`]; `RouterExt::typed` requires both traits because
+/// it infers both the path and method from the handler's first argument.
+/// The method-specific [`RouterExt::typed_get`], [`RouterExt::typed_post`], etc. methods
+/// are reserved for types that only implement [`TypedPath`].
 ///
 /// # Example
 ///
@@ -33,7 +35,8 @@ use serde_core::Serialize;
 /// let _: Router = Router::new().typed(get_user);
 /// ```
 ///
-/// A shared path can instead be wrapped in method-specific newtypes:
+/// When multiple methods share one path, use a method wrapper so the path data is still defined
+/// only once:
 ///
 /// ```
 /// use axum::Router;
@@ -53,10 +56,26 @@ use serde_core::Serialize;
 /// ```
 ///
 /// [`RouterExt::typed`]: super::RouterExt::typed
+/// [`RouterExt::typed_get`]: super::RouterExt::typed_get
+/// [`RouterExt::typed_post`]: super::RouterExt::typed_post
 pub trait TypedMethod {
     /// The HTTP method used when routing this endpoint.
     const METHOD: axum::routing::MethodFilter;
 }
+
+/// Marker for [`TypedPath`] types that do not associate a method with the path.
+///
+/// This is implemented automatically by `#[derive(TypedPath)]` unless the type also has a
+/// `#[typed_method(...)]` attribute. It keeps methodless paths on the method-specific
+/// `RouterExt::typed_*` API while requiring typed-method endpoints to use `RouterExt::typed`.
+/// Manually implemented methodless paths must implement this marker as well to use the
+/// method-specific helpers.
+#[doc(hidden)]
+#[diagnostic::on_unimplemented(
+    message = "this typed path cannot be used with method-specific typed routing",
+    note = "use `RouterExt::typed` for types that implement `TypedMethod`; manually implemented methodless paths must implement `MethodlessTypedPath`"
+)]
+pub trait MethodlessTypedPath: TypedPath {}
 
 macro_rules! typed_method_wrapper {
     ($name:ident, $method:ident) => {
@@ -156,8 +175,8 @@ typed_method_wrapper!(Trace, TRACE);
 ///
 /// This is used to statically connect a path to its corresponding handler using
 /// [`RouterExt::typed_get`], [`RouterExt::typed_post`], etc.
-/// A type can also implement [`TypedMethod`]; doing so does not prevent it from being used with
-/// the method-specific helpers.
+/// Types that also use `#[typed_method(...)]` implement [`TypedMethod`] and must instead be
+/// registered with [`RouterExt::typed`].
 ///
 /// # Example
 ///
@@ -229,6 +248,13 @@ typed_method_wrapper!(Trace, TRACE);
 /// struct UsersMember {
 ///     id: u32,
 /// }
+/// ```
+///
+/// A manually implemented path must also implement [`MethodlessTypedPath`] to be used with the
+/// method-specific `RouterExt::typed_*` helpers:
+///
+/// ```ignore
+/// impl MethodlessTypedPath for MyPath {}
 /// ```
 ///
 /// The macro expands to:
@@ -360,6 +386,7 @@ typed_method_wrapper!(Trace, TRACE);
 /// [`FromRequest`]: axum::extract::FromRequest
 /// [`RouterExt::typed_get`]: super::RouterExt::typed_get
 /// [`RouterExt::typed_post`]: super::RouterExt::typed_post
+/// [`RouterExt::typed`]: super::RouterExt::typed
 /// [`TypedMethod`]: super::TypedMethod
 /// [`Path`]: axum::extract::Path
 /// [`Display`]: std::fmt::Display
@@ -470,11 +497,18 @@ where
     const PATH: &'static str = P::PATH;
 }
 
+impl<P, T> MethodlessTypedPath for WithQueryParams<P, T>
+where
+    P: MethodlessTypedPath,
+    T: Serialize,
+{
+}
+
 /// Utility trait used with [`RouterExt`] to ensure the second element of a tuple type is a
 /// given type.
 ///
-/// If you see it in type errors it's most likely because the first argument to your handler does
-/// not implement [`TypedPath`] or does not match the type inferred by the routing method.
+/// If you see it in type errors it's most likely because the first argument to your handler doesn't
+/// implement [`TypedPath`].
 ///
 /// You normally shouldn't have to use this trait directly.
 ///
@@ -538,11 +572,11 @@ impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, 
 #[cfg(test)]
 mod tests {
     use crate::routing::{
-        Connect, Delete, Get, Head, Options, Patch, Post, Put, Query, RouterExt, Trace,
-        TypedMethod, TypedPath,
+        Connect, Delete, Get, Head, MethodlessTypedPath, Options, Patch, Post, Put, Query,
+        RouterExt, Trace, TypedMethod, TypedPath, WithQueryParams,
     };
     use crate::test_helpers::TestClient;
-    use axum::{http::StatusCode, routing::MethodFilter, Router};
+    use axum::{routing::MethodFilter, Router};
     use serde::{Deserialize, Serialize};
 
     #[derive(TypedPath, Deserialize)]
@@ -550,12 +584,6 @@ mod tests {
     struct UsersShow {
         id: i32,
     }
-
-    impl TypedMethod for UsersShow {
-        const METHOD: MethodFilter = MethodFilter::GET;
-    }
-
-    struct MethodOnly;
 
     #[derive(Serialize)]
     struct Params {
@@ -612,82 +640,10 @@ mod tests {
     }
 
     #[test]
-    fn method_wrappers_forward_path_operations() {
-        let path = UsersShow { id: 1 };
-        let get = Get(path);
+    fn methodless_marker_forwards_through_query_params() {
+        fn assert_methodless<T: MethodlessTypedPath>() {}
 
-        assert_eq!(get.to_string(), "/users/1");
-        assert_eq!(get.to_uri(), "/users/1");
-        assert_eq!(get.as_ref().id, 1);
-        assert_eq!(get.into_inner().id, 1);
-
-        assert_eq!(Get::<UsersShow>::PATH, UsersShow::PATH);
-        assert_eq!(Get::<UsersShow>::METHOD, MethodFilter::GET);
-        assert_eq!(Get::<MethodOnly>::METHOD, MethodFilter::GET);
-        assert_eq!(Delete::<UsersShow>::METHOD, MethodFilter::DELETE);
-        assert_eq!(Head::<UsersShow>::METHOD, MethodFilter::HEAD);
-        assert_eq!(Options::<UsersShow>::METHOD, MethodFilter::OPTIONS);
-        assert_eq!(Patch::<UsersShow>::METHOD, MethodFilter::PATCH);
-        assert_eq!(Post::<UsersShow>::METHOD, MethodFilter::POST);
-        assert_eq!(Put::<UsersShow>::METHOD, MethodFilter::PUT);
-        assert_eq!(Query::<UsersShow>::METHOD, MethodFilter::QUERY);
-        assert_eq!(Trace::<UsersShow>::METHOD, MethodFilter::TRACE);
-        assert_eq!(Connect::<UsersShow>::METHOD, MethodFilter::CONNECT);
-    }
-
-    #[derive(TypedPath, TypedMethod, Deserialize)]
-    #[typed_path("/typed/{id}")]
-    #[typed_method(MethodFilter::GET)]
-    struct TypedUser {
-        id: u32,
-    }
-
-    async fn typed_user(TypedUser { id }: TypedUser) -> String {
-        id.to_string()
-    }
-
-    async fn typed_user_with_explicit_method(TypedUser { id }: TypedUser) -> String {
-        id.to_string()
-    }
-
-    #[tokio::test]
-    async fn typed_method_and_path_are_composable() {
-        let app = Router::new().typed(typed_user);
-        let response = TestClient::new(app).get("/typed/42").await;
-
-        assert_eq!(response.status(), StatusCode::OK);
-        assert_eq!(response.text().await, "42");
-
-        // A colocated type remains usable with the method-specific helpers.
-        let _: Router = Router::new().typed_get(typed_user_with_explicit_method);
-    }
-
-    #[derive(TypedPath, Deserialize)]
-    #[typed_path("/shared/{id}")]
-    struct SharedUser {
-        id: u32,
-    }
-
-    async fn get_shared(Get(SharedUser { id }): Get<SharedUser>) -> String {
-        id.to_string()
-    }
-
-    async fn put_shared(Put(SharedUser { id }): Put<SharedUser>) -> String {
-        id.to_string()
-    }
-
-    #[tokio::test]
-    async fn method_wrappers_route_shared_paths() {
-        let app = Router::new().typed(get_shared).typed(put_shared);
-        let client = TestClient::new(app);
-
-        let response = client.get("/shared/7").await;
-        assert_eq!(response.status(), StatusCode::OK);
-        assert_eq!(response.text().await, "7");
-
-        let response = client.put("/shared/8").await;
-        assert_eq!(response.status(), StatusCode::OK);
-        assert_eq!(response.text().await, "8");
+        assert_methodless::<WithQueryParams<UsersShow, Params>>();
     }
 
     #[cfg(feature = "with-rejection")]
@@ -700,7 +656,6 @@ mod tests {
             Router,
         };
         async fn handler(_: crate::extract::WithRejection<UsersShow, MyRejection>) {}
-        async fn typed_handler(_: crate::extract::WithRejection<UsersShow, MyRejection>) {}
 
         struct MyRejection {}
 
@@ -717,6 +672,114 @@ mod tests {
         }
 
         let _: Router = Router::new().typed_get(handler);
+
+        async fn typed_handler(_: crate::extract::WithRejection<TypedUser, MyRejection>) {}
+
         let _: Router = Router::new().typed(typed_handler);
+    }
+
+    #[derive(TypedPath, TypedMethod, Deserialize)]
+    #[typed_path("/typed-users/{id}")]
+    #[typed_method(MethodFilter::GET)]
+    struct TypedUser {
+        id: u32,
+    }
+
+    async fn typed_user(TypedUser { id }: TypedUser) -> String {
+        format!("typed:{id}")
+    }
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/shared-users/{id}")]
+    struct SharedUser {
+        id: u32,
+    }
+
+    async fn get_shared_user(Get(SharedUser { id }): Get<SharedUser>) -> String {
+        format!("get:{id}")
+    }
+
+    async fn put_shared_user(Put(SharedUser { id }): Put<SharedUser>) -> String {
+        format!("put:{id}")
+    }
+
+    struct MethodOnly;
+
+    #[tokio::test]
+    async fn typed_method_routes() {
+        let client = TestClient::new(Router::new().typed(typed_user));
+
+        let response = client.get("/typed-users/42").await;
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.text().await, "typed:42");
+
+        let response = client.put("/typed-users/42").await;
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::METHOD_NOT_ALLOWED
+        );
+    }
+
+    #[tokio::test]
+    async fn method_wrappers_share_a_path() {
+        let app = Router::new().typed(get_shared_user).typed(put_shared_user);
+        let client = TestClient::new(app);
+
+        let response = client.get("/shared-users/1").await;
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.text().await, "get:1");
+
+        let response = client.put("/shared-users/2").await;
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.text().await, "put:2");
+    }
+
+    #[test]
+    fn method_wrapper_forwards_path_behavior() {
+        let path = Get(SharedUser { id: 7 });
+
+        assert_eq!(path.to_string(), "/shared-users/7");
+        assert_eq!(path.to_uri(), "/shared-users/7");
+        assert_eq!(path.into_inner().id, 7);
+        assert_eq!(<Get<SharedUser> as TypedMethod>::METHOD, MethodFilter::GET);
+        assert_eq!(<Get<MethodOnly> as TypedMethod>::METHOD, MethodFilter::GET);
+    }
+
+    #[test]
+    fn method_wrappers_have_the_expected_methods() {
+        assert_eq!(
+            <Connect<SharedUser> as TypedMethod>::METHOD,
+            MethodFilter::CONNECT
+        );
+        assert_eq!(
+            <Delete<SharedUser> as TypedMethod>::METHOD,
+            MethodFilter::DELETE
+        );
+        assert_eq!(<Get<SharedUser> as TypedMethod>::METHOD, MethodFilter::GET);
+        assert_eq!(
+            <Head<SharedUser> as TypedMethod>::METHOD,
+            MethodFilter::HEAD
+        );
+        assert_eq!(
+            <Options<SharedUser> as TypedMethod>::METHOD,
+            MethodFilter::OPTIONS
+        );
+        assert_eq!(
+            <Patch<SharedUser> as TypedMethod>::METHOD,
+            MethodFilter::PATCH
+        );
+        assert_eq!(
+            <Post<SharedUser> as TypedMethod>::METHOD,
+            MethodFilter::POST
+        );
+        assert_eq!(<Put<SharedUser> as TypedMethod>::METHOD, MethodFilter::PUT);
+        assert_eq!(
+            <Query<SharedUser> as TypedMethod>::METHOD,
+            MethodFilter::QUERY
+        );
+        assert_eq!(
+            <Trace<SharedUser> as TypedMethod>::METHOD,
+            MethodFilter::TRACE
+        );
     }
 }

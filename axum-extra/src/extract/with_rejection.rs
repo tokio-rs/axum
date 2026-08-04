@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
 #[cfg(feature = "typed-routing")]
-use crate::routing::{TypedMethod, TypedPath};
+use crate::routing::{MethodlessTypedPath, TypedMethod, TypedPath};
 
 /// Extractor for customizing extractor rejections
 ///
@@ -152,6 +152,9 @@ where
 {
     const METHOD: axum::routing::MethodFilter = E::METHOD;
 }
+
+#[cfg(feature = "typed-routing")]
+impl<E, R> MethodlessTypedPath for WithRejection<E, R> where E: MethodlessTypedPath {}
 
 impl<E, R> Display for WithRejection<E, R>
 where
