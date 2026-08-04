@@ -86,7 +86,7 @@ async fn redirect_http_to_https(ports: Ports) {
 
     let redirect = move |uri: Uri| async move {
         match make_https(uri, ports.https) {
-            Ok(uri) => Ok(Redirect::permanent(&uri.to_string())),
+            Ok(uri) => Ok(Redirect::permanent(uri.to_string())),
             Err(error) => {
                 tracing::warn!(%error, "failed to convert URI to HTTPS");
                 Err(StatusCode::BAD_REQUEST)

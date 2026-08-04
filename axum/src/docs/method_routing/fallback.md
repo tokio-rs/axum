@@ -1,6 +1,6 @@
 Add a fallback service to the router.
 
-This service will be called if no routes matches the incoming request.
+This service will be called if no route matches the incoming request.
 
 ```rust
 use axum::{

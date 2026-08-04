@@ -341,6 +341,7 @@ top_level_service_fn!(patch_service, PATCH);
 top_level_service_fn!(post_service, POST);
 top_level_service_fn!(put_service, PUT);
 top_level_service_fn!(trace_service, TRACE);
+top_level_service_fn!(query_service, QUERY);
 
 /// Route requests with the given method to the service.
 ///
@@ -445,6 +446,7 @@ top_level_handler_fn!(patch, PATCH);
 top_level_handler_fn!(post, POST);
 top_level_handler_fn!(put, PUT);
 top_level_handler_fn!(trace, TRACE);
+top_level_handler_fn!(query, QUERY);
 
 /// Route requests with the given method to the handler.
 ///
@@ -554,6 +556,7 @@ pub struct MethodRouter<S = (), E = Infallible> {
     put: MethodEndpoint<S, E>,
     trace: MethodEndpoint<S, E>,
     connect: MethodEndpoint<S, E>,
+    query: MethodEndpoint<S, E>,
     fallback: Fallback<S, E>,
     allow_header: AllowHeader,
 }
@@ -574,10 +577,19 @@ impl AllowHeader {
             (Self::Skip, _) | (_, Self::Skip) => Self::Skip,
             (Self::None, Self::None) => Self::None,
             (Self::None, Self::Bytes(pick)) | (Self::Bytes(pick), Self::None) => Self::Bytes(pick),
-            (Self::Bytes(mut a), Self::Bytes(b)) => {
-                a.extend_from_slice(b",");
-                a.extend_from_slice(&b);
-                Self::Bytes(a)
+            (mut this @ Self::Bytes(_), Self::Bytes(b)) => {
+                match std::str::from_utf8(&b) {
+                    Ok(methods) => {
+                        for method in methods.split(',') {
+                            append_allow_header(&mut this, method);
+                        }
+                    }
+                    Err(_) => {
+                        #[cfg(debug_assertions)]
+                        panic!("`allow_header` contained invalid utf-8. This should never happen")
+                    }
+                }
+                this
             }
         }
     }
@@ -595,6 +607,7 @@ impl<S, E> fmt::Debug for MethodRouter<S, E> {
             .field("put", &self.put)
             .field("trace", &self.trace)
             .field("connect", &self.connect)
+            .field("query", &self.query)
             .field("fallback", &self.fallback)
             .field("allow_header", &self.allow_header)
             .finish()
@@ -648,6 +661,7 @@ where
     chained_handler_fn!(post, POST);
     chained_handler_fn!(put, PUT);
     chained_handler_fn!(trace, TRACE);
+    chained_handler_fn!(query, QUERY);
 
     /// Add a fallback [`Handler`] to the router.
     pub fn fallback<H, T>(mut self, handler: H) -> Self
@@ -658,6 +672,56 @@ where
     {
         self.fallback = Fallback::BoxedHandler(BoxedIntoRoute::from_handler(handler));
         self
+    }
+
+    /// Get a [`MethodFilter`] for the methods that this `MethodRouter` has
+    /// custom code for.
+    ///
+    /// Note that `MethodRouter`'s [`Service`] implementation never fails (it
+    /// always creates an HTTP response) based on which HTTP method was used.
+    /// However, the information which methods have the default behavior of
+    /// returning HTTP 405 is stored, and can be queried with this method.
+    ///
+    /// Returns `None` if the `MethodRouter` was constructed with [`any`] or
+    /// has had a [`fallback`][Self::fallback] set.
+    pub fn method_filter(&self) -> Option<MethodFilter> {
+        let Self {
+            get,
+            head,
+            delete,
+            options,
+            patch,
+            post,
+            put,
+            trace,
+            connect,
+            query,
+            fallback,
+            allow_header: _,
+        } = self;
+
+        if !fallback.is_default() {
+            return None;
+        }
+
+        let filter = [
+            (get, MethodFilter::GET),
+            (head, MethodFilter::HEAD),
+            (delete, MethodFilter::DELETE),
+            (options, MethodFilter::OPTIONS),
+            (patch, MethodFilter::PATCH),
+            (post, MethodFilter::POST),
+            (put, MethodFilter::PUT),
+            (trace, MethodFilter::TRACE),
+            (connect, MethodFilter::CONNECT),
+            (query, MethodFilter::QUERY),
+        ]
+        .into_iter()
+        .filter_map(|(ep, f)| ep.is_some().then_some(f))
+        .reduce(MethodFilter::or)
+        .expect("can't create a MethodRouter with all-default handlers");
+
+        Some(filter)
     }
 
     /// Add a fallback [`Handler`] if no custom one has been provided.
@@ -763,6 +827,7 @@ where
             put: MethodEndpoint::None,
             trace: MethodEndpoint::None,
             connect: MethodEndpoint::None,
+            query: MethodEndpoint::None,
             allow_header: AllowHeader::None,
             fallback: Fallback::Default(fallback),
         }
@@ -780,6 +845,7 @@ where
             put: self.put.with_state(&state),
             trace: self.trace.with_state(&state),
             connect: self.connect.with_state(&state),
+            query: self.query.with_state(&state),
             allow_header: self.allow_header,
             fallback: self.fallback.with_state(state),
         }
@@ -839,7 +905,7 @@ where
                     panic!(
                         "Overlapping method route. Cannot add two method routes that both handle \
                          `{method_name}`",
-                    )
+                    );
                 }
                 *out = endpoint.clone();
                 for method in methods {
@@ -930,12 +996,22 @@ where
 
         set_endpoint(
             "CONNECT",
-            &mut self.options,
+            &mut self.connect,
             endpoint,
             filter,
             MethodFilter::CONNECT,
             &mut self.allow_header,
             &["CONNECT"],
+        );
+
+        set_endpoint(
+            "QUERY",
+            &mut self.query,
+            endpoint,
+            filter,
+            MethodFilter::QUERY,
+            &mut self.allow_header,
+            &["QUERY"],
         );
 
         self
@@ -950,6 +1026,7 @@ where
     chained_service_fn!(post_service, POST);
     chained_service_fn!(put_service, PUT);
     chained_service_fn!(trace_service, TRACE);
+    chained_service_fn!(query_service, QUERY);
 
     #[doc = include_str!("../docs/method_routing/fallback.md")]
     pub fn fallback_service<T>(mut self, svc: T) -> Self
@@ -986,6 +1063,7 @@ where
             put: self.put.map(layer_fn.clone()),
             trace: self.trace.map(layer_fn.clone()),
             connect: self.connect.map(layer_fn.clone()),
+            query: self.query.map(layer_fn.clone()),
             fallback: self.fallback.map(layer_fn),
             allow_header: self.allow_header,
         }
@@ -1011,6 +1089,7 @@ where
             && self.put.is_none()
             && self.trace.is_none()
             && self.connect.is_none()
+            && self.query.is_none()
         {
             panic!(
                 "Adding a route_layer before any routes is a no-op. \
@@ -1028,7 +1107,8 @@ where
         self.post = self.post.map(layer_fn.clone());
         self.put = self.put.map(layer_fn.clone());
         self.trace = self.trace.map(layer_fn.clone());
-        self.connect = self.connect.map(layer_fn);
+        self.connect = self.connect.map(layer_fn.clone());
+        self.query = self.query.map(layer_fn);
 
         self
     }
@@ -1074,6 +1154,7 @@ where
         self.put = merge_inner(path, "PUT", self.put, other.put)?;
         self.trace = merge_inner(path, "TRACE", self.trace, other.trace)?;
         self.connect = merge_inner(path, "CONNECT", self.connect, other.connect)?;
+        self.query = merge_inner(path, "QUERY", self.query, other.query)?;
 
         self.fallback = self
             .fallback
@@ -1149,6 +1230,7 @@ where
             put,
             trace,
             connect,
+            query,
             fallback,
             allow_header,
         } = self;
@@ -1163,6 +1245,7 @@ where
         call!(req, DELETE, delete);
         call!(req, TRACE, trace);
         call!(req, CONNECT, connect);
+        call!(req, QUERY, query);
 
         let future = fallback.clone().call_with_state(req, state);
 
@@ -1174,7 +1257,7 @@ where
     }
 }
 
-fn append_allow_header(allow_header: &mut AllowHeader, method: &'static str) {
+fn append_allow_header(allow_header: &mut AllowHeader, method: &str) {
     match allow_header {
         AllowHeader::None => {
             *allow_header = AllowHeader::Bytes(BytesMut::from(method));
@@ -1206,6 +1289,7 @@ impl<S, E> Clone for MethodRouter<S, E> {
             put: self.put.clone(),
             trace: self.trace.clone(),
             connect: self.connect.clone(),
+            query: self.query.clone(),
             fallback: self.fallback.clone(),
             allow_header: self.allow_header.clone(),
         }
@@ -1397,15 +1481,19 @@ mod tests {
 
     #[crate::test]
     async fn merge() {
-        let mut svc = get(ok).merge(post(ok));
+        let mut svc = get(ok).merge(post(ok)).merge(connect(ok));
 
         let (status, _, _) = call(Method::GET, &mut svc).await;
         assert_eq!(status, StatusCode::OK);
 
         let (status, _, _) = call(Method::POST, &mut svc).await;
         assert_eq!(status, StatusCode::OK);
+
+        let (status, _, _) = call(Method::CONNECT, &mut svc).await;
+        assert_eq!(status, StatusCode::OK);
     }
 
+    #[allow(deprecated)]
     #[crate::test]
     async fn layer() {
         let mut svc = MethodRouter::new()
@@ -1421,6 +1509,7 @@ mod tests {
         assert_eq!(status, StatusCode::UNAUTHORIZED);
     }
 
+    #[allow(deprecated)]
     #[crate::test]
     async fn route_layer() {
         let mut svc = MethodRouter::new()
@@ -1436,7 +1525,7 @@ mod tests {
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code, deprecated)]
     async fn building_complex_router() {
         let app = crate::Router::new().route(
             "/",
@@ -1447,7 +1536,10 @@ mod tests {
                 .merge(delete_service(ServeDir::new(".")))
                 .fallback(|| async { StatusCode::NOT_FOUND })
                 .put(ok)
-                .layer(TimeoutLayer::new(Duration::from_secs(10))),
+                .layer(TimeoutLayer::with_status_code(
+                    StatusCode::REQUEST_TIMEOUT,
+                    Duration::from_secs(10),
+                )),
         );
 
         let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await.unwrap();
@@ -1487,6 +1579,17 @@ mod tests {
         let (status, headers, _) = call(Method::DELETE, &mut svc).await;
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
         assert_eq!(headers[ALLOW], "PUT,PATCH,GET,HEAD");
+    }
+
+    #[crate::test]
+    async fn allow_header_merging_get_into_head() {
+        let a = get(ok);
+        let b = head(created);
+        let mut svc = a.merge(b);
+
+        let (status, headers, _) = call(Method::DELETE, &mut svc).await;
+        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(headers[ALLOW], "GET,HEAD");
     }
 
     #[crate::test]
@@ -1612,6 +1715,25 @@ mod tests {
         let (status, _, _) = call(Method::POST, &mut svc).await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(text, "state");
+    }
+
+    #[test]
+    fn method_filter() {
+        let router: MethodRouter = get(|| async {});
+        assert_eq!(router.method_filter(), Some(MethodFilter::GET));
+
+        let router: MethodRouter = get(|| async {}).head(|| async {}).post(|| async {});
+        assert_eq!(
+            router.method_filter(),
+            Some(
+                MethodFilter::GET
+                    .or(MethodFilter::HEAD)
+                    .or(MethodFilter::POST)
+            )
+        );
+
+        let router: MethodRouter = any(|| async {});
+        assert_eq!(router.method_filter(), None);
     }
 
     async fn call<S>(method: Method, svc: &mut S) -> (StatusCode, HeaderMap, String)

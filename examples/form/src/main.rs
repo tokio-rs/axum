@@ -68,10 +68,7 @@ struct Input {
 
 async fn accept_form(Form(input): Form<Input>) -> Html<String> {
     dbg!(&input);
-    Html(format!(
-        "email='{}'\nname='{}'\n",
-        &input.email, &input.name
-    ))
+    Html(format!("email='{}'\nname='{}'\n", input.email, input.name))
 }
 
 #[cfg(test)]
@@ -89,7 +86,7 @@ mod tests {
         let app = app();
 
         let response = app
-            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+            .oneshot(Request::get("/").body(Body::empty()).unwrap())
             .await
             .unwrap();
 
@@ -107,9 +104,7 @@ mod tests {
 
         let response = app
             .oneshot(
-                Request::builder()
-                    .method(http::Method::POST)
-                    .uri("/")
+                Request::post("/")
                     .header(
                         http::header::CONTENT_TYPE,
                         mime::APPLICATION_WWW_FORM_URLENCODED.as_ref(),

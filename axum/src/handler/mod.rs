@@ -431,7 +431,10 @@ mod tests {
         let svc = handle
             .layer((
                 RequestBodyLimitLayer::new(1024),
-                TimeoutLayer::new(Duration::from_secs(10)),
+                TimeoutLayer::with_status_code(
+                    StatusCode::REQUEST_TIMEOUT,
+                    Duration::from_secs(10),
+                ),
                 MapResponseBodyLayer::new(Body::new),
             ))
             .layer(MapRequestBodyLayer::new(Body::new))

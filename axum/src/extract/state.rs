@@ -7,12 +7,17 @@ use std::{
 
 /// Extractor for state.
 ///
+/// See ["Sharing state with handlers"][sharing-state] for an overview of all approaches to
+/// sharing state, including when to use `Arc`, how `FromRef` substates work, and what the
+/// `Router<S>` type parameter means.
+///
 /// See ["Accessing state in middleware"][state-from-middleware] for how to
 /// access state in middleware.
 ///
 /// State is global and used in every request a router with state receives.
 /// For accessing data derived from requests, such as authorization data, see [`Extension`].
 ///
+/// [sharing-state]: crate#sharing-state-with-handlers
 /// [state-from-middleware]: crate::middleware#accessing-state-in-middleware
 /// [`Extension`]: crate::Extension
 ///

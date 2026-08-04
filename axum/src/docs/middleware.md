@@ -326,7 +326,7 @@ handling model.
 # Routing to services/middleware and backpressure
 
 Generally routing to one of multiple services and backpressure doesn't mix
-well. Ideally you would want ensure a service is ready to receive a request
+well. Ideally you would want to ensure a service is ready to receive a request
 before calling it. However, in order to know which service to call, you need
 the request...
 

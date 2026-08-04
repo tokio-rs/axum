@@ -1,6 +1,6 @@
 Add a fallback [`Handler`] to the router.
 
-This service will be called if no routes matches the incoming request.
+This service will be called if no route matches the incoming request.
 
 ```rust
 use axum::{
@@ -31,7 +31,7 @@ method handler installed, the fallback is not called (use
 
 # Handling all requests without other routes
 
-Using `Router::new().fallback(...)` to accept all request regardless of path or
+Using `Router::new().fallback(...)` to accept all requests regardless of path or
 method, if you don't have other routes, isn't optimal:
 
 ```rust

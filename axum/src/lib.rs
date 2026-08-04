@@ -1,4 +1,4 @@
-//! axum is a web application framework that focuses on ergonomics and modularity.
+//! axum is an HTTP routing and request-handling library that focuses on ergonomics and modularity.
 //!
 //! # High-level features
 //!
@@ -9,7 +9,7 @@
 //! - Take full advantage of the [`tower`] and [`tower-http`] ecosystem of
 //!   middleware, services, and utilities.
 //!
-//! In particular, the last point is what sets `axum` apart from other frameworks.
+//! In particular, the last point is what sets `axum` apart from other libraries / frameworks.
 //! `axum` doesn't have its own middleware system but instead uses
 //! [`tower::Service`]. This means `axum` gets timeouts, tracing, compression,
 //! authorization, and more, for free. It also enables you to share middleware with
@@ -71,7 +71,7 @@
 //!
 #![doc = include_str!("docs/handlers_intro.md")]
 //!
-//! See [`handler`](crate::handler) for more details on handlers.
+//! See [`handler`] for more details on handlers.
 //!
 //! # Extractors
 //!
@@ -94,7 +94,7 @@
 //! async fn json(Json(payload): Json<serde_json::Value>) {}
 //! ```
 //!
-//! See [`extract`](crate::extract) for more details on extractors.
+//! See [`extract`] for more details on extractors.
 //!
 //! # Responses
 //!
@@ -126,7 +126,7 @@
 //! # let _: Router = app;
 //! ```
 //!
-//! See [`response`](crate::response) for more details on building responses.
+//! See [`response`] for more details on building responses.
 //!
 //! # Error handling
 //!
@@ -182,6 +182,120 @@
 //! }
 //! # let _: Router = app;
 //! ```
+//!
+//! State is cloned for every request. Wrapping your state in `Arc` makes those
+//! clones cheap. If all fields are already cheap to clone (for example, each field
+//! is itself an `Arc` or a copy type), you can `#[derive(Clone)]` directly on the
+//! struct instead. Many client types, such as [`reqwest::Client`], AWS SDK service
+//! clients, and [`mongodb::Client`], already use shared ownership internally and
+//! are cheap to clone. Such clients generally do not need another `Arc` solely to
+//! make cloning cheap; doing so adds another level of indirection.
+//!
+//! [`reqwest::Client`]: https://docs.rs/reqwest/latest/reqwest/struct.Client.html
+//! [`mongodb::Client`]: https://docs.rs/mongodb/latest/mongodb/struct.Client.html
+//!
+//! ### Using `&'static` state
+//!
+//! For state built once and intended to live until the process exits, [`Box::leak`]
+//! or a static [`LazyLock`] can provide a `&'static AppState` to the router. Use
+//! `Box::leak` for state initialized in `main`, including when state initialization
+//! requires asynchronous work; use a static `LazyLock` for global state with a
+//! synchronous lazy initializer. This is useful for state built from runtime
+//! configuration, database pools, or service clients:
+//!
+//! ```rust
+//! use axum::{
+//!     extract::State,
+//!     routing::get,
+//!     Router,
+//! };
+//!
+//! struct AppState {
+//!     // A database pool, service clients, configuration, etc.
+//! }
+//!
+//! impl AppState {
+//!     async fn work(&self) {}
+//! }
+//!
+//! fn main() {
+//!     let app_state = AppState {
+//!         // Initialize fields at startup.
+//!     };
+//!     let app_state: &'static AppState = Box::leak(Box::new(app_state));
+//!
+//!     let app = Router::new()
+//!         .route("/", get(handler))
+//!         .with_state(app_state);
+//!     # let _: Router = app;
+//! }
+//!
+//! async fn handler(State(state): State<&'static AppState>) {
+//!     let _task = tokio::spawn(async move {
+//!         state.work().await;
+//!     });
+//!
+//!     // `state` is still available in the handler because it was copied.
+//!     state.work().await;
+//! }
+//! ```
+//!
+//! Like every shared reference, a `&'static T` is `Copy`, so axum can clone it for
+//! each request without an atomic reference-count operation. This can be cheaper than
+//! cloning an `Arc`, but it is rarely a reason on its own to choose process-lifetime
+//! state since the request's actual work normally matters more. The more practical
+//! advantage of combining `Copy` with the `'static` lifetime is shown above: an
+//! `async move` block copies the reference into the spawned Tokio task while leaving
+//! the handler's copy available. With `Arc`, call [`Arc::clone`] before spawning when
+//! the handler also needs the state.
+//!
+//! `Box::leak` deliberately leaks its allocation, and state held by a static
+//! `LazyLock` is likewise never dropped. Use either only for process-lifetime state.
+//! Use `Arc` when the state needs a managed lifetime.
+//!
+//! [`Arc::clone`]: https://doc.rust-lang.org/std/sync/struct.Arc.html#method.clone
+//! [`Box::leak`]: https://doc.rust-lang.org/std/boxed/struct.Box.html#method.leak
+//! [`LazyLock`]: https://doc.rust-lang.org/std/sync/struct.LazyLock.html
+//!
+//! ### Substates with `FromRef`
+//!
+//! When a handler only needs part of the application state, use [`FromRef`] to extract
+//! a substate. Implement the trait manually, or derive it with `#[derive(FromRef)]`
+//! (requires the `macros` feature):
+//!
+//! ```rust
+//! use axum::{Router, routing::get, extract::{State, FromRef}};
+//!
+//! #[derive(Clone)]
+//! struct AppState {
+//!     api_state: ApiState,
+//! }
+//!
+//! #[derive(Clone)]
+//! struct ApiState {}
+//!
+//! // Teach axum how to produce an `ApiState` from a reference to `AppState`.
+//! impl FromRef<AppState> for ApiState {
+//!     fn from_ref(app_state: &AppState) -> ApiState {
+//!         app_state.api_state.clone()
+//!     }
+//! }
+//!
+//! let app = Router::new()
+//!     .route("/", get(handler))
+//!     .with_state(AppState { api_state: ApiState {} });
+//!
+//! // This handler receives only the `ApiState` slice; it never sees `AppState`.
+//! async fn handler(State(api_state): State<ApiState>) {}
+//! # let _: Router = app;
+//! ```
+//!
+//! ### The `Router<S>` type parameter
+//!
+//! `Router<S>` when `S` is not `()` means a router that is _missing_ a state of type `S`. Calling
+//! [`.with_state(s)`][Router::with_state] provides that state and typically produces a
+//! `Router<()>`, which is the only form that can be passed to [`serve()`]. See
+//! [`Router::with_state`] for a full explanation.
 //!
 //! You should prefer using [`State`] if possible since it's more type safe. The downside is that
 //! it's less dynamic than task-local variables and request extensions.
@@ -279,7 +393,7 @@
 //!
 //! ## Using task-local variables
 //!
-//! This also allows to share state with `IntoResponse` implementations:
+//! This also allows sharing state with `IntoResponse` implementations:
 //!
 //! ```rust,no_run
 //! use axum::{
@@ -307,7 +421,7 @@
 //!         .and_then(|header| header.to_str().ok())
 //!         .ok_or(StatusCode::UNAUTHORIZED)?;
 //!     if let Some(current_user) = authorize_current_user(auth_header).await {
-//!         // State is setup here in the middleware
+//!         // State is set up here in the middleware
 //!         Ok(USER.scope(current_user, next.run(req)).await)
 //!     } else {
 //!         Err(StatusCode::UNAUTHORIZED)
@@ -426,6 +540,8 @@
 //! [load shed]: tower::load_shed
 //! [`axum-core`]: http://crates.io/crates/axum-core
 //! [`State`]: crate::extract::State
+//! [`FromRef`]: crate::extract::FromRef
+//! [`Router::with_state`]: crate::routing::Router::with_state
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]

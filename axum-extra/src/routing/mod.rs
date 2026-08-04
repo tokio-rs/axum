@@ -3,7 +3,7 @@
 use axum::{
     extract::{OriginalUri, Request},
     response::{IntoResponse, Redirect, Response},
-    routing::{any, MethodRouter},
+    routing::{any, on, MethodFilter, MethodRouter},
     Router,
 };
 use http::{uri::PathAndQuery, StatusCode, Uri};
@@ -39,6 +39,20 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
     if path.as_bytes()[0] != b'/' {
         panic!("Paths must start with /");
     }
+
+    // Checks if we have a path in 107 format.
+    let size: usize = path.len() - 1;
+    let mut curr: usize = 0;
+    let bytes = path.as_bytes();
+    while curr < size {
+        if bytes[curr] == b'/' && (bytes[curr + 1] == b'*' || bytes[curr + 1] == b':') {
+            panic!(
+                "You have a path with a deprecated format, move your ':var' or '*var' to '{{var}}'"
+            );
+        }
+        curr += 1;
+    }
+
     path
 }
 
@@ -64,13 +78,37 @@ pub const fn __private_validate_static_path(path: &'static str) -> &'static str 
 /// use axum_extra::vpath;
 ///
 /// let router = axum::Router::<()>::new()
-///     .route(vpath!("/valid_path"), get(root))
+///     .route(vpath!("/valid_path/{id}"), get(root))
 ///     .to_owned();
 ///
 /// async fn root() {}
 /// ```
 ///
+/// It also checks for deprecated usage of variables within the path:
+///
+/// ```compile_fail
+///  use axum::routing::{Router, get};
+///  use axum_extra::vpath;
+///
+/// let router = axum::Router::<()>::new()
+///     .route(vpath!("/users/:id"), get(root))
+///     .to_owned();
+///
+/// async fn root() {}
+/// ```
+///
+/// ```compile_fail
+///  use axum::routing::{Router, get};
+///  use axum_extra::vpath;
+///
+/// let router = axum::Router::<()>::new()
+///     .route(vpath!("/users/*id"), get(root))
+///     .to_owned();
+///
+/// async fn root() {}
+/// ```
 /// This macro is available only on rust versions 1.80 and above.
+#[cfg_attr(docsrs, doc(cfg(feature = "routing")))]
 #[rustversion::since(1.80)]
 #[macro_export]
 macro_rules! vpath {
@@ -202,6 +240,19 @@ pub trait RouterExt<S>: sealed::Sealed {
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
     fn typed_connect<H, T, P>(self, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, S>,
+        T: SecondElementIs<P> + 'static,
+        P: TypedPath;
+
+    /// Add a typed `QUERY` route to the router.
+    ///
+    /// The path will be inferred from the first argument to the handler function which must
+    /// implement [`TypedPath`].
+    ///
+    /// See [`TypedPath`] for more details and examples.
+    #[cfg(feature = "typed-routing")]
+    fn typed_query<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
@@ -351,14 +402,25 @@ where
         self.route(P::PATH, axum::routing::connect(handler))
     }
 
+    #[cfg(feature = "typed-routing")]
+    fn typed_query<H, T, P>(self, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, S>,
+        T: SecondElementIs<P> + 'static,
+        P: TypedPath,
+    {
+        self.route(P::PATH, axum::routing::query(handler))
+    }
+
     #[track_caller]
     fn route_with_tsr(mut self, path: &str, method_router: MethodRouter<S>) -> Self
     where
         Self: Sized,
     {
         validate_tsr_path(path);
+        let method_filter = method_router.method_filter();
         self = self.route(path, method_router);
-        add_tsr_redirect_route(self, path)
+        add_tsr_redirect_route(self, path, method_filter)
     }
 
     #[track_caller]
@@ -371,7 +433,7 @@ where
     {
         validate_tsr_path(path);
         self = self.route_service(path, service);
-        add_tsr_redirect_route(self, path)
+        add_tsr_redirect_route(self, path, None)
     }
 }
 
@@ -382,7 +444,11 @@ fn validate_tsr_path(path: &str) {
     }
 }
 
-fn add_tsr_redirect_route<S>(router: Router<S>, path: &str) -> Router<S>
+fn add_tsr_redirect_route<S>(
+    router: Router<S>,
+    path: &str,
+    method_filter: Option<MethodFilter>,
+) -> Router<S>
 where
     S: Clone + Send + Sync + 'static,
 {
@@ -394,17 +460,27 @@ where
         });
 
         if let Some(new_uri) = new_uri {
-            Redirect::permanent(&new_uri.to_string()).into_response()
+            Redirect::permanent(new_uri.to_string()).into_response()
         } else {
             StatusCode::BAD_REQUEST.into_response()
         }
     }
 
-    if let Some(path_without_trailing_slash) = path.strip_suffix('/') {
-        router.route(path_without_trailing_slash, any(redirect_handler))
+    let _slot;
+    let redirect_path = if let Some(without_slash) = path.strip_suffix('/') {
+        without_slash
     } else {
-        router.route(&format!("{path}/"), any(redirect_handler))
-    }
+        // FIXME: Can return `&format!(...)` directly when MSRV is updated
+        _slot = format!("{path}/");
+        &_slot
+    };
+
+    let method_router = match method_filter {
+        Some(f) => on(f, redirect_handler),
+        None => any(redirect_handler),
+    };
+
+    router.route(redirect_path, method_router)
 }
 
 /// Map the path of a `Uri`.
@@ -438,7 +514,10 @@ mod sealed {
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{extract::Path, routing::get};
+    use axum::{
+        extract::Path,
+        routing::{get, post},
+    };
 
     #[tokio::test]
     async fn test_tsr() {
@@ -519,6 +598,13 @@ mod tests {
         let res = client.get("/neko/nyan").await;
         assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(res.headers()["location"], "/neko/nyan/");
+    }
+
+    #[test]
+    fn tsr_independent_route_registration() {
+        let _: Router = Router::new()
+            .route_with_tsr("/x", get(|| async {}))
+            .route_with_tsr("/x", post(|| async {}));
     }
 
     #[test]

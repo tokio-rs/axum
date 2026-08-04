@@ -70,7 +70,7 @@ mod tests {
     #[tokio::test]
     async fn test_main_page() {
         let response = app()
-            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+            .oneshot(Request::get("/").body(Body::empty()).unwrap())
             .await
             .unwrap();
 

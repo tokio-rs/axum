@@ -1,0 +1,39 @@
+error[E0277]: the trait bound `Payload: OptionalFromRequest<_, _>` is not satisfied
+ --> tests/from_request/fail/option_without_optional_from_request.rs:8:21
+  |
+8 |     payload: Option<Payload>,
+  |                     ^^^^^^^ unsatisfied trait bound
+  |
+help: the trait `OptionalFromRequest<_, _>` is not implemented for `Payload`
+ --> tests/from_request/fail/option_without_optional_from_request.rs:4:1
+  |
+4 | struct Payload;
+  | ^^^^^^^^^^^^^^
+help: the trait `OptionalFromRequest<S>` is implemented for `Json<T>`
+ --> $WORKSPACE/axum/src/json.rs
+  |
+  | / impl<T, S> OptionalFromRequest<S> for Json<T>
+  | | where
+  | |     T: DeserializeOwned,
+  | |     S: Send + Sync,
+  | |___________________^
+
+error[E0277]: the trait bound `Payload: OptionalFromRequest<_, _>` is not satisfied
+ --> tests/from_request/fail/option_without_optional_from_request.rs:8:14
+  |
+8 |     payload: Option<Payload>,
+  |              ^^^^^^^^^^^^^^^ unsatisfied trait bound
+  |
+help: the trait `OptionalFromRequest<_, _>` is not implemented for `Payload`
+ --> tests/from_request/fail/option_without_optional_from_request.rs:4:1
+  |
+4 | struct Payload;
+  | ^^^^^^^^^^^^^^
+help: the trait `OptionalFromRequest<S>` is implemented for `Json<T>`
+ --> $WORKSPACE/axum/src/json.rs
+  |
+  | / impl<T, S> OptionalFromRequest<S> for Json<T>
+  | | where
+  | |     T: DeserializeOwned,
+  | |     S: Send + Sync,
+  | |___________________^

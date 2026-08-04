@@ -221,7 +221,7 @@ impl Event {
         }
     }
 
-    /// Set the event's data data field(s) (`data: <content>`)
+    /// Set the event's data field(s) (`data: <content>`)
     ///
     /// Newlines in `data` will automatically be broken across `data: ` fields.
     ///

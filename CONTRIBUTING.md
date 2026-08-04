@@ -31,7 +31,7 @@ describes the _minimum_ behavior expected from all contributors.
 For any issue, there are fundamentally three ways an individual can contribute:
 
 1. By opening the issue for discussion: For instance, if you believe that you
-   have uncovered a bug in a `axum` crate, creating a new issue in the
+   have uncovered a bug in an `axum` crate, creating a new issue in the
    tokio-rs/axum [issue tracker][issues] is the way to report it.
 
 2. By helping to triage the issue: This can be done by providing
@@ -165,10 +165,10 @@ A good commit message should describe what changed and why.
 ### Opening the Pull Request
 
 From within GitHub, opening a new Pull Request will present you with a
-[template] that should be filled out. Please try to do your best at filling out
+[template][pr_template] that should be filled out. Please try to do your best at filling out
 the details, but feel free to skip parts if you're not sure what to put.
 
-[template]: .github/PULL_REQUEST_TEMPLATE.md
+[pr_template]: .github/PULL_REQUEST_TEMPLATE.md
 
 ### Discuss and update
 

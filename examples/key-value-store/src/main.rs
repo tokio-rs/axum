@@ -114,6 +114,7 @@ async fn list_keys(State(state): State<SharedState>) -> String {
         .join("\n")
 }
 
+#[allow(deprecated)]
 fn admin_routes() -> Router<SharedState> {
     async fn delete_all_keys(State(state): State<SharedState>) {
         state.write().unwrap().db.clear();
@@ -123,6 +124,7 @@ fn admin_routes() -> Router<SharedState> {
         state.write().unwrap().db.remove(&key);
     }
 
+    #[allow(deprecated)] // FIXME
     Router::new()
         .route("/keys", delete(delete_all_keys))
         .route("/key/{key}", delete(remove_key))

@@ -1,6 +1,12 @@
 //! Cookie parsing and cookie jar management.
 //!
 //! See [`CookieJar`], [`SignedCookieJar`], and [`PrivateCookieJar`] for more details.
+//!
+//! ## `Key::derive_from`
+//!
+//! The [`Key::derive_from`] method is provided by the underlying [`cookie`] crate, whose docs
+//! refer to the `key-expansion` feature. In `axum-extra`, enable **`cookie-key-expansion`**
+//! instead (see the [crate-level feature list](crate#feature-flags)).
 
 use axum_core::{
     extract::FromRequestParts,
@@ -25,7 +31,12 @@ pub use self::signed::SignedCookieJar;
 
 pub use cookie::{Cookie, Expiration, SameSite};
 
+/// Cookie signing and encryption key.
+///
+/// When using [`Key::derive_from`], enable the **`cookie-key-expansion`** feature on
+/// `axum-extra` (not `key-expansion` from the [`cookie`] crate).
 #[cfg(any(feature = "cookie-signed", feature = "cookie-private"))]
+#[doc(inline)]
 pub use cookie::Key;
 
 /// Extractor that grabs cookies from the request and manages the jar.
@@ -132,8 +143,8 @@ impl CookieJar {
     /// This is intended to be used in middleware and other places where it might be difficult to
     /// run extractors. Normally you should create `CookieJar`s through [`FromRequestParts`].
     ///
-    /// If you need a jar that contains the headers from a request use `impl From<&HeaderMap> for
-    /// CookieJar`.
+    /// If you need a jar that contains the headers from a request, use
+    /// [`CookieJar::from_headers`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
     pub fn new() -> Self {

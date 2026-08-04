@@ -7,7 +7,7 @@
 
 use std::time::Duration;
 
-use axum::{routing::get, Router};
+use axum::{http::StatusCode, routing::get, Router};
 use tokio::net::TcpListener;
 use tokio::signal;
 use tokio::time::sleep;
@@ -39,7 +39,7 @@ async fn main() {
             TraceLayer::new_for_http(),
             // Graceful shutdown will wait for outstanding requests to complete. Add a timeout so
             // requests don't hang forever.
-            TimeoutLayer::new(Duration::from_secs(10)),
+            TimeoutLayer::with_status_code(StatusCode::REQUEST_TIMEOUT, Duration::from_secs(10)),
         ));
 
     // Create a `TcpListener` using tokio.

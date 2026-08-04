@@ -1,7 +1,7 @@
 use crate::extract::Request;
 use crate::extract::{rejection::*, FromRequest};
 use axum_core::extract::OptionalFromRequest;
-use axum_core::response::{IntoResponse, Response};
+use axum_core::response::{IntoResponse, IntoResponseFailed, Response};
 use bytes::{BufMut, Bytes, BytesMut};
 use http::{
     header::{self, HeaderMap, HeaderValue},
@@ -216,6 +216,7 @@ where
                         header::CONTENT_TYPE,
                         HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
                     )],
+                    IntoResponseFailed,
                     err.to_string(),
                 )
                     .into_response(),

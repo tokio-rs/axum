@@ -1,12 +1,12 @@
 [package]
 name = "axum"
-version = "0.8.8" # remember to bump the version that axum-extra depends on
+version = "0.8.9" # remember to bump the version that axum-extra depends on
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
-description = "Web framework that focuses on ergonomics and modularity"
+description = "HTTP routing and request handling library that focuses on ergonomics and modularity"
 edition = "2021"
 rust-version = { workspace = true }
 homepage = "https://github.com/tokio-rs/axum"
-keywords = ["http", "web", "framework"]
+keywords = ["http", "web", "routing"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
@@ -49,7 +49,13 @@ default = [
     "tower-log",
     "tracing",
 ]
-form = ["dep:form_urlencoded", "dep:serde_html_form", "dep:serde_path_to_error"]
+form = [
+    "dep:form_urlencoded",
+    "dep:serde_html_form",
+    "dep:serde_path_to_error",
+    "serde_html_form/ser",
+    "serde_html_form/de",
+]
 http1 = ["dep:hyper", "hyper?/http1", "hyper-util?/http1"]
 http2 = ["dep:hyper", "hyper?/http2", "hyper-util?/http2"]
 json = ["dep:serde_json", "dep:serde_path_to_error"]
@@ -57,11 +63,15 @@ macros = ["dep:axum-macros"]
 matched-path = []
 multipart = ["dep:multer"]
 original-uri = []
-query = ["dep:form_urlencoded", "dep:serde_html_form", "dep:serde_path_to_error"]
+query = [
+    "dep:form_urlencoded",
+    "dep:serde_html_form",
+    "dep:serde_path_to_error",
+    "serde_html_form/de",
+]
 tokio = [
     "dep:hyper-util",
     "dep:tokio",
-    "tokio/net",
     "tokio/rt",
     "tower/make",
     "tokio/macros",
@@ -91,16 +101,22 @@ __private_docs = [
 # in `axum-core` and `axum-extra`.
 __private = ["tokio", "http1", "dep:reqwest"]
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { package = "tokio", version = "1.44", features = ["time", "net"], optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+tokio = { package = "tokio", version = "1.44", features = ["time"], optional = true }
+
 [dependencies]
 axum-core = { path = "../axum-core", version = "0.5.6" }
 bytes = "1.7"
 futures-core = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
-http = "1.0.0"
+http = "1.5.0"
 http-body = "1.0.0"
 http-body-util = "0.1.0"
 itoa = "1.0.5"
-matchit = "=0.8.4"
+matchit = "=0.9.2"
 memchr = "2.4.1"
 mime = "0.3.16"
 percent-encoding = "2.1"
@@ -112,7 +128,7 @@ tower-layer = "0.3.2"
 tower-service = "0.3"
 
 # optional dependencies
-axum-macros = { path = "../axum-macros", version = "0.5.0", optional = true }
+axum-macros = { path = "../axum-macros", version = "0.5.1", optional = true }
 base64 = { version = "0.22.1", optional = true }
 form_urlencoded = { version = "1.1.0", optional = true }
 futures-sink = { version = "0.3", optional = true }
@@ -120,19 +136,18 @@ hyper = { version = "1.4.0", optional = true }
 hyper-util = { version = "0.1.4", features = ["tokio", "server", "service"], optional = true }
 multer = { version = "3.0.0", optional = true }
 reqwest = { version = "0.12", optional = true, default-features = false, features = ["json", "stream", "multipart"] }
-serde_html_form = { version = "0.3.2", optional = true }
-serde_json = { version = "1.0", features = ["raw_value"], optional = true }
+serde_html_form = { version = "0.4.0", optional = true, default-features = false, features = ["std"] }
+serde_json = { version = "1.0.29", features = ["raw_value"], optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }
 sha1 = { version = "0.10", optional = true }
-tokio = { package = "tokio", version = "1.44", features = ["time"], optional = true }
-tokio-tungstenite = { version = "0.28.0", optional = true }
+tokio-tungstenite = { version = "0.29.0", optional = true }
 tracing = { version = "0.1", default-features = false, optional = true }
 
 # doc dependencies
 serde = { version = "1.0.211", optional = true }
 
 [dependencies.tower-http]
-version = "0.6.0"
+version = "0.6.8"
 optional = true
 features = [
     # all tower-http features except (de)?compression-zstd which doesn't
@@ -175,11 +190,11 @@ quickcheck = "1.0"
 quickcheck_macros = "1.0"
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0.221", features = ["derive"] }
-serde_json = { version = "1.0", features = ["raw_value"] }
+serde_json = { version = "1.0.29", features = ["raw_value"] }
 time = { version = "0.3", features = ["serde-human-readable"] }
 tokio = { package = "tokio", version = "1.44.2", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
 tokio-stream = "0.1"
-tokio-tungstenite = "0.28.0"
+tokio-tungstenite = "0.29.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.20", features = ["json"] }
 uuid = { version = "1.0", features = ["serde", "v4"] }
@@ -197,7 +212,7 @@ features = [
 ]
 
 [dev-dependencies.tower-http]
-version = "0.6.0"
+version = "0.6.8"
 features = [
     # all tower-http features except (de)?compression-zstd which doesn't
     # build on `--target armv5te-unknown-linux-musleabi`

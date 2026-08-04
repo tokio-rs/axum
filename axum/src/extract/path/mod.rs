@@ -13,7 +13,7 @@ use axum_core::{
     response::{IntoResponse, Response},
     RequestPartsExt as _,
 };
-use http::{request::Parts, StatusCode};
+use http::{request::Parts, Extensions, StatusCode};
 use serde_core::de::DeserializeOwned;
 use std::{fmt, sync::Arc};
 
@@ -346,7 +346,7 @@ pub enum ErrorKind {
         key: String,
         /// The value that failed to deserialize.
         value: String,
-        /// The deserializaation failure message.
+        /// The deserialization failure message.
         message: String,
     },
 
@@ -507,24 +507,28 @@ where
     type Rejection = RawPathParamsRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let params = match parts.extensions.get::<UrlParams>() {
-            Some(UrlParams::Params(params)) => params,
-            Some(UrlParams::InvalidUtf8InPathParam { key }) => {
-                return Err(InvalidUtf8InPathParam {
-                    key: Arc::clone(key),
-                }
-                .into());
-            }
-            None => {
-                return Err(MissingPathParams.into());
-            }
-        };
-
-        Ok(Self(params.clone()))
+        Self::from_request_extensions(&parts.extensions)
     }
 }
 
 impl RawPathParams {
+    /// Construct a `RawPathParams<T>` from request extensions.
+    ///
+    /// Most users should prefer to use the `FromRequestParts` impl but special cases may require
+    /// extracting `RawPathParams` outside of an async context.
+    pub fn from_request_extensions(
+        extensions: &Extensions,
+    ) -> Result<Self, RawPathParamsRejection> {
+        match extensions.get::<UrlParams>() {
+            Some(UrlParams::Params(params)) => Ok(Self(params.clone())),
+            Some(UrlParams::InvalidUtf8InPathParam { key }) => Err(InvalidUtf8InPathParam {
+                key: Arc::clone(key),
+            }
+            .into()),
+            None => Err(MissingPathParams.into()),
+        }
+    }
+
     /// Get an iterator over the path parameters.
     #[must_use]
     pub fn iter(&self) -> RawPathParamsIter<'_> {
@@ -854,6 +858,27 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo/bar").await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
+    async fn deserialize_into_vec_of_tuples_with_prefixes_and_suffixes() {
+        let app = Router::new().route(
+            "/f{o}o/b{a}r",
+            get(|Path(params): Path<Vec<(String, String)>>| async move {
+                assert_eq!(
+                    params,
+                    vec![
+                        ("o".to_owned(), "0".to_owned()),
+                        ("a".to_owned(), "4".to_owned())
+                    ]
+                );
+            }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/f0o/b4r").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 

@@ -6,7 +6,7 @@ afterwards. Additional routes added after `route_layer` is called will not have
 the middleware added.
 
 This works similarly to [`MethodRouter::layer`] except the middleware will only run if
-the request matches a route. This is useful for middleware that return early
+the request matches a route. This is useful for middleware that returns early
 (such as authorization) which might otherwise convert a `405 Method Not Allowed` into a
 `401 Unauthorized`.
 
@@ -26,7 +26,7 @@ let app = Router::new().route(
 );
 
 // `GET /foo` with a valid token will receive `200 OK`
-// `GET /foo` with a invalid token will receive `401 Unauthorized`
-// `POST /FOO` with a invalid token will receive `405 Method Not Allowed`
+// `GET /foo` with an invalid token will receive `401 Unauthorized`
+// `POST /FOO` with an invalid token will receive `405 Method Not Allowed`
 # let _: Router = app;
 ```

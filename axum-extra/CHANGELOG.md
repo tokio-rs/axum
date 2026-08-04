@@ -9,8 +9,40 @@ and this project adheres to [Semantic Versioning].
 
 - **breaking:** Remove the deprecated `Host`, `Scheme` and `OptionalPath`
   extractors ([#3599])
+  - Also remove `HostRejection` which only had `FailedToResolveHost`
+    previously used in the `Host` extractor ([#3636])
+- **breaking:** Change `routing::RouterExt::route_with_tsr` to only redirect
+  the HTTP methods that the supplied `MethodRouter` handles. This allows the
+  following pattern which lead to a panic before because the two
+  `route_with_tsr` calls would both attempt to register a method-independent
+  redirect ([#3586]):
+
+  ```rust
+  Router::new()
+      .route_with_tsr("/path", get(/* handler */))
+      .route_with_tsr("/path", post(/* handler */))
+  ```
+- **added:** Add `RouterExt::typed_query` ([#3801])
+- **fixed:** Escape multipart `Content-Disposition` parameters and reject
+  newlines in field names and filenames ([#3776])
 
 [#3599]: https://github.com/tokio-rs/axum/pull/3599
+[#3586]: https://github.com/tokio-rs/axum/pull/3586
+[#3801]: https://github.com/tokio-rs/axum/pull/3801
+[#3776]: https://github.com/tokio-rs/axum/pull/3776
+
+# 0.12.6
+
+- **fixed:** Escape backslashes and double quotes in `Content-Disposition` filenames
+  to prevent header parameter injection in `Attachment` and `FileStream` ([#3664])
+- `vpath!` macro now stops the compilation if your path is using deprecated
+  path variables in the old `107` format, such as `:var` and `*var`. the 
+  only allowed way now is `{var}`. ([#3618])
+- **fixed:** Return specific error message when multipart body limit is exceeded ([#3611])
+
+[#3664]: https://github.com/tokio-rs/axum/pull/3664
+[#3618]: https://github.com/tokio-rs/axum/pull/3618
+[#3611]: https://github.com/tokio-rs/axum/pull/3611
 
 # 0.12.5
 

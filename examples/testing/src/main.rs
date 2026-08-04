@@ -71,7 +71,7 @@ mod tests {
         // `Router` implements `tower::Service<Request<Body>>` so we can
         // call it like any tower service, no need to run an HTTP server.
         let response = app
-            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+            .oneshot(Request::get("/").body(Body::empty()).unwrap())
             .await
             .unwrap();
 
@@ -87,9 +87,7 @@ mod tests {
 
         let response = app
             .oneshot(
-                Request::builder()
-                    .method(http::Method::POST)
-                    .uri("/json")
+                Request::post("/json")
                     .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                     .body(Body::from(
                         serde_json::to_vec(&json!([1, 2, 3, 4])).unwrap(),
@@ -111,12 +109,7 @@ mod tests {
         let app = app();
 
         let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/does-not-exist")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
+            .oneshot(Request::get("/does-not-exist").body(Body::empty()).unwrap())
             .await
             .unwrap();
 
@@ -141,8 +134,7 @@ mod tests {
 
         let response = client
             .request(
-                Request::builder()
-                    .uri(format!("http://{addr}"))
+                Request::get(format!("http://{addr}"))
                     .header("Host", "localhost")
                     .body(Body::empty())
                     .unwrap(),
@@ -160,7 +152,7 @@ mod tests {
     async fn multiple_request() {
         let mut app = app().into_service();
 
-        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let request = Request::get("/").body(Body::empty()).unwrap();
         let response = ServiceExt::<Request<Body>>::ready(&mut app)
             .await
             .unwrap()
@@ -169,7 +161,7 @@ mod tests {
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
 
-        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let request = Request::get("/").body(Body::empty()).unwrap();
         let response = ServiceExt::<Request<Body>>::ready(&mut app)
             .await
             .unwrap()
@@ -190,8 +182,7 @@ mod tests {
             .layer(MockConnectInfo(SocketAddr::from(([0, 0, 0, 0], 3000))))
             .into_service();
 
-        let request = Request::builder()
-            .uri("/requires-connect-info")
+        let request = Request::get("/requires-connect-info")
             .body(Body::empty())
             .unwrap();
         let response = app.ready().await.unwrap().call(request).await.unwrap();

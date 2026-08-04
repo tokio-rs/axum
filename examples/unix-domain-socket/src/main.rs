@@ -19,7 +19,7 @@ mod unix {
     use axum::{
         body::Body,
         extract::connect_info::{self, ConnectInfo},
-        http::{Method, Request, StatusCode},
+        http::{Request, StatusCode},
         routing::get,
         serve::IncomingStream,
         Router,
@@ -63,9 +63,7 @@ mod unix {
             }
         });
 
-        let request = Request::builder()
-            .method(Method::GET)
-            .uri("http://uri-doesnt-matter.com")
+        let request = Request::get("http://uri-doesnt-matter.com")
             .body(Body::empty())
             .unwrap();
 

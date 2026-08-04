@@ -1,6 +1,13 @@
 Provide the state for the router. State passed to this method is global and will be used
 for all requests this router receives. That means it is not suitable for holding state derived from a request, such as authorization data extracted in a middleware. Use [`Extension`] instead for such data.
 
+See ["Sharing state with handlers"][sharing-state] for an overview of state patterns,
+including when to use `Arc`, how to extract substates with [`FromRef`], and what the
+`Router<S>` type parameter means.
+
+[sharing-state]: crate#sharing-state-with-handlers
+[`FromRef`]: crate::extract::FromRef
+
 ```rust
 use axum::{Router, routing::get, extract::State};
 
@@ -128,7 +135,7 @@ axum::serve(listener, router).await;
 # };
 ```
 
-Perhaps a little counter intuitively, `Router::with_state` doesn't always return a
+Perhaps a little counterintuitively, `Router::with_state` doesn't always return a
 `Router<()>`. Instead you get to pick what the new missing state type is:
 
 ```rust
@@ -143,7 +150,7 @@ let router: Router<AppState> = Router::new()
 // Here we pick `String`.
 let string_router: Router<String> = router.with_state(AppState {});
 
-// That allows us to add new routes that uses `String` as the state type
+// That allows us to add new routes that use `String` as the state type
 let string_router = string_router
     .route("/needs-string", get(|_: State<String>| async {}));
 

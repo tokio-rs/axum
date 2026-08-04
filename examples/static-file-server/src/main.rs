@@ -11,6 +11,7 @@ use std::net::SocketAddr;
 use tower::ServiceExt;
 use tower_http::{
     services::{ServeDir, ServeFile},
+    set_status::SetStatus,
     trace::TraceLayer,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -45,13 +46,18 @@ fn using_serve_dir() -> Router {
 fn using_serve_dir_with_assets_fallback() -> Router {
     // `ServeDir` allows setting a fallback if an asset is not found
     // so with this `GET /assets/doesnt-exist.jpg` will return `index.html`
-    // rather than a 404
-    let serve_dir = ServeDir::new("assets").not_found_service(ServeFile::new("assets/index.html"));
+    // rather than a 404.
+    // The `fallback_service` ensures that all other paths (the standard
+    // SPA pattern) also return `index.html`. We wrap it in `SetStatus` so
+    // the response uses 404 instead of 200 -- the path wasn't found, the SPA
+    // just handles routing client-side.
+    let index_html = SetStatus::new(ServeFile::new("assets/index.html"), StatusCode::NOT_FOUND);
+    let serve_dir = ServeDir::new("assets").not_found_service(index_html.clone());
 
     Router::new()
         .route("/foo", get(|| async { "Hi from /foo" }))
-        .nest_service("/assets", serve_dir.clone())
-        .fallback_service(serve_dir)
+        .nest_service("/assets", serve_dir)
+        .fallback_service(index_html)
 }
 
 fn using_serve_dir_only_from_root_via_fallback() -> Router {
@@ -106,6 +112,9 @@ fn calling_serve_dir_from_a_handler() -> Router {
 fn using_serve_file_from_a_route() -> Router {
     Router::new().route_service("/foo", ServeFile::new("assets/index.html"))
 }
+
+#[cfg(test)]
+mod tests;
 
 async fn serve(app: Router, port: u16) {
     let addr = SocketAddr::from(([127, 0, 0, 1], port));

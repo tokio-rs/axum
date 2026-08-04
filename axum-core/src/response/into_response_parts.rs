@@ -70,6 +70,9 @@ use std::{convert::Infallible, fmt};
 ///     SetHeader("x-foo", "custom")
 /// }
 /// ```
+#[diagnostic::on_unimplemented(
+    note = "See `https://docs.rs/axum/0.8/axum/response/trait.IntoResponseParts.html` for details"
+)]
 pub trait IntoResponseParts {
     /// The type returned in the event of an error.
     ///
@@ -104,6 +107,18 @@ pub struct ResponseParts {
 }
 
 impl ResponseParts {
+    /// Gets the response status code.
+    #[must_use]
+    pub fn status(&self) -> StatusCode {
+        self.res.status()
+    }
+
+    /// Gets a mutable reference to the response status code.
+    #[must_use]
+    pub fn status_mut(&mut self) -> &mut StatusCode {
+        self.res.status_mut()
+    }
+
     /// Gets a reference to the response headers.
     #[must_use]
     pub fn headers(&self) -> &HeaderMap {
@@ -241,7 +256,9 @@ macro_rules! impl_into_response_parts {
                     let res = match $ty.into_response_parts(res) {
                         Ok(res) => res,
                         Err(err) => {
-                            return Err(err.into_response());
+                            let mut err_res = err.into_response();
+                            err_res.extensions_mut().insert(super::IntoResponseFailed);
+                            return Err(err_res);
                         }
                     };
                 )*
@@ -268,5 +285,21 @@ impl IntoResponseParts for () {
 
     fn into_response_parts(self, res: ResponseParts) -> Result<ResponseParts, Self::Error> {
         Ok(res)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use http::StatusCode;
+
+    use crate::response::IntoResponse;
+
+    #[test]
+    fn failed_into_response_parts() {
+        let response = (StatusCode::CREATED, [("\n", "\n")]).into_response();
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let response = (StatusCode::CREATED, [("\n", "\n")], ()).into_response();
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 }

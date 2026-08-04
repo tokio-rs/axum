@@ -1,5 +1,8 @@
 //! Additional types for generating responses.
 
+#[cfg(any(feature = "attachment", feature = "file-stream", feature = "multipart"))]
+mod content_disposition;
+
 #[cfg(feature = "erased-json")]
 mod erased_json;
 

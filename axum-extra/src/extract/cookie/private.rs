@@ -150,7 +150,7 @@ impl PrivateCookieJar {
     ///
     /// The valid cookies in `headers` will be added to the jar.
     ///
-    /// This is intended to be used in middleware and other where places it might be difficult to
+    /// This is intended to be used in middleware and other places where it might be difficult to
     /// run extractors. Normally you should create `PrivateCookieJar`s through [`FromRequestParts`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts

@@ -7,9 +7,9 @@
 //!   `thiserror` can provide such conversion using derive macros. See
 //!   [`thiserror`]
 //! - Verbose types: types become much larger, which makes them difficult to
-//!   read. Current limitations on type aliasing makes impossible to destructure
+//!   read. Current limitations on type aliasing make it impossible to destructure
 //!   a type alias. See [#1116]
-//!   
+//!
 //! [`thiserror`]: https://crates.io/crates/thiserror
 //! [#1116]: https://github.com/tokio-rs/axum/issues/1116#issuecomment-1186197684
 

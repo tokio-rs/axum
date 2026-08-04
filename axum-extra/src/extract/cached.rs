@@ -8,7 +8,7 @@ use http::request::Parts;
 /// This is useful if you have a tree of extractors that share common sub-extractors that
 /// you only want to run once, perhaps because they're expensive.
 ///
-/// The cache purely type based so you can only cache one value of each type. The cache is also
+/// The cache is purely type-based so you can only cache one value of each type. The cache is also
 /// local to the current request and not reused across requests.
 ///
 /// # Example
@@ -48,7 +48,7 @@ use http::request::Parts;
 ///         // loading a `CurrentUser` requires first loading the `Session`
 ///         //
 ///         // by using `Cached<Session>` we avoid extracting the session more than
-///         // once, in case other extractors for the same request also loads the session
+///         // once, in case other extractors for the same request also load the session
 ///         let session: Session = Cached::<Session>::from_request_parts(parts, state)
 ///             .await
 ///             .map_err(|err| err.into_response())?

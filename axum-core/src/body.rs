@@ -1,5 +1,8 @@
 //! HTTP body utilities.
 
+mod unknown;
+pub(crate) use unknown::Unknown;
+
 use crate::{BoxError, Error};
 use bytes::Bytes;
 use futures_core::{Stream, TryStream};
@@ -51,6 +54,30 @@ impl Body {
     /// Create an empty body.
     pub fn empty() -> Self {
         Self::new(http_body_util::Empty::new())
+    }
+
+    /// Create a body of unknown size.
+    ///
+    /// This is useful in cases where a body is required to construct a
+    /// response, but the size of the body is not known.
+    ///
+    /// For example, this can be used to respond to `HEAD` requests,
+    /// for which the body of the corresponding `GET` request would be expensive
+    /// to compute. Note that this particular case is also mentioned in
+    /// [RFC 9110 (Section 9.3.2, Paragraph 2)].
+    ///
+    /// The most notable difference compared to an empty body as returned by
+    /// [`Body::empty`] lies in the upper bound returned by [`Body::size_hint`]:
+    /// The upper bound of the size of an empty body is 0 bytes, while there
+    /// is no upper bound for the size of an unknown body.
+    ///
+    /// Other than the size hint, an unknown body behaves like an empty body,
+    /// i.e., [`Body::is_end_stream`] returns `true`, and when polled via
+    /// [`Body::poll_frame`], it immediately returns `Poll::Ready(None)`.
+    ///
+    /// [RFC 9110 (Section 9.3.2, Paragraph 2)]: https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.2-2
+    pub fn unknown() -> Self {
+        Self::new(Unknown::new())
     }
 
     /// Create a new `Body` from a [`Stream`].

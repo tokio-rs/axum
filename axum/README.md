@@ -1,6 +1,6 @@
 # axum
 
-`axum` is a web application framework that focuses on ergonomics and modularity.
+`axum` is an HTTP routing and request-handling library that focuses on ergonomics and modularity.
 
 [![Build status](https://github.com/tokio-rs/axum/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/tokio-rs/axum/actions/workflows/CI.yml)
 [![Crates.io](https://img.shields.io/crates/v/axum)](https://crates.io/crates/axum)
@@ -17,7 +17,7 @@ More information about this crate can be found in the [crate documentation][docs
 - Take full advantage of the [`tower`] and [`tower-http`] ecosystem of
   middleware, services, and utilities.
 
-In particular the last point is what sets `axum` apart from other frameworks.
+In particular the last point is what sets `axum` apart from other libraries / frameworks.
 `axum` doesn't have its own middleware system but instead uses
 [`tower::Service`]. This means `axum` gets timeouts, tracing, compression,
 authorization, and more, for free. It also enables you to share middleware with
@@ -111,22 +111,17 @@ This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in
 
 ## Minimum supported Rust version
 
-axum's MSRV is 1.78.
+axum's MSRV is 1.80.
 
 ## Examples
 
 The [examples] folder contains various examples of how to use `axum`. The
-[docs] also provide lots of code snippets and examples. For full-fledged examples, check out community-maintained [showcases] or [tutorials].
+[docs] also provide lots of code snippets and examples.
 
 ## Getting Help
 
 In the `axum`'s repo we also have a [number of examples][examples] showing how
-to put everything together. Community-maintained [showcases] and [tutorials] also demonstrate how to use `axum` for real-world applications. You're also welcome to ask in the [Discord channel][chat] or open a [discussion] with your question.
-
-## Community projects
-
-See [here][ecosystem] for a list of community maintained crates and projects
-built with `axum`.
+to put everything together. You're also welcome to ask in the [Discord channel][chat] or open a [discussion] with your question.
 
 ## Contributing
 
@@ -155,7 +150,4 @@ additional terms or conditions.
 [chat]: https://discord.gg/tokio
 [discussion]: https://github.com/tokio-rs/axum/discussions/new?category=q-a
 [`tower::Service`]: https://docs.rs/tower/latest/tower/trait.Service.html
-[ecosystem]: https://github.com/tokio-rs/axum/blob/main/ECOSYSTEM.md
-[showcases]: https://github.com/tokio-rs/axum/blob/main/ECOSYSTEM.md#project-showcase
-[tutorials]: https://github.com/tokio-rs/axum/blob/main/ECOSYSTEM.md#tutorials
 [license]: https://github.com/tokio-rs/axum/blob/main/axum/LICENSE

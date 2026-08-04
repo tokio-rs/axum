@@ -277,7 +277,7 @@ async fn login_authorized(
         .exchange_code(AuthorizationCode::new(query.code.clone()))
         .request_async(&client)
         .await
-        .context("failed in sending request request to authorization server")?;
+        .context("failed in sending request to authorization server")?;
 
     // Fetch user data from discord
     let user_data: User = client

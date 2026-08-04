@@ -20,7 +20,7 @@ pub use self::or::Or;
 /// This trait is similar to [`Handler`] but rather than taking the request it takes the extracted
 /// inputs.
 ///
-/// The drawbacks of this trait is that you cannot apply middleware to individual handlers like you
+/// The drawback of this trait is that you cannot apply middleware to individual handlers like you
 /// can with [`Handler::layer`].
 pub trait HandlerCallWithExtractors<T, S>: Sized {
     /// The type of future calling this handler returns.

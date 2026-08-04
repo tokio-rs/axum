@@ -20,12 +20,12 @@ async fn plain_text(uri: Uri) -> String {
     format!("Hi from {}", uri.path())
 }
 
-// Bytes will get a `application/octet-stream` content-type
+// Bytes will get an `application/octet-stream` content-type
 async fn bytes() -> Vec<u8> {
     vec![1, 2, 3, 4]
 }
 
-// `Json` will get a `application/json` content-type and work with anything that
+// `Json` will get an `application/json` content-type and work with anything that
 // implements `serde::Serialize`
 async fn json() -> Json<Vec<String>> {
     Json(vec!["foo".to_owned(), "bar".to_owned()])
