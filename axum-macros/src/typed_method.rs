@@ -24,18 +24,18 @@ pub(crate) fn expand(item_struct: &ItemStruct) -> syn::Result<TokenStream> {
     let method_filter = method_filter.ok_or_else(|| {
         syn::Error::new(
             Span::call_site(),
-            "Missing method filter: `#[typed_method(\"GET\")]`",
+            "Missing method filter: `#[typed_method(MethodFilter::GET)]`",
         )
     })?;
 
-    let typed_path_impl = quote_spanned! {method_filter.span()=>
+    let typed_method_impl = quote_spanned! {method_filter.span()=>
         #[automatically_derived]
-        impl ::axum_typed_method::TypedMethod for #ident {
+        impl ::axum_extra::routing::TypedMethod for #ident {
             const METHOD: ::axum::routing::MethodFilter = #method_filter;
         }
     };
 
-    Ok(quote! (#typed_path_impl))
+    Ok(quote! (#typed_method_impl))
 }
 
 #[derive(Default)]

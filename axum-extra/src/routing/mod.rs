@@ -15,18 +15,18 @@ mod resource;
 #[cfg(feature = "typed-routing")]
 mod typed;
 
-#[cfg(feature = "typed-routing")]
-use crate::routing::typed::TypedMethod;
-
 pub use self::resource::Resource;
 
 #[cfg(feature = "typed-routing")]
 pub use self::typed::WithQueryParams;
 #[cfg(feature = "typed-routing")]
-pub use axum_macros::TypedPath;
+pub use axum_macros::{TypedMethod, TypedPath};
 
 #[cfg(feature = "typed-routing")]
-pub use self::typed::{SecondElementIs, TypedPath};
+pub use self::typed::{
+    Connect, Delete, Get, Head, Options, Patch, Post, Put, Query, SecondElementIs, Trace,
+    TypedMethod, TypedPath,
+};
 
 // Validates a path at compile time, used with the vpath macro.
 #[rustversion::since(1.80)]
@@ -118,15 +118,30 @@ macro_rules! vpath {
 }
 
 /// Extension trait that adds additional methods to [`Router`].
+///
+/// The typed routing traits are composable: the `typed_*` methods use only [`TypedPath`], while
+/// [`RouterExt::typed`] combines [`TypedPath`] with [`TypedMethod`] to infer both path and method
+/// from the handler's first argument. A type implementing both traits can be used with either API.
+///
+/// [`TypedMethod`]: crate::routing::TypedMethod
+/// [`RouterExt::typed`]: RouterExt::typed
 #[allow(clippy::return_self_not_must_use)]
 pub trait RouterExt<S>: sealed::Sealed {
-    // TODO: comments
+    /// Add a route whose path and method are inferred from the handler's first input, which must
+    /// implement both [`TypedPath`] and [`TypedMethod`].
+    ///
+    /// The method-specific [`RouterExt::typed_get`], [`RouterExt::typed_post`], etc. methods
+    /// remain available for any [`TypedPath`] input and choose their method explicitly.
+    ///
+    /// [`TypedMethod`]: crate::routing::TypedMethod
+    /// [`RouterExt::typed_get`]: RouterExt::typed_get
+    /// [`RouterExt::typed_post`]: RouterExt::typed_post
     #[cfg(feature = "typed-routing")]
     fn typed<H, T, P>(self, handler: H) -> Self
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedMethod;
+        P: TypedMethod + TypedPath;
 
     /// Add a typed `GET` route to the router.
     ///
@@ -307,7 +322,7 @@ where
     where
         H: axum::handler::Handler<T, S>,
         T: SecondElementIs<P> + 'static,
-        P: TypedMethod,
+        P: TypedMethod + TypedPath,
     {
         self.route(P::PATH, axum::routing::on(P::METHOD, handler))
     }

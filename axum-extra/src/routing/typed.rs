@@ -1,18 +1,163 @@
-use std::{any::type_name, fmt};
+use std::{
+    any::type_name,
+    fmt,
+    ops::{Deref, DerefMut},
+};
 
 use super::sealed::Sealed;
 use http::Uri;
 use serde_core::Serialize;
 
-// TODO: comments
-pub trait TypedMethod: TypedPath {
+/// A typed route whose HTTP method is associated with a handler.
+///
+/// Use [`RouterExt::typed`] when the method should be inferred from this metadata together with a
+/// [`TypedPath`] handler argument. The method-specific `RouterExt::typed_*` helpers remain
+/// available because they choose the method explicitly and require only [`TypedPath`].
+///
+/// # Example
+///
+/// ```
+/// use axum::{routing::MethodFilter, Router};
+/// use axum_extra::routing::{RouterExt, TypedMethod, TypedPath};
+/// use serde::Deserialize;
+///
+/// #[derive(TypedPath, TypedMethod, Deserialize)]
+/// #[typed_path("/users/{id}")]
+/// #[typed_method(MethodFilter::GET)]
+/// struct GetUser {
+///     id: u32,
+/// }
+///
+/// async fn get_user(GetUser { id: _ }: GetUser) {}
+///
+/// let _: Router = Router::new().typed(get_user);
+/// ```
+///
+/// A shared path can instead be wrapped in method-specific newtypes:
+///
+/// ```
+/// use axum::Router;
+/// use axum_extra::routing::{Get, Put, RouterExt, TypedPath};
+/// use serde::Deserialize;
+///
+/// #[derive(TypedPath, Deserialize)]
+/// #[typed_path("/users/{id}")]
+/// struct UserPath {
+///     id: u32,
+/// }
+///
+/// async fn get_user(Get(UserPath { id: _ }): Get<UserPath>) {}
+/// async fn put_user(Put(UserPath { id: _ }): Put<UserPath>) {}
+///
+/// let _: Router = Router::new().typed(get_user).typed(put_user);
+/// ```
+///
+/// [`RouterExt::typed`]: super::RouterExt::typed
+pub trait TypedMethod {
+    /// The HTTP method used when routing this endpoint.
     const METHOD: axum::routing::MethodFilter;
 }
+
+macro_rules! typed_method_wrapper {
+    ($name:ident, $method:ident) => {
+        #[doc = concat!("A typed `", stringify!($method), "` method wrapper.")]
+        #[repr(transparent)]
+        #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        pub struct $name<P>(pub P);
+
+        impl<P> $name<P> {
+            /// Unwrap the underlying typed path.
+            pub fn into_inner(self) -> P {
+                self.0
+            }
+        }
+
+        impl<P> From<P> for $name<P> {
+            fn from(path: P) -> Self {
+                Self(path)
+            }
+        }
+
+        impl<P> AsRef<P> for $name<P> {
+            fn as_ref(&self) -> &P {
+                &self.0
+            }
+        }
+
+        impl<P> AsMut<P> for $name<P> {
+            fn as_mut(&mut self) -> &mut P {
+                &mut self.0
+            }
+        }
+
+        impl<P> Deref for $name<P> {
+            type Target = P;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl<P> DerefMut for $name<P> {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
+            }
+        }
+
+        impl<P> fmt::Display for $name<P>
+        where
+            P: fmt::Display,
+        {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                self.0.fmt(f)
+            }
+        }
+
+        impl<P> TypedPath for $name<P>
+        where
+            P: TypedPath,
+        {
+            const PATH: &'static str = P::PATH;
+        }
+
+        impl<P> TypedMethod for $name<P> {
+            const METHOD: axum::routing::MethodFilter = axum::routing::MethodFilter::$method;
+        }
+
+        impl<P, S> axum::extract::FromRequestParts<S> for $name<P>
+        where
+            P: axum::extract::FromRequestParts<S>,
+            S: Send + Sync,
+        {
+            type Rejection = P::Rejection;
+
+            async fn from_request_parts(
+                parts: &mut axum::http::request::Parts,
+                state: &S,
+            ) -> Result<Self, Self::Rejection> {
+                P::from_request_parts(parts, state).await.map(Self)
+            }
+        }
+    };
+}
+
+typed_method_wrapper!(Connect, CONNECT);
+typed_method_wrapper!(Delete, DELETE);
+typed_method_wrapper!(Get, GET);
+typed_method_wrapper!(Head, HEAD);
+typed_method_wrapper!(Options, OPTIONS);
+typed_method_wrapper!(Patch, PATCH);
+typed_method_wrapper!(Post, POST);
+typed_method_wrapper!(Put, PUT);
+typed_method_wrapper!(Query, QUERY);
+typed_method_wrapper!(Trace, TRACE);
 
 /// A type safe path.
 ///
 /// This is used to statically connect a path to its corresponding handler using
 /// [`RouterExt::typed_get`], [`RouterExt::typed_post`], etc.
+/// A type can also implement [`TypedMethod`]; doing so does not prevent it from being used with
+/// the method-specific helpers.
 ///
 /// # Example
 ///
@@ -215,6 +360,7 @@ pub trait TypedMethod: TypedPath {
 /// [`FromRequest`]: axum::extract::FromRequest
 /// [`RouterExt::typed_get`]: super::RouterExt::typed_get
 /// [`RouterExt::typed_post`]: super::RouterExt::typed_post
+/// [`TypedMethod`]: super::TypedMethod
 /// [`Path`]: axum::extract::Path
 /// [`Display`]: std::fmt::Display
 /// [`Deserialize`]: serde::Deserialize
@@ -327,8 +473,8 @@ where
 /// Utility trait used with [`RouterExt`] to ensure the second element of a tuple type is a
 /// given type.
 ///
-/// If you see it in type errors it's most likely because the first argument to your handler doesn't
-/// implement [`TypedPath`].
+/// If you see it in type errors it's most likely because the first argument to your handler does
+/// not implement [`TypedPath`] or does not match the type inferred by the routing method.
 ///
 /// You normally shouldn't have to use this trait directly.
 ///
@@ -391,7 +537,12 @@ impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, 
 
 #[cfg(test)]
 mod tests {
-    use crate::routing::TypedPath;
+    use crate::routing::{
+        Connect, Delete, Get, Head, Options, Patch, Post, Put, Query, RouterExt, Trace,
+        TypedMethod, TypedPath,
+    };
+    use crate::test_helpers::TestClient;
+    use axum::{http::StatusCode, routing::MethodFilter, Router};
     use serde::{Deserialize, Serialize};
 
     #[derive(TypedPath, Deserialize)]
@@ -399,6 +550,12 @@ mod tests {
     struct UsersShow {
         id: i32,
     }
+
+    impl TypedMethod for UsersShow {
+        const METHOD: MethodFilter = MethodFilter::GET;
+    }
+
+    struct MethodOnly;
 
     #[derive(Serialize)]
     struct Params {
@@ -454,6 +611,85 @@ mod tests {
         assert_eq!(uri, "/test?foo=foo&bar=123&baz=true");
     }
 
+    #[test]
+    fn method_wrappers_forward_path_operations() {
+        let path = UsersShow { id: 1 };
+        let get = Get(path);
+
+        assert_eq!(get.to_string(), "/users/1");
+        assert_eq!(get.to_uri(), "/users/1");
+        assert_eq!(get.as_ref().id, 1);
+        assert_eq!(get.into_inner().id, 1);
+
+        assert_eq!(Get::<UsersShow>::PATH, UsersShow::PATH);
+        assert_eq!(Get::<UsersShow>::METHOD, MethodFilter::GET);
+        assert_eq!(Get::<MethodOnly>::METHOD, MethodFilter::GET);
+        assert_eq!(Delete::<UsersShow>::METHOD, MethodFilter::DELETE);
+        assert_eq!(Head::<UsersShow>::METHOD, MethodFilter::HEAD);
+        assert_eq!(Options::<UsersShow>::METHOD, MethodFilter::OPTIONS);
+        assert_eq!(Patch::<UsersShow>::METHOD, MethodFilter::PATCH);
+        assert_eq!(Post::<UsersShow>::METHOD, MethodFilter::POST);
+        assert_eq!(Put::<UsersShow>::METHOD, MethodFilter::PUT);
+        assert_eq!(Query::<UsersShow>::METHOD, MethodFilter::QUERY);
+        assert_eq!(Trace::<UsersShow>::METHOD, MethodFilter::TRACE);
+        assert_eq!(Connect::<UsersShow>::METHOD, MethodFilter::CONNECT);
+    }
+
+    #[derive(TypedPath, TypedMethod, Deserialize)]
+    #[typed_path("/typed/{id}")]
+    #[typed_method(MethodFilter::GET)]
+    struct TypedUser {
+        id: u32,
+    }
+
+    async fn typed_user(TypedUser { id }: TypedUser) -> String {
+        id.to_string()
+    }
+
+    async fn typed_user_with_explicit_method(TypedUser { id }: TypedUser) -> String {
+        id.to_string()
+    }
+
+    #[tokio::test]
+    async fn typed_method_and_path_are_composable() {
+        let app = Router::new().typed(typed_user);
+        let response = TestClient::new(app).get("/typed/42").await;
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.text().await, "42");
+
+        // A colocated type remains usable with the method-specific helpers.
+        let _: Router = Router::new().typed_get(typed_user_with_explicit_method);
+    }
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/shared/{id}")]
+    struct SharedUser {
+        id: u32,
+    }
+
+    async fn get_shared(Get(SharedUser { id }): Get<SharedUser>) -> String {
+        id.to_string()
+    }
+
+    async fn put_shared(Put(SharedUser { id }): Put<SharedUser>) -> String {
+        id.to_string()
+    }
+
+    #[tokio::test]
+    async fn method_wrappers_route_shared_paths() {
+        let app = Router::new().typed(get_shared).typed(put_shared);
+        let client = TestClient::new(app);
+
+        let response = client.get("/shared/7").await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.text().await, "7");
+
+        let response = client.put("/shared/8").await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.text().await, "8");
+    }
+
     #[cfg(feature = "with-rejection")]
     #[allow(dead_code)] // just needs to compile
     fn supports_with_rejection() {
@@ -464,6 +700,7 @@ mod tests {
             Router,
         };
         async fn handler(_: crate::extract::WithRejection<UsersShow, MyRejection>) {}
+        async fn typed_handler(_: crate::extract::WithRejection<UsersShow, MyRejection>) {}
 
         struct MyRejection {}
 
@@ -480,5 +717,6 @@ mod tests {
         }
 
         let _: Router = Router::new().typed_get(handler);
+        let _: Router = Router::new().typed(typed_handler);
     }
 }

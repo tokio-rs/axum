@@ -658,9 +658,15 @@ pub fn __private_axum_test(_attr: TokenStream, input: TokenStream) -> TokenStrea
 
 /// Derive an implementation of [`axum_extra::routing::TypedMethod`].
 ///
+/// The method is specified with `#[typed_method(MethodFilter::GET)]` (or another
+/// [`MethodFilter`] variant). `TypedMethod` is independent from `TypedPath`: derive both traits
+/// to use [`RouterExt::typed`].
+///
 /// See that trait for more details.
 ///
 /// [`axum_extra::routing::TypedMethod`]: https://docs.rs/axum-extra/latest/axum_extra/routing/trait.TypedMethod.html
+/// [`MethodFilter`]: https://docs.rs/axum/latest/axum/routing/struct.MethodFilter.html
+/// [`RouterExt::typed`]: https://docs.rs/axum-extra/latest/axum_extra/routing/trait.RouterExt.html#tymethod.typed
 #[proc_macro_derive(TypedMethod, attributes(typed_method))]
 pub fn derive_typed_method(input: TokenStream) -> TokenStream {
     expand_with(input, |item_struct| typed_method::expand(&item_struct))
@@ -668,9 +674,15 @@ pub fn derive_typed_method(input: TokenStream) -> TokenStream {
 
 /// Derive an implementation of [`axum_extra::routing::TypedPath`].
 ///
+/// A type can also derive [`TypedMethod`] independently. Deriving both traits keeps the type
+/// usable with all method-specific `typed_*` helpers and additionally enables
+/// [`RouterExt::typed`].
+///
 /// See that trait for more details.
 ///
 /// [`axum_extra::routing::TypedPath`]: https://docs.rs/axum-extra/latest/axum_extra/routing/trait.TypedPath.html
+/// [`TypedMethod`]: https://docs.rs/axum-extra/latest/axum_extra/routing/trait.TypedMethod.html
+/// [`RouterExt::typed`]: https://docs.rs/axum-extra/latest/axum_extra/routing/trait.RouterExt.html#tymethod.typed
 #[proc_macro_derive(TypedPath, attributes(typed_path))]
 pub fn derive_typed_path(input: TokenStream) -> TokenStream {
     expand_with(input, |item_struct| typed_path::expand(&item_struct))
