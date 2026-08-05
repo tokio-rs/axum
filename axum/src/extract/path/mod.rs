@@ -628,7 +628,6 @@ where
     T: DeserializeOwned + Send,
     E: From<FailedToDeserializePathParams>,
 {
-    // Non-T computation is in standalone function preventing monomorphization over T
     let deserializer = de::PathDeserializer::new(params);
     T::deserialize(deserializer).map_err(into_path_rejection)
 }

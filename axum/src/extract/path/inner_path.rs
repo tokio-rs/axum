@@ -16,7 +16,7 @@ use tower_service::Service;
 /// and parse them using [`serde`].
 ///
 /// Any percent encoded parameters will be automatically decoded. The decoded
-/// parameters must be valid UTF-8, otherwise `Path` will fail and return a `400
+/// parameters must be valid UTF-8, otherwise `InnerPath` will fail and return a `400
 /// Bad Request` response.
 ///
 /// # `InnerPath` vs [`Path`]
@@ -27,7 +27,7 @@ use tower_service::Service;
 ///
 /// # `Option<InnerPath<T>>` behavior
 ///
-/// You can use `InnerPath<Path<T>>` as an extractor to allow the same handler to
+/// You can use `Option<InnerPath<Path<T>>>` as an extractor to allow the same handler to
 /// be used in a route with parameters that deserialize to `T`, and another
 /// route with no parameters at all.
 ///
@@ -52,7 +52,6 @@ use tower_service::Service;
 ///     // `user_id` is from the `{user_id}` capture,
 ///     // while `{tenant_id}` from the outer router isn't included,
 ///     // so this handler works no matter what it's nested under.
-///     todo!()
 /// }
 ///
 /// let api = Router::new().route("/users/{user_id}", get(user_info));
@@ -112,13 +111,12 @@ use tower_service::Service;
 ///     InnerPath(params): InnerPath<HashMap<String, String>>,
 /// ) {
 ///     // `params` contains keys "team_id" and "user_id"
-///     todo!()
 /// }
 ///
 /// async fn params_vec(
 ///     InnerPath(params): InnerPath<Vec<(String, String)>>,
 /// ) {
-///     todo!()
+///     // `params` contains a vector containing a single tuple
 /// }
 ///
 /// let api = Router::new()
