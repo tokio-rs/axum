@@ -1356,9 +1356,9 @@ async fn middleware_adding_body() {
 #[crate::test]
 async fn nested_body_limit_rejection() {
     use crate::{
+        extract::Request,
         middleware::{self, Next},
         response::Response,
-        extract::Request,
     };
     use axum_core::RequestExt;
 
