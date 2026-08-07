@@ -464,12 +464,6 @@ impl fmt::Display for FailedToDeserializePathParams {
 
 impl std::error::Error for FailedToDeserializePathParams {}
 
-impl From<PathDeserializationError> for FailedToDeserializePathParams {
-    fn from(error: PathDeserializationError) -> Self {
-        Self(error)
-    }
-}
-
 /// Extractor that will get captures from the URL without deserializing them.
 ///
 /// In general you should prefer to use [`Path`] as it is higher level, however `RawPathParams` is
@@ -618,7 +612,7 @@ where
                     key: key.to_string(),
                 },
             };
-            Err(into_path_rejection(error))
+            Err(E::from(FailedToDeserializePathParams(error)))
         }
     }
 }
@@ -629,15 +623,9 @@ where
     E: From<FailedToDeserializePathParams>,
 {
     let deserializer = de::PathDeserializer::new(params);
-    T::deserialize(deserializer).map_err(into_path_rejection)
-}
-
-fn into_path_rejection<T, U>(error: T) -> U
-where
-    T: Into<FailedToDeserializePathParams>,
-    U: From<FailedToDeserializePathParams>,
-{
-    error.into().into()
+    T::deserialize(deserializer)
+        .map_err(FailedToDeserializePathParams)
+        .map_err(E::from)
 }
 
 #[cfg(test)]
