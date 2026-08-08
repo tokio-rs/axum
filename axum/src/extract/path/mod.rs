@@ -3,7 +3,6 @@
 
 mod de;
 
-#[cfg(feature = "inner-path")]
 pub(crate) mod inner_path;
 
 use crate::routing::url_params::UrlParams;

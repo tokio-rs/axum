@@ -50,7 +50,6 @@ pub use crate::Extension;
 #[doc(no_inline)]
 pub use crate::form::Form;
 
-#[cfg(feature = "inner-path")]
 #[doc(inline)]
 pub use self::path::inner_path::InnerPath;
 

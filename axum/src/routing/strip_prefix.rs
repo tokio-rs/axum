@@ -44,7 +44,6 @@ where
     }
 }
 
-#[cfg(feature = "inner-path")]
 pub(crate) fn count_captures(path: &str) -> usize {
     segments(path).filter_map(capture_prefix_suffix).count()
 }
@@ -448,7 +447,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "inner-path")]
     fn count_captures_counts_correctly() {
         assert_eq!(count_captures("/index.html"), 0);
         assert_eq!(count_captures("/api/v{version}"), 1);

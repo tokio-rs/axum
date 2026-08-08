@@ -12,7 +12,6 @@ use super::{
     future::RouteFuture, strip_prefix::StripPrefix, url_params, Endpoint, MethodRouter, Route,
     RouteId, NEST_TAIL_PARAM,
 };
-#[cfg(feature = "inner-path")]
 use crate::extract::path::inner_path::CountEnclosingCaptures;
 
 pub(super) struct PathRouter<S> {
@@ -194,18 +193,11 @@ where
 
             let path = path_for_nested_route(prefix, inner_path);
 
-            #[cfg(feature = "inner-path")]
             let layer = (
                 StripPrefix::layer(prefix),
                 SetNestedPath::layer(path_to_nest_at),
                 CountEnclosingCaptures::layer(path_to_nest_at),
             );
-            #[cfg(not(feature = "inner-path"))]
-            let layer = (
-                StripPrefix::layer(prefix),
-                SetNestedPath::layer(path_to_nest_at),
-            );
-
             match endpoint.layer(layer) {
                 Endpoint::MethodRouter(method_router) => {
                     self.route(&path, method_router)?;
@@ -238,18 +230,11 @@ where
             format!("{path}/{{*{NEST_TAIL_PARAM}}}")
         };
 
-        #[cfg(feature = "inner-path")]
         let layer = (
             StripPrefix::layer(prefix),
             SetNestedPath::layer(path_to_nest_at),
             CountEnclosingCaptures::layer(path_to_nest_at),
         );
-        #[cfg(not(feature = "inner-path"))]
-        let layer = (
-            StripPrefix::layer(prefix),
-            SetNestedPath::layer(path_to_nest_at),
-        );
-
         let endpoint = Endpoint::Route(Route::new(layer.layer(svc)));
 
         self.route_endpoint(&path, endpoint.clone())?;

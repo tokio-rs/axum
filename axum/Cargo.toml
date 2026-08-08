@@ -58,7 +58,6 @@ form = [
 ]
 http1 = ["dep:hyper", "hyper?/http1", "hyper-util?/http1"]
 http2 = ["dep:hyper", "hyper?/http2", "hyper-util?/http2"]
-inner-path = []
 json = ["dep:serde_json", "dep:serde_path_to_error"]
 macros = ["dep:axum-macros"]
 matched-path = []
