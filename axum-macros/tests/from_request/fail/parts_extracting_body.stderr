@@ -11,8 +11,8 @@ error[E0277]: the trait bound `String: FromRequestParts<_>` is not satisfied
             `Extension<T>` implements `FromRequestParts<S>`
             `Extractor` implements `FromRequestParts<S>`
             `HeaderMap` implements `FromRequestParts<S>`
+            `InnerPath<T>` implements `FromRequestParts<S>`
             `MatchedPath` implements `FromRequestParts<S>`
             `Method` implements `FromRequestParts<S>`
             `OriginalUri` implements `FromRequestParts<S>`
-            `Query<T>` implements `FromRequestParts<S>`
           and $N others
