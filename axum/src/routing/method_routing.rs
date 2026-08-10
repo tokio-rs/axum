@@ -1196,8 +1196,8 @@ where
         self.allow_header = AllowHeader::Skip;
         self
     }
-
-    pub(crate) fn call_with_state(&self, req: Request, state: S) -> RouteFuture<E> {
+    /// Route a request using this method router and the provided state.
+    pub fn call_with_state(&self, req: Request, state: S) -> RouteFuture<E> {
         macro_rules! call {
             (
                 $req:expr,
@@ -1461,6 +1461,22 @@ mod tests {
         let (status, _, body) = call(Method::GET, &mut svc).await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body, "ok");
+    }
+    
+
+    #[crate::test]
+    async fn call_with_state_works_with_shared_reference() {
+        let router = get(|| async { "hello" });
+
+        let request = Request::builder()
+            .method(Method::GET)
+            .uri("/")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = router.call_with_state(request, ()).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
     }
 
     #[crate::test]
