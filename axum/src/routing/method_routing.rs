@@ -1462,7 +1462,6 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body, "ok");
     }
-    
 
     #[crate::test]
     async fn call_with_state_works_with_shared_reference() {
