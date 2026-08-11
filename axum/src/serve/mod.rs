@@ -258,8 +258,8 @@ fn random_duration(max: Duration) -> Duration {
         return Duration::ZERO;
     }
 
-    // `RandomState` keys are seeded by the OS and vary per construction, giving
-    // cheap randomness without a dedicated RNG dependency.
+    // Each `RandomState` is seeded with fresh random keys, so hashing empty
+    // input still yields a different value per call.
     let rand = std::collections::hash_map::RandomState::new()
         .build_hasher()
         .finish();
