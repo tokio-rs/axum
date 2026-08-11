@@ -264,11 +264,8 @@ fn random_duration(max: Duration) -> Duration {
         .build_hasher()
         .finish();
 
-    let max_nanos = max.as_nanos();
-    let nanos = u128::from(rand) % (max_nanos + 1);
-    // `nanos <= max_nanos` and realistic jitter fits comfortably in `u64`;
-    // saturate in the absurd case rather than truncating.
-    Duration::from_nanos(u64::try_from(nanos).unwrap_or(u64::MAX))
+    let max_nanos = u64::try_from(max.as_nanos()).unwrap_or(u64::MAX);
+    Duration::from_nanos(rand % max_nanos.saturating_add(1))
 }
 
 /// Sleeps for `duration`, or never completes if it's `None`.
