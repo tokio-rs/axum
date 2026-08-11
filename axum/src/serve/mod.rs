@@ -848,7 +848,9 @@ async fn handle_connection<L, M, S, B, E>(
                     age_fired = true;
                     trace!("max connection age reached, starting graceful shutdown");
                     conn.as_mut().graceful_shutdown();
-                    timer.set(sleep_or_pending(connection_lifetime_limits.max_connection_age_grace));
+                    timer.set(sleep_or_pending(
+                        connection_lifetime_limits.max_connection_age_grace,
+                    ));
                 }
                 Either::Right((Either::Right(_), _)) => {
                     trace!("max connection age grace period elapsed, closing connection");
@@ -1129,7 +1131,8 @@ mod tests {
             .max_connection_age(Duration::from_secs(60))
             .max_connection_age_jitter(Duration::from_secs(10))
             .max_connection_age_grace(Duration::from_secs(5));
-        serve(TcpListener::bind(addr).await.unwrap(), router.clone()).connection_lifetime_limits(limits);
+        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .connection_lifetime_limits(limits);
         serve(TcpListener::bind(addr).await.unwrap(), router.clone())
             .connection_lifetime_limits(limits)
             .with_graceful_shutdown(std::future::pending());
