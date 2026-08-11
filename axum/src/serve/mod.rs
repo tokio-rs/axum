@@ -184,7 +184,7 @@ where
 #[must_use]
 pub struct ConnectionLimits {
     max_connection_age: Option<Duration>,
-    max_connection_age_jitter: Option<Duration>,
+    max_connection_age_jitter: Duration,
     max_connection_age_grace: Option<Duration>,
 }
 
@@ -220,11 +220,12 @@ impl ConnectionLimits {
     /// deploy): without it, every connection opened in the same instant tears
     /// down in the same instant once the age limit elapses.
     ///
-    /// This has no effect unless [`max_connection_age`] is also set.
+    /// Defaults to `Duration::ZERO`, i.e. no jitter. Has no effect unless
+    /// [`max_connection_age`] is also set.
     ///
     /// [`max_connection_age`]: ConnectionLimits::max_connection_age
     pub fn max_connection_age_jitter(mut self, jitter: Duration) -> Self {
-        self.max_connection_age_jitter = Some(jitter);
+        self.max_connection_age_jitter = jitter;
         self
     }
 
@@ -825,9 +826,7 @@ async fn handle_connection<L, M, S, B, E>(
         // timer with the grace period (if any), which then bounds how long we
         // wait before forcibly closing.
         let max_age = connection_limits.max_connection_age.map(|age| {
-            let jitter = connection_limits
-                .max_connection_age_jitter
-                .map_or(Duration::ZERO, random_duration);
+            let jitter = random_duration(connection_limits.max_connection_age_jitter);
             age.saturating_add(jitter)
         });
         let mut timer = pin!(sleep_or_pending(max_age));
