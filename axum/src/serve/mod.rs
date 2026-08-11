@@ -135,8 +135,7 @@ where
 /// backends: without rotation, a client's connection pool keeps sending work to
 /// whichever backends it first connected to, even after the pool has scaled up.
 /// It also bounds the worst case when a client's connection pool has no
-/// rotation of its own. This mirrors `tonic`'s `max_connection_age` and Envoy's
-/// `max_connection_duration`.
+/// rotation of its own.
 ///
 /// The mechanism differs by protocol but the knobs are the same:
 ///
@@ -241,8 +240,7 @@ impl ConnectionLimits {
     /// requests as well as HTTP/2 streams, so a handler that runs longer than
     /// the age limit plus the grace period will never complete successfully.
     /// Only set a grace period if bounding connection lifetime matters more
-    /// than letting slow requests finish. Mirrors `tonic`'s
-    /// `max_connection_age_grace`.
+    /// than letting slow requests finish.
     ///
     /// This has no effect unless [`max_connection_age`] is also set.
     ///
