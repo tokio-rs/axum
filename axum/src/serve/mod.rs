@@ -181,7 +181,6 @@ where
 ///
 /// [`max_connection_age_grace`]: ConnectionLimits::max_connection_age_grace
 /// [`ListenerExt::limit_connections`]: crate::serve::ListenerExt::limit_connections
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[derive(Clone, Copy, Debug, Default)]
 #[must_use]
 pub struct ConnectionLimits {
@@ -190,7 +189,6 @@ pub struct ConnectionLimits {
     max_connection_age_grace: Option<Duration>,
 }
 
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 impl ConnectionLimits {
     /// Create a new [`ConnectionLimits`] with no limits set.
     pub fn new() -> Self {
@@ -262,7 +260,6 @@ impl ConnectionLimits {
 /// dedicated RNG dependency.
 ///
 /// [`RandomState`]: std::collections::hash_map::RandomState
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 fn random_duration(max: Duration) -> Duration {
     if max.is_zero() {
         return Duration::ZERO;
@@ -283,7 +280,6 @@ fn random_duration(max: Duration) -> Duration {
 ///
 /// Used to model an unset timer without having to poll a future that would
 /// otherwise complete immediately.
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 fn sleep_or_pending(duration: Option<Duration>) -> Either<tokio::time::Sleep, Pending<()>> {
     match duration {
         Some(duration) => Either::Left(tokio::time::sleep(duration)),
