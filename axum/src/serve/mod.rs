@@ -163,7 +163,7 @@ where
 /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 ///
 /// let limits = ConnectionLimits::new()
-///     // Soft cap on total connection lifetime.
+///     // Stop accepting new requests on a connection after this long.
 ///     .max_connection_age(Duration::from_secs(10 * 60))
 ///     // Random per-connection jitter added to the age, to avoid synchronized
 ///     // reconnect storms when many connections were established at once.
@@ -194,7 +194,7 @@ impl ConnectionLimits {
         Self::default()
     }
 
-    /// Set a soft cap on the total lifetime of a connection.
+    /// Set a cap on how long a connection keeps accepting new requests.
     ///
     /// Once a connection has been open for this long, a graceful shutdown of
     /// that connection is started: HTTP/1 connections close after the in-flight
@@ -231,9 +231,9 @@ impl ConnectionLimits {
     /// Set a hard cap on how long to wait for in-flight work after
     /// [`max_connection_age`] fires before forcibly closing the connection.
     ///
-    /// Without a grace period, [`max_connection_age`] is purely a soft cap: the
-    /// server waits however long it takes for in-flight work to finish before
-    /// closing the connection. Setting a grace period turns
+    /// Without a grace period, [`max_connection_age`] only stops new requests:
+    /// the server waits however long it takes for in-flight work to finish
+    /// before closing the connection. Setting a grace period turns
     /// `max_connection_age` (+ jitter) + grace into a hard deadline: when it
     /// elapses the connection is closed *even if a request is still in flight*,
     /// and the client never receives a response for it. This applies to HTTP/1
@@ -823,7 +823,7 @@ async fn handle_connection<L, M, S, B, E>(
         let mut conn = pin!(builder.serve_connection_with_upgrades(io, hyper_service));
         let mut signal_closed = pin!(signal_rx.changed().fuse());
 
-        // Soft cap on the connection's lifetime (with optional jitter). When it
+        // Age limit for the connection (with optional jitter). When it
         // elapses we start a graceful shutdown of this connection and re-arm the
         // timer with the grace period (if any), which then bounds how long we
         // wait before forcibly closing.
@@ -1633,7 +1633,7 @@ mod tests {
         );
     }
 
-    // Without a grace period, `max_connection_age` is a soft cap: a request
+    // Without a grace period, `max_connection_age` only stops new requests: one
     // that is still in flight when the age limit fires keeps the connection
     // alive for as long as it needs and still completes successfully. Only
     // `max_connection_age_grace` opts into force-closing in-flight work.
