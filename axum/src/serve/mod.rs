@@ -141,7 +141,7 @@ where
 ///
 /// - **HTTP/1**: the next response gets a `Connection: close` header and the
 ///   connection is closed once the in-flight request finishes.
-/// - **HTTP/2** (including gRPC): a `GOAWAY` is sent, so new streams are refused
+/// - **HTTP/2**: a `GOAWAY` is sent, so new streams are refused
 ///   while in-flight streams are allowed to finish.
 ///
 /// In both cases in-flight work is waited on for as long as it takes, unless
