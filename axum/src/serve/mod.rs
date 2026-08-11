@@ -253,17 +253,13 @@ impl ConnectionLimits {
 }
 
 /// Returns a pseudo-random [`Duration`] in `[Duration::ZERO, max]`.
-///
-/// Uses [`RandomState`], whose keys are seeded by the OS and bumped on each
-/// construction, to get cheap per-connection randomness without pulling in a
-/// dedicated RNG dependency.
-///
-/// [`RandomState`]: std::collections::hash_map::RandomState
 fn random_duration(max: Duration) -> Duration {
     if max.is_zero() {
         return Duration::ZERO;
     }
 
+    // `RandomState` keys are seeded by the OS and vary per construction, giving
+    // cheap randomness without a dedicated RNG dependency.
     let rand = std::collections::hash_map::RandomState::new()
         .build_hasher()
         .finish();
