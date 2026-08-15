@@ -4,21 +4,15 @@
 //! cargo run -p example-request-id
 //! ```
 
-use axum::{
-    http::{HeaderName, Request},
-    response::Html,
-    routing::get,
-    Router,
-};
+use axum::{http::Request, response::Html, routing::get, Router};
 use tower::ServiceBuilder;
 use tower_http::{
-    request_id::{MakeRequestUuid, PropagateRequestIdLayer, RequestId, SetRequestIdLayer},
+    request_id::{MakeRequestUuid, RequestId},
     trace::TraceLayer,
+    ServiceBuilderExt,
 };
 use tracing::{info, info_span};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-const REQUEST_ID_HEADER: &str = "x-request-id";
 
 #[tokio::main]
 async fn main() {
@@ -37,13 +31,8 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let x_request_id = HeaderName::from_static(REQUEST_ID_HEADER);
-
     let middleware = ServiceBuilder::new()
-        .layer(SetRequestIdLayer::new(
-            x_request_id.clone(),
-            MakeRequestUuid,
-        ))
+        .set_x_request_id(MakeRequestUuid)
         .layer(
             TraceLayer::new_for_http().make_span_with(|request: &Request<_>| {
                 // Log the request id as generated.
@@ -56,7 +45,7 @@ async fn main() {
             }),
         )
         // send headers from request to response headers
-        .layer(PropagateRequestIdLayer::new(x_request_id));
+        .propagate_x_request_id();
 
     // build our application with a route
     let app = Router::new().route("/", get(handler)).layer(middleware);
