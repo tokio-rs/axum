@@ -12,10 +12,10 @@ use axum::{
 };
 use tower::ServiceBuilder;
 use tower_http::{
-    request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
+    request_id::{MakeRequestUuid, PropagateRequestIdLayer, RequestId, SetRequestIdLayer},
     trace::TraceLayer,
 };
-use tracing::{error, info, info_span};
+use tracing::{info, info_span};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 const REQUEST_ID_HEADER: &str = "x-request-id";
@@ -47,17 +47,11 @@ async fn main() {
         .layer(
             TraceLayer::new_for_http().make_span_with(|request: &Request<_>| {
                 // Log the request id as generated.
-                let request_id = request.headers().get(REQUEST_ID_HEADER);
+                let request_id = request.extensions().get::<RequestId>().unwrap();
 
-                match request_id {
-                    Some(request_id) => info_span!(
-                        "http_request",
-                        request_id = ?request_id,
-                    ),
-                    None => {
-                        error!("could not extract request_id");
-                        info_span!("http_request")
-                    }
+                match request_id.header_value().to_str() {
+                    Ok(request_id) => info_span!("http_request", request_id),
+                    Err(_) => info_span!("http_request", request_id = ?request_id),
                 }
             }),
         )
