@@ -329,14 +329,14 @@ where
             _marker,
         } = self;
 
-        let (signal_tx, _signal_rx) = watch::channel(());
+        let (_signal_tx, signal_rx) = watch::channel(());
         let (_close_tx, close_rx) = watch::channel(());
 
         loop {
             let (io, remote_addr) = listener.accept().await;
             handle_connection(
                 &mut make_service,
-                &signal_tx,
+                signal_rx.clone(),
                 &close_rx,
                 io,
                 remote_addr,
@@ -456,18 +456,18 @@ where
             _marker,
         } = self;
 
-        let (signal_tx, signal_rx) = watch::channel(());
+        let (signal_tx, mut signal_rx) = watch::channel(());
         executor.execute(async move {
             signal.await;
             trace!("received graceful shutdown signal. Telling tasks to shutdown");
-            drop(signal_rx);
+            drop(signal_tx);
         });
 
         let (close_tx, close_rx) = watch::channel(());
 
         loop {
             let (io, remote_addr) =
-                match select(pin!(listener.accept()), pin!(signal_tx.closed())).await {
+                match select(pin!(listener.accept()), pin!(signal_rx.changed())).await {
                     Either::Left((conn, _)) => conn,
                     Either::Right(_) => {
                         trace!("signal received, not accepting new connections");
@@ -477,7 +477,7 @@ where
 
             handle_connection(
                 &mut make_service,
-                &signal_tx,
+                signal_rx.clone(),
                 &close_rx,
                 io,
                 remote_addr,
@@ -562,7 +562,7 @@ where
 
 async fn handle_connection<L, M, S, B, E>(
     make_service: &mut M,
-    signal_tx: &watch::Sender<()>,
+    mut signal_rx: watch::Receiver<()>,
     close_rx: &watch::Receiver<()>,
     io: <L as Listener>::Io,
     remote_addr: <L as Listener>::Addr,
@@ -598,7 +598,6 @@ async fn handle_connection<L, M, S, B, E>(
         .map_request(|req: Request<Incoming>| req.map(Body::new));
 
     let hyper_service = TowerToHyperService::new(tower_service);
-    let signal_tx = signal_tx.clone();
     let close_rx = close_rx.clone();
 
     let hyper_executor = HyperExecutor(executor.clone());
@@ -615,7 +614,7 @@ async fn handle_connection<L, M, S, B, E>(
         builder.http2().enable_connect_protocol();
 
         let mut conn = pin!(builder.serve_connection_with_upgrades(io, hyper_service));
-        let mut signal_closed = pin!(signal_tx.closed().fuse());
+        let mut signal_closed = pin!(signal_rx.changed().fuse());
 
         loop {
             match select(conn.as_mut(), &mut signal_closed).await {
@@ -1123,6 +1122,28 @@ mod tests {
             .await
             .expect("serve future did not resolve after in-flight request finished")
             .unwrap();
+    }
+
+    #[crate::test]
+    async fn dropping_serve_closes_connections() {
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+        let server_task = tokio::spawn(serve(listener, Router::new()).into_future());
+
+        let stream = TokioIo::new(client);
+        let (sender, conn) = hyper::client::conn::http1::handshake::<_, Body>(stream)
+            .await
+            .unwrap();
+        let connection_task = tokio::spawn(conn);
+
+        server_task.abort();
+        assert!(server_task.await.unwrap_err().is_cancelled());
+
+        let _ = tokio::time::timeout(Duration::from_secs(2), connection_task)
+            .await
+            .expect("connection did not close after Serve was dropped")
+            .unwrap();
+        assert!(sender.is_closed());
     }
 
     // Asserts that `ListenerExt::tap_io` invokes its closure on every accepted
