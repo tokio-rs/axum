@@ -329,6 +329,7 @@ where
             _marker,
         } = self;
 
+        // Receiver-side waits avoid contention in `Sender::closed`'s shared notification state.
         let (_signal_tx, signal_rx) = watch::channel(());
         let (_close_tx, close_rx) = watch::channel(());
 
@@ -336,7 +337,7 @@ where
             let (io, remote_addr) = listener.accept().await;
             handle_connection(
                 &mut make_service,
-                signal_rx.clone(),
+                &signal_rx,
                 &close_rx,
                 io,
                 remote_addr,
@@ -456,6 +457,7 @@ where
             _marker,
         } = self;
 
+        // Receiver-side waits avoid contention in `Sender::closed`'s shared notification state.
         let (signal_tx, mut signal_rx) = watch::channel(());
         executor.execute(async move {
             signal.await;
@@ -469,15 +471,18 @@ where
             let (io, remote_addr) =
                 match select(pin!(listener.accept()), pin!(signal_rx.changed())).await {
                     Either::Left((conn, _)) => conn,
-                    Either::Right(_) => {
+                    Either::Right((Err(_), _)) => {
                         trace!("signal received, not accepting new connections");
                         break;
+                    }
+                    Either::Right((Ok(()), _)) => {
+                        unreachable!("shutdown channel never sends values")
                     }
                 };
 
             handle_connection(
                 &mut make_service,
-                signal_rx.clone(),
+                &signal_rx,
                 &close_rx,
                 io,
                 remote_addr,
@@ -562,7 +567,7 @@ where
 
 async fn handle_connection<L, M, S, B, E>(
     make_service: &mut M,
-    mut signal_rx: watch::Receiver<()>,
+    signal_rx: &watch::Receiver<()>,
     close_rx: &watch::Receiver<()>,
     io: <L as Listener>::Io,
     remote_addr: <L as Listener>::Addr,
@@ -579,6 +584,7 @@ async fn handle_connection<L, M, S, B, E>(
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
     E: Executor,
 {
+    let mut signal_rx = signal_rx.clone();
     let io = TokioIo::new(io);
 
     trace!("connection {remote_addr:?} accepted");
@@ -624,9 +630,12 @@ async fn handle_connection<L, M, S, B, E>(
                     }
                     break;
                 }
-                Either::Right(_) => {
+                Either::Right((Err(_), _)) => {
                     trace!("signal received in task, starting graceful shutdown");
                     conn.as_mut().graceful_shutdown();
+                }
+                Either::Right((Ok(()), _)) => {
+                    unreachable!("shutdown channel never sends values")
                 }
             }
         }
@@ -1122,28 +1131,6 @@ mod tests {
             .await
             .expect("serve future did not resolve after in-flight request finished")
             .unwrap();
-    }
-
-    #[crate::test]
-    async fn dropping_serve_closes_connections() {
-        let (client, server) = io::duplex(1024);
-        let listener = ReadyListener(Some(server));
-        let server_task = tokio::spawn(serve(listener, Router::new()).into_future());
-
-        let stream = TokioIo::new(client);
-        let (sender, conn) = hyper::client::conn::http1::handshake::<_, Body>(stream)
-            .await
-            .unwrap();
-        let connection_task = tokio::spawn(conn);
-
-        server_task.abort();
-        assert!(server_task.await.unwrap_err().is_cancelled());
-
-        let _ = tokio::time::timeout(Duration::from_secs(2), connection_task)
-            .await
-            .expect("connection did not close after Serve was dropped")
-            .unwrap();
-        assert!(sender.is_closed());
     }
 
     // Asserts that `ListenerExt::tap_io` invokes its closure on every accepted

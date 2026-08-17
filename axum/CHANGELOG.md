@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `RawPathParams::from_request_extensions` ([#3757])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
+- **changed:** Reduced contention in `axum::serve` shutdown notification with many
+  active connections ([#3867])
 - **changed:** `Redirect` constructors now accept any `impl Into<String>` ([#3635])
 - **changed:** Updated `matchit` allowing for routes with captures and static prefixes and suffixes ([#3702])
 - **fixed:** Responses to `HEAD` will not accidentally reply with `content-length: 0` anymore ([#3742])
@@ -44,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3836]: https://github.com/tokio-rs/axum/pull/3836
 [#3757]: https://github.com/tokio-rs/axum/pull/3757
 [#3801]: https://github.com/tokio-rs/axum/pull/3801
+[#3867]: https://github.com/tokio-rs/axum/pull/3867
 
 # 0.8.9
 
