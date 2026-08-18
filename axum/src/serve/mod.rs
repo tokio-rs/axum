@@ -4,11 +4,13 @@ use std::{
     convert::Infallible,
     error::Error as StdError,
     fmt::Debug,
-    future::{Future, IntoFuture},
+    future::{Future, IntoFuture, Pending},
+    hash::{BuildHasher, Hasher},
     io,
     marker::PhantomData,
     pin::pin,
     sync::Arc,
+    time::Duration,
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
@@ -18,7 +20,9 @@ use futures_util::{
 };
 use http_body::Body as HttpBody;
 use hyper::body::Incoming;
-use hyper_util::rt::{TokioIo, TokioTimer};
+use hyper_util::rt::TokioIo;
+#[cfg(feature = "http1")]
+use hyper_util::rt::TokioTimer;
 #[cfg(any(feature = "http1", feature = "http2"))]
 use hyper_util::{server::conn::auto::Builder, service::TowerToHyperService};
 use tokio::{sync::watch, task::JoinHandle};
@@ -117,7 +121,157 @@ where
         listener,
         make_service,
         executor: TokioExecutor,
+        connection_lifetime_limits: ConnectionLifetimeLimits::default(),
         _marker: PhantomData,
+    }
+}
+
+/// Per-connection limits applied by [`serve`], used to bound the lifetime of
+/// individual connections.
+///
+/// Closing connections after a bounded lifetime pressures clients to establish
+/// *new* connections, which is useful behind a load balancer (e.g. a Kubernetes
+/// `Service`) that round-robins new connections across the current set of
+/// backends: without rotation, a client's connection pool keeps sending work to
+/// whichever backends it first connected to, even after the pool has scaled up.
+/// It also bounds the worst case when a client's connection pool has no
+/// rotation of its own.
+///
+/// The mechanism differs by protocol but the knobs are the same:
+///
+/// - **HTTP/1**: the next response gets a `Connection: close` header and the
+///   connection is closed once the in-flight request finishes.
+/// - **HTTP/2**: a `GOAWAY` is sent, so new streams are refused
+///   while in-flight streams are allowed to finish.
+///
+/// In both cases in-flight work is waited on for as long as it takes, unless
+/// [`max_connection_age_grace`] is set: once the grace period elapses the
+/// connection is closed even if a request is still in flight. See
+/// [`max_connection_age_grace`] for the trade-off.
+///
+/// # Example
+///
+/// ```
+/// use std::time::Duration;
+/// use axum::{Router, routing::get, serve::ConnectionLifetimeLimits};
+///
+/// # async {
+/// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
+/// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+///
+/// let limits = ConnectionLifetimeLimits::new()
+///     // Stop accepting new requests on a connection after this long.
+///     .max_connection_age(Duration::from_secs(10 * 60))
+///     // Random per-connection jitter added to the age, to avoid synchronized
+///     // reconnect storms when many connections were established at once.
+///     .max_connection_age_jitter(Duration::from_secs(60))
+///     // Hard cap on how long to wait for in-flight work after the age limit
+///     // fires before forcibly closing.
+///     .max_connection_age_grace(Duration::from_secs(30));
+///
+/// axum::serve(listener, router)
+///     .connection_lifetime_limits(limits)
+///     .await;
+/// # };
+/// ```
+///
+/// [`max_connection_age_grace`]: ConnectionLifetimeLimits::max_connection_age_grace
+#[derive(Clone, Copy, Debug, Default)]
+#[must_use]
+pub struct ConnectionLifetimeLimits {
+    max_connection_age: Option<Duration>,
+    max_connection_age_jitter: Duration,
+    max_connection_age_grace: Option<Duration>,
+}
+
+impl ConnectionLifetimeLimits {
+    /// Create a new [`ConnectionLifetimeLimits`] with no limits set.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set a cap on how long a connection keeps accepting new requests.
+    ///
+    /// Once a connection has been open for this long, a graceful shutdown of
+    /// that connection is started: HTTP/1 connections close after the in-flight
+    /// request completes (sending `Connection: close`), and HTTP/2 connections
+    /// send a `GOAWAY`, refusing new streams while letting in-flight ones finish
+    /// (bounded by [`max_connection_age_grace`] if set).
+    ///
+    /// Consider also setting [`max_connection_age_jitter`] to avoid all
+    /// connections opened around the same time tearing down simultaneously.
+    ///
+    /// [`max_connection_age_grace`]: ConnectionLifetimeLimits::max_connection_age_grace
+    /// [`max_connection_age_jitter`]: ConnectionLifetimeLimits::max_connection_age_jitter
+    pub fn max_connection_age(mut self, age: Duration) -> Self {
+        self.max_connection_age = Some(age);
+        self
+    }
+
+    /// Set the maximum random jitter added to [`max_connection_age`].
+    ///
+    /// Each connection adds a random duration in `[0, jitter]` to its age limit.
+    /// This is important for avoiding synchronized reconnect storms when many
+    /// connections were established at the same time (e.g. right after a
+    /// deploy): without it, every connection opened in the same instant tears
+    /// down in the same instant once the age limit elapses.
+    ///
+    /// Defaults to `Duration::ZERO`, i.e. no jitter. Has no effect unless
+    /// [`max_connection_age`] is also set.
+    ///
+    /// [`max_connection_age`]: ConnectionLifetimeLimits::max_connection_age
+    pub fn max_connection_age_jitter(mut self, jitter: Duration) -> Self {
+        self.max_connection_age_jitter = jitter;
+        self
+    }
+
+    /// Set a hard cap on how long to wait for in-flight work after
+    /// [`max_connection_age`] fires before forcibly closing the connection.
+    ///
+    /// Without a grace period, [`max_connection_age`] only stops new requests:
+    /// the server waits however long it takes for in-flight work to finish
+    /// before closing the connection. Setting a grace period turns
+    /// `max_connection_age` (+ jitter) + grace into a hard deadline: when it
+    /// elapses the connection is closed *even if a request is still in flight*,
+    /// and the client never receives a response for it. This applies to HTTP/1
+    /// requests as well as HTTP/2 streams, so a handler that runs longer than
+    /// the age limit plus the grace period will never complete successfully.
+    /// Only set a grace period if bounding connection lifetime matters more
+    /// than letting slow requests finish.
+    ///
+    /// This has no effect unless [`max_connection_age`] is also set.
+    ///
+    /// [`max_connection_age`]: ConnectionLifetimeLimits::max_connection_age
+    pub fn max_connection_age_grace(mut self, grace: Duration) -> Self {
+        self.max_connection_age_grace = Some(grace);
+        self
+    }
+}
+
+/// Returns a pseudo-random [`Duration`] in `[Duration::ZERO, max]`.
+fn random_duration(max: Duration) -> Duration {
+    if max.is_zero() {
+        return Duration::ZERO;
+    }
+
+    // Each `RandomState` is seeded with fresh random keys, so hashing empty
+    // input still yields a different value per call.
+    let rand = std::collections::hash_map::RandomState::new()
+        .build_hasher()
+        .finish();
+
+    let max_nanos = u64::try_from(max.as_nanos()).unwrap_or(u64::MAX);
+    Duration::from_nanos(rand % max_nanos.saturating_add(1))
+}
+
+/// Sleeps for `duration`, or never completes if it's `None`.
+///
+/// Used to model an unset timer without having to poll a future that would
+/// otherwise complete immediately.
+fn sleep_or_pending(duration: Option<Duration>) -> Either<tokio::time::Sleep, Pending<()>> {
+    match duration {
+        Some(duration) => Either::Left(tokio::time::sleep(duration)),
+        None => Either::Right(std::future::pending()),
     }
 }
 
@@ -204,6 +358,7 @@ pub struct Serve<L, M, S, B, E = TokioExecutor> {
     listener: L,
     make_service: M,
     executor: E,
+    connection_lifetime_limits: ConnectionLifetimeLimits,
     _marker: PhantomData<fn(B) -> S>,
 }
 
@@ -245,6 +400,7 @@ where
             listener: self.listener,
             make_service: self.make_service,
             executor: self.executor,
+            connection_lifetime_limits: self.connection_lifetime_limits,
             signal,
             _marker: PhantomData,
         }
@@ -253,6 +409,22 @@ where
     /// Returns the local address this server is bound to.
     pub fn local_addr(&self) -> io::Result<L::Addr> {
         self.listener.local_addr()
+    }
+
+    /// Apply per-connection [`ConnectionLifetimeLimits`], bounding the lifetime of
+    /// individual connections.
+    ///
+    /// This is useful for forcing clients to rotate connections — see
+    /// [`ConnectionLifetimeLimits`] for details and an example.
+    ///
+    /// This method can be called before or after [`with_graceful_shutdown`] and
+    /// [`with_executor`].
+    ///
+    /// [`with_graceful_shutdown`]: Serve::with_graceful_shutdown
+    /// [`with_executor`]: Serve::with_executor
+    pub fn connection_lifetime_limits(mut self, limits: ConnectionLifetimeLimits) -> Self {
+        self.connection_lifetime_limits = limits;
+        self
     }
 
     /// Provide a custom [`Executor`] to use for spawning connection tasks and
@@ -302,6 +474,7 @@ where
             listener: self.listener,
             make_service: self.make_service,
             executor,
+            connection_lifetime_limits: self.connection_lifetime_limits,
             _marker: PhantomData,
         }
     }
@@ -326,6 +499,7 @@ where
             mut listener,
             mut make_service,
             executor,
+            connection_lifetime_limits,
             _marker,
         } = self;
 
@@ -341,6 +515,7 @@ where
                 io,
                 remote_addr,
                 &executor,
+                connection_lifetime_limits,
             )
             .await;
         }
@@ -359,13 +534,15 @@ where
             listener,
             make_service,
             executor,
+            connection_lifetime_limits,
             _marker: _,
         } = self;
 
         let mut s = f.debug_struct("Serve");
         s.field("listener", listener)
             .field("make_service", make_service)
-            .field("executor", executor);
+            .field("executor", executor)
+            .field("connection_lifetime_limits", connection_lifetime_limits);
 
         s.finish()
     }
@@ -400,6 +577,7 @@ pub struct WithGracefulShutdown<L, M, S, F, B, E = TokioExecutor> {
     listener: L,
     make_service: M,
     executor: E,
+    connection_lifetime_limits: ConnectionLifetimeLimits,
     signal: F,
     _marker: PhantomData<fn(B) -> S>,
 }
@@ -426,9 +604,19 @@ where
             listener: self.listener,
             make_service: self.make_service,
             executor,
+            connection_lifetime_limits: self.connection_lifetime_limits,
             signal: self.signal,
             _marker: PhantomData,
         }
+    }
+
+    /// Apply per-connection [`ConnectionLifetimeLimits`], bounding the lifetime of
+    /// individual connections.
+    ///
+    /// See [`Serve::connection_lifetime_limits`] and [`ConnectionLifetimeLimits`] for details.
+    pub fn connection_lifetime_limits(mut self, limits: ConnectionLifetimeLimits) -> Self {
+        self.connection_lifetime_limits = limits;
+        self
     }
 }
 
@@ -452,6 +640,7 @@ where
             mut listener,
             mut make_service,
             executor,
+            connection_lifetime_limits,
             signal,
             _marker,
         } = self;
@@ -482,6 +671,7 @@ where
                 io,
                 remote_addr,
                 &executor,
+                connection_lifetime_limits,
             )
             .await;
         }
@@ -511,6 +701,7 @@ where
             listener,
             make_service,
             executor: _,
+            connection_lifetime_limits,
             signal,
             _marker: _,
         } = self;
@@ -518,6 +709,7 @@ where
         f.debug_struct("WithGracefulShutdown")
             .field("listener", listener)
             .field("make_service", make_service)
+            .field("connection_lifetime_limits", connection_lifetime_limits)
             .field("signal", signal)
             .finish()
     }
@@ -567,6 +759,7 @@ async fn handle_connection<L, M, S, B, E>(
     io: <L as Listener>::Io,
     remote_addr: <L as Listener>::Addr,
     executor: &E,
+    connection_lifetime_limits: ConnectionLifetimeLimits,
 ) where
     L: Listener,
     L::Addr: Debug,
@@ -617,17 +810,45 @@ async fn handle_connection<L, M, S, B, E>(
         let mut conn = pin!(builder.serve_connection_with_upgrades(io, hyper_service));
         let mut signal_closed = pin!(signal_tx.closed().fuse());
 
+        // Age limit for the connection (with optional jitter). When it
+        // elapses we start a graceful shutdown of this connection and re-arm the
+        // timer with the grace period (if any), which then bounds how long we
+        // wait before forcibly closing.
+        let max_age = connection_lifetime_limits.max_connection_age.map(|age| {
+            let jitter = random_duration(connection_lifetime_limits.max_connection_age_jitter);
+            age.saturating_add(jitter)
+        });
+        let mut timer = pin!(sleep_or_pending(max_age));
+        let mut age_fired = false;
+
         loop {
-            match select(conn.as_mut(), &mut signal_closed).await {
+            match select(
+                conn.as_mut(),
+                select(signal_closed.as_mut(), timer.as_mut()),
+            )
+            .await
+            {
                 Either::Left((result, _)) => {
                     if let Err(_err) = result {
                         trace!("failed to serve connection: {_err:#}");
                     }
                     break;
                 }
-                Either::Right(_) => {
+                Either::Right((Either::Left(_), _)) => {
                     trace!("signal received in task, starting graceful shutdown");
                     conn.as_mut().graceful_shutdown();
+                }
+                Either::Right((Either::Right(_), _)) if !age_fired => {
+                    age_fired = true;
+                    trace!("max connection age reached, starting graceful shutdown");
+                    conn.as_mut().graceful_shutdown();
+                    timer.set(sleep_or_pending(
+                        connection_lifetime_limits.max_connection_age_grace,
+                    ));
+                }
+                Either::Right((Either::Right(_), _)) => {
+                    trace!("max connection age grace period elapsed, closing connection");
+                    break;
                 }
             }
         }
@@ -715,7 +936,7 @@ mod tests {
 
     #[cfg(unix)]
     use super::IncomingStream;
-    use super::{serve, Listener};
+    use super::{serve, ConnectionLifetimeLimits, Listener};
     #[cfg(unix)]
     use crate::extract::connect_info::Connected;
     use crate::{
@@ -898,6 +1119,23 @@ mod tests {
             handler.into_make_service(),
         )
         .with_executor(exec);
+
+        // connection_lifetime_limits, composable with the other builder methods in any order
+        let limits = ConnectionLifetimeLimits::new()
+            .max_connection_age(Duration::from_secs(60))
+            .max_connection_age_jitter(Duration::from_secs(10))
+            .max_connection_age_grace(Duration::from_secs(5));
+        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .connection_lifetime_limits(limits);
+        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .connection_lifetime_limits(limits)
+            .with_graceful_shutdown(std::future::pending());
+        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .with_graceful_shutdown(std::future::pending())
+            .connection_lifetime_limits(limits);
+        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .connection_lifetime_limits(limits)
+            .with_executor(TestExecutor::new());
     }
 
     async fn handler() {}
@@ -1264,5 +1502,222 @@ mod tests {
             TcpListener::bind(addr).await.unwrap(),
             app.into_make_service(),
         );
+    }
+
+    #[test]
+    fn random_duration_is_bounded_and_varies() {
+        use std::collections::HashSet;
+
+        assert_eq!(super::random_duration(Duration::ZERO), Duration::ZERO);
+
+        let max = Duration::from_secs(60);
+        let mut seen = HashSet::new();
+        for _ in 0..256 {
+            let d = super::random_duration(max);
+            assert!(d <= max, "{d:?} exceeds the requested bound {max:?}");
+            seen.insert(d);
+        }
+
+        // It would be astronomically unlikely for 256 draws to all collide if
+        // the source is actually random.
+        assert!(seen.len() > 1, "random_duration produced a constant value");
+    }
+
+    // After `max_connection_age` elapses, an idle keep-alive connection is
+    // gracefully shut down by the server, which the client observes as its
+    // connection task completing.
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_age_closes_idle_connection() {
+        let app = Router::new().route("/", get(|| async { "ok" }));
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new().max_connection_age(Duration::from_secs(10)),
+                )
+                .into_future(),
+        );
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        let conn_handle = tokio::spawn(conn);
+
+        // A first request succeeds normally before the age limit elapses.
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let _ = to_bytes(Body::new(response.into_body()), usize::MAX)
+            .await
+            .unwrap();
+
+        // With (paused) time auto-advancing, the age timer fires and the server
+        // closes the now-idle connection, completing the client's conn task.
+        tokio::time::timeout(Duration::from_secs(30), conn_handle)
+            .await
+            .expect("connection was not closed after max_connection_age elapsed")
+            .unwrap()
+            .ok();
+    }
+
+    // When `max_connection_age` fires while a request is in flight and the
+    // handler never completes, the grace period bounds how long the server
+    // waits before forcibly closing, so the in-flight request fails.
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_age_grace_force_closes_stuck_connection() {
+        use std::{future::pending, sync::Arc};
+
+        use tokio::sync::Notify;
+
+        let started = Arc::new(Notify::new());
+        let app = Router::new().route("/", {
+            let started = started.clone();
+            get(move || {
+                let started = started.clone();
+                async move {
+                    started.notify_one();
+                    pending::<()>().await;
+                    "unreachable"
+                }
+            })
+        });
+
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new()
+                        .max_connection_age(Duration::from_secs(10))
+                        .max_connection_age_grace(Duration::from_secs(5)),
+                )
+                .into_future(),
+        );
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let send = tokio::spawn(async move { sender.send_request(request).await });
+
+        // Wait until the (never-completing) handler is actually running.
+        started.notified().await;
+
+        // age (10s) + grace (5s) later, the connection is force-closed despite
+        // the stuck handler, so the in-flight request resolves with an error.
+        let result = tokio::time::timeout(Duration::from_secs(60), send)
+            .await
+            .expect("request was not aborted within the grace period")
+            .unwrap();
+        assert!(
+            result.is_err(),
+            "expected the in-flight request to fail when the connection is force-closed",
+        );
+    }
+
+    // Without a grace period, `max_connection_age` only stops new requests: one
+    // that is still in flight when the age limit fires keeps the connection
+    // alive for as long as it needs and still completes successfully. Only
+    // `max_connection_age_grace` opts into force-closing in-flight work.
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_age_without_grace_lets_inflight_request_finish() {
+        use std::sync::Arc;
+
+        use tokio::sync::Notify;
+
+        let started = Arc::new(Notify::new());
+        let released = Arc::new(Notify::new());
+
+        let app = Router::new().route("/", {
+            let started = started.clone();
+            let released = released.clone();
+            get(move || {
+                let started = started.clone();
+                let released = released.clone();
+                async move {
+                    started.notify_one();
+                    released.notified().await;
+                    "done"
+                }
+            })
+        });
+
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new().max_connection_age(Duration::from_secs(10)),
+                )
+                .into_future(),
+        );
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let send = tokio::spawn(async move { sender.send_request(request).await });
+
+        // Wait until the handler is actually running, then advance (paused)
+        // time well past the age limit while the request is still in flight.
+        started.notified().await;
+        tokio::time::sleep(Duration::from_secs(60)).await;
+
+        // Release the handler; the response must still arrive because the age
+        // limit alone never cuts in-flight requests.
+        released.notify_one();
+        let response = tokio::time::timeout(Duration::from_secs(5), send)
+            .await
+            .expect("in-flight request did not resolve after the age limit fired")
+            .unwrap()
+            .expect("in-flight request failed: the age limit must not cut in-flight requests");
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    // The HTTP/2 equivalent of `max_connection_age_closes_idle_connection`: the
+    // server sends GOAWAY once the age limit elapses, completing the client's
+    // connection task.
+    #[cfg(feature = "http2")]
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_age_closes_idle_connection_http2() {
+        use hyper_util::rt::TokioExecutor;
+
+        let app = Router::new().route("/", get(|| async { "ok" }));
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new().max_connection_age(Duration::from_secs(10)),
+                )
+                .into_future(),
+        );
+
+        let io = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http2::Builder::new(TokioExecutor::new())
+            .handshake(io)
+            .await
+            .unwrap();
+        let conn_handle = tokio::spawn(conn);
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let _ = to_bytes(Body::new(response.into_body()), usize::MAX)
+            .await
+            .unwrap();
+
+        // GOAWAY after the age limit closes the connection from the server side.
+        tokio::time::timeout(Duration::from_secs(30), conn_handle)
+            .await
+            .expect("HTTP/2 connection was not closed after max_connection_age elapsed")
+            .unwrap()
+            .ok();
     }
 }
