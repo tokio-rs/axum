@@ -329,7 +329,6 @@ where
             _marker,
         } = self;
 
-        // Receiver-side waits avoid contention in `Sender::closed`'s shared notification state.
         let (_signal_tx, signal_rx) = watch::channel(());
         let (_close_tx, close_rx) = watch::channel(());
 
@@ -457,7 +456,6 @@ where
             _marker,
         } = self;
 
-        // Receiver-side waits avoid contention in `Sender::closed`'s shared notification state.
         let (signal_tx, mut signal_rx) = watch::channel(());
         executor.execute(async move {
             signal.await;
