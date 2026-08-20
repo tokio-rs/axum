@@ -8,6 +8,8 @@
 //! CLIENT_ID=REPLACE_ME CLIENT_SECRET=REPLACE_ME cargo run -p example-oauth
 //! ```
 
+mod oauth2_reqwest;
+
 use anyhow::{anyhow, Context, Result};
 use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
@@ -275,7 +277,7 @@ async fn login_authorized(
     // Get an auth token
     let token = oauth_client
         .exchange_code(AuthorizationCode::new(query.code.clone()))
-        .request_async(&client)
+        .request_async(&oauth2_reqwest::ReqwestClient::from(client.clone()))
         .await
         .context("failed in sending request to authorization server")?;
 
