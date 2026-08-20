@@ -256,7 +256,7 @@ pub trait TypedPath: std::fmt::Display {
     ///     per_page: 10,
     /// });
     ///
-    /// assert_eq!(path.to_uri(), "/users?&page=1&per_page=10");
+    /// assert_eq!(path.to_uri(), "/users?page=1&per_page=10");
     /// ```
     ///
     /// # Panics
@@ -291,10 +291,12 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = self.path.to_string();
-        if !out.contains('?') {
+
+        let params_start = out.find('?').map(|i| i + 1).unwrap_or_else(|| {
             out.push('?');
-        }
-        let mut urlencoder = form_urlencoded::Serializer::new(&mut out);
+            out.len()
+        });
+        let mut urlencoder = form_urlencoded::Serializer::for_suffix(&mut out, params_start);
         self.params
             .serialize(serde_html_form::ser::Serializer::new(&mut urlencoder))
             .unwrap_or_else(|err| {
@@ -410,12 +412,7 @@ mod tests {
 
         let uri = path.to_uri();
 
-        // according to [the spec] starting the params with `?&` is allowed specifically:
-        //
-        // > If bytes is the empty byte sequence, then continue.
-        //
-        // [the spec]: https://url.spec.whatwg.org/#urlencoded-parsing
-        assert_eq!(uri, "/users/1?&foo=foo&bar=123&baz=true");
+        assert_eq!(uri, "/users/1?foo=foo&bar=123&baz=true");
     }
 
     #[test]
@@ -430,7 +427,26 @@ mod tests {
 
         let uri = path.to_uri();
 
-        assert_eq!(uri, "/users/1?&foo=foo&bar=123&baz=true&qux=1337");
+        assert_eq!(uri, "/users/1?foo=foo&bar=123&baz=true&qux=1337");
+    }
+
+    #[test]
+    fn with_params_question_mark_no_params() {
+        #[derive(TypedPath)]
+        #[typed_path("/test?")]
+        struct EndsWithQuestionMark;
+
+        assert_eq!(EndsWithQuestionMark.to_uri(), "/test?");
+
+        let path = EndsWithQuestionMark.with_query_params(Params {
+            foo: "foo",
+            bar: 123,
+            baz: true,
+        });
+
+        let uri = path.to_uri();
+
+        assert_eq!(uri, "/test?foo=foo&bar=123&baz=true");
     }
 
     #[cfg(feature = "with-rejection")]

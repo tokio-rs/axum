@@ -278,7 +278,7 @@ where
                 header::CONTENT_DISPOSITION,
                 format!(
                     "attachment; filename=\"{}\"",
-                    super::content_disposition::EscapedFilename(&file_name)
+                    super::content_disposition::EscapedQuotedString(&file_name)
                 ),
             );
         }

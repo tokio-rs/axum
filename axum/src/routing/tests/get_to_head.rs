@@ -1,6 +1,5 @@
 use super::*;
 use http::Method;
-use tower::ServiceExt;
 
 mod for_handlers {
     use super::*;

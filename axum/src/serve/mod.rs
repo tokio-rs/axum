@@ -12,7 +12,10 @@ use std::{
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
-use futures_util::FutureExt;
+use futures_util::{
+    future::{select, Either},
+    FutureExt,
+};
 use http_body::Body as HttpBody;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioIo, TokioTimer};
@@ -463,13 +466,14 @@ where
         let (close_tx, close_rx) = watch::channel(());
 
         loop {
-            let (io, remote_addr) = tokio::select! {
-                conn = listener.accept() => conn,
-                _ = signal_tx.closed() => {
-                    trace!("signal received, not accepting new connections");
-                    break;
-                }
-            };
+            let (io, remote_addr) =
+                match select(pin!(listener.accept()), pin!(signal_tx.closed())).await {
+                    Either::Left((conn, _)) => conn,
+                    Either::Right(_) => {
+                        trace!("signal received, not accepting new connections");
+                        break;
+                    }
+                };
 
             handle_connection(
                 &mut make_service,
@@ -614,14 +618,14 @@ async fn handle_connection<L, M, S, B, E>(
         let mut signal_closed = pin!(signal_tx.closed().fuse());
 
         loop {
-            tokio::select! {
-                result = conn.as_mut() => {
+            match select(conn.as_mut(), &mut signal_closed).await {
+                Either::Left((result, _)) => {
                     if let Err(_err) = result {
                         trace!("failed to serve connection: {_err:#}");
                     }
                     break;
                 }
-                _ = &mut signal_closed => {
+                Either::Right(_) => {
                     trace!("signal received in task, starting graceful shutdown");
                     conn.as_mut().graceful_shutdown();
                 }
@@ -692,10 +696,12 @@ mod tests {
     use std::{
         future::{pending, IntoFuture as _},
         net::{IpAddr, Ipv4Addr},
+        pin::pin,
         time::Duration,
     };
 
     use axum_core::{body::Body, extract::Request};
+    use futures_util::future::{select, Either};
     use http::{Response, StatusCode};
     use hyper_util::rt::TokioIo;
     #[cfg(unix)]
@@ -996,9 +1002,9 @@ mod tests {
                 .expect("read_to_end");
             };
 
-            tokio::select! {
-                _ = server_task => unreachable!(),
-                _ = wait_for_server_to_close_conn => (),
+            match select(pin!(server_task), pin!(wait_for_server_to_close_conn)).await {
+                Either::Left(_) => unreachable!(),
+                Either::Right(_) => (),
             };
         }
     }
