@@ -587,7 +587,25 @@ pin_project! {
 
 #[cfg(feature = "tokio")]
 impl<S> KeepAliveStream<S> {
-    fn new(keep_alive: KeepAlive, inner: S) -> Self {
+    /// Create a new `KeepAliveStream` from a `KeepAlive` configuration and stream to wrap.
+    ///
+    /// The wrapped stream should yield SSE events as `Result<Event, E>` items. Prefer
+    /// [`Sse::keep_alive`] unless you need to add keep-alive frames without going through [`Sse`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::response::sse::{Event, KeepAlive, KeepAliveStream};
+    /// use std::convert::Infallible;
+    /// use futures_util::stream;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let events = stream::iter(vec![Ok::<_, Infallible>(Event::default().data("hi"))]);
+    /// let stream = KeepAliveStream::new(KeepAlive::default(), events);
+    /// # }
+    /// ```
+    pub fn new(keep_alive: KeepAlive, inner: S) -> Self {
         Self {
             alive_timer: tokio::time::sleep(keep_alive.max_interval),
             inner,
