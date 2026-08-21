@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `BadRejection: From<JsonRejection>` is not satisfied
+  --> tests/debug_handler/fail/with_rejection_not_from_inner_rejection.rs:23:32
+   |
+23 |     WithRejection(payload, _): WithRejection<Json<Payload>, BadRejection>,
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `From<JsonRejection>` is not implemented for `BadRejection`
+  --> tests/debug_handler/fail/with_rejection_not_from_inner_rejection.rs:8:1
+   |
+ 8 | struct BadRejection;
+   | ^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `__axum_macros_check_handler_0_from_request_check`
+  --> tests/debug_handler/fail/with_rejection_not_from_inner_rejection.rs:23:32
+   |
+23 |     WithRejection(payload, _): WithRejection<Json<Payload>, BadRejection>,
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `__axum_macros_check_handler_0_from_request_check`

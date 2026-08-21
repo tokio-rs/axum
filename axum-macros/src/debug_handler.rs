@@ -311,10 +311,80 @@ fn check_inputs_impls_from_request(
             quote_spanned! {span=>
                 #ty: ::axum::extract::FromRequest<#state_ty> + Send
             }
+        } else if let Some((inner_ty, rejection_ty)) = extract_with_rejection_types(&ty) {
+            // When the extractor is `WithRejection<T, E>`, check the inner type T
+            // directly instead of the whole `WithRejection<T, E>`. This produces
+            // clear error messages because T (e.g. `Query<Foo>`) typically only
+            // implements one of FromRequest/FromRequestParts, so rustc can resolve
+            // `M` unambiguously and give specific trait-bound diagnostics. We also
+            // require `E: From<T::Rejection>` here, under the same inferred `M`,
+            // since that is exactly the bound `WithRejection<T, E>`'s own
+            // `FromRequest`/`FromRequestParts` impl needs. Checking it in this
+            // generic check function (rather than leaving it to the real handler
+            // bound) means a missing conversion is reported with a targeted error
+            // pointing at this check function, instead of an ambiguous one on the
+            // handler itself.
+            quote_spanned! {span=>
+                #inner_ty: ::axum::extract::FromRequest<#state_ty, M> + Send,
+                #rejection_ty: ::std::convert::From<
+                    <#inner_ty as ::axum::extract::FromRequest<#state_ty, M>>::Rejection
+                >
+            }
         } else {
             quote_spanned! {span=>
                 #ty: ::axum::extract::FromRequest<#state_ty, M> + Send
             }
+        };
+
+        // When the extractor is `WithRejection<T, E>`, generate an additional
+        // check that `E: IntoResponse` so that a missing IntoResponse impl on the
+        // rejection type produces a targeted error message.
+        let with_rejection_check = if !must_impl_from_request_parts && !consumes_request {
+            if let Some((_, rejection_ty)) = extract_with_rejection_types(&ty) {
+                let rejection_check_fn = format_ident!(
+                    "__axum_macros_check_{}_{}_rejection_check",
+                    item_fn.sig.ident,
+                    idx,
+                    span = span,
+                );
+
+                let call_rejection_check_fn = format_ident!(
+                    "__axum_macros_check_{}_{}_rejection_call_check",
+                    item_fn.sig.ident,
+                    idx,
+                    span = span,
+                );
+
+                let call_rejection_body = if takes_self {
+                    quote_spanned! {span=>
+                        Self::#rejection_check_fn();
+                    }
+                } else {
+                    quote_spanned! {span=>
+                        #rejection_check_fn();
+                    }
+                };
+
+                quote_spanned! {span=>
+                    #[allow(warnings)]
+                    #[doc(hidden)]
+                    fn #rejection_check_fn()
+                    where
+                        #rejection_ty: ::axum::response::IntoResponse,
+                    {}
+
+                    #[allow(warnings)]
+                    #[doc(hidden)]
+                    fn #call_rejection_check_fn()
+                    {
+                        #call_rejection_body
+                    }
+                }
+            } else {
+                quote! {}
+            }
+        } else {
+            quote! {}
         };
 
         quote_spanned! {span=>
@@ -333,6 +403,8 @@ fn check_inputs_impls_from_request(
             {
                 #call_check_fn_body
             }
+
+            #with_rejection_check
         }
     })
     .collect::<TokenStream>()
@@ -580,6 +652,29 @@ fn extract_clean_typename(ty: &Type) -> Option<String> {
         _ => return None,
     };
     path.segments.last().map(|p| p.ident.to_string())
+}
+
+/// If `ty` is `WithRejection<T, E>`, return references to the inner extractor
+/// type `T` and the rejection type `E`.
+fn extract_with_rejection_types(ty: &Type) -> Option<(&Type, &Type)> {
+    let path = match ty {
+        Type::Path(type_path) => &type_path.path,
+        _ => return None,
+    };
+    let last_segment = path.segments.last()?;
+    if last_segment.ident != "WithRejection" {
+        return None;
+    }
+    let syn::PathArguments::AngleBracketed(args) = &last_segment.arguments else {
+        return None;
+    };
+    let mut type_args = args.args.iter().filter_map(|arg| match arg {
+        syn::GenericArgument::Type(ty) => Some(ty),
+        _ => None,
+    });
+    let inner = type_args.next()?;
+    let rejection = type_args.next()?;
+    Some((inner, rejection))
 }
 
 fn request_consuming_type_name(ty: &Type) -> Option<&'static str> {
