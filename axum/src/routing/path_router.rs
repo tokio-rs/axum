@@ -12,6 +12,7 @@ use super::{
     future::RouteFuture, strip_prefix::StripPrefix, url_params, Endpoint, MethodRouter, Route,
     RouteId, NEST_TAIL_PARAM,
 };
+use crate::extract::path::inner_path::CountEnclosingCaptures;
 
 pub(super) struct PathRouter<S> {
     routes: Vec<Endpoint<S>>,
@@ -195,6 +196,7 @@ where
             let layer = (
                 StripPrefix::layer(prefix),
                 SetNestedPath::layer(path_to_nest_at),
+                CountEnclosingCaptures::layer(path_to_nest_at),
             );
             match endpoint.layer(layer) {
                 Endpoint::MethodRouter(method_router) => {
@@ -231,6 +233,7 @@ where
         let layer = (
             StripPrefix::layer(prefix),
             SetNestedPath::layer(path_to_nest_at),
+            CountEnclosingCaptures::layer(path_to_nest_at),
         );
         let endpoint = Endpoint::Route(Route::new(layer.layer(svc)));
 
