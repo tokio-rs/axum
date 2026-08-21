@@ -21,7 +21,7 @@ pub(super) struct PathRouter<S> {
 
 fn validate_path(v7_checks: bool, path: &str) -> Result<(), &'static str> {
     if path.is_empty() {
-        return Err("Paths must start with a `/`. Use \"/\" for root routes");
+        return Ok(());
     } else if !path.starts_with('/') {
         return Err("Paths must start with a `/`");
     }
@@ -222,11 +222,7 @@ where
         let path = validate_nest_path(self.v7_checks, path_to_nest_at)?;
         let prefix = path;
 
-        let path = if path.ends_with('/') {
-            format!("{path}{{*{NEST_TAIL_PARAM}}}")
-        } else {
-            format!("{path}/{{*{NEST_TAIL_PARAM}}}")
-        };
+        let path = format!("{path}/{{*{NEST_TAIL_PARAM}}}");
 
         let layer = (
             StripPrefix::layer(prefix),
@@ -449,6 +445,9 @@ fn validate_nest_path(v7_checks: bool, path: &str) -> Result<&str, &'static str>
     if path.len() < 2 {
         return Err("Nesting at `/` is not supported.");
     }
+    if path.ends_with("/") {
+        return Err("Nesting paths must not end with a `/`.");
+    }
 
     if path.split('/').any(|segment| {
         segment.starts_with("{*") && segment.ends_with('}') && !segment.ends_with("}}")
@@ -465,13 +464,8 @@ fn validate_nest_path(v7_checks: bool, path: &str) -> Result<&str, &'static str>
 
 pub(crate) fn path_for_nested_route<'a>(prefix: &'a str, path: &'a str) -> Cow<'a, str> {
     debug_assert!(prefix.starts_with('/'));
-    debug_assert!(path.starts_with('/'));
+    debug_assert!(path.starts_with('/') || path.is_empty());
+    debug_assert!(!prefix.ends_with('/'));
 
-    if prefix.ends_with('/') {
-        format!("{prefix}{}", path.trim_start_matches('/')).into()
-    } else if path == "/" {
-        prefix.into()
-    } else {
-        format!("{prefix}{path}").into()
-    }
+    format!("{prefix}{path}").into()
 }
