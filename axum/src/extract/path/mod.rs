@@ -5,9 +5,9 @@ mod de;
 
 pub(crate) mod inner_path;
 
-use crate::routing::url_params::UrlParams;
 use crate::{
     extract::{rejection::*, FromRequestParts},
+    routing::url_params::UrlParams,
     util::PercentDecodedStr,
 };
 use axum_core::{
@@ -172,9 +172,7 @@ where
     type Rejection = PathRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        get_params::<PathRejection>(parts)
-            .and_then(serialize_path_params)
-            .map(Self)
+        get_params(parts).and_then(serialize_path_params).map(Self)
     }
 }
 
@@ -513,7 +511,7 @@ impl RawPathParams {
         extensions: &Extensions,
     ) -> Result<Self, RawPathParamsRejection> {
         match extensions.get::<UrlParams>() {
-            Some(UrlParams::Params(params)) => Ok(Self(params.clone())),
+            Some(UrlParams::Params { params, .. }) => Ok(Self(params.clone())),
             Some(UrlParams::InvalidUtf8InPathParam { key }) => Err(InvalidUtf8InPathParam {
                 key: Arc::clone(key),
             }
@@ -594,24 +592,21 @@ impl IntoResponse for InvalidUtf8InPathParam {
     }
 }
 
-fn get_params<E>(parts: &Parts) -> Result<&[(Arc<str>, PercentDecodedStr)], E>
-where
-    E: From<FailedToDeserializePathParams> + From<MissingPathParams>,
-{
+fn get_params(parts: &Parts) -> Result<&[(Arc<str>, PercentDecodedStr)], PathRejection> {
     let url_params = parts
         .extensions
         .get::<UrlParams>()
         .ok_or(MissingPathParams)?;
 
     match url_params {
-        UrlParams::Params(params) => Ok(params),
+        UrlParams::Params { params, .. } => Ok(params),
         UrlParams::InvalidUtf8InPathParam { key } => {
             let error = PathDeserializationError {
                 kind: ErrorKind::InvalidUtf8InPathParam {
                     key: key.to_string(),
                 },
             };
-            Err(E::from(FailedToDeserializePathParams(error)))
+            Err(PathRejection::from(FailedToDeserializePathParams(error)))
         }
     }
 }

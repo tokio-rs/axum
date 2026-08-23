@@ -1,16 +1,15 @@
-use crate::extract::path::{get_params, serialize_path_params};
-use crate::extract::rejection::InnerPathRejection;
+use crate::extract::path::{
+    serialize_path_params, ErrorKind, FailedToDeserializePathParams, PathDeserializationError,
+};
+use crate::extract::rejection::{InnerPathRejection, MissingPathParams};
 use crate::extract::FromRequestParts;
-use crate::routing::strip_prefix::count_captures;
+use crate::routing::url_params::UrlParams;
 use crate::util::PercentDecodedStr;
-use axum_core::extract::{OptionalFromRequestParts, Request};
+use axum_core::extract::OptionalFromRequestParts;
 use axum_core::RequestPartsExt;
 use http::request::Parts;
 use serde_core::de::DeserializeOwned;
 use std::sync::Arc;
-use std::task::{Context, Poll};
-use tower_layer::{layer_fn, Layer};
-use tower_service::Service;
 
 /// Extractor that will get captures from the path of the innermost router
 /// and parse them using [`serde`].
@@ -148,23 +147,6 @@ where
     type Rejection = InnerPathRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        // Non-T computation is in standalone function preventing monomorphization over T
-        fn get_inner_params(
-            parts: &Parts,
-        ) -> Result<&[(Arc<str>, PercentDecodedStr)], InnerPathRejection> {
-            let EnclosingCapturesCount(enclosing_captures_count) = parts
-                .extensions
-                .get::<EnclosingCapturesCount>()
-                .copied()
-                .unwrap_or_default();
-
-            let inner_params = get_params::<InnerPathRejection>(parts)?
-                .get(enclosing_captures_count..)
-                .expect("Mismatch between url params and count of captures. This is bug in axum. Please file an issue.");
-
-            Ok(inner_params)
-        }
-
         get_inner_params(parts)
             .and_then(serialize_path_params)
             .map(Self)
@@ -194,51 +176,33 @@ where
     }
 }
 
-#[derive(Debug, Copy, Default, Clone)]
-struct EnclosingCapturesCount(usize);
+fn get_inner_params(parts: &Parts) -> Result<&[(Arc<str>, PercentDecodedStr)], InnerPathRejection> {
+    let url_params = parts
+        .extensions
+        .get::<UrlParams>()
+        .ok_or(MissingPathParams)?;
 
-#[derive(Debug, Clone)]
-pub(crate) struct CountEnclosingCaptures<S> {
-    inner: S,
-    additional_captures_count: usize,
-}
+    match url_params {
+        UrlParams::Params {
+            params,
+            inner_start,
+        } => {
+            let inner_params = params
+                .get(*inner_start..)
+                .expect("Mismatch between url params and count of captures. This is bug in axum. Please file an issue.");
 
-impl<S> CountEnclosingCaptures<S> {
-    pub(crate) fn layer(path_to_nest_at: &str) -> impl Layer<S, Service = Self> + Clone {
-        let additional_captures_count = count_captures(path_to_nest_at);
-
-        layer_fn(move |inner| Self {
-            inner,
-            additional_captures_count,
-        })
-    }
-}
-
-impl<S, B> Service<Request<B>> for CountEnclosingCaptures<S>
-where
-    S: Service<Request<B>>,
-{
-    type Response = S::Response;
-    type Error = S::Error;
-    type Future = S::Future;
-
-    #[inline]
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx)
-    }
-
-    fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        let extensions = req.extensions_mut();
-        let EnclosingCapturesCount(previous) = extensions
-            .get::<EnclosingCapturesCount>()
-            .copied()
-            .unwrap_or_default();
-
-        extensions.insert(EnclosingCapturesCount(
-            previous + self.additional_captures_count,
-        ));
-
-        self.inner.call(req)
+            Ok(inner_params)
+        }
+        UrlParams::InvalidUtf8InPathParam { key } => {
+            let error = PathDeserializationError {
+                kind: ErrorKind::InvalidUtf8InPathParam {
+                    key: key.to_string(),
+                },
+            };
+            Err(InnerPathRejection::from(FailedToDeserializePathParams(
+                error,
+            )))
+        }
     }
 }
 

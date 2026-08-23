@@ -1,3 +1,4 @@
+use crate::routing::url_params;
 use http::{Request, Uri};
 use std::{
     sync::Arc,
@@ -11,14 +12,17 @@ use tower_service::Service;
 pub(super) struct StripPrefix<S> {
     inner: S,
     prefix: Arc<str>,
+    captures_count: usize,
 }
 
 impl<S> StripPrefix<S> {
     pub(super) fn layer(prefix: &str) -> impl Layer<S, Service = Self> + Clone {
+        let captures_count = count_captures(prefix);
         let prefix = Arc::from(prefix);
         layer_fn(move |inner| Self {
             inner,
             prefix: Arc::clone(&prefix),
+            captures_count,
         })
     }
 }
@@ -40,11 +44,12 @@ where
         if let Some(new_uri) = strip_prefix(req.uri(), &self.prefix) {
             *req.uri_mut() = new_uri;
         }
+        url_params::advance_inner_start(req.extensions_mut(), self.captures_count);
         self.inner.call(req)
     }
 }
 
-pub(crate) fn count_captures(path: &str) -> usize {
+fn count_captures(path: &str) -> usize {
     segments(path).filter_map(capture_prefix_suffix).count()
 }
 
