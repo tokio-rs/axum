@@ -399,6 +399,7 @@ pub struct FailedToDeserializePathParams(PathDeserializationError);
 
 impl FailedToDeserializePathParams {
     /// Get a reference to the underlying error kind.
+    #[must_use]
     pub fn kind(&self) -> &ErrorKind {
         &self.0.kind
     }
