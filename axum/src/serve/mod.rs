@@ -176,7 +176,7 @@ where
 /// ```
 ///
 /// [`max_connection_age_grace`]: ConnectionLifetimeLimits::max_connection_age_grace
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 #[must_use]
 pub struct ConnectionLifetimeLimits {
     max_connection_age: Option<Duration>,
@@ -515,7 +515,7 @@ where
                 io,
                 remote_addr,
                 &executor,
-                connection_lifetime_limits,
+                &connection_lifetime_limits,
             )
             .await;
         }
@@ -674,7 +674,7 @@ where
                 io,
                 remote_addr,
                 &executor,
-                connection_lifetime_limits,
+                &connection_lifetime_limits,
             )
             .await;
         }
@@ -762,7 +762,7 @@ async fn handle_connection<L, M, S, B, E>(
     io: <L as Listener>::Io,
     remote_addr: <L as Listener>::Addr,
     executor: &E,
-    connection_lifetime_limits: ConnectionLifetimeLimits,
+    connection_lifetime_limits: &ConnectionLifetimeLimits,
 ) where
     L: Listener,
     L::Addr: Debug,
@@ -776,6 +776,7 @@ async fn handle_connection<L, M, S, B, E>(
     E: Executor,
 {
     let mut signal_rx = signal_rx.clone();
+    let connection_lifetime_limits = connection_lifetime_limits.clone();
     let io = TokioIo::new(io);
 
     trace!("connection {remote_addr:?} accepted");
@@ -1132,15 +1133,15 @@ mod tests {
             .max_connection_age_jitter(Duration::from_secs(10))
             .max_connection_age_grace(Duration::from_secs(5));
         serve(TcpListener::bind(addr).await.unwrap(), router.clone())
-            .connection_lifetime_limits(limits);
+            .connection_lifetime_limits(limits.clone());
         serve(TcpListener::bind(addr).await.unwrap(), router.clone())
-            .connection_lifetime_limits(limits)
+            .connection_lifetime_limits(limits.clone())
             .with_graceful_shutdown(std::future::pending());
         serve(TcpListener::bind(addr).await.unwrap(), router.clone())
             .with_graceful_shutdown(std::future::pending())
-            .connection_lifetime_limits(limits);
+            .connection_lifetime_limits(limits.clone());
         serve(TcpListener::bind(addr).await.unwrap(), router.clone())
-            .connection_lifetime_limits(limits)
+            .connection_lifetime_limits(limits.clone())
             .with_executor(TestExecutor::new());
     }
 
