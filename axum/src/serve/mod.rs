@@ -35,10 +35,10 @@ pub use self::listener::{ConnLimiter, ConnLimiterIo, Listener, ListenerExt, TapI
 
 /// Serve the service with the supplied listener.
 ///
-/// This method of running a service is intentionally simple and doesn't support much configuration.
-/// hyper's default configuration applies (including [timeouts]); use hyper or hyper-util if you
-/// need more control. You can supply a custom [`Executor`] via [`Serve::with_executor`] to
-/// control how connection tasks are spawned.
+/// This method of running a service exposes only some configuration knobs: how connection
+/// tasks are spawned (via [`Serve::with_executor`]) and how long connections live (via
+/// [`Serve::connection_lifetime_limits`]). Everything else uses hyper's default configuration
+/// (including [timeouts]); use hyper or hyper-util if you need more control.
 ///
 /// It supports both HTTP/1 as well as HTTP/2.
 ///
@@ -200,6 +200,10 @@ impl ConnectionLifetimeLimits {
     ///
     /// Consider also setting [`max_connection_age_jitter`] to avoid all
     /// connections opened around the same time tearing down simultaneously.
+    ///
+    /// The clock starts when the connection task is spawned, which happens
+    /// after the connection has been accepted and the service for it has been
+    /// created, rather than at accept time.
     ///
     /// [`max_connection_age_grace`]: ConnectionLifetimeLimits::max_connection_age_grace
     /// [`max_connection_age_jitter`]: ConnectionLifetimeLimits::max_connection_age_jitter
@@ -1726,5 +1730,260 @@ mod tests {
             .expect("HTTP/2 connection was not closed after max_connection_age elapsed")
             .unwrap()
             .ok();
+    }
+
+    // The HTTP/2 equivalent of
+    // `max_connection_age_grace_force_closes_stuck_connection`: once the grace
+    // period elapses the connection is closed even though an HTTP/2 stream is
+    // still open, so the in-flight request fails.
+    #[cfg(feature = "http2")]
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_age_grace_force_closes_stuck_connection_http2() {
+        use std::{future::pending, sync::Arc};
+
+        use hyper_util::rt::TokioExecutor;
+        use tokio::sync::Notify;
+
+        let started = Arc::new(Notify::new());
+        let app = Router::new().route("/", {
+            let started = started.clone();
+            get(move || {
+                let started = started.clone();
+                async move {
+                    started.notify_one();
+                    pending::<()>().await;
+                    "unreachable"
+                }
+            })
+        });
+
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new()
+                        .max_connection_age(Duration::from_secs(10))
+                        .max_connection_age_grace(Duration::from_secs(5)),
+                )
+                .into_future(),
+        );
+
+        let io = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http2::Builder::new(TokioExecutor::new())
+            .handshake(io)
+            .await
+            .unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let send = tokio::spawn(async move { sender.send_request(request).await });
+
+        // Wait until the (never-completing) handler is actually running.
+        started.notified().await;
+
+        // age (10s) + grace (5s) later, the connection is force-closed despite
+        // the still-open stream, so the in-flight request resolves with an error.
+        let result = tokio::time::timeout(Duration::from_secs(60), send)
+            .await
+            .expect("request was not aborted within the grace period")
+            .unwrap();
+        assert!(
+            result.is_err(),
+            "expected the in-flight HTTP/2 request to fail when the connection is force-closed",
+        );
+    }
+
+    // The grace period is an upper bound, not a deadline that requests are cut
+    // at: a request that finishes after the age limit fires but before the
+    // grace period elapses still gets its response.
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_age_grace_lets_request_finish_in_time() {
+        // The age limit fires at 10s and the grace period force-closes at 15s,
+        // so a handler that takes 12s completes in between the two.
+        let app = Router::new().route(
+            "/",
+            get(|| async {
+                tokio::time::sleep(Duration::from_secs(12)).await;
+                "done"
+            }),
+        );
+
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new()
+                        .max_connection_age(Duration::from_secs(10))
+                        .max_connection_age_grace(Duration::from_secs(5)),
+                )
+                .into_future(),
+        );
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let response = tokio::time::timeout(Duration::from_secs(60), sender.send_request(request))
+            .await
+            .expect("in-flight request did not resolve")
+            .expect("in-flight request failed even though it finished within the grace period");
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = to_bytes(Body::new(response.into_body()), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"done");
+    }
+
+    // Jitter is added to the age limit of each individual connection, so
+    // connections opened at the same instant close at different times spread
+    // over `[age, age + jitter]` rather than all closing exactly at `age`.
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_age_jitter_extends_deadline() {
+        const CONNECTIONS: usize = 8;
+
+        let age = Duration::from_secs(1);
+        // Kept comfortably below hyper's 30s header read timeout, which would
+        // otherwise close these never-used connections before their deadline.
+        let jitter = Duration::from_secs(20);
+
+        let start = tokio::time::Instant::now();
+
+        // The senders are held for the duration of the test: dropping one would
+        // close its connection from the client side.
+        let mut senders: Vec<hyper::client::conn::http1::SendRequest<Body>> =
+            Vec::with_capacity(CONNECTIONS);
+        let mut closed_at = Vec::with_capacity(CONNECTIONS);
+
+        for _ in 0..CONNECTIONS {
+            let app = Router::new().route("/", get(|| async { "ok" }));
+            let (client, server) = io::duplex(1024);
+
+            tokio::spawn(
+                serve(ReadyListener(Some(server)), app)
+                    .connection_lifetime_limits(
+                        ConnectionLifetimeLimits::new()
+                            .max_connection_age(age)
+                            .max_connection_age_jitter(jitter),
+                    )
+                    .into_future(),
+            );
+
+            let stream = TokioIo::new(client);
+            let (sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+            senders.push(sender);
+            // Each connection records when it was closed from its own task, so
+            // the deadlines don't collapse onto whichever one is awaited first.
+            closed_at.push(tokio::spawn(async move {
+                conn.await.ok();
+                tokio::time::Instant::now()
+            }));
+        }
+
+        let mut deadlines = Vec::with_capacity(CONNECTIONS);
+        for handle in closed_at {
+            let closed = tokio::time::timeout(Duration::from_secs(60), handle)
+                .await
+                .expect("connection was not closed after max_connection_age elapsed")
+                .unwrap();
+            deadlines.push(closed - start);
+        }
+
+        for deadline in &deadlines {
+            assert!(
+                *deadline >= age,
+                "connection closed after {deadline:?}, before the age limit {age:?}",
+            );
+            assert!(
+                *deadline <= age + jitter,
+                "connection closed after {deadline:?}, past the jittered bound {:?}",
+                age + jitter,
+            );
+        }
+
+        // Every connection would close at exactly `age` if jitter were ignored.
+        // Each draw is uniform over `[0, jitter]`, so all of them landing within
+        // a second of zero is vanishingly unlikely.
+        assert!(
+            deadlines
+                .iter()
+                .any(|deadline| *deadline > age + Duration::from_secs(1)),
+            "no connection had jitter added to its age limit: {deadlines:?}",
+        );
+    }
+
+    // A shutdown signal only asks connections to stop accepting new requests, so
+    // on its own it waits forever on a stuck handler. The age and grace limits
+    // still apply, force-closing the connection and letting the `serve` future
+    // resolve.
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_age_grace_unblocks_graceful_shutdown() {
+        use std::{future::pending, sync::Arc};
+
+        use tokio::sync::{oneshot, Notify};
+
+        let started = Arc::new(Notify::new());
+        let app = Router::new().route("/", {
+            let started = started.clone();
+            get(move || {
+                let started = started.clone();
+                async move {
+                    started.notify_one();
+                    pending::<()>().await;
+                    "unreachable"
+                }
+            })
+        });
+
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        let (signal_tx, signal_rx) = oneshot::channel::<()>();
+        let server_handle = tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new()
+                        .max_connection_age(Duration::from_secs(10))
+                        .max_connection_age_grace(Duration::from_secs(5)),
+                )
+                .with_graceful_shutdown(async move {
+                    signal_rx.await.ok();
+                })
+                .into_future(),
+        );
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let send = tokio::spawn(async move { sender.send_request(request).await });
+
+        // Wait until the (never-completing) handler is actually running, then
+        // signal shutdown well before the age limit fires.
+        started.notified().await;
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        signal_tx.send(()).unwrap();
+
+        // The age limit still fires at 10s and the grace period force-closes at
+        // 15s, so the in-flight request resolves with an error.
+        let result = tokio::time::timeout(Duration::from_secs(60), send)
+            .await
+            .expect("request was not aborted within the grace period")
+            .unwrap();
+        assert!(
+            result.is_err(),
+            "expected the in-flight request to fail when the connection is force-closed",
+        );
+
+        tokio::time::timeout(Duration::from_secs(60), server_handle)
+            .await
+            .expect("serve future did not resolve after the connection was force-closed")
+            .unwrap();
     }
 }
