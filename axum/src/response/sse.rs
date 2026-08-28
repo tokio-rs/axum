@@ -411,7 +411,6 @@ impl Event {
         buffer.put_u8(b'\n');
     }
 
-
     /// Turns the event to `Bytes` ready to be sent
     ///
     /// If the events is already finalized just returns the `Bytes` again
