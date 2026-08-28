@@ -143,7 +143,7 @@ where
 /// Once finalized, it's immutable and cheap to clone.
 /// The buffer is active during the event building, but eventually
 /// becomes finalized to send http body frames as [`Bytes`].
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 enum Buffer {
     Active(BytesMut),
     Finalized(Bytes),
@@ -169,7 +169,7 @@ impl Buffer {
 }
 
 /// Server-sent event
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 #[must_use]
 pub struct Event {
     buffer: Buffer,
