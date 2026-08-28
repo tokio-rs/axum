@@ -40,6 +40,7 @@ use http_body::Frame;
 use pin_project_lite::pin_project;
 use std::{
     fmt::{self, Write as _},
+    io::Write as _,
     mem,
     pin::Pin,
     task::{ready, Context, Poll},
@@ -432,67 +433,61 @@ impl EventDataWriter {
     ///
     /// In case any data was written by this instance
     /// it will also write the trailing `\n` character.
-    pub fn into_event(mut self) -> Event {
+    pub fn into_event(self) -> Event {
+        let mut event = self.event;
         if self.data_written {
-            let buffer = self.event.buffer.as_mut();
+            let buffer = event.buffer.as_mut();
             if self.pending_cr {
-                buffer.extend_from_slice(b"data: ");
+                let _ = buffer.write_str("data: ");
             }
             let _ = buffer.write_char('\n');
         }
-        self.event
+        event
     }
 }
 
 impl EventDataWriter {
+    // Assumption: underlying writer never returns an error:
+    // <https://docs.rs/bytes/latest/src/bytes/buf/writer.rs.html#79-82>
     fn write_buf(&mut self, buf: &[u8]) -> usize {
         if buf.is_empty() {
             return 0;
         }
+
+        let pending_cr = mem::take(&mut self.pending_cr);
+        let buffer = self.event.buffer.as_mut();
 
         if !std::mem::replace(&mut self.data_written, true) {
             if self.event.flags.contains(EventFlags::HAS_DATA) {
                 panic!("Called `Event::data*` multiple times");
             }
 
+            let _ = buffer.write_str("data: ");
             self.event.flags.insert(EventFlags::HAS_DATA);
-            self.event.buffer.as_mut().extend_from_slice(b"data: ");
         }
 
-        let buffer = self.event.buffer.as_mut();
+        let mut writer = buffer.writer();
+
+        if pending_cr && buf[0] != b'\n' {
+            let _ = writer.write_all(b"data: ");
+        }
+
         let mut last_split = 0;
-
-        if self.pending_cr {
-            if buf[0] == b'\n' {
-                buffer.put_u8(b'\n');
-                last_split = 1;
+        for delimiter in memchr::memchr2_iter(b'\n', b'\r', buf) {
+            if buf[delimiter] == b'\r' && buf.get(delimiter + 1) == Some(&b'\n') {
+                continue;
             }
-            buffer.extend_from_slice(b"data: ");
-            self.pending_cr = false;
-        }
 
-        while let Some(delimiter) = memchr::memchr2(b'\n', b'\r', &buf[last_split..]) {
-            let delimiter = last_split + delimiter;
-            buffer.extend_from_slice(&buf[last_split..=delimiter]);
+            let _ = writer.write_all(&buf[last_split..=delimiter]);
             last_split = delimiter + 1;
 
-            if buf[delimiter] == b'\r' {
-                match buf.get(last_split) {
-                    Some(b'\n') => {
-                        buffer.put_u8(b'\n');
-                        last_split += 1;
-                    }
-                    None => {
-                        self.pending_cr = true;
-                        break;
-                    }
-                    Some(_) => {}
-                }
+            if buf[delimiter] != b'\r' || last_split != buf.len() {
+                let _ = writer.write_all(b"data: ");
             }
-
-            buffer.extend_from_slice(b"data: ");
         }
-        buffer.extend_from_slice(&buf[last_split..]);
+        let _ = writer.write_all(&buf[last_split..]);
+
+        self.pending_cr = buf.last() == Some(&b'\r');
 
         buf.len()
     }
