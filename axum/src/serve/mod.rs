@@ -184,11 +184,9 @@ impl ConnectionLifetimeLimits {
     /// See [`MaxConnectionAge`] for what the limit does and how to configure
     /// its jitter and grace period.
     ///
-    /// Accepts a [`MaxConnectionAge`] or an `Option<MaxConnectionAge>`, so an
-    /// optional value derived from configuration can be passed straight
-    /// through. `None` leaves connection age unbounded, which is the default.
-    pub fn max_connection_age(mut self, age: impl Into<Option<MaxConnectionAge>>) -> Self {
-        self.max_connection_age = age.into();
+    /// Connection age is unbounded by default.
+    pub fn max_connection_age(mut self, age: MaxConnectionAge) -> Self {
+        self.max_connection_age = Some(age);
         self
     }
 }
@@ -265,8 +263,8 @@ impl MaxConnectionAge {
     /// never complete successfully. Only set a grace period if bounding
     /// connection lifetime matters more than letting slow requests finish.
     ///
-    /// Accepts a `Duration` or an `Option<Duration>`. `None` waits for in-flight
-    /// work for as long as it takes, which is the default.
+    /// `None` waits for in-flight work for as long as it takes, which is the
+    /// default.
     pub fn grace(mut self, grace: impl Into<Option<Duration>>) -> Self {
         self.grace = grace.into();
         self
@@ -1152,14 +1150,11 @@ mod tests {
         .with_executor(exec);
 
         // connection_lifetime_limits, composable with the other builder methods in any order
-        let optional_age: Option<MaxConnectionAge> = None;
-        let limits = ConnectionLifetimeLimits::new()
-            .max_connection_age(optional_age)
-            .max_connection_age(
-                MaxConnectionAge::new(Duration::from_secs(60))
-                    .jitter(Duration::from_secs(10))
-                    .grace(Duration::from_secs(5)),
-            );
+        let limits = ConnectionLifetimeLimits::new().max_connection_age(
+            MaxConnectionAge::new(Duration::from_secs(60))
+                .jitter(Duration::from_secs(10))
+                .grace(Duration::from_secs(5)),
+        );
         serve(TcpListener::bind(addr).await.unwrap(), router.clone())
             .connection_lifetime_limits(limits.clone());
         serve(TcpListener::bind(addr).await.unwrap(), router.clone())
