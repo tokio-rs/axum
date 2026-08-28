@@ -137,9 +137,7 @@ where
 /// It also bounds the worst case when a client's connection pool has no
 /// rotation of its own.
 ///
-/// Each limit is configured with its own value type, so a limit's modifiers
-/// cannot be set without the limit itself. Currently the only limit is
-/// [`MaxConnectionAge`].
+/// The only limit currently available is [`MaxConnectionAge`].
 ///
 /// # Example
 ///
