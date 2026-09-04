@@ -9,8 +9,8 @@ use super::{
 
 /// Extractor that extracts raw form requests.
 ///
-/// For `GET` requests it will extract the raw query. For other methods it extracts the raw
-/// `application/x-www-form-urlencoded` encoded request body.
+/// For `GET` and `HEAD` requests it will extract the raw query. For other methods it extracts the
+/// raw `application/x-www-form-urlencoded` encoded request body.
 ///
 /// # Example
 ///
@@ -36,7 +36,7 @@ where
     type Rejection = RawFormRejection;
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        if req.method() == Method::GET {
+        if req.method() == Method::GET || req.method() == Method::HEAD {
             if let Some(query) = req.uri().query() {
                 return Ok(Self(Bytes::copy_from_slice(query.as_bytes())));
             }
@@ -55,7 +55,7 @@ where
 #[cfg(test)]
 mod tests {
     use axum_core::body::Body;
-    use http::{header::CONTENT_TYPE, Request};
+    use http::{header::CONTENT_TYPE, Method, Request};
 
     use super::{InvalidFormContentType, RawForm, RawFormRejection};
 
@@ -63,6 +63,16 @@ mod tests {
 
     async fn check_query(uri: &str, value: &[u8]) {
         let req = Request::builder().uri(uri).body(Body::empty()).unwrap();
+
+        assert_eq!(RawForm::from_request(req, &()).await.unwrap().0, value);
+    }
+
+    async fn check_head_query(uri: &str, value: &[u8]) {
+        let req = Request::builder()
+            .method(Method::HEAD)
+            .uri(uri)
+            .body(Body::empty())
+            .unwrap();
 
         assert_eq!(RawForm::from_request(req, &()).await.unwrap().0, value);
     }
@@ -81,6 +91,13 @@ mod tests {
         check_query("http://example.com/test", b"").await;
 
         check_query("http://example.com/test?page=0&size=10", b"page=0&size=10").await;
+    }
+
+    #[crate::test]
+    async fn test_from_head_query() {
+        check_head_query("http://example.com/test", b"").await;
+
+        check_head_query("http://example.com/test?page=0&size=10", b"page=0&size=10").await;
     }
 
     #[crate::test]
