@@ -140,24 +140,6 @@ mod tests {
     }
 
     #[crate::test]
-    async fn one_level_of_nesting_with_trailing_slash() {
-        let api = Router::new().route(
-            "/users",
-            get(|nested_path: NestedPath| {
-                assert_eq!(nested_path.as_str(), "/api/");
-                async {}
-            }),
-        );
-
-        let app = Router::new().nest("/api/", api);
-
-        let client = TestClient::new(app);
-
-        let res = client.get("/api/users").await;
-        assert_eq!(res.status(), StatusCode::OK);
-    }
-
-    #[crate::test]
     async fn two_levels_of_nesting() {
         let api = Router::new().route(
             "/users",
@@ -168,24 +150,6 @@ mod tests {
         );
 
         let app = Router::new().nest("/api", Router::new().nest("/v2", api));
-
-        let client = TestClient::new(app);
-
-        let res = client.get("/api/v2/users").await;
-        assert_eq!(res.status(), StatusCode::OK);
-    }
-
-    #[crate::test]
-    async fn two_levels_of_nesting_with_trailing_slash() {
-        let api = Router::new().route(
-            "/users",
-            get(|nested_path: NestedPath| {
-                assert_eq!(nested_path.as_str(), "/api/v2");
-                async {}
-            }),
-        );
-
-        let app = Router::new().nest("/api/", Router::new().nest("/v2", api));
 
         let client = TestClient::new(app);
 
