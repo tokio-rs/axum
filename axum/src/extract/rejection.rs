@@ -160,6 +160,17 @@ composite_rejection! {
 }
 
 composite_rejection! {
+    /// Rejection used for [`InnerPath`](super::InnerPath).
+    ///
+    /// Contains one variant for each way the [`InnerPath`](super::InnerPath) extractor
+    /// can fail.
+    pub enum InnerPathRejection {
+        FailedToDeserializePathParams,
+        MissingPathParams,
+    }
+}
+
+composite_rejection! {
     /// Rejection used for [`RawPathParams`](super::RawPathParams).
     ///
     /// Contains one variant for each way the [`RawPathParams`](super::RawPathParams) extractor
