@@ -69,11 +69,11 @@ jobs:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: nightly-2025-10-18
+          toolchain: nightly-2026-03-20
       - name: Install cargo-check-external-types
         uses: taiki-e/cache-cargo-install-action@v3.0.8
         with:
-          tool: cargo-check-external-types@0.4.0
+          tool: cargo-check-external-types@0.5.0
       - uses: taiki-e/install-action@cargo-hack
       - uses: Swatinem/rust-cache@v2
         with:
