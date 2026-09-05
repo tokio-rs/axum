@@ -417,7 +417,10 @@ impl Event {
         buffer.put_u8(b'\n');
     }
 
-    fn finalize(self) -> Bytes {
+    /// Turns the event to `Bytes` ready to be sent
+    ///
+    /// If the events is already finalized just returns the `Bytes` again
+    pub fn finalize(self) -> Bytes {
         match self.buffer {
             Buffer::Finalized(bytes) => bytes,
             Buffer::Active(mut bytes_mut) => {
