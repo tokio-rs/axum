@@ -2,6 +2,47 @@
 
 use http::header::{self, HeaderMap};
 
+/// A result whose error type is the rejection of a [`FromRequestParts`] extractor.
+///
+/// Use this to handle an extractor's rejection in the handler instead of automatically
+/// returning it as a response.
+///
+/// ```
+/// use axum::{extract::{Path, Result}, routing::get, Router};
+///
+/// async fn handler(path: Result<Path<u64>>) -> String {
+///     match path {
+///         Ok(Path(id)) => format!("Item {id}"),
+///         Err(rejection) => format!("Invalid path: {rejection}"),
+///     }
+/// }
+///
+/// let app = Router::new().route("/{id}", get(handler));
+/// # let _: Router = app;
+/// ```
+///
+/// `S` is the state type used by the extractor and defaults to `()`. For extractors
+/// that require application state, specify it explicitly:
+///
+/// ```
+/// use axum::{extract::{Result, State}, routing::post, Router};
+///
+/// #[derive(Clone)]
+/// struct AppState;
+///
+/// async fn handler(state: Result<State<AppState>, AppState>, body: String) -> String {
+///     let Ok(State(state)) = state;
+///     body
+/// }
+///
+/// let app = Router::new().route("/", post(handler)).with_state(AppState);
+/// # let _: Router = app;
+/// ```
+///
+/// This alias is for request-parts extractors. For body-consuming extractors such
+/// as `Json`, use [`std::result::Result`] with their rejection type.
+pub type Result<T, S = ()> = std::result::Result<T, <T as FromRequestParts<S>>::Rejection>;
+
 #[cfg(feature = "tokio")]
 pub mod connect_info;
 pub mod path;
@@ -94,7 +135,50 @@ pub(super) fn has_content_type(headers: &HeaderMap, expected_content_type: &mime
 
 #[cfg(test)]
 mod tests {
+    use super::{Path, Result, State};
     use crate::{routing::get, test_helpers::*, Router};
+    use http::StatusCode;
+
+    #[crate::test]
+    async fn result_alias_handles_path_rejection() {
+        let app = Router::new().route(
+            "/{id}",
+            get(|path: Result<Path<u64>>| async move {
+                match path {
+                    Ok(Path(id)) => format!("Item {id}"),
+                    Err(_) => "Invalid path".to_owned(),
+                }
+            }),
+        );
+        let client = TestClient::new(app);
+        assert_eq!(client.get("/42").await.text().await, "Item 42");
+        let response = client.get("/invalid").await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.text().await, "Invalid path");
+    }
+
+    #[crate::test]
+    async fn result_alias_with_state_and_body() {
+        #[derive(Clone)]
+        struct AppState(&'static str);
+
+        let app = Router::new()
+            .route(
+                "/",
+                get(
+                    |state: Result<State<AppState>, AppState>, body: String| async move {
+                        let Ok(State(state)) = state;
+                        format!("{}: {body}", state.0)
+                    },
+                ),
+            )
+            .with_state(AppState("state"));
+        let client = TestClient::new(app);
+        assert_eq!(
+            client.get("/").body("body").await.text().await,
+            "state: body"
+        );
+    }
 
     #[crate::test]
     async fn consume_body() {
