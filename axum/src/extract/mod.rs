@@ -31,7 +31,7 @@ use http::header::{self, HeaderMap};
 /// struct AppState;
 ///
 /// async fn handler(state: Result<State<AppState>, AppState>, body: String) -> String {
-///     let Ok(State(state)) = state;
+///     let State(state) = state.unwrap();
 ///     body
 /// }
 ///
@@ -167,7 +167,7 @@ mod tests {
                 "/",
                 get(
                     |state: Result<State<AppState>, AppState>, body: String| async move {
-                        let Ok(State(state)) = state;
+                        let State(state) = state.unwrap();
                         format!("{}: {body}", state.0)
                     },
                 ),
