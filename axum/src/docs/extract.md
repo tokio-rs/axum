@@ -194,6 +194,9 @@ and all others implement [`FromRequestParts`].
 
 # Handling extractor rejections
 
+For request-parts extractors, [`extract::Result<T>`](crate::extract::Result) infers
+the rejection type, so you can write `axum::extract::Result<Path<u64>>`.
+
 If you want to handle the case of an extractor failing within a specific
 handler, you can wrap it in `Result`, with the error being the rejection type
 of the extractor:
