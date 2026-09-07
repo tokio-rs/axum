@@ -69,6 +69,7 @@ query = [
     "dep:serde_path_to_error",
     "serde_html_form/de",
 ]
+test-util = []
 tokio = [
     "dep:hyper-util",
     "dep:tokio",

@@ -508,6 +508,7 @@
 //! `ws` | Enables WebSockets support via [`extract::ws`] |
 //! `form` | Enables the `Form` extractor | <span role="img" aria-label="Default feature">✔</span>
 //! `query` | Enables the `Query` extractor | <span role="img" aria-label="Default feature">✔</span>
+//! `test-util` | Enables testing utilities, currently `extract::ws::MockUpgrade` |
 //!
 //! [`MatchedPath`]: crate::extract::MatchedPath
 //! [`Multipart`]: crate::extract::Multipart

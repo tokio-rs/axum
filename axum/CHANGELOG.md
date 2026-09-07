@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** `IntoResponseParts` impl for `Redirect`, allowing it to be combined
   with a body in a response tuple ([#3721])
 - **added:** Add `RawPathParams::from_request_extensions` ([#3757])
-- **added:** `extract::ws::MockUpgrade` for testing WebSocket routes without a TCP connection ([#3830])
+- **added:** `extract::ws::MockUpgrade` for testing WebSocket routes without a TCP connection, behind the new `test-util` feature ([#3830])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
 - **changed:** Reduced contention in `axum::serve` shutdown notification with many
