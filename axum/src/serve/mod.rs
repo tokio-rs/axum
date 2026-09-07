@@ -12,7 +12,10 @@ use std::{
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
-use futures_util::FutureExt;
+use futures_util::{
+    future::{select, Either},
+    FutureExt,
+};
 use http_body::Body as HttpBody;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioIo, TokioTimer};
@@ -326,14 +329,14 @@ where
             _marker,
         } = self;
 
-        let (signal_tx, _signal_rx) = watch::channel(());
+        let (_signal_tx, signal_rx) = watch::channel(());
         let (_close_tx, close_rx) = watch::channel(());
 
         loop {
             let (io, remote_addr) = listener.accept().await;
             handle_connection(
                 &mut make_service,
-                &signal_tx,
+                &signal_rx,
                 &close_rx,
                 io,
                 remote_addr,
@@ -453,27 +456,31 @@ where
             _marker,
         } = self;
 
-        let (signal_tx, signal_rx) = watch::channel(());
+        let (signal_tx, mut signal_rx) = watch::channel(());
         executor.execute(async move {
             signal.await;
             trace!("received graceful shutdown signal. Telling tasks to shutdown");
-            drop(signal_rx);
+            drop(signal_tx);
         });
 
         let (close_tx, close_rx) = watch::channel(());
 
         loop {
-            let (io, remote_addr) = tokio::select! {
-                conn = listener.accept() => conn,
-                _ = signal_tx.closed() => {
-                    trace!("signal received, not accepting new connections");
-                    break;
-                }
-            };
+            let (io, remote_addr) =
+                match select(pin!(listener.accept()), pin!(signal_rx.changed())).await {
+                    Either::Left((conn, _)) => conn,
+                    Either::Right((Err(_), _)) => {
+                        trace!("signal received, not accepting new connections");
+                        break;
+                    }
+                    Either::Right((Ok(()), _)) => {
+                        unreachable!("shutdown channel never sends values")
+                    }
+                };
 
             handle_connection(
                 &mut make_service,
-                &signal_tx,
+                &signal_rx,
                 &close_rx,
                 io,
                 remote_addr,
@@ -558,7 +565,7 @@ where
 
 async fn handle_connection<L, M, S, B, E>(
     make_service: &mut M,
-    signal_tx: &watch::Sender<()>,
+    signal_rx: &watch::Receiver<()>,
     close_rx: &watch::Receiver<()>,
     io: <L as Listener>::Io,
     remote_addr: <L as Listener>::Addr,
@@ -575,6 +582,7 @@ async fn handle_connection<L, M, S, B, E>(
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
     E: Executor,
 {
+    let mut signal_rx = signal_rx.clone();
     let io = TokioIo::new(io);
 
     trace!("connection {remote_addr:?} accepted");
@@ -594,7 +602,6 @@ async fn handle_connection<L, M, S, B, E>(
         .map_request(|req: Request<Incoming>| req.map(Body::new));
 
     let hyper_service = TowerToHyperService::new(tower_service);
-    let signal_tx = signal_tx.clone();
     let close_rx = close_rx.clone();
 
     let hyper_executor = HyperExecutor(executor.clone());
@@ -611,19 +618,22 @@ async fn handle_connection<L, M, S, B, E>(
         builder.http2().enable_connect_protocol();
 
         let mut conn = pin!(builder.serve_connection_with_upgrades(io, hyper_service));
-        let mut signal_closed = pin!(signal_tx.closed().fuse());
+        let mut signal_closed = pin!(signal_rx.changed().fuse());
 
         loop {
-            tokio::select! {
-                result = conn.as_mut() => {
+            match select(conn.as_mut(), &mut signal_closed).await {
+                Either::Left((result, _)) => {
                     if let Err(_err) = result {
                         trace!("failed to serve connection: {_err:#}");
                     }
                     break;
                 }
-                _ = &mut signal_closed => {
+                Either::Right((Err(_), _)) => {
                     trace!("signal received in task, starting graceful shutdown");
                     conn.as_mut().graceful_shutdown();
+                }
+                Either::Right((Ok(()), _)) => {
+                    unreachable!("shutdown channel never sends values")
                 }
             }
         }
@@ -692,10 +702,12 @@ mod tests {
     use std::{
         future::{pending, IntoFuture as _},
         net::{IpAddr, Ipv4Addr},
+        pin::pin,
         time::Duration,
     };
 
     use axum_core::{body::Body, extract::Request};
+    use futures_util::future::{select, Either};
     use http::{Response, StatusCode};
     use hyper_util::rt::TokioIo;
     #[cfg(unix)]
@@ -996,9 +1008,9 @@ mod tests {
                 .expect("read_to_end");
             };
 
-            tokio::select! {
-                _ = server_task => unreachable!(),
-                _ = wait_for_server_to_close_conn => (),
+            match select(pin!(server_task), pin!(wait_for_server_to_close_conn)).await {
+                Either::Left(_) => unreachable!(),
+                Either::Right(_) => (),
             };
         }
     }

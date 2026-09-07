@@ -179,8 +179,9 @@ pub struct Event {
 /// Expose [`Event`] as a [`std::fmt::Write`]
 /// such that any form of data can be written as data safely.
 ///
-/// This also ensures that newline characters `\r` and `\n`
-/// correctly trigger a split with a new `data: ` prefix.
+/// This also ensures that CRLF (`\r\n`), lone CR (`\r`), and lone LF (`\n`)
+/// line endings correctly trigger a split with a new `data: ` prefix. A CRLF
+/// pair is treated as a single line ending.
 ///
 /// # Panics
 ///
@@ -195,6 +196,10 @@ pub struct EventDataWriter {
     // this does not say anything about whether or not `event` contains
     // data or not.
     data_written: bool,
+
+    // A trailing CR might be followed by an LF in the next write. Defer the
+    // next `data: ` prefix until we know whether they form a CRLF pair.
+    pending_cr: bool,
 }
 
 impl Event {
@@ -218,6 +223,7 @@ impl Event {
         EventDataWriter {
             event: self,
             data_written: false,
+            pending_cr: false,
         }
     }
 
@@ -430,7 +436,11 @@ impl EventDataWriter {
     pub fn into_event(self) -> Event {
         let mut event = self.event;
         if self.data_written {
-            let _ = event.buffer.as_mut().write_char('\n');
+            let buffer = event.buffer.as_mut();
+            if self.pending_cr {
+                let _ = buffer.write_str("data: ");
+            }
+            let _ = buffer.write_char('\n');
         }
         event
     }
@@ -444,6 +454,7 @@ impl EventDataWriter {
             return 0;
         }
 
+        let pending_cr = mem::take(&mut self.pending_cr);
         let buffer = self.event.buffer.as_mut();
 
         if !std::mem::replace(&mut self.data_written, true) {
@@ -457,13 +468,26 @@ impl EventDataWriter {
 
         let mut writer = buffer.writer();
 
+        if pending_cr && buf[0] != b'\n' {
+            let _ = writer.write_all(b"data: ");
+        }
+
         let mut last_split = 0;
         for delimiter in memchr::memchr2_iter(b'\n', b'\r', buf) {
+            if buf[delimiter] == b'\r' && buf.get(delimiter + 1) == Some(&b'\n') {
+                continue;
+            }
+
             let _ = writer.write_all(&buf[last_split..=delimiter]);
-            let _ = writer.write_all(b"data: ");
             last_split = delimiter + 1;
+
+            if buf[delimiter] != b'\r' || last_split != buf.len() {
+                let _ = writer.write_all(b"data: ");
+            }
         }
         let _ = writer.write_all(&buf[last_split..]);
+
+        self.pending_cr = buf.last() == Some(&b'\r');
 
         buf.len()
     }
@@ -677,6 +701,34 @@ mod tests {
             &*event.finalize(),
             b"data: moon star\ndata: sunset bye\rdata: \n\n"
         );
+    }
+
+    #[test]
+    fn crlf_is_one_line_ending() {
+        let event = Event::default().data("first\r\nsecond");
+
+        assert_eq!(&*event.finalize(), b"data: first\r\ndata: second\n\n");
+    }
+
+    #[test]
+    fn data_writer_output_is_independent_of_write_boundaries() {
+        let data = "first\r\nsecond\rthird\nfourth\r";
+        let expected = b"data: first\r\ndata: second\rdata: third\ndata: fourth\rdata: \n\n";
+
+        for first_split in 0..=data.len() {
+            for second_split in first_split..=data.len() {
+                let mut writer = Event::default().into_data_writer();
+                writer.write_str(&data[..first_split]).unwrap();
+                writer.write_str(&data[first_split..second_split]).unwrap();
+                writer.write_str(&data[second_split..]).unwrap();
+
+                assert_eq!(
+                    &*writer.into_event().finalize(),
+                    expected,
+                    "write boundaries at {first_split} and {second_split}"
+                );
+            }
+        }
     }
 
     #[test]

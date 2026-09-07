@@ -341,6 +341,7 @@ top_level_service_fn!(patch_service, PATCH);
 top_level_service_fn!(post_service, POST);
 top_level_service_fn!(put_service, PUT);
 top_level_service_fn!(trace_service, TRACE);
+top_level_service_fn!(query_service, QUERY);
 
 /// Route requests with the given method to the service.
 ///
@@ -445,6 +446,7 @@ top_level_handler_fn!(patch, PATCH);
 top_level_handler_fn!(post, POST);
 top_level_handler_fn!(put, PUT);
 top_level_handler_fn!(trace, TRACE);
+top_level_handler_fn!(query, QUERY);
 
 /// Route requests with the given method to the handler.
 ///
@@ -554,6 +556,7 @@ pub struct MethodRouter<S = (), E = Infallible> {
     put: MethodEndpoint<S, E>,
     trace: MethodEndpoint<S, E>,
     connect: MethodEndpoint<S, E>,
+    query: MethodEndpoint<S, E>,
     fallback: Fallback<S, E>,
     allow_header: AllowHeader,
 }
@@ -604,6 +607,7 @@ impl<S, E> fmt::Debug for MethodRouter<S, E> {
             .field("put", &self.put)
             .field("trace", &self.trace)
             .field("connect", &self.connect)
+            .field("query", &self.query)
             .field("fallback", &self.fallback)
             .field("allow_header", &self.allow_header)
             .finish()
@@ -657,6 +661,7 @@ where
     chained_handler_fn!(post, POST);
     chained_handler_fn!(put, PUT);
     chained_handler_fn!(trace, TRACE);
+    chained_handler_fn!(query, QUERY);
 
     /// Add a fallback [`Handler`] to the router.
     pub fn fallback<H, T>(mut self, handler: H) -> Self
@@ -690,6 +695,7 @@ where
             put,
             trace,
             connect,
+            query,
             fallback,
             allow_header: _,
         } = self;
@@ -708,6 +714,7 @@ where
             (put, MethodFilter::PUT),
             (trace, MethodFilter::TRACE),
             (connect, MethodFilter::CONNECT),
+            (query, MethodFilter::QUERY),
         ]
         .into_iter()
         .filter_map(|(ep, f)| ep.is_some().then_some(f))
@@ -820,6 +827,7 @@ where
             put: MethodEndpoint::None,
             trace: MethodEndpoint::None,
             connect: MethodEndpoint::None,
+            query: MethodEndpoint::None,
             allow_header: AllowHeader::None,
             fallback: Fallback::Default(fallback),
         }
@@ -837,6 +845,7 @@ where
             put: self.put.with_state(&state),
             trace: self.trace.with_state(&state),
             connect: self.connect.with_state(&state),
+            query: self.query.with_state(&state),
             allow_header: self.allow_header,
             fallback: self.fallback.with_state(state),
         }
@@ -995,6 +1004,16 @@ where
             &["CONNECT"],
         );
 
+        set_endpoint(
+            "QUERY",
+            &mut self.query,
+            endpoint,
+            filter,
+            MethodFilter::QUERY,
+            &mut self.allow_header,
+            &["QUERY"],
+        );
+
         self
     }
 
@@ -1007,6 +1026,7 @@ where
     chained_service_fn!(post_service, POST);
     chained_service_fn!(put_service, PUT);
     chained_service_fn!(trace_service, TRACE);
+    chained_service_fn!(query_service, QUERY);
 
     #[doc = include_str!("../docs/method_routing/fallback.md")]
     pub fn fallback_service<T>(mut self, svc: T) -> Self
@@ -1043,6 +1063,7 @@ where
             put: self.put.map(layer_fn.clone()),
             trace: self.trace.map(layer_fn.clone()),
             connect: self.connect.map(layer_fn.clone()),
+            query: self.query.map(layer_fn.clone()),
             fallback: self.fallback.map(layer_fn),
             allow_header: self.allow_header,
         }
@@ -1068,6 +1089,7 @@ where
             && self.put.is_none()
             && self.trace.is_none()
             && self.connect.is_none()
+            && self.query.is_none()
         {
             panic!(
                 "Adding a route_layer before any routes is a no-op. \
@@ -1085,7 +1107,8 @@ where
         self.post = self.post.map(layer_fn.clone());
         self.put = self.put.map(layer_fn.clone());
         self.trace = self.trace.map(layer_fn.clone());
-        self.connect = self.connect.map(layer_fn);
+        self.connect = self.connect.map(layer_fn.clone());
+        self.query = self.query.map(layer_fn);
 
         self
     }
@@ -1131,6 +1154,7 @@ where
         self.put = merge_inner(path, "PUT", self.put, other.put)?;
         self.trace = merge_inner(path, "TRACE", self.trace, other.trace)?;
         self.connect = merge_inner(path, "CONNECT", self.connect, other.connect)?;
+        self.query = merge_inner(path, "QUERY", self.query, other.query)?;
 
         self.fallback = self
             .fallback
@@ -1206,6 +1230,7 @@ where
             put,
             trace,
             connect,
+            query,
             fallback,
             allow_header,
         } = self;
@@ -1220,6 +1245,7 @@ where
         call!(req, DELETE, delete);
         call!(req, TRACE, trace);
         call!(req, CONNECT, connect);
+        call!(req, QUERY, query);
 
         let future = fallback.clone().call_with_state(req, state);
 
@@ -1263,6 +1289,7 @@ impl<S, E> Clone for MethodRouter<S, E> {
             put: self.put.clone(),
             trace: self.trace.clone(),
             connect: self.connect.clone(),
+            query: self.query.clone(),
             fallback: self.fallback.clone(),
             allow_header: self.allow_header.clone(),
         }
