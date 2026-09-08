@@ -90,10 +90,12 @@ where
         _state: &S,
     ) -> Result<Option<Self>, Self::Rejection> {
         let mut values = parts.headers.get_all(T::name()).iter();
-        let is_missing = values.size_hint() == (0, Some(0));
+        if values.size_hint() == (0, Some(0)) {
+            return Ok(None);
+        }
+
         match T::decode(&mut values) {
-            Ok(res) => Ok(Some(Self(res))),
-            Err(_) if is_missing => Ok(None),
+            Ok(value) => Ok(Some(Self(value))),
             Err(err) => Err(TypedHeaderRejection {
                 name: T::name(),
                 reason: TypedHeaderRejectionReason::Error(err),
@@ -214,6 +216,7 @@ mod tests {
     use super::*;
     use crate::test_helpers::*;
     use axum::{routing::get, Router};
+    use http::StatusCode;
 
     #[tokio::test]
     async fn typed_header() {
@@ -249,5 +252,27 @@ mod tests {
         let res = client.get("/").header("cookie", "a=1").await;
         let body = res.text().await;
         assert_eq!(body, "Header of type `user-agent` was missing");
+    }
+
+    #[tokio::test]
+    async fn optional_cookie_is_none_when_missing() {
+        async fn handle(cookie: Option<TypedHeader<headers::Cookie>>) -> &'static str {
+            if cookie.is_none() {
+                "none"
+            } else {
+                "some"
+            }
+        }
+
+        let app = Router::new().route("/", get(handle));
+        let client = TestClient::new(app);
+
+        let res = client.get("/").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "none");
+
+        let res = client.get("/").header("cookie", "a=1").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "some");
     }
 }
