@@ -19,17 +19,19 @@ impl FailedToBufferBody {
     where
         E: Into<BoxError>,
     {
-        // two layers of boxes here because `with_limited_body`
-        // wraps the `http_body_util::Limited` in an `axum_core::Body`
-        // which also wraps the error type
-        let box_error = match err.into().downcast::<Error>() {
-            Ok(err) => err.into_inner(),
-            Err(err) => err,
-        };
-        let box_error = match box_error.downcast::<Error>() {
-            Ok(err) => err.into_inner(),
-            Err(err) => err,
-        };
+        // peel any number of `axum_core::Error` wrappers to reach the underlying source error
+        let mut box_error = err.into();
+        loop {
+            match box_error.downcast::<Error>() {
+                Ok(unwrapped) => {
+                    box_error = unwrapped.into_inner();
+                }
+                Err(err) => {
+                    box_error = err;
+                    break;
+                }
+            }
+        }
         match box_error.downcast::<http_body_util::LengthLimitError>() {
             Ok(err) => Self::LengthLimitError(LengthLimitError::from_err(err)),
             Err(err) => Self::UnknownBodyError(UnknownBodyError::from_err(err)),
