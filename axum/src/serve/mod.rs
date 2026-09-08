@@ -12,7 +12,10 @@ use std::{
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
-use futures_util::FutureExt;
+use futures_util::{
+    future::{select, Either},
+    FutureExt,
+};
 use http_body::Body as HttpBody;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioIo, TokioTimer};
@@ -326,15 +329,16 @@ where
             _marker,
         } = self;
 
-        let (signal_tx, _signal_rx) = watch::channel(());
+        let (_signal_tx, signal_rx) = watch::channel(());
         let (_close_tx, close_rx) = watch::channel(());
 
         loop {
             let (io, remote_addr) = listener.accept().await;
             handle_connection(
                 &mut make_service,
-                &signal_tx,
+                &signal_rx,
                 &close_rx,
+                None,
                 io,
                 remote_addr,
                 &executor,
@@ -453,28 +457,38 @@ where
             _marker,
         } = self;
 
-        let (signal_tx, signal_rx) = watch::channel(());
+        let (signal_tx, mut signal_rx) = watch::channel(());
         executor.execute(async move {
             signal.await;
             trace!("received graceful shutdown signal. Telling tasks to shutdown");
-            drop(signal_rx);
+            drop(signal_tx);
         });
 
         let (close_tx, close_rx) = watch::channel(());
 
+        let graceful = ConnectionShutdownHandle {
+            shutdown: signal_rx.clone(),
+            guard: close_rx.clone(),
+        };
+
         loop {
-            let (io, remote_addr) = tokio::select! {
-                conn = listener.accept() => conn,
-                _ = signal_tx.closed() => {
-                    trace!("signal received, not accepting new connections");
-                    break;
-                }
-            };
+            let (io, remote_addr) =
+                match select(pin!(listener.accept()), pin!(signal_rx.changed())).await {
+                    Either::Left((conn, _)) => conn,
+                    Either::Right((Err(_), _)) => {
+                        trace!("signal received, not accepting new connections");
+                        break;
+                    }
+                    Either::Right((Ok(()), _)) => {
+                        unreachable!("shutdown channel never sends values")
+                    }
+                };
 
             handle_connection(
                 &mut make_service,
-                &signal_tx,
+                &signal_rx,
                 &close_rx,
+                Some(&graceful),
                 io,
                 remote_addr,
                 &executor,
@@ -482,6 +496,7 @@ where
             .await;
         }
 
+        drop(graceful);
         drop(close_rx);
         drop(listener);
 
@@ -556,25 +571,28 @@ where
     }
 }
 
-/// Lets an upgraded connection (e.g. a WebSocket) take part in graceful
-/// shutdown. Inserted into every request's extensions and read by
+/// Lets a connection that outlives its response, such as an upgraded
+/// WebSocket, take part in graceful shutdown. Present in the request
+/// extensions only when [`with_graceful_shutdown`] is in use, and read by
 /// [`WebSocketUpgrade`].
 ///
+/// [`with_graceful_shutdown`]: Serve::with_graceful_shutdown
 /// [`WebSocketUpgrade`]: crate::extract::ws::WebSocketUpgrade
 // Only read by the `ws` extractor.
 #[cfg_attr(not(feature = "ws"), allow(dead_code))]
 #[derive(Clone, Debug)]
-pub(crate) struct GracefulPeer {
-    /// Resolves via `closed()` when shutdown begins.
-    pub(crate) shutdown: watch::Sender<()>,
-    /// Held by the upgraded task to keep the drain open.
+pub(crate) struct ConnectionShutdownHandle {
+    /// `changed()` fails once the serve task drops the signal sender.
+    pub(crate) shutdown: watch::Receiver<()>,
+    /// Held by the upgraded task so the drain waits for it.
     pub(crate) guard: watch::Receiver<()>,
 }
 
 async fn handle_connection<L, M, S, B, E>(
     make_service: &mut M,
-    signal_tx: &watch::Sender<()>,
+    signal_rx: &watch::Receiver<()>,
     close_rx: &watch::Receiver<()>,
+    graceful: Option<&ConnectionShutdownHandle>,
     io: <L as Listener>::Io,
     remote_addr: <L as Listener>::Addr,
     executor: &E,
@@ -590,6 +608,7 @@ async fn handle_connection<L, M, S, B, E>(
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
     E: Executor,
 {
+    let mut signal_rx = signal_rx.clone();
     let io = TokioIo::new(io);
 
     trace!("connection {remote_addr:?} accepted");
@@ -599,11 +618,7 @@ async fn handle_connection<L, M, S, B, E>(
         .await
         .unwrap_or_else(|err| match err {});
 
-    // Attached to every request; inert unless graceful shutdown is running.
-    let graceful = GracefulPeer {
-        shutdown: signal_tx.clone(),
-        guard: close_rx.clone(),
-    };
+    let graceful = graceful.cloned();
 
     let tower_service = make_service
         .call(IncomingStream {
@@ -614,12 +629,13 @@ async fn handle_connection<L, M, S, B, E>(
         .unwrap_or_else(|err| match err {})
         .map_request(move |req: Request<Incoming>| {
             let mut req = req.map(Body::new);
-            req.extensions_mut().insert(graceful.clone());
+            if let Some(graceful) = &graceful {
+                req.extensions_mut().insert(graceful.clone());
+            }
             req
         });
 
     let hyper_service = TowerToHyperService::new(tower_service);
-    let signal_tx = signal_tx.clone();
     let close_rx = close_rx.clone();
 
     let hyper_executor = HyperExecutor(executor.clone());
@@ -636,19 +652,22 @@ async fn handle_connection<L, M, S, B, E>(
         builder.http2().enable_connect_protocol();
 
         let mut conn = pin!(builder.serve_connection_with_upgrades(io, hyper_service));
-        let mut signal_closed = pin!(signal_tx.closed().fuse());
+        let mut signal_closed = pin!(signal_rx.changed().fuse());
 
         loop {
-            tokio::select! {
-                result = conn.as_mut() => {
+            match select(conn.as_mut(), &mut signal_closed).await {
+                Either::Left((result, _)) => {
                     if let Err(_err) = result {
                         trace!("failed to serve connection: {_err:#}");
                     }
                     break;
                 }
-                _ = &mut signal_closed => {
+                Either::Right((Err(_), _)) => {
                     trace!("signal received in task, starting graceful shutdown");
                     conn.as_mut().graceful_shutdown();
+                }
+                Either::Right((Ok(()), _)) => {
+                    unreachable!("shutdown channel never sends values")
                 }
             }
         }
@@ -717,10 +736,12 @@ mod tests {
     use std::{
         future::{pending, IntoFuture as _},
         net::{IpAddr, Ipv4Addr},
+        pin::pin,
         time::Duration,
     };
 
     use axum_core::{body::Body, extract::Request};
+    use futures_util::future::{select, Either};
     use http::{Response, StatusCode};
     use hyper_util::rt::TokioIo;
     #[cfg(unix)]
@@ -766,7 +787,7 @@ mod tests {
         }
     }
 
-    #[allow(dead_code, unused_must_use)]
+    #[allow(dead_code, unused)]
     async fn if_it_compiles_it_works() {
         #[derive(Clone, Debug)]
         struct UdsConnectInfo;
@@ -1021,9 +1042,9 @@ mod tests {
                 .expect("read_to_end");
             };
 
-            tokio::select! {
-                _ = server_task => unreachable!(),
-                _ = wait_for_server_to_close_conn => (),
+            match select(pin!(server_task), pin!(wait_for_server_to_close_conn)).await {
+                Either::Left(_) => unreachable!(),
+                Either::Right(_) => (),
             };
         }
     }

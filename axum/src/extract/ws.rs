@@ -65,8 +65,54 @@
 //!
 //! # Read and write concurrently
 //!
-//! If you need to read and write concurrently from a [`WebSocket`] you can use
-//! [`StreamExt::split`]:
+//! To read and write concurrently it's not necessary to split the socket into
+//! separate halves. Instead, have a single task own the [`WebSocket`] — the
+//! [actor pattern] — and use [`select!`] to race receiving a message from the
+//! socket against other event sources, such as an [`mpsc`] channel that other
+//! tasks use to send messages to the client. [`WebSocket::recv`] is cancel
+//! safe, so it can be used as a `select!` branch directly:
+//!
+//! ```rust,no_run
+//! use axum::extract::ws::{Message, WebSocket};
+//! use tokio::sync::mpsc;
+//!
+//! async fn handle_socket(mut socket: WebSocket) {
+//!     let (tx, mut rx) = mpsc::channel::<Message>(32);
+//!
+//!     // give `tx` to tasks that want to send messages to the client
+//!     tokio::spawn(background_task(tx));
+//!
+//!     loop {
+//!         tokio::select! {
+//!             msg = socket.recv() => {
+//!                 match msg {
+//!                     Some(Ok(msg)) => {
+//!                         // handle the message received from the client
+//!                         # _ = msg;
+//!                     }
+//!                     // client disconnected or an error occurred
+//!                     _ => return,
+//!                 }
+//!             }
+//!             Some(msg) = rx.recv() => {
+//!                 if socket.send(msg).await.is_err() {
+//!                     // client disconnected
+//!                     return;
+//!                 }
+//!             }
+//!         }
+//!     }
+//! }
+//!
+//! async fn background_task(tx: mpsc::Sender<Message>) {
+//!     // ...
+//! }
+//! ```
+//!
+//! Alternatively you can use [`StreamExt::split`] to split the socket into a
+//! sender and a receiver half that can be moved to independent tasks. Note
+//! that each half is protected by a lock that must be acquired for every
+//! operation, so prefer the actor pattern where possible:
 //!
 //! ```rust,no_run
 //! use axum::{Error, extract::ws::{WebSocket, Message}};
@@ -90,17 +136,40 @@
 //!
 //! # Graceful shutdown
 //!
-//! When the server is run with [`axum::serve`] and
-//! [`Serve::with_graceful_shutdown`], WebSocket connections take part in the
-//! shutdown: once the signal fires each open [`WebSocket`] sends a Close frame
-//! to its peer, and the server waits for the handler tasks to finish before
-//! resolving.
+//! Under [`axum::serve`] with [`Serve::with_graceful_shutdown`], WebSocket
+//! connections take part in the shutdown. Once the signal fires each open
+//! [`WebSocket`] sends the peer a close frame with code `1001` (going away),
+//! and the server waits for the handler tasks to finish before resolving.
 //!
-//! A handler with the usual read loop needs no changes. After the Close
-//! handshake [`WebSocket::recv`] returns `None`, so the loop ends and the task
-//! returns. A handler that never polls the socket and never returns will still
-//! hold shutdown open, like any other in-flight response body.
+//! A handler with the usual read loop needs no changes: after the close
+//! handshake [`WebSocket::recv`] returns `None`, the loop ends and the task
+//! returns.
 //!
+//! A handler that never polls the socket, or a peer that never replies to the
+//! close frame, will hold shutdown open, the same as an in-flight response
+//! body that never finishes. Race the serve future against a deadline if you
+//! need a hard bound:
+//!
+//! ```rust,no_run
+//! use axum::{Router, routing::any};
+//! use std::time::Duration;
+//!
+//! # async fn ws_handler() {}
+//! # async fn shutdown_signal() {}
+//! # async fn run(listener: tokio::net::TcpListener) {
+//! let app = Router::new().route("/ws", any(ws_handler));
+//!
+//! let serve = axum::serve(listener, app).with_graceful_shutdown(shutdown_signal());
+//!
+//! if tokio::time::timeout(Duration::from_secs(30), serve).await.is_err() {
+//!     eprintln!("shutdown timed out, dropping remaining connections");
+//! }
+//! # }
+//! ```
+//!
+//! [actor pattern]: https://ryhl.io/blog/actors-with-tokio/
+//! [`mpsc`]: https://docs.rs/tokio/latest/tokio/sync/mpsc/index.html
+//! [`select!`]: https://docs.rs/tokio/latest/tokio/macro.select.html
 //! [`StreamExt::split`]: https://docs.rs/futures/0.3.17/futures/stream/trait.StreamExt.html#method.split
 //! [`axum::serve`]: crate::serve()
 //! [`Serve::with_graceful_shutdown`]: crate::serve::Serve::with_graceful_shutdown
@@ -110,7 +179,7 @@ use super::FromRequestParts;
 use crate::{body::Bytes, response::Response, Error};
 // Gated like `axum::serve` itself; the `ws` feature does not imply `http1`/`http2`.
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-use crate::serve::GracefulPeer;
+use crate::serve::ConnectionShutdownHandle;
 use axum_core::body::Body;
 use futures_core::{FusedStream, Stream};
 use futures_sink::Sink;
@@ -158,9 +227,8 @@ pub struct WebSocketUpgrade<F = DefaultOnFailedUpgrade> {
     on_upgrade: hyper::upgrade::OnUpgrade,
     on_failed_upgrade: F,
     sec_websocket_protocol: BTreeSet<HeaderValue>,
-    /// Graceful-shutdown handle for the socket, if any. See [`GracefulPeer`].
     #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-    graceful: Option<GracefulPeer>,
+    graceful: Option<ConnectionShutdownHandle>,
 }
 
 impl<F> std::fmt::Debug for WebSocketUpgrade<F> {
@@ -387,13 +455,16 @@ impl<F> WebSocketUpgrade<F> {
 
         let protocol = self.protocol.clone();
 
+        // Boxed once per upgrade rather than rebuilt per poll, so a socket that
+        // is parked on a read stays registered on the watch channel instead of
+        // re-registering on every frame.
         #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
         let (shutdown, guard) = match self.graceful {
-            Some(peer) => {
-                let signal = peer.shutdown;
+            Some(handle) => {
+                let mut signal = handle.shutdown;
                 let shutdown: Pin<Box<dyn Future<Output = ()> + Send>> =
-                    Box::pin(async move { signal.closed().await });
-                (Some(shutdown), Some(peer.guard))
+                    Box::pin(async move { while signal.changed().await.is_ok() {} });
+                (Some(shutdown), Some(handle.guard))
             }
             None => (None, None),
         };
@@ -401,7 +472,7 @@ impl<F> WebSocketUpgrade<F> {
         let shutdown: Option<Pin<Box<dyn Future<Output = ()> + Send>>> = None;
 
         tokio::spawn(async move {
-            // Held for the task's lifetime to keep the shutdown drain open.
+            // Held for the task's lifetime so the drain waits for it.
             #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
             let _guard = guard;
 
@@ -545,10 +616,9 @@ where
             .remove::<hyper::upgrade::OnUpgrade>()
             .ok_or(ConnectionNotUpgradable)?;
 
-        // Present only when `axum::serve` is draining gracefully; see
-        // `GracefulPeer`.
+        // Only inserted when `with_graceful_shutdown` is in use.
         #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-        let graceful = parts.extensions.get::<GracefulPeer>().cloned();
+        let graceful = parts.extensions.get::<ConnectionShutdownHandle>().cloned();
 
         let sec_websocket_protocol = parts
             .headers
@@ -605,14 +675,14 @@ pub struct WebSocket {
     close_state: CloseState,
 }
 
-/// Progress of the Close frame sent when graceful shutdown begins.
+/// Progress of the close frame sent when graceful shutdown begins.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum CloseState {
-    /// No Close queued (also the terminal state).
+    /// Nothing queued. Also the terminal state.
     Idle,
-    /// Shutdown seen; Close needs enqueuing.
+    /// Shutdown seen, close frame still needs enqueuing.
     Queued,
-    /// Close enqueued; flushing it out.
+    /// Close frame enqueued, flushing it out.
     Flushing,
 }
 
@@ -647,15 +717,52 @@ impl WebSocket {
     ///
     /// This method delegates to [`Sink`].
     pub async fn send(&mut self, msg: Message) -> Result<(), Error> {
-        self.inner
-            .send(msg.into_tungstenite())
-            .await
-            .map_err(Error::new)
+        SinkExt::send(self, msg).await
     }
 
     /// Return the selected WebSocket subprotocol, if one has been chosen.
     pub fn protocol(&self) -> Option<&HeaderValue> {
         self.protocol.as_ref()
+    }
+
+    /// Once graceful shutdown starts, get a close frame on the wire.
+    ///
+    /// Best effort: reads and writes keep working whatever happens here, and a
+    /// socket that is already closing just stays closing. Called from both
+    /// halves of [`split`] so a handler that only reads or only writes still
+    /// closes.
+    ///
+    /// [`split`]: https://docs.rs/futures/0.3.17/futures/stream/trait.StreamExt.html#method.split
+    fn poll_shutdown_close(&mut self, cx: &mut Context<'_>) {
+        let fired = match self.shutdown.as_mut() {
+            Some(shutdown) => shutdown.as_mut().poll(cx).is_ready(),
+            None => return,
+        };
+        if fired {
+            self.shutdown = None;
+            self.close_state = CloseState::Queued;
+        }
+
+        if self.close_state == CloseState::Queued {
+            match self.inner.poll_ready_unpin(cx) {
+                Poll::Ready(Ok(())) => {
+                    let close = Message::Close(Some(CloseFrame {
+                        code: close_code::AWAY,
+                        reason: Utf8Bytes::from_static("server shutting down"),
+                    }));
+                    self.close_state = match self.inner.start_send_unpin(close.into_tungstenite()) {
+                        Ok(()) => CloseState::Flushing,
+                        Err(_) => CloseState::Idle,
+                    };
+                }
+                Poll::Ready(Err(_)) => self.close_state = CloseState::Idle,
+                Poll::Pending => {}
+            }
+        }
+
+        if self.close_state == CloseState::Flushing && self.inner.poll_flush_unpin(cx).is_ready() {
+            self.close_state = CloseState::Idle;
+        }
     }
 }
 
@@ -671,34 +778,7 @@ impl Stream for WebSocket {
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
-
-        // On shutdown, send a Close frame but keep reading so the peer's Close
-        // reply still ends the stream. Best-effort, so any failure falls through.
-        let shutdown_fired = match this.shutdown.as_mut() {
-            Some(shutdown) => shutdown.as_mut().poll(cx).is_ready(),
-            None => false,
-        };
-        if shutdown_fired {
-            this.shutdown = None;
-            this.close_state = CloseState::Queued;
-        }
-
-        if this.close_state == CloseState::Queued {
-            match this.inner.poll_ready_unpin(cx) {
-                Poll::Ready(Ok(())) => {
-                    this.close_state = match this.inner.start_send_unpin(ts::Message::Close(None)) {
-                        Ok(()) => CloseState::Flushing,
-                        Err(_) => CloseState::Idle,
-                    };
-                }
-                Poll::Ready(Err(_)) => this.close_state = CloseState::Idle,
-                Poll::Pending => {}
-            }
-        }
-
-        if this.close_state == CloseState::Flushing && this.inner.poll_flush_unpin(cx).is_ready() {
-            this.close_state = CloseState::Idle;
-        }
+        this.poll_shutdown_close(cx);
 
         loop {
             match ready!(this.inner.poll_next_unpin(cx)) {
@@ -718,6 +798,7 @@ impl Sink<Message> for WebSocket {
     type Error = Error;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_shutdown_close(cx);
         Pin::new(&mut self.inner).poll_ready(cx).map_err(Error::new)
     }
 
@@ -728,6 +809,7 @@ impl Sink<Message> for WebSocket {
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_shutdown_close(cx);
         Pin::new(&mut self.inner).poll_flush(cx).map_err(Error::new)
     }
 
@@ -1376,18 +1458,45 @@ mod tests {
         );
     }
 
-    // Graceful-shutdown interaction. These need `axum::serve`, which is only
-    // available with `http1`/`http2` (the `ws` feature alone does not imply it).
+    // Graceful shutdown needs `axum::serve`, which is only there with
+    // `http1`/`http2`; the `ws` feature alone does not imply it.
     #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
     mod graceful_shutdown {
         use super::*;
-        use crate::routing::any;
-        use std::future::IntoFuture as _;
-        use std::sync::Arc;
-        use std::time::Duration;
-        use tokio::net::{TcpListener, TcpStream};
+        use crate::{routing::any, Router};
+        use std::{future::IntoFuture as _, net::SocketAddr, sync::Arc, time::Duration};
+        use tokio::{
+            net::{TcpListener, TcpStream},
+            sync::oneshot,
+            task::JoinHandle,
+        };
 
-        async fn connect(addr: std::net::SocketAddr) -> WebSocketStream<TcpStream> {
+        type Client = WebSocketStream<TcpStream>;
+
+        // A `/ws` route running `on_socket`. The handler holds `marker`, so
+        // `Arc::strong_count` tells a test whether the task really finished.
+        fn ws_app<C, Fut>(marker: &Arc<()>, on_socket: C) -> Router
+        where
+            C: FnOnce(WebSocket) -> Fut + Clone + Send + Sync + 'static,
+            Fut: Future<Output = ()> + Send + 'static,
+        {
+            let marker = marker.clone();
+            Router::new().route(
+                "/ws",
+                any(move |ws: WebSocketUpgrade| {
+                    let marker = marker.clone();
+                    let on_socket = on_socket.clone();
+                    async move {
+                        ws.on_upgrade(move |socket| async move {
+                            let _marker = marker;
+                            on_socket(socket).await;
+                        })
+                    }
+                }),
+            )
+        }
+
+        async fn connect(addr: SocketAddr) -> Client {
             let uri: http::Uri = format!("ws://{addr}/ws").try_into().unwrap();
             let req = tungstenite::client::ClientRequestBuilder::new(uri);
             let tcp = TcpStream::connect(addr).await.unwrap();
@@ -1395,21 +1504,65 @@ mod tests {
             client
         }
 
-        // Drives the client to completion, returning whether a Close frame was
-        // observed. Reading to the end also flushes the client's own Close reply
-        // so the server's handshake (and thus the server) can complete.
-        async fn drain_until_closed(mut client: WebSocketStream<TcpStream>) -> bool {
+        struct TestServer {
+            addr: SocketAddr,
+            signal: oneshot::Sender<()>,
+            task: JoinHandle<()>,
+        }
+
+        impl TestServer {
+            async fn spawn(app: Router) -> Self {
+                let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+                let addr = listener.local_addr().unwrap();
+                let (signal, rx) = oneshot::channel();
+                let task = tokio::spawn(
+                    crate::serve(listener, app)
+                        .with_graceful_shutdown(async move {
+                            let _ = rx.await;
+                        })
+                        .into_future(),
+                );
+                Self { addr, signal, task }
+            }
+
+            // Fires the signal, drains `client`, and waits for the serve future.
+            // Returns whether the client saw a close frame. The client has to be
+            // drained concurrently: its close reply is what ends the server's own
+            // read loop.
+            async fn shutdown_with(self, client: Client) -> bool {
+                self.signal.send(()).unwrap();
+                let client = tokio::spawn(drain_until_closed(client));
+
+                tokio::time::timeout(Duration::from_secs(5), self.task)
+                    .await
+                    .expect("serve future did not complete after graceful shutdown")
+                    .expect("server task panicked");
+
+                tokio::time::timeout(Duration::from_secs(5), client)
+                    .await
+                    .expect("client task hung")
+                    .unwrap()
+            }
+        }
+
+        // Reads to the end, reporting whether a close frame turned up. Reading
+        // that far also flushes the client's own close reply.
+        async fn drain_until_closed(mut client: Client) -> bool {
             let mut saw_close = false;
             loop {
                 let next = tokio::time::timeout(Duration::from_secs(5), client.next())
                     .await
                     .expect("timed out waiting for client to read");
                 match next {
-                    Some(Ok(msg)) => {
-                        if msg.is_close() {
-                            saw_close = true;
-                        }
+                    Some(Ok(tungstenite::Message::Close(frame))) => {
+                        assert_eq!(
+                            frame.map(|frame| u16::from(frame.code)),
+                            Some(close_code::AWAY),
+                            "close frame should say the server is going away"
+                        );
+                        saw_close = true;
                     }
+                    Some(Ok(_)) => {}
                     Some(Err(_)) | None => break,
                 }
             }
@@ -1429,120 +1582,43 @@ mod tests {
         }
 
         // Regression test for https://github.com/tokio-rs/axum/issues/3003. A
-        // recv() loop used to be detached and outlive graceful shutdown. Now it
-        // is sent a Close frame and the server waits for it.
+        // recv() loop used to be detached and outlive graceful shutdown.
         #[crate::test]
-        async fn waits_for_websocket_and_closes_it() {
+        async fn waits_for_reading_socket() {
             let marker = Arc::new(());
+            let app = ws_app(&marker, |mut socket| async move {
+                while let Some(Ok(_)) = socket.recv().await {}
+            });
+            let server = TestServer::spawn(app).await;
+            let client = connect(server.addr).await;
 
-            let app = {
-                let marker = marker.clone();
-                crate::Router::new().route(
-                    "/ws",
-                    any(move |ws: WebSocketUpgrade| {
-                        let marker = marker.clone();
-                        async move {
-                            ws.on_upgrade(move |mut socket| async move {
-                                // Kept so strong_count proves the task finished.
-                                let _marker = marker;
-                                while let Some(Ok(_)) = socket.recv().await {}
-                            })
-                        }
-                    }),
-                )
-            };
-
-            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-            let addr = listener.local_addr().unwrap();
-
-            let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
-            let server = tokio::spawn(
-                crate::serve(listener, app)
-                    .with_graceful_shutdown(async move {
-                        let _ = shutdown_rx.await;
-                    })
-                    .into_future(),
-            );
-
-            let client = connect(addr).await;
-
-            // Make sure the upgrade task is running and parked on `recv()`.
+            // Let the handler park on `recv()` before the signal fires.
             tokio::time::sleep(Duration::from_millis(50)).await;
 
-            // Trigger graceful shutdown.
-            shutdown_tx.send(()).unwrap();
-
-            let client_task = tokio::spawn(drain_until_closed(client));
-
-            // (b) the serve future completes within the timeout.
-            tokio::time::timeout(Duration::from_secs(5), server)
-                .await
-                .expect("serve future did not complete after graceful shutdown")
-                .expect("server task panicked");
-
-            // (a) the client observed a Close frame.
-            let saw_close = tokio::time::timeout(Duration::from_secs(5), client_task)
-                .await
-                .expect("client task hung")
-                .unwrap();
-            assert!(saw_close, "client never observed a Close frame");
-
-            // (c) the handler task finished and dropped its state.
+            assert!(server.shutdown_with(client).await, "no close frame");
             assert_finished(&marker).await;
         }
 
-        // As above, but the handler also sends messages periodically. Once the
-        // socket has sent its Close frame, further sends error and `recv` yields
-        // `None`, so the handler still terminates.
+        // A handler that also sends: once the close frame is out, further sends
+        // error and the handler still terminates.
         #[crate::test]
-        async fn waits_for_sending_websocket() {
+        async fn waits_for_sending_socket() {
             let marker = Arc::new(());
-
-            let app = {
-                let marker = marker.clone();
-                crate::Router::new().route(
-                    "/ws",
-                    any(move |ws: WebSocketUpgrade| {
-                        let marker = marker.clone();
-                        async move {
-                            ws.on_upgrade(move |mut socket| async move {
-                                let _marker = marker;
-                                loop {
-                                    match tokio::time::timeout(
-                                        Duration::from_millis(20),
-                                        socket.recv(),
-                                    )
-                                    .await
-                                    {
-                                        Ok(Some(Ok(_))) => {}
-                                        Ok(Some(Err(_)) | None) => break,
-                                        // Idle: send a keep-alive tick.
-                                        Err(_) => {
-                                            if socket.send(Message::text("tick")).await.is_err() {
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                            })
+            let app = ws_app(&marker, |mut socket| async move {
+                loop {
+                    match tokio::time::timeout(Duration::from_millis(20), socket.recv()).await {
+                        Ok(Some(Ok(_))) => {}
+                        Ok(Some(Err(_)) | None) => break,
+                        Err(_) => {
+                            if socket.send(Message::text("tick")).await.is_err() {
+                                break;
+                            }
                         }
-                    }),
-                )
-            };
-
-            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-            let addr = listener.local_addr().unwrap();
-
-            let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
-            let server = tokio::spawn(
-                crate::serve(listener, app)
-                    .with_graceful_shutdown(async move {
-                        let _ = shutdown_rx.await;
-                    })
-                    .into_future(),
-            );
-
-            let mut client = connect(addr).await;
+                    }
+                }
+            });
+            let server = TestServer::spawn(app).await;
+            let mut client = connect(server.addr).await;
 
             // Read a couple of ticks so we know the handler is live and sending.
             for _ in 0..2 {
@@ -1551,22 +1627,111 @@ mod tests {
                     .expect("timed out reading tick");
             }
 
-            shutdown_tx.send(()).unwrap();
-
-            let client_task = tokio::spawn(drain_until_closed(client));
-
-            tokio::time::timeout(Duration::from_secs(5), server)
-                .await
-                .expect("serve future did not complete after graceful shutdown")
-                .expect("server task panicked");
-
-            let saw_close = tokio::time::timeout(Duration::from_secs(5), client_task)
-                .await
-                .expect("client task hung")
-                .unwrap();
-            assert!(saw_close, "client never observed a Close frame");
-
+            assert!(server.shutdown_with(client).await, "no close frame");
             assert_finished(&marker).await;
+        }
+
+        #[crate::test]
+        async fn split_halves_both_see_shutdown() {
+            let marker = Arc::new(());
+            let app = ws_app(&marker, |socket| async move {
+                let (mut sender, mut receiver) = socket.split();
+                let read = async move { while let Some(Ok(_)) = receiver.next().await {} };
+                let write = async move {
+                    while sender.send(Message::text("tick")).await.is_ok() {
+                        tokio::time::sleep(Duration::from_millis(20)).await;
+                    }
+                };
+                tokio::join!(read, write);
+            });
+            let server = TestServer::spawn(app).await;
+            let mut client = connect(server.addr).await;
+
+            tokio::time::timeout(Duration::from_secs(5), client.next())
+                .await
+                .expect("timed out reading tick");
+
+            assert!(server.shutdown_with(client).await, "no close frame");
+            assert_finished(&marker).await;
+        }
+
+        // Only the read half survives, so the close frame has to come out of
+        // `Stream::poll_next`.
+        #[crate::test]
+        async fn split_read_half_alone_sees_shutdown() {
+            let marker = Arc::new(());
+            let app = ws_app(&marker, |socket| async move {
+                let (sender, mut receiver) = socket.split();
+                drop(sender);
+                while let Some(Ok(_)) = receiver.next().await {}
+            });
+            let server = TestServer::spawn(app).await;
+            let client = connect(server.addr).await;
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
+            assert!(server.shutdown_with(client).await, "no close frame");
+            assert_finished(&marker).await;
+        }
+
+        // Only the write half survives, so the close frame has to come out of
+        // the `Sink` side, and the send that follows it has to fail so the
+        // handler stops.
+        #[crate::test]
+        async fn split_write_half_alone_sees_shutdown() {
+            let marker = Arc::new(());
+            let app = ws_app(&marker, |socket| async move {
+                let (mut sender, receiver) = socket.split();
+                drop(receiver);
+                while sender.send(Message::text("tick")).await.is_ok() {
+                    tokio::time::sleep(Duration::from_millis(20)).await;
+                }
+            });
+            let server = TestServer::spawn(app).await;
+            let mut client = connect(server.addr).await;
+
+            tokio::time::timeout(Duration::from_secs(5), client.next())
+                .await
+                .expect("timed out reading tick");
+
+            assert!(server.shutdown_with(client).await, "no close frame");
+            assert_finished(&marker).await;
+        }
+
+        // Nothing can fire the signal under plain `serve`, so the socket must be
+        // left alone.
+        #[crate::test]
+        async fn plain_serve_never_closes_sockets() {
+            let marker = Arc::new(());
+            let app = ws_app(&marker, |mut socket| async move {
+                while let Some(Ok(msg)) = socket.recv().await {
+                    if socket.send(msg).await.is_err() {
+                        break;
+                    }
+                }
+            });
+
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+            tokio::spawn(crate::serve(listener, app).into_future());
+
+            let mut client = connect(addr).await;
+            for text in ["one", "two"] {
+                client.send(tungstenite::Message::text(text)).await.unwrap();
+                let echo = tokio::time::timeout(Duration::from_secs(5), client.next())
+                    .await
+                    .expect("timed out waiting for echo")
+                    .unwrap()
+                    .unwrap();
+                assert_eq!(echo, tungstenite::Message::text(text));
+
+                // Long enough that a close frame would have shown up by now.
+                assert!(
+                    tokio::time::timeout(Duration::from_millis(200), client.next())
+                        .await
+                        .is_err(),
+                    "socket was closed without graceful shutdown"
+                );
+            }
         }
     }
 }

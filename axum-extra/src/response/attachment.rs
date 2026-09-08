@@ -56,11 +56,12 @@ impl<T: IntoResponse> Attachment<T> {
     ///
     /// This updates the `Content-Disposition` header to add a filename.
     pub fn filename<H: TryInto<HeaderValue>>(mut self, value: H) -> Self {
-        self.filename = if let Ok(filename) = value.try_into() {
-            Some(filename)
-        } else {
-            error!("Attachment filename contains invalid characters");
-            None
+        self.filename = match value.try_into() {
+            Ok(filename) if filename.to_str().is_ok() => Some(filename),
+            _ => {
+                error!("Attachment filename contains invalid characters");
+                None
+            }
         };
         self
     }
@@ -126,6 +127,14 @@ mod tests {
             .into_response();
         let value = attachment.headers().get(CONTENT_DISPOSITION).unwrap();
         assert_eq!(value, "attachment; filename=\"report.pdf\"");
+    }
+
+    #[test]
+    fn attachment_with_opaque_filename() {
+        let filename = HeaderValue::from_bytes(b"report\xff.pdf").unwrap();
+        let attachment = Attachment::new("data").filename(filename).into_response();
+        let value = attachment.headers().get(CONTENT_DISPOSITION).unwrap();
+        assert_eq!(value, "attachment");
     }
 
     #[test]

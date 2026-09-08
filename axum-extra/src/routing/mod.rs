@@ -234,6 +234,19 @@ pub trait RouterExt<S>: sealed::Sealed {
         T: SecondElementIs<P> + 'static,
         P: TypedPath;
 
+    /// Add a typed `QUERY` route to the router.
+    ///
+    /// The path will be inferred from the first argument to the handler function which must
+    /// implement [`TypedPath`].
+    ///
+    /// See [`TypedPath`] for more details and examples.
+    #[cfg(feature = "typed-routing")]
+    fn typed_query<H, T, P>(self, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, S>,
+        T: SecondElementIs<P> + 'static,
+        P: TypedPath;
+
     /// Add another route to the router with an additional "trailing slash redirect" route.
     ///
     /// If you add a route _without_ a trailing slash, such as `/foo`, this method will also add a
@@ -366,6 +379,16 @@ where
         P: TypedPath,
     {
         self.route(P::PATH, axum::routing::connect(handler))
+    }
+
+    #[cfg(feature = "typed-routing")]
+    fn typed_query<H, T, P>(self, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, S>,
+        T: SecondElementIs<P> + 'static,
+        P: TypedPath,
+    {
+        self.route(P::PATH, axum::routing::query(handler))
     }
 
     #[track_caller]

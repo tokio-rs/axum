@@ -4,7 +4,7 @@
 //! cargo run -p example-validator
 //!
 //! curl '127.0.0.1:3000?name='
-//! -> Input validation error: [name: Can not be empty]
+//! -> Input validation error: [name: Must be at least 2 characters]
 //!
 //! curl '127.0.0.1:3000?name=LT'
 //! -> <h1>Hello, LT!</h1>
@@ -48,7 +48,7 @@ fn app() -> Router {
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct NameInput {
-    #[validate(length(min = 2, message = "Can not be empty"))]
+    #[validate(length(min = 2, message = "Must be at least 2 characters"))]
     pub name: String,
 }
 
@@ -133,7 +133,10 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         let html = get_html(response).await;
-        assert_eq!(html, "Input validation error: [name: Can not be empty]");
+        assert_eq!(
+            html,
+            "Input validation error: [name: Must be at least 2 characters]"
+        );
     }
 
     #[tokio::test]
@@ -145,7 +148,10 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         let html = get_html(response).await;
-        assert_eq!(html, "Input validation error: [name: Can not be empty]");
+        assert_eq!(
+            html,
+            "Input validation error: [name: Must be at least 2 characters]"
+        );
     }
 
     #[tokio::test]

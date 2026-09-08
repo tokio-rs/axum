@@ -24,6 +24,37 @@
 //! }
 //! # let _: Router = app;
 //! ```
+//!
+//! # Custom event payloads
+//!
+//! Sometimes a client expects a payload other than the standard `data: ` framing, such as
+//! a pre-serialized event, or a raw text chunk for a client that doesn't speak
+//! `EventSource` framing at all. [`Event::raw`] hands you full control over the bytes written
+//! to the wire for that event, while `Sse` still takes care of the response headers and, if
+//! configured, [`KeepAlive`]:
+//!
+//! ```
+//! use axum::{
+//!     Router,
+//!     routing::get,
+//!     response::sse::{Event, KeepAlive, Sse},
+//! };
+//! use std::{time::Duration, convert::Infallible};
+//! use tokio_stream::StreamExt as _ ;
+//! use futures_util::stream::{self, Stream};
+//!
+//! let app = Router::new().route("/sse", get(sse_handler));
+//!
+//! async fn sse_handler() -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+//!     // A pre-serialized event, sent on the wire exactly as given.
+//!     let stream = stream::repeat_with(|| Event::raw("data: hi\n\n"))
+//!         .map(Ok)
+//!         .throttle(Duration::from_secs(1));
+//!
+//!     Sse::new(stream).keep_alive(KeepAlive::default())
+//! }
+//! # let _: Router = app;
+//! ```
 
 use crate::{
     body::{Bytes, HttpBody},
@@ -179,8 +210,9 @@ pub struct Event {
 /// Expose [`Event`] as a [`std::fmt::Write`]
 /// such that any form of data can be written as data safely.
 ///
-/// This also ensures that newline characters `\r` and `\n`
-/// correctly trigger a split with a new `data: ` prefix.
+/// This also ensures that CRLF (`\r\n`), lone CR (`\r`), and lone LF (`\n`)
+/// line endings correctly trigger a split with a new `data: ` prefix. A CRLF
+/// pair is treated as a single line ending.
 ///
 /// # Panics
 ///
@@ -195,6 +227,10 @@ pub struct EventDataWriter {
     // this does not say anything about whether or not `event` contains
     // data or not.
     data_written: bool,
+
+    // A trailing CR might be followed by an LF in the next write. Defer the
+    // next `data: ` prefix until we know whether they form a CRLF pair.
+    pending_cr: bool,
 }
 
 impl Event {
@@ -208,6 +244,41 @@ impl Event {
         }
     }
 
+    /// Create an event whose payload is emitted on the wire exactly as provided.
+    ///
+    /// The given `bytes` are sent as a single body frame, verbatim: there is no `data: `
+    /// framing, no validation of field syntax, and no terminating empty line is added. If the
+    /// event needs to be understood by a standard [`EventSource`] client, the caller is
+    /// responsible for providing the complete event including its terminator, such as
+    /// `"data: hi\n\n"`.
+    ///
+    /// This is meant as an escape hatch for nonstandard event formats (such as clients that
+    /// don't accept the usual SSE framing) while still keeping [`Sse`]'s handling of the
+    /// `content-type`/`cache-control` headers and its [`KeepAlive`] support.
+    ///
+    /// Like any other event, a raw event resets the keep-alive timer when sent through
+    /// [`Sse::keep_alive`].
+    ///
+    /// Note that calling further builder methods, such as [`Event::comment`], after `raw` will
+    /// append their fields *after* the raw bytes and re-add a terminating newline. That's
+    /// allowed, but usually not what you want.
+    ///
+    /// [`EventSource`]: https://developer.mozilla.org/en-US/docs/Web/API/EventSource
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::response::sse::Event;
+    ///
+    /// let event = Event::raw("data: hi\n\n");
+    /// ```
+    pub fn raw<T>(bytes: T) -> Self
+    where
+        T: Into<Bytes>,
+    {
+        Self::finalized(bytes.into())
+    }
+
     /// Use this [`Event`] as a [`EventDataWriter`] to write custom data.
     ///
     /// - [`Self::data`] can be used as a shortcut to write `str` data
@@ -218,6 +289,7 @@ impl Event {
         EventDataWriter {
             event: self,
             data_written: false,
+            pending_cr: false,
         }
     }
 
@@ -430,7 +502,11 @@ impl EventDataWriter {
     pub fn into_event(self) -> Event {
         let mut event = self.event;
         if self.data_written {
-            let _ = event.buffer.as_mut().write_char('\n');
+            let buffer = event.buffer.as_mut();
+            if self.pending_cr {
+                let _ = buffer.write_str("data: ");
+            }
+            let _ = buffer.write_char('\n');
         }
         event
     }
@@ -444,6 +520,7 @@ impl EventDataWriter {
             return 0;
         }
 
+        let pending_cr = mem::take(&mut self.pending_cr);
         let buffer = self.event.buffer.as_mut();
 
         if !std::mem::replace(&mut self.data_written, true) {
@@ -457,13 +534,26 @@ impl EventDataWriter {
 
         let mut writer = buffer.writer();
 
+        if pending_cr && buf[0] != b'\n' {
+            let _ = writer.write_all(b"data: ");
+        }
+
         let mut last_split = 0;
         for delimiter in memchr::memchr2_iter(b'\n', b'\r', buf) {
+            if buf[delimiter] == b'\r' && buf.get(delimiter + 1) == Some(&b'\n') {
+                continue;
+            }
+
             let _ = writer.write_all(&buf[last_split..=delimiter]);
-            let _ = writer.write_all(b"data: ");
             last_split = delimiter + 1;
+
+            if buf[delimiter] != b'\r' || last_split != buf.len() {
+                let _ = writer.write_all(b"data: ");
+            }
         }
         let _ = writer.write_all(&buf[last_split..]);
+
+        self.pending_cr = buf.last() == Some(&b'\r');
 
         buf.len()
     }
@@ -680,6 +770,34 @@ mod tests {
     }
 
     #[test]
+    fn crlf_is_one_line_ending() {
+        let event = Event::default().data("first\r\nsecond");
+
+        assert_eq!(&*event.finalize(), b"data: first\r\ndata: second\n\n");
+    }
+
+    #[test]
+    fn data_writer_output_is_independent_of_write_boundaries() {
+        let data = "first\r\nsecond\rthird\nfourth\r";
+        let expected = b"data: first\r\ndata: second\rdata: third\ndata: fourth\rdata: \n\n";
+
+        for first_split in 0..=data.len() {
+            for second_split in first_split..=data.len() {
+                let mut writer = Event::default().into_data_writer();
+                writer.write_str(&data[..first_split]).unwrap();
+                writer.write_str(&data[first_split..second_split]).unwrap();
+                writer.write_str(&data[second_split..]).unwrap();
+
+                assert_eq!(
+                    &*writer.into_event().finalize(),
+                    expected,
+                    "write boundaries at {first_split} and {second_split}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn valid_json_raw_value_chars_handled() {
         let json_string = "{\r\"foo\":  \n\r\r   \"bar\\n\"\n}";
         let json_raw_value_event = Event::default()
@@ -689,6 +807,27 @@ mod tests {
             &*json_raw_value_event.finalize(),
             b"data: {\rdata: \"foo\":  \ndata: \rdata: \rdata:    \"bar\\n\"\ndata: }\n\n"
         );
+    }
+
+    #[test]
+    fn raw_event_round_trips_bytes_exactly() {
+        let event = Event::raw(b"data: hi\n\n".as_slice());
+        assert_eq!(&*event.finalize(), b"data: hi\n\n");
+
+        let empty = Event::raw(Bytes::new());
+        assert_eq!(&*empty.finalize(), b"");
+
+        // No trailing `\n` is appended, unlike an `Active` buffer.
+        let no_trailing_newline = Event::raw(b"data: hi".as_slice());
+        assert_eq!(&*no_trailing_newline.finalize(), b"data: hi");
+    }
+
+    #[test]
+    fn raw_event_then_comment_appends_and_reterminates() {
+        // Once further builder methods are called, the `Finalized` buffer is converted back
+        // into an `Active` one, so a trailing `\n` is added again on top of the appended field.
+        let event = Event::raw(b"data: hi\n\n".as_slice()).comment("x");
+        assert_eq!(&*event.finalize(), b"data: hi\n\n: x\n\n");
     }
 
     #[crate::test]
@@ -734,6 +873,33 @@ mod tests {
         assert!(stream.chunk_text().await.is_none());
     }
 
+    #[crate::test]
+    async fn raw_events() {
+        let app = Router::new().route(
+            "/",
+            get(|| async {
+                let stream = stream::iter(vec![
+                    Event::raw(Bytes::from_static(b"data: one\n\n")),
+                    Event::raw(Bytes::from_static(b":raw two\n\n")),
+                ])
+                .map(Ok::<_, Infallible>);
+                Sse::new(stream)
+            }),
+        );
+
+        let client = TestClient::new(app);
+        let mut stream = client.get("/").await;
+
+        assert_eq!(stream.headers()["content-type"], "text/event-stream");
+        assert_eq!(stream.headers()["cache-control"], "no-cache");
+
+        // Chunks are received byte-exact: no `data:` framing or extra newline is added.
+        assert_eq!(stream.chunk_text().await.unwrap(), "data: one\n\n");
+        assert_eq!(stream.chunk_text().await.unwrap(), ":raw two\n\n");
+
+        assert!(stream.chunk_text().await.is_none());
+    }
+
     #[tokio::test(start_paused = true)]
     async fn keep_alive() {
         const DELAY: Duration = Duration::from_secs(5);
@@ -762,6 +928,43 @@ mod tests {
             assert_eq!(event_fields.get("data").unwrap(), "msg");
 
             // then 4 seconds of keep-alive messages
+            for _ in 0..4 {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                let event_fields = parse_event(&stream.chunk_text().await.unwrap());
+                assert_eq!(event_fields.get("comment").unwrap(), "keep-alive-text");
+            }
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn keep_alive_with_raw_events() {
+        const DELAY: Duration = Duration::from_secs(5);
+
+        let app = Router::new().route(
+            "/",
+            get(|| async {
+                let stream =
+                    stream::repeat_with(|| Event::raw(Bytes::from_static(b"data: raw\n\n")))
+                        .map(Ok::<_, Infallible>)
+                        .throttle(DELAY);
+
+                Sse::new(stream).keep_alive(
+                    KeepAlive::new()
+                        .interval(Duration::from_secs(1))
+                        .text("keep-alive-text"),
+                )
+            }),
+        );
+
+        let client = TestClient::new(app);
+        let mut stream = client.get("/").await;
+
+        for _ in 0..5 {
+            // first message should be a raw event, sent byte-exact
+            assert_eq!(stream.chunk_text().await.unwrap(), "data: raw\n\n");
+
+            // then 4 seconds of keep-alive messages: a raw event resets the timer just like
+            // any other event
             for _ in 0..4 {
                 tokio::time::sleep(Duration::from_secs(1)).await;
                 let event_fields = parse_event(&stream.chunk_text().await.unwrap());

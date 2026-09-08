@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** `axum::serve` future output type has been adjusted to remove `io::Result`
   (never returned `Err`) and be an uninhabited type if `with_graceful_shutdown` is not used
   (because it was already never terminating if that method wasn't used) ([#3601])
+- **breaking:** `Serve::with_graceful_shutdown` now includes WebSocket handler tasks in the
+  shutdown: open sockets are sent a close frame with code `1001` and the serve future waits for
+  the handler tasks to finish. Previously they were detached and silently outlived the server.
+  A handler that never returns now holds shutdown open, as any in-flight response body does
+  ([#3831])
 - **added:** New `ListenerExt::limit_connections` allows limiting concurrent `axum::serve` connections ([#3489])
 - **added:** `MethodRouter::method_filter` ([#3586])
 - **added:** `serve::Executor` trait and `Serve::with_executor` for customizing how connection
@@ -21,14 +26,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** `IntoResponseParts` impl for `Redirect`, allowing it to be combined
   with a body in a response tuple ([#3721])
 - **added:** Add `RawPathParams::from_request_extensions` ([#3757])
+- **added:** `sse::Event::raw` for events with fully custom payloads ([#3829])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
+- **changed:** Reduced contention in `axum::serve` shutdown notification with many
+  active connections ([#3867])
 - **changed:** `Redirect` constructors now accept any `impl Into<String>` ([#3635])
 - **changed:** Updated `matchit` allowing for routes with captures and static prefixes and suffixes ([#3702])
 - **fixed:** Responses to `HEAD` will not accidentally reply with `content-length: 0` anymore ([#3742])
-- **fixed:** `Serve::with_graceful_shutdown` now waits for WebSocket handler tasks and sends open
-  sockets a close frame, rather than leaving them running once the server has shut down. A handler
-  that never returns will now hold shutdown open, as with any in-flight response body ([#3831])
+- **added:** Add `MethodFilter::QUERY`, `routing::query[_service]` and `MethodRouter::query[_service]` ([#3801])
 - **fixed:** `MethodRouter::merge` no longer lists a method twice in the `Allow`
   header after merging `get` and `head` ([#3836])
 
@@ -45,7 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3742]: https://github.com/tokio-rs/axum/pull/3742
 [#3836]: https://github.com/tokio-rs/axum/pull/3836
 [#3757]: https://github.com/tokio-rs/axum/pull/3757
+[#3829]: https://github.com/tokio-rs/axum/pull/3829
+[#3801]: https://github.com/tokio-rs/axum/pull/3801
 [#3831]: https://github.com/tokio-rs/axum/pull/3831
+[#3867]: https://github.com/tokio-rs/axum/pull/3867
 
 # 0.8.9
 
