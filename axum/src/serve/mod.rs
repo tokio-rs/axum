@@ -496,6 +496,7 @@ where
             .await;
         }
 
+        // Both hold a `close_rx` clone, which is what the drain below waits on.
         drop(graceful);
         drop(close_rx);
         drop(listener);

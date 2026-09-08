@@ -437,7 +437,7 @@ impl<F> WebSocketUpgrade<F> {
     /// # Graceful shutdown
     ///
     /// Under [`axum::serve`] with [`with_graceful_shutdown`] the spawned task
-    /// joins the shutdown and the socket is sent a Close frame once it begins.
+    /// joins the shutdown and the socket is sent a close frame once it begins.
     /// See the [module docs](self#graceful-shutdown) for details.
     ///
     /// [`axum::serve`]: crate::serve()
@@ -455,9 +455,8 @@ impl<F> WebSocketUpgrade<F> {
 
         let protocol = self.protocol.clone();
 
-        // Boxed once per upgrade rather than rebuilt per poll, so a socket that
-        // is parked on a read stays registered on the watch channel instead of
-        // re-registering on every frame.
+        // Boxed once per upgrade so a socket parked on a read stays registered
+        // on the watch channel, rather than re-registering on every poll.
         #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
         let (shutdown, guard) = match self.graceful {
             Some(handle) => {
@@ -680,9 +679,7 @@ pub struct WebSocket {
 enum CloseState {
     /// Nothing queued. Also the terminal state.
     Idle,
-    /// Shutdown seen, close frame still needs enqueuing.
     Queued,
-    /// Close frame enqueued, flushing it out.
     Flushing,
 }
 
@@ -728,19 +725,22 @@ impl WebSocket {
     /// Once graceful shutdown starts, get a close frame on the wire.
     ///
     /// Best effort: reads and writes keep working whatever happens here, and a
-    /// socket that is already closing just stays closing. Called from both
-    /// halves of [`split`] so a handler that only reads or only writes still
-    /// closes.
+    /// socket that is already closing stays closing. Both halves of [`split`]
+    /// call it, so a handler that only reads or only writes still closes.
     ///
     /// [`split`]: https://docs.rs/futures/0.3.17/futures/stream/trait.StreamExt.html#method.split
     fn poll_shutdown_close(&mut self, cx: &mut Context<'_>) {
         let fired = match self.shutdown.as_mut() {
             Some(shutdown) => shutdown.as_mut().poll(cx).is_ready(),
-            None => return,
+            None => false,
         };
         if fired {
             self.shutdown = None;
             self.close_state = CloseState::Queued;
+        }
+
+        if self.close_state == CloseState::Idle {
+            return;
         }
 
         if self.close_state == CloseState::Queued {
