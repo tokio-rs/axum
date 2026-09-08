@@ -288,7 +288,7 @@ pub enum ErrorKind {
         expected_type: &'static str,
     },
 
-    /// Failed to parse the value at a specific index into the expected type.
+    /// Failed to parse a value at a specific index into the expected type.
     ///
     /// This variant is used when deserializing into sequence types, such as tuples.
     ParseErrorAtIndex {
@@ -490,7 +490,10 @@ impl std::error::Error for FailedToDeserializePathParams {}
 /// # let _: Router = app;
 /// ```
 #[derive(Debug)]
-pub struct RawPathParams(Vec<(Arc<str>, PercentDecodedStr)>);
+pub struct RawPathParams {
+    params: Vec<(Arc<str>, PercentDecodedStr)>,
+    inner_start: usize,
+}
 
 impl<S> FromRequestParts<S> for RawPathParams
 where
@@ -512,13 +515,28 @@ impl RawPathParams {
         extensions: &Extensions,
     ) -> Result<Self, RawPathParamsRejection> {
         match extensions.get::<UrlParams>() {
-            Some(UrlParams::Params { params, .. }) => Ok(Self(params.clone())),
+            Some(UrlParams::Params {
+                params,
+                inner_start,
+            }) => Ok(Self {
+                params: params.clone(),
+                inner_start: *inner_start,
+            }),
             Some(UrlParams::InvalidUtf8InPathParam { key }) => Err(InvalidUtf8InPathParam {
                 key: Arc::clone(key),
             }
             .into()),
             None => Err(MissingPathParams.into()),
         }
+    }
+
+    /// Get the index where captures from the innermost router begin.
+    ///
+    /// This can be used together with [`RawPathParams::iter`] to inspect only the captures from
+    /// the innermost router without allocating another collection.
+    #[must_use]
+    pub fn inner_start(&self) -> usize {
+        self.inner_start
     }
 
     /// Get an iterator over the path parameters.
@@ -533,7 +551,7 @@ impl<'a> IntoIterator for &'a RawPathParams {
     type IntoIter = RawPathParamsIter<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
-        RawPathParamsIter(self.0.iter())
+        RawPathParamsIter(self.params.iter())
     }
 }
 
@@ -1010,6 +1028,7 @@ mod tests {
         let app = Router::new().route(
             "/{a}/{b}/{c}",
             get(|params: RawPathParams| async move {
+                assert_eq!(params.inner_start(), 0);
                 params
                     .into_iter()
                     .map(|(key, value)| format!("{key}={value}"))
@@ -1022,6 +1041,27 @@ mod tests {
         let res = client.get("/foo/bar/baz").await;
         let body = res.text().await;
         assert_eq!(body, "a=foo b=bar c=baz");
+    }
+
+    #[crate::test]
+    async fn raw_path_params_inner_start() {
+        let api = Router::new().route(
+            "/{b}/{c}",
+            get(|params: RawPathParams| async move {
+                assert_eq!(params.inner_start(), 1);
+                let inner = params
+                    .iter()
+                    .skip(params.inner_start())
+                    .map(|(key, value)| format!("{key}={value}"))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                assert_eq!(inner, "b=bar c=baz");
+            }),
+        );
+        let app = Router::new().nest("/{a}", api);
+
+        let res = TestClient::new(app).get("/foo/bar/baz").await;
+        assert_eq!(res.status(), StatusCode::OK);
     }
 
     #[crate::test]
