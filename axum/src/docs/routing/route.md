@@ -96,6 +96,23 @@ async fn handler(Path(path): Path<String>) -> String {
 Note that the leading slash is not included, i.e. for the route `/foo/{*rest}` and
 the path `/foo/bar/baz` the value of `rest` will be `bar/baz`.
 
+The captured segments can also be extracted as a sequence:
+
+```rust
+use axum::{
+    Router,
+    routing::get,
+    extract::Path,
+};
+
+let app: Router = Router::new().route("/files/{*path}", get(handler));
+
+async fn handler(Path(segments): Path<Vec<String>>) -> String {
+    segments.join(", ")
+}
+```
+For the path `/files/foo/bar/baz`, `segments` will be `["foo", "bar", "baz"]`.
+
 # Accepting multiple methods
 
 To accept multiple methods for the same route you can add all handlers at the
@@ -144,7 +161,8 @@ let app = Router::new()
     .route("/users", get(list_users).post(create_user))
     .route("/users/{id}", get(show_user))
     .route("/api/{version}/users/{id}/action", delete(do_users_action))
-    .route("/assets/{*path}", get(serve_asset));
+    .route("/assets/{*path}", get(serve_asset))
+    .route("/batch/{*ids}", get(batch_process));
 
 async fn root() {}
 
@@ -157,6 +175,8 @@ async fn show_user(Path(id): Path<u64>) {}
 async fn do_users_action(Path((version, id)): Path<(String, u64)>) {}
 
 async fn serve_asset(Path(path): Path<String>) {}
+
+async fn batch_process(Path(ids): Path<Vec<u64>>) {}
 # let _: Router = app;
 ```
 
