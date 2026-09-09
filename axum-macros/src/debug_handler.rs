@@ -248,7 +248,7 @@ fn check_inputs_impls_from_request(
 
         let (span, ty) = match arg {
             FnArg::Receiver(receiver) => {
-                if receiver.reference.is_some() {
+                if matches!(receiver.kind, syn::ReceiverKind::Reference(..)) {
                     return syn::Error::new_spanned(
                         receiver,
                         "Handlers must only take owned values",
