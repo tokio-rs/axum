@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** `axum::serve` future output type has been adjusted to remove `io::Result`
   (never returned `Err`) and be an uninhabited type if `with_graceful_shutdown` is not used
   (because it was already never terminating if that method wasn't used) ([#3601])
+- **breaking:** `Serve::with_graceful_shutdown` now includes WebSocket handler tasks in the
+  shutdown: open sockets are sent a close frame with code `1001` and the serve future waits for
+  the handler tasks to finish. Previously they were detached and silently outlived the server.
+  A handler that never returns now holds shutdown open, as any in-flight response body does
+  ([#3831])
 - **added:** New `ListenerExt::limit_connections` allows limiting concurrent `axum::serve` connections ([#3489])
 - **added:** `MethodRouter::method_filter` ([#3586])
 - **added:** `serve::Executor` trait and `Serve::with_executor` for customizing how connection
@@ -48,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3757]: https://github.com/tokio-rs/axum/pull/3757
 [#3829]: https://github.com/tokio-rs/axum/pull/3829
 [#3801]: https://github.com/tokio-rs/axum/pull/3801
+[#3831]: https://github.com/tokio-rs/axum/pull/3831
 [#3867]: https://github.com/tokio-rs/axum/pull/3867
 
 # 0.8.9
