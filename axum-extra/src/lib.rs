@@ -28,7 +28,7 @@
 //! `query` (deprecated) | Enables the [`Query`](crate::extract::Query) extractor |
 //! `routing` | Enables the [routing] utilities |
 //! `tracing` | Log rejections from built-in extractors | <span role="img" aria-label="Default feature">✔</span>
-//! `typed-routing` | Enables the [`TypedPath`](crate::routing::TypedPath) routing utilities and the `routing` feature. |
+//! `typed-routing` | Enables the [`TypedPath`](crate::routing::TypedPath), [`TypedMethod`](crate::routing::TypedMethod), and typed routing utilities, and the `routing` feature. |
 //! `typed-header` | Enables the [`TypedHeader`] extractor and response |
 //! `file-stream` | Enables the [`FileStream`](crate::response::FileStream) response |
 //! `with-rejection` | Enables the [`WithRejection`](crate::extract::WithRejection) extractor |
