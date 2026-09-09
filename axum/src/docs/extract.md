@@ -194,12 +194,51 @@ and all others implement [`FromRequestParts`].
 
 # Handling extractor rejections
 
-For request-parts extractors, [`extract::Result<T>`](crate::extract::Result) infers
-the rejection type, so you can write `axum::extract::Result<Path<u64>>`.
+If an extractor fails, axum normally returns its rejection as a response without
+calling your handler. To handle the rejection in the handler, wrap the extractor
+in [`Result`](std::result::Result). The first type parameter is the extractor and
+the second is its rejection type. For example, use `Result<Path<u64>, PathRejection>`
+for a path parameter or `Result<Json<Value>, JsonRejection>` for a JSON body.
 
-If you want to handle the case of an extractor failing within a specific
-handler, you can wrap it in `Result`, with the error being the rejection type
-of the extractor:
+Rejection types for axum's built-in extractors are available in the
+[`rejection`] module. This works for both [`FromRequestParts`] extractors such as
+[`Path`] and [`FromRequest`] extractors such as [`Json`].
+
+For example, this handler returns a custom error response when a path parameter
+cannot be parsed as a `u64`:
+
+```rust
+use axum::{
+    extract::{Path, rejection::PathRejection},
+    http::StatusCode,
+    routing::get,
+    Router,
+};
+
+async fn get_user(path: Result<Path<u64>, PathRejection>) -> Result<String, (StatusCode, String)> {
+    match path {
+        Ok(Path(id)) => Ok(format!("User {id}")),
+        Err(err) => Err((StatusCode::BAD_REQUEST, format!("Invalid path: {err}"))),
+    }
+}
+
+# #[tokio::main]
+# async fn main() {
+let app = Router::new().route("/users/{id}", get(get_user));
+# use axum::{body::{Body, to_bytes}, http::Request};
+# use tower::ServiceExt;
+# let response = app.clone().oneshot(Request::builder().uri("/users/42").body(Body::empty()).unwrap()).await.unwrap();
+# assert_eq!(response.status(), StatusCode::OK);
+# assert_eq!(to_bytes(response.into_body(), usize::MAX).await.unwrap(), "User 42");
+# let response = app.oneshot(Request::builder().uri("/users/invalid").body(Body::empty()).unwrap()).await.unwrap();
+# assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+# let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+# assert!(std::str::from_utf8(&body).unwrap().starts_with("Invalid path: "));
+# }
+```
+
+For a JSON body, use [`JsonRejection`](rejection::JsonRejection). You can match
+its variants to handle different causes of rejection:
 
 ```rust,no_run
 use axum::{
