@@ -1,4 +1,7 @@
 //! Rejection response types.
+//!
+//! See [Handling extractor rejections](../index.html#handling-extractor-rejections)
+//! for examples of handling these errors in a handler.
 
 use axum_core::__composite_rejection as composite_rejection;
 use axum_core::__define_rejection as define_rejection;
