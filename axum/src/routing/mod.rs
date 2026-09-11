@@ -180,13 +180,6 @@ where
         }
     }
 
-    #[doc = include_str!("../docs/routing/without_v07_checks.md")]
-    pub fn without_v07_checks(self) -> Self {
-        tap_inner!(self, mut this => {
-            this.path_router.without_v07_checks();
-        })
-    }
-
     #[doc = include_str!("../docs/routing/route.md")]
     #[track_caller]
     pub fn route(self, path: &str, method_router: MethodRouter<S>) -> Self {
