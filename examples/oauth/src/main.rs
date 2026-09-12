@@ -1,13 +1,3 @@
-//! Example OAuth (Discord) implementation.
-//!
-//! 1) Create a new application at <https://discord.com/developers/applications>
-//! 2) Visit the OAuth2 tab to get your CLIENT_ID and CLIENT_SECRET
-//! 3) Add a new redirect URI (for this example: `http://127.0.0.1:3000/auth/authorized`)
-//! 4) Run with the following (replacing values appropriately):
-//! ```not_rust
-//! CLIENT_ID=REPLACE_ME CLIENT_SECRET=REPLACE_ME cargo run -p example-oauth
-//! ```
-
 use anyhow::{anyhow, Context, Result};
 use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
@@ -58,7 +48,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(index))
-        .route("/auth/discord", get(discord_auth))
+        .route("/auth/login", get(oauth_login))
         .route("/auth/authorized", get(login_authorized))
         .route("/protected", get(protected))
         .route("/logout", get(logout))
@@ -98,25 +88,29 @@ impl FromRef<AppState> for BasicClient {
     }
 }
 
+fn session_cookie(name: &str, value: &str) -> String {
+    // `Secure` should be enabled when running over HTTPS.
+    format!("{name}={value}; SameSite=Lax; HttpOnly; Path=/")
+}
+
 fn oauth_client() -> Result<BasicClient, AppError> {
     // Environment variables (* = required):
     // *"CLIENT_ID"     "REPLACE_ME";
     // *"CLIENT_SECRET" "REPLACE_ME";
     //  "REDIRECT_URL"  "http://127.0.0.1:3000/auth/authorized";
-    //  "AUTH_URL"      "https://discord.com/api/oauth2/authorize?response_type=code";
-    //  "TOKEN_URL"     "https://discord.com/api/oauth2/token";
+    //  "AUTH_URL"      "http://127.0.0.1:8090/authorize";
+    //  "TOKEN_URL"     "http://127.0.0.1:8090/token";
 
     let client_id = env::var("CLIENT_ID").context("Missing CLIENT_ID!")?;
     let client_secret = env::var("CLIENT_SECRET").context("Missing CLIENT_SECRET!")?;
     let redirect_url = env::var("REDIRECT_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:3000/auth/authorized".to_string());
 
-    let auth_url = env::var("AUTH_URL").unwrap_or_else(|_| {
-        "https://discord.com/api/oauth2/authorize?response_type=code".to_string()
-    });
+    let auth_url =
+        env::var("AUTH_URL").unwrap_or_else(|_| "http://127.0.0.1:8090/authorize".to_string());
 
-    let token_url = env::var("TOKEN_URL")
-        .unwrap_or_else(|_| "https://discord.com/api/oauth2/token".to_string());
+    let token_url =
+        env::var("TOKEN_URL").unwrap_or_else(|_| "http://127.0.0.1:8090/token".to_string());
 
     Ok(oauth2::basic::BasicClient::new(ClientId::new(client_id))
         .set_client_secret(ClientSecret::new(client_secret))
@@ -129,14 +123,12 @@ fn oauth_client() -> Result<BasicClient, AppError> {
         ))
 }
 
-// The user data we'll get back from Discord.
-// https://discord.com/developers/docs/resources/user#user-object-user-structure
+// The user information returned by the OAuth2/OIDC test server.
 #[derive(Debug, Serialize, Deserialize)]
 struct User {
-    id: String,
-    avatar: Option<String>,
-    username: String,
-    discriminator: String,
+    sub: String,
+    name: Option<String>,
+    email: Option<String>,
 }
 
 // Session is optional
@@ -144,19 +136,21 @@ async fn index(user: Option<User>) -> impl IntoResponse {
     match user {
         Some(u) => format!(
             "Hey {}! You're logged in!\nYou may now access `/protected`.\nLog out with `/logout`.",
-            u.username
+            u.name.unwrap_or(u.sub)
         ),
-        None => "You're not logged in.\nVisit `/auth/discord` to do so.".to_string(),
+        None => "You're not logged in.\nVisit `/auth/login` to do so.".to_string(),
     }
 }
 
-async fn discord_auth(
+async fn oauth_login(
     State(client): State<BasicClient>,
     State(store): State<MemoryStore>,
 ) -> Result<impl IntoResponse, AppError> {
     let (auth_url, csrf_token) = client
         .authorize_url(CsrfToken::new_random)
-        .add_scope(Scope::new("identify".to_string()))
+        .add_scope(Scope::new("openid".to_string()))
+        .add_scope(Scope::new("profile".to_string()))
+        .add_scope(Scope::new("email".to_string()))
         .url();
 
     // Create session to store csrf_token
@@ -173,7 +167,7 @@ async fn discord_auth(
         .context("unexpected error retrieving CSRF cookie value")?;
 
     // Attach the session cookie to the response header
-    let cookie = format!("{COOKIE_NAME}={cookie}; SameSite=Lax; HttpOnly; Secure; Path=/");
+    let cookie = session_cookie(COOKIE_NAME, &cookie);
     let mut headers = HeaderMap::new();
     headers.insert(
         SET_COOKIE,
@@ -279,10 +273,9 @@ async fn login_authorized(
         .await
         .context("failed in sending request to authorization server")?;
 
-    // Fetch user data from discord
+    // Fetch user data from the userinfo endpoint
     let user_data: User = client
-        // https://discord.com/developers/docs/resources/user#get-current-user
-        .get("https://discordapp.com/api/users/@me")
+        .get("http://127.0.0.1:8090/userinfo")
         .bearer_auth(token.access_token().secret())
         .send()
         .await
@@ -305,7 +298,7 @@ async fn login_authorized(
         .context("unexpected error retrieving cookie value")?;
 
     // Build the cookie
-    let cookie = format!("{COOKIE_NAME}={cookie}; SameSite=Lax; HttpOnly; Secure; Path=/");
+    let cookie = session_cookie(COOKIE_NAME, &cookie);
 
     // Set cookie
     let mut headers = HeaderMap::new();
@@ -321,7 +314,7 @@ struct AuthRedirect;
 
 impl IntoResponse for AuthRedirect {
     fn into_response(self) -> Response {
-        Redirect::temporary("/auth/discord").into_response()
+        Redirect::temporary("/auth/login").into_response()
     }
 }
 
