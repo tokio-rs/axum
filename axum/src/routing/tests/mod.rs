@@ -44,6 +44,7 @@ mod get_to_head;
 mod handle_error;
 mod merge;
 mod nest;
+mod route_service;
 
 #[cfg(all(feature = "tokio", debug_assertions))]
 #[test]
