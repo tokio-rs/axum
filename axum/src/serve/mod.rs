@@ -183,6 +183,15 @@ impl ConnectionLifetimeLimits {
     /// its jitter and grace period.
     ///
     /// Connection age is unbounded by default.
+    ///
+    /// # Upgraded connections
+    ///
+    /// This limit does not apply to connections that have been upgraded, e.g.
+    /// to a WebSocket or via `CONNECT`. Once an HTTP/1 connection is upgraded,
+    /// hyper hands the socket off to the upgrade handler and [`serve`] stops
+    /// tracking it, so neither the age limit nor the grace period affect it.
+    /// An HTTP/2 upgrade stays a stream on the tracked connection and is
+    /// treated like any other in-flight stream.
     pub fn max_connection_age(mut self, age: MaxConnectionAge) -> Self {
         self.max_connection_age = Some(age);
         self
