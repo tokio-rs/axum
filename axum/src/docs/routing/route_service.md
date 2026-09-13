@@ -7,11 +7,7 @@ The service receives a [`Request`] (whose body type is [`Body`]) and must
 return a response that implements [`IntoResponse`]. The error type must be
 [`Infallible`].
 
-[`any_service`], [`get_service`], and the other `*_service` filters turn a
-[`Service`] into a [`MethodRouter`]. Use those with [`Router::route`] when you
-want method-based routing, or call the [`MethodRouter`] as a [`Service`]
-without a `Router`. You do **not** need them to map response bodies — any
-[`IntoResponse`] type works with `route_service` directly.
+See [`any_service`] and [`get_service`] for using services with [`Router::route`].
 
 # Example
 
@@ -40,7 +36,7 @@ let app = Router::new()
     .route_service(
         "/foo",
         // `route_service` takes any `Service<Request>` whose response
-        // implements `IntoResponse`. No body boxing is required.
+        // implements `IntoResponse`.
         service_fn(|req: Request| async move {
             let body = Body::from(format!("Hi from `{} /foo`", req.method()));
             let res = Response::new(body);
