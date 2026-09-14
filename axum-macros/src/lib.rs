@@ -17,6 +17,7 @@ mod axum_test;
 mod debug_handler;
 mod from_ref;
 mod from_request;
+mod typed_method;
 mod typed_path;
 mod with_position;
 
@@ -655,11 +656,34 @@ pub fn __private_axum_test(_attr: TokenStream, input: TokenStream) -> TokenStrea
     expand_attr_with(_attr, input, axum_test::expand)
 }
 
+/// Derive an implementation of [`axum_extra::routing::TypedMethod`].
+///
+/// See that trait for more details.
+///
+/// The method is supplied with `#[typed_method(...)]`, for example
+/// `#[typed_method(axum::routing::MethodFilter::GET)]`.
+///
+/// [`axum_extra::routing::TypedMethod`]: https://docs.rs/axum-extra/latest/axum_extra/routing/trait.TypedMethod.html
+/// [`MethodFilter`]: https://docs.rs/axum/latest/axum/routing/struct.MethodFilter.html
+/// [`RouterExt::typed`]: https://docs.rs/axum-extra/latest/axum_extra/routing/trait.RouterExt.html#tymethod.typed
+#[proc_macro_derive(TypedMethod, attributes(typed_method))]
+pub fn derive_typed_method(input: TokenStream) -> TokenStream {
+    expand_with(input, |item_struct| typed_method::expand(&item_struct))
+}
+
 /// Derive an implementation of [`axum_extra::routing::TypedPath`].
 ///
 /// See that trait for more details.
 ///
+/// Unless `#[typed_method(...)]` is present, this also marks the type as a
+/// `MethodlessTypedPath`, allowing it to be used with the method-specific `RouterExt::typed_*`
+/// helpers.
+/// When `#[typed_method(...)]` is present, derive [`TypedMethod`] as well and use
+/// [`RouterExt::typed`] instead.
+///
 /// [`axum_extra::routing::TypedPath`]: https://docs.rs/axum-extra/latest/axum_extra/routing/trait.TypedPath.html
+/// [`TypedMethod`]: https://docs.rs/axum-extra/latest/axum_extra/routing/trait.TypedMethod.html
+/// [`RouterExt::typed`]: https://docs.rs/axum-extra/latest/axum_extra/routing/trait.RouterExt.html#tymethod.typed
 #[proc_macro_derive(TypedPath, attributes(typed_path))]
 pub fn derive_typed_path(input: TokenStream) -> TokenStream {
     expand_with(input, |item_struct| typed_path::expand(&item_struct))
