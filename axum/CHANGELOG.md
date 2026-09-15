@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** `IntoResponseParts` impl for `Redirect`, allowing it to be combined
   with a body in a response tuple ([#3721])
 - **added:** Add `RawPathParams::from_request_extensions` ([#3757])
+- **added:** `sse::Event::raw` for events with fully custom payloads ([#3829])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
 - **changed:** Reduced contention in `axum::serve` shutdown notification with many
@@ -31,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `MethodFilter::QUERY`, `routing::query[_service]` and `MethodRouter::query[_service]` ([#3801])
 - **fixed:** `MethodRouter::merge` no longer lists a method twice in the `Allow`
   header after merging `get` and `head` ([#3836])
+- **changed:** Update `Router::route_service` docs for `axum::body::Body` instead of
+  the removed `BoxBody` type ([#3890])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
@@ -45,8 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3742]: https://github.com/tokio-rs/axum/pull/3742
 [#3836]: https://github.com/tokio-rs/axum/pull/3836
 [#3757]: https://github.com/tokio-rs/axum/pull/3757
+[#3829]: https://github.com/tokio-rs/axum/pull/3829
 [#3801]: https://github.com/tokio-rs/axum/pull/3801
 [#3867]: https://github.com/tokio-rs/axum/pull/3867
+[#3890]: https://github.com/tokio-rs/axum/pull/3890
 
 # 0.8.9
 

@@ -264,6 +264,7 @@ all_the_tuples!(impl_handler);
 mod private {
     // Marker type for `impl<T: IntoResponse> Handler for T`
     #[allow(missing_debug_implementations)]
+    #[allow(clippy::empty_enums)] // We cannot use `!` yet in our MSRV.
     pub enum IntoResponseHandler {}
 }
 

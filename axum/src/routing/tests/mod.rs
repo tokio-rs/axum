@@ -1211,7 +1211,7 @@ async fn logging_rejections() {
 
     let events = capture_tracing::<RejectionEvent, _>(|| async {
         let app = Router::new()
-            .route("/extension", get(|_: Extension<Infallible>| async {}))
+            .route("/extension", get(|_: Extension<()>| async {}))
             .route("/string", post(|_: String| async {}));
 
         let client = TestClient::new(app);
@@ -1240,8 +1240,7 @@ async fn logging_rejections() {
                 fields: RejectionEvent {
                     message: "rejecting request".to_owned(),
                     status: 500,
-                    body: "Missing request extension: Extension of \
-                        type `core::convert::Infallible` was not found. \
+                    body: "Missing request extension: Extension of type `()` was not found. \
                         Perhaps you forgot to add it? See `axum::Extension`."
                         .to_owned(),
                     rejection_type: "axum::extract::rejection::MissingExtension".to_owned(),

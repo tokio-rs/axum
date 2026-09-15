@@ -753,7 +753,7 @@ mod tests {
         }
     }
 
-    #[allow(dead_code, unused_must_use)]
+    #[allow(dead_code, unused)]
     async fn if_it_compiles_it_works() {
         #[derive(Clone, Debug)]
         struct UdsConnectInfo;
