@@ -16,59 +16,28 @@ use super::{
 pub(super) struct PathRouter<S> {
     routes: Vec<Endpoint<S>>,
     node: Arc<Node>,
-    v7_checks: bool,
 }
 
-fn validate_path(v7_checks: bool, path: &str) -> Result<(), &'static str> {
+fn validate_path(path: &str) -> Result<(), &'static str> {
     if path.is_empty() {
         return Err("Paths must start with a `/`. Use \"/\" for root routes");
     } else if !path.starts_with('/') {
         return Err("Paths must start with a `/`");
     }
 
-    if v7_checks {
-        validate_v07_paths(path)?;
-    }
-
     Ok(())
-}
-
-fn validate_v07_paths(path: &str) -> Result<(), &'static str> {
-    path.split('/')
-        .find_map(|segment| {
-            if segment.starts_with(':') {
-                Some(Err(
-                    "Path segments must not start with `:`. For capture groups, use \
-                `{capture}`. If you meant to literally match a segment starting with \
-                a colon, call `without_v07_checks` on the router.",
-                ))
-            } else if segment.starts_with('*') {
-                Some(Err(
-                    "Path segments must not start with `*`. For wildcard capture, use \
-                `{*wildcard}`. If you meant to literally match a segment starting with \
-                an asterisk, call `without_v07_checks` on the router.",
-                ))
-            } else {
-                None
-            }
-        })
-        .unwrap_or(Ok(()))
 }
 
 impl<S> PathRouter<S>
 where
     S: Clone + Send + Sync + 'static,
 {
-    pub(super) fn without_v07_checks(&mut self) {
-        self.v7_checks = false;
-    }
-
     pub(super) fn route(
         &mut self,
         path: &str,
         method_router: MethodRouter<S>,
     ) -> Result<(), Cow<'static, str>> {
-        validate_path(self.v7_checks, path)?;
+        validate_path(path)?;
 
         if let Some((route_id, Endpoint::MethodRouter(prev_method_router))) = self
             .node
@@ -122,7 +91,7 @@ where
         path: &str,
         endpoint: Endpoint<S>,
     ) -> Result<(), Cow<'static, str>> {
-        validate_path(self.v7_checks, path)?;
+        validate_path(path)?;
 
         self.new_route(path, endpoint)?;
 
@@ -144,14 +113,7 @@ where
     }
 
     pub(super) fn merge(&mut self, other: Self) -> Result<(), Cow<'static, str>> {
-        let Self {
-            routes,
-            node,
-            v7_checks,
-        } = other;
-
-        // If either of the two did not allow paths starting with `:` or `*`, do not allow them for the merged router either.
-        self.v7_checks |= v7_checks;
+        let Self { routes, node } = other;
 
         for (id, route) in routes.into_iter().enumerate() {
             let route_id = RouteId(id);
@@ -174,14 +136,9 @@ where
         path_to_nest_at: &str,
         router: Self,
     ) -> Result<(), Cow<'static, str>> {
-        let prefix = validate_nest_path(self.v7_checks, path_to_nest_at)?;
+        let prefix = validate_nest_path(path_to_nest_at)?;
 
-        let Self {
-            routes,
-            node,
-            // Ignore the configuration of the nested router
-            v7_checks: _,
-        } = router;
+        let Self { routes, node } = router;
 
         for (id, endpoint) in routes.into_iter().enumerate() {
             let route_id = RouteId(id);
@@ -219,7 +176,7 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        let path = validate_nest_path(self.v7_checks, path_to_nest_at)?;
+        let path = validate_nest_path(path_to_nest_at)?;
         let prefix = path;
 
         let path = if path.ends_with('/') {
@@ -265,7 +222,6 @@ where
         Self {
             routes,
             node: self.node,
-            v7_checks: self.v7_checks,
         }
     }
 
@@ -294,7 +250,6 @@ where
         Self {
             routes,
             node: self.node,
-            v7_checks: self.v7_checks,
         }
     }
 
@@ -317,7 +272,6 @@ where
         PathRouter {
             routes,
             node: self.node,
-            v7_checks: self.v7_checks,
         }
     }
 
@@ -377,7 +331,6 @@ impl<S> Default for PathRouter<S> {
         Self {
             routes: Default::default(),
             node: Default::default(),
-            v7_checks: true,
         }
     }
 }
@@ -396,7 +349,6 @@ impl<S> Clone for PathRouter<S> {
         Self {
             routes: self.routes.clone(),
             node: self.node.clone(),
-            v7_checks: self.v7_checks,
         }
     }
 }
@@ -442,7 +394,7 @@ impl fmt::Debug for Node {
     }
 }
 
-fn validate_nest_path(v7_checks: bool, path: &str) -> Result<&str, &'static str> {
+fn validate_nest_path(path: &str) -> Result<&str, &'static str> {
     if !path.starts_with('/') {
         return Err("Nesting paths must start with a `/`.");
     }
@@ -454,10 +406,6 @@ fn validate_nest_path(v7_checks: bool, path: &str) -> Result<&str, &'static str>
         segment.starts_with("{*") && segment.ends_with('}') && !segment.ends_with("}}")
     }) {
         return Err("Invalid route: nested routes cannot contain wildcards (*)");
-    }
-
-    if v7_checks {
-        validate_v07_paths(path)?;
     }
 
     Ok(path)
