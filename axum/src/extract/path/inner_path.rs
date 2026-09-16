@@ -26,7 +26,7 @@ use std::sync::Arc;
 ///
 /// # `Option<InnerPath<T>>` behavior
 ///
-/// You can use `Option<InnerPath<Path<T>>>` as an extractor to allow the same handler to
+/// You can use `Option<InnerPath<T>>` as an extractor to allow the same handler to
 /// be used in a route with parameters that deserialize to `T`, and another
 /// route with no parameters at all.
 ///
@@ -109,13 +109,13 @@ use std::sync::Arc;
 /// async fn params_map(
 ///     InnerPath(params): InnerPath<HashMap<String, String>>,
 /// ) {
-///     // `params` contains keys "team_id" and "user_id"
+///     // `params` contains keys "user_id" and "team_id"
 /// }
 ///
 /// async fn params_vec(
 ///     InnerPath(params): InnerPath<Vec<(String, String)>>,
 /// ) {
-///     // `params` contains a vector containing a single tuple
+///     // `params` contains one tuple for `user_id` and one for `team_id`
 /// }
 ///
 /// let api = Router::new()
