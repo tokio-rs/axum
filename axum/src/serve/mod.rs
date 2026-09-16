@@ -338,6 +338,7 @@ where
                 &mut make_service,
                 &signal_rx,
                 &close_rx,
+                None,
                 io,
                 remote_addr,
                 &executor,
@@ -465,6 +466,11 @@ where
 
         let (close_tx, close_rx) = watch::channel(());
 
+        let graceful = ConnectionShutdownHandle {
+            shutdown: signal_rx.clone(),
+            guard: close_rx.clone(),
+        };
+
         loop {
             let (io, remote_addr) =
                 match select(pin!(listener.accept()), pin!(signal_rx.changed())).await {
@@ -482,6 +488,7 @@ where
                 &mut make_service,
                 &signal_rx,
                 &close_rx,
+                Some(&graceful),
                 io,
                 remote_addr,
                 &executor,
@@ -489,6 +496,8 @@ where
             .await;
         }
 
+        // Both hold a `close_rx` clone, which is what the drain below waits on.
+        drop(graceful);
         drop(close_rx);
         drop(listener);
 
@@ -563,10 +572,28 @@ where
     }
 }
 
+/// Lets a connection that outlives its response, such as an upgraded
+/// WebSocket, take part in graceful shutdown. Present in the request
+/// extensions only when [`with_graceful_shutdown`] is in use, and read by
+/// [`WebSocketUpgrade`].
+///
+/// [`with_graceful_shutdown`]: Serve::with_graceful_shutdown
+/// [`WebSocketUpgrade`]: crate::extract::ws::WebSocketUpgrade
+// Only read by the `ws` extractor.
+#[cfg_attr(not(feature = "ws"), allow(dead_code))]
+#[derive(Clone, Debug)]
+pub(crate) struct ConnectionShutdownHandle {
+    /// `changed()` fails once the serve task drops the signal sender.
+    pub(crate) shutdown: watch::Receiver<()>,
+    /// Held by the upgraded task so the drain waits for it.
+    pub(crate) guard: watch::Receiver<()>,
+}
+
 async fn handle_connection<L, M, S, B, E>(
     make_service: &mut M,
     signal_rx: &watch::Receiver<()>,
     close_rx: &watch::Receiver<()>,
+    graceful: Option<&ConnectionShutdownHandle>,
     io: <L as Listener>::Io,
     remote_addr: <L as Listener>::Addr,
     executor: &E,
@@ -592,6 +619,8 @@ async fn handle_connection<L, M, S, B, E>(
         .await
         .unwrap_or_else(|err| match err {});
 
+    let graceful = graceful.cloned();
+
     let tower_service = make_service
         .call(IncomingStream {
             io: &io,
@@ -599,7 +628,13 @@ async fn handle_connection<L, M, S, B, E>(
         })
         .await
         .unwrap_or_else(|err| match err {})
-        .map_request(|req: Request<Incoming>| req.map(Body::new));
+        .map_request(move |req: Request<Incoming>| {
+            let mut req = req.map(Body::new);
+            if let Some(graceful) = &graceful {
+                req.extensions_mut().insert(graceful.clone());
+            }
+            req
+        });
 
     let hyper_service = TowerToHyperService::new(tower_service);
     let close_rx = close_rx.clone();
