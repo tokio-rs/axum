@@ -13,7 +13,9 @@ use axum::{
 
 let user_routes = Router::new().route("/{id}", get(|| async {}));
 
-let team_routes = Router::new().route("/", post(|| async {}));
+// `route("")` (rather than `route("/")`) so this matches the nesting prefix
+// exactly, with no trailing slash
+let team_routes = Router::new().route("", post(|| async {}));
 
 let api_routes = Router::new()
     .nest("/users", user_routes)
@@ -82,10 +84,10 @@ let app = Router::new()
 # let _: Router = app;
 ```
 
-Additionally, while the wildcard route `/foo/*rest` will not match the
-paths `/foo` or `/foo/`, a nested router at `/foo` will match the path `/foo`
-(but not `/foo/`), and a nested router at `/foo/` will match the path `/foo/`
-(but not `/foo`).
+Additionally, unlike the wildcard route `/foo/{*rest}` (which matches neither
+`/foo` nor `/foo/`), a router nested at `/foo` can match the prefix itself: the
+inner paths are appended to the prefix, so an inner `route("", _)` matches
+`/foo` (no trailing slash) and an inner `route("/", _)` matches `/foo/`.
 
 # Fallbacks
 
@@ -189,6 +191,8 @@ router.
   for more details.
 - If the route contains a wildcard (`*`).
 - If `path` is empty.
+- If `path` ends with a `/` (for example `"/foo/"`). Nest at `"/foo"` instead;
+  use an inner `route("/", _)` if you want to match `/foo/`.
 
 [`OriginalUri`]: crate::extract::OriginalUri
 [fallbacks]: Router::fallback

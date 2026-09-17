@@ -87,12 +87,14 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
                 }
             }
             // the path had more segments than the prefix but we got a match.
+            // Stop just before the `/` separating the matched prefix from the
+            // rest, so the remainder keeps its leading slash. This handles both
+            // a longer path and a bare trailing slash uniformly:
             //
-            // For example:
-            //
-            // prefix = /foo
-            // path   = /foo/bar
+            // prefix = /foo, path = /foo/bar  -> remainder `/bar`
+            // prefix = /foo, path = /foo/     -> remainder `/`
             Item::First(_) => {
+                *matching_prefix_length.as_mut().unwrap() -= 1;
                 break;
             }
             // the prefix had more segments than the path so there is no match
@@ -108,11 +110,13 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
     // panic
     let after_prefix = uri.path().split_at(matching_prefix_length?).1;
 
-    let new_path_and_query = match (after_prefix.starts_with('/'), path_and_query.query()) {
-        (true, None) => after_prefix.parse().unwrap(),
-        (true, Some(query)) => format!("{after_prefix}?{query}").parse().unwrap(),
-        (false, None) => format!("/{after_prefix}").parse().unwrap(),
-        (false, Some(query)) => format!("/{after_prefix}?{query}").parse().unwrap(),
+    let new_path_and_query = match (after_prefix.chars().next(), path_and_query.query()) {
+        (None, None) => "".parse().unwrap(),
+        (None, Some(query)) => format!("?{query}").parse().unwrap(),
+        (Some('/'), None) => after_prefix.parse().unwrap(),
+        (Some('/'), Some(query)) => format!("{after_prefix}?{query}").parse().unwrap(),
+        (Some(_), None) => format!("/{after_prefix}").parse().unwrap(),
+        (Some(_), Some(query)) => format!("/{after_prefix}?{query}").parse().unwrap(),
     };
 
     let mut parts = uri.clone().into_parts();
@@ -241,13 +245,13 @@ mod tests {
         };
     }
 
-    test!(empty, uri = "/", prefix = "/", expected = Some("/"),);
+    test!(empty, uri = "/", prefix = "/", expected = Some(""),);
 
     test!(
         single_segment,
         uri = "/a",
         prefix = "/a",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(
@@ -276,7 +280,7 @@ mod tests {
         single_segment_trailing_slash,
         uri = "/a/",
         prefix = "/a/",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(
@@ -325,7 +329,7 @@ mod tests {
         multi_segment_trailing_slash,
         uri = "/a/b/",
         prefix = "/a/b/",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(
@@ -342,18 +346,13 @@ mod tests {
         expected = Some("/"),
     );
 
-    test!(
-        param_0,
-        uri = "/",
-        prefix = "/{param}",
-        expected = Some("/"),
-    );
+    test!(param_0, uri = "/", prefix = "/{param}", expected = Some(""),);
 
     test!(
         param_1,
         uri = "/a",
         prefix = "/{param}",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(
@@ -374,7 +373,7 @@ mod tests {
         param_4,
         uri = "/a/b",
         prefix = "/a/{param}",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(
@@ -395,14 +394,14 @@ mod tests {
         param_7,
         uri = "/b/a",
         prefix = "/{param}/a",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(
         param_8,
         uri = "/a/b/c",
         prefix = "/a/{param}/c",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(
@@ -425,7 +424,7 @@ mod tests {
         param_12,
         uri = "/a/",
         prefix = "/{param}/",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(
