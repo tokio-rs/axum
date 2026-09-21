@@ -41,7 +41,7 @@ async fn main() {
         // `TraceLayer` is provided by tower-http so you have to add that as a dependency.
         // It provides good defaults but is also very customizable.
         //
-        // See https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html for more details.
+        // See https://docs.rs/tower-http/0.6.1/tower_http/trace/index.html for more details.
         //
         // If you want to customize the behavior using closures here is how.
         .layer(
