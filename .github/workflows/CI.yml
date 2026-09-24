@@ -10,6 +10,7 @@ on:
       - main
       - v0.*
   pull_request: {}
+  workflow_dispatch:
 
 jobs:
   check:
