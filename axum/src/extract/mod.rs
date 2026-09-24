@@ -10,6 +10,8 @@ pub mod rejection;
 #[cfg(feature = "ws")]
 pub mod ws;
 
+#[cfg(feature = "matched-path")]
+mod inner_matched_path;
 pub(crate) mod nested_path;
 #[cfg(feature = "original-uri")]
 mod original_uri;
@@ -50,12 +52,15 @@ pub use crate::Extension;
 #[doc(no_inline)]
 pub use crate::form::Form;
 
+#[doc(inline)]
+pub use self::path::inner_path::InnerPath;
+
 #[cfg(feature = "matched-path")]
 pub(crate) mod matched_path;
 
 #[cfg(feature = "matched-path")]
 #[doc(inline)]
-pub use self::matched_path::MatchedPath;
+pub use self::{inner_matched_path::InnerMatchedPath, matched_path::MatchedPath};
 
 #[cfg(feature = "multipart")]
 pub mod multipart;
