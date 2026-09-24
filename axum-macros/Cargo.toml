@@ -24,7 +24,7 @@ __private = ["syn/visit-mut"]
 [dependencies]
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = { version = "2.0", features = [
+syn = { version = "3", features = [
     "full",
     "parsing",
     # needed for `Hash` impls
@@ -37,7 +37,7 @@ axum-extra = { path = "../axum-extra", features = ["typed-routing", "cookie-priv
 rustversion = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-syn = { version = "2.0", features = ["full", "extra-traits"] }
+syn = { version = "3", features = ["full", "extra-traits"] }
 tokio = { version = "1.25.0", features = ["full"] }
 trybuild = "1.0.63"
 
