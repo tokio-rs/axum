@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** `serve::ConnectionLifetimeLimits` and `Serve::connection_lifetime_limits` for bounding the
   lifetime of individual connections via `serve::MaxConnectionAge` (with `jitter` and `grace`),
   forcing clients to rotate connections ([#3779])
+- **added:** `Serve::with_connection_rotation` and
+  `WithGracefulShutdown::with_connection_rotation`, which tell the clients to close their
+  connections while the server keeps accepting and serving requests ([#3895])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
 - **changed:** Reduced contention in `axum::serve` shutdown notification with many
@@ -56,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3867]: https://github.com/tokio-rs/axum/pull/3867
 [#3890]: https://github.com/tokio-rs/axum/pull/3890
 [#3779]: https://github.com/tokio-rs/axum/pull/3779
+[#3895]: https://github.com/tokio-rs/axum/pull/3895
 
 # 0.8.9
 
