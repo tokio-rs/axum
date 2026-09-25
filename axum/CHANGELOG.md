@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   header after merging `get` and `head` ([#3836])
 - **changed:** Update `Router::route_service` docs for `axum::body::Body` instead of
   the removed `BoxBody` type ([#3890])
+- **fixed:** Multipart now returns `413 Payload Too Large` when the request body has
+  been limited more than once ([#3897])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
@@ -56,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3867]: https://github.com/tokio-rs/axum/pull/3867
 [#3890]: https://github.com/tokio-rs/axum/pull/3890
 [#3779]: https://github.com/tokio-rs/axum/pull/3779
+[#3897]: https://github.com/tokio-rs/axum/pull/3897
 
 # 0.8.9
 

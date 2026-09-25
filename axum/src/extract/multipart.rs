@@ -278,12 +278,7 @@ fn status_code_from_multer_error(err: &multer::Error) -> StatusCode {
                 return status_code_from_multer_error(err);
             }
 
-            if err
-                .downcast_ref::<crate::Error>()
-                .and_then(|err| err.source())
-                .and_then(|err| err.downcast_ref::<http_body_util::LengthLimitError>())
-                .is_some()
-            {
+            if is_length_limit_error(&**err) {
                 return StatusCode::PAYLOAD_TOO_LARGE;
             }
 
@@ -300,13 +295,23 @@ fn is_body_limit_error(err: &multer::Error) -> bool {
             if let Some(err) = err.downcast_ref::<multer::Error>() {
                 return is_body_limit_error(err);
             }
-            err.downcast_ref::<crate::Error>()
-                .and_then(|err| err.source())
-                .and_then(|err| err.downcast_ref::<http_body_util::LengthLimitError>())
-                .is_some()
+            is_length_limit_error(&**err)
         }
         _ => false,
     }
+}
+
+/// Peel any number of `axum_core::Error` wrappers, one of which is added by each
+/// `with_limited_body` call, and check whether the innermost error is a length limit error.
+fn is_length_limit_error(err: &(dyn std::error::Error + 'static)) -> bool {
+    let mut err = err;
+    while let Some(inner) = err
+        .downcast_ref::<crate::Error>()
+        .and_then(|err| err.source())
+    {
+        err = inner;
+    }
+    err.is::<http_body_util::LengthLimitError>()
 }
 
 impl fmt::Display for MultipartError {
@@ -418,6 +423,44 @@ mod tests {
 
         let app = Router::new()
             .route("/", post(handle))
+            .layer(DefaultBodyLimit::max(BYTES.len() - 1));
+
+        let client = TestClient::new(app);
+
+        let form =
+            reqwest::multipart::Form::new().part("file", reqwest::multipart::Part::bytes(BYTES));
+
+        let res = client.post("/").multipart(form).await;
+        assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+        assert_eq!(res.text().await, "Request payload is too large");
+    }
+
+    #[crate::test]
+    async fn nested_body_limit_too_large() {
+        use crate::{
+            extract::Request,
+            middleware::{self, Next},
+            response::Response,
+        };
+        use axum_core::RequestExt;
+
+        const BYTES: &[u8] = "<!doctype html><title>🦀</title>".as_bytes();
+
+        async fn handle(mut multipart: Multipart) -> Result<(), MultipartError> {
+            while let Some(field) = multipart.next_field().await? {
+                field.bytes().await?;
+            }
+            Ok(())
+        }
+
+        async fn limit_middleware(req: Request, next: Next) -> Response {
+            next.run(req.with_limited_body()).await
+        }
+
+        let app = Router::new()
+            .route("/", post(handle))
+            .layer(middleware::from_fn(limit_middleware))
+            .layer(middleware::from_fn(limit_middleware))
             .layer(DefaultBodyLimit::max(BYTES.len() - 1));
 
         let client = TestClient::new(app);
