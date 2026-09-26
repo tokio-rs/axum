@@ -248,7 +248,7 @@ impl<K> PrivateCookieJar<K> {
     /// or `None` otherwise.
     #[must_use]
     pub fn decrypt(&self, cookie: Cookie<'static>) -> Option<Cookie<'static>> {
-        self.private_jar().decrypt(cookie)
+        self.private_jar().decrypt(cookie.clone())
     }
 
     /// Get an iterator over all cookies in the jar.
@@ -267,6 +267,86 @@ impl<K> PrivateCookieJar<K> {
 
     fn private_jar_mut(&mut self) -> PrivateJar<&'_ mut cookie::CookieJar> {
         self.jar.private_mut(&self.key)
+    }
+    /// Add a signed cookie with the specified prefix to the jar.
+    ///
+    /// The cookie's value will be signed using the jar's key, and the prefix will determine the
+    /// cookie's name and attributes (e.g., `Secure`, `Path=/` for `__Host-`).
+    ///
+    /// # Example
+    /// ```rust
+    /// use axum_extra::extract::cookie::{PrivateCookieJar, Cookie};
+    /// use cookie::prefix::Host;
+    ///
+    /// async fn handler(jar: PrivateCookieJar) -> PrivateCookieJar {
+    ///     jar.add_prefixed(Host, Cookie::new("session_id", "value"))
+    /// }
+    /// ```
+    #[must_use]
+    pub fn add_prefixed<P: cookie::prefix::Prefix>(
+        self,
+        _prefix: P,
+        cookie: Cookie<'static>,
+    ) -> Self {
+        let mut jar = self.jar;
+        jar.remove(Cookie::new(cookie.name().to_owned(), ""));
+
+        let prefixed_name = format!("{}{}", P::PREFIX, cookie.name());
+        let mut new_cookie = cookie;
+        new_cookie.set_name(prefixed_name);
+        jar.private_mut(&self.key).add(new_cookie);
+
+        Self {
+            jar,
+            key: self.key,
+            _marker: self._marker,
+        }
+    }
+    /// Get a signed cookie with the specified prefix from the jar.
+    ///
+    /// If the cookie exists and its signature is valid, it is returned with its original name
+    /// (without the prefix) and plaintext value.
+    ///
+    /// # Example
+    /// ```rust
+    /// use axum_extra::extract::cookie::PrivateCookieJar;
+    ///
+    /// async fn handler(jar: PrivateCookieJar) {
+    ///     if let Some(cookie) = jar.get_prefixed(cookie::prefix::Host, "session_id") {
+    ///         let value = cookie.value();
+    ///     }
+    /// }
+    /// ```
+    pub fn get_prefixed<P: cookie::prefix::Prefix>(
+        &self,
+        _prefix: P,
+        name: &str,
+    ) -> Option<Cookie<'static>> {
+        let prefixed_name = format!("{}{name}", P::PREFIX);
+        self.jar
+            .get(&prefixed_name)
+            .and_then(|c| self.decrypt(c.clone()))
+    }
+    /// Remove a signed cookie with the specified prefix from the jar.
+    ///
+    /// # Example
+    /// ```rust
+    /// use axum_extra::extract::cookie::PrivateCookieJar;
+    /// use cookie::prefix::Host;
+    ///
+    /// async fn handler(jar: PrivateCookieJar) -> PrivateCookieJar {
+    ///     jar.remove_prefixed(Host, "session_id")
+    /// }
+    /// ```
+    #[must_use]
+    pub fn remove_prefixed<P, S>(mut self, prefix: P, name: S) -> Self
+    where
+        P: cookie::prefix::Prefix,
+        S: Into<String>,
+    {
+        let mut prefixed_jar = self.jar.prefixed_mut(prefix);
+        prefixed_jar.remove(name.into());
+        self
     }
 }
 
