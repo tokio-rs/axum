@@ -282,13 +282,13 @@ fn multipart_range_response(
             body::Body::from_stream(reader),
         ))
     });
-    let multipart_stream = multipart::encode(boundary, parts.into_iter().flatten(), true);
+    let multipart = multipart::Multipart::new(&boundary, parts, true);
 
     Response::builder()
         .status(StatusCode::PARTIAL_CONTENT)
         .header(header::CONTENT_TYPE, content_type)
         .header(header::ACCEPT_RANGES, "bytes")
-        .body(body::Body::from_stream(multipart_stream))
+        .body(body::Body::new(multipart))
         .unwrap_or_else(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
