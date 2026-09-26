@@ -10,6 +10,7 @@ use axum_core::{
 };
 use fastrand;
 use http::{header, HeaderMap, StatusCode};
+use http_body::Body as _;
 use mime::Mime;
 
 /// Create multipart forms to be used in API responses.
@@ -62,25 +63,22 @@ impl IntoResponse for MultipartForm {
         };
         // The use of unwrap is safe here because mime types are inherently string representable
         headers.insert(header::CONTENT_TYPE, mime_type.to_string().parse().unwrap());
-        let mut content_length = boundary.len() + 4;
         let mut parts = Vec::with_capacity(self.parts.len());
         for part in self.parts {
-            let Ok((encoded, body_len)) = part.into_multipart_part(&boundary) else {
+            let Ok(encoded) = part.into_multipart_part(&boundary) else {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Invalid multipart field name or filename",
                 )
                     .into_response();
             };
-            content_length += encoded.prefix.len() + body_len + 2;
-            parts.push(encoded);
+            parts.push(Some(encoded));
         }
-        headers.insert(header::CONTENT_LENGTH, content_length.into());
-        (
-            headers,
-            body::Body::from_stream(multipart::encode(boundary, parts.into_iter(), false)),
-        )
-            .into_response()
+        let body = body::Body::new(multipart::Multipart::new(&boundary, parts, false));
+        if let Some(length) = body.size_hint().exact() {
+            headers.insert(header::CONTENT_LENGTH, length.into());
+        }
+        (headers, body).into_response()
     }
 }
 
@@ -197,7 +195,7 @@ impl Part {
     }
 
     /// Prepare this part for multipart serialization.
-    fn into_multipart_part(self, boundary: &str) -> Result<(multipart::Part, usize), &'static str> {
+    fn into_multipart_part(self, boundary: &str) -> Result<multipart::Part, &'static str> {
         // A part is serialized in this general format:
         // // the filename is optional
         // Content-Disposition: form-data; name="FIELD_NAME"; filename="FILENAME"\r\n
@@ -220,7 +218,6 @@ impl Part {
             disposition += &format!("; filename=\"{}\"", EscapedQuotedString(filename));
         }
         let content_type = self.mime_type.to_string();
-        let body_len = self.contents.len();
         let part = multipart::Part::new(
             boundary,
             [
@@ -230,7 +227,7 @@ impl Part {
             body::Body::from(self.contents),
         );
 
-        Ok((part, body_len))
+        Ok(part)
     }
 
     fn contains_boundary(&self, boundary: &str) -> bool {
@@ -362,7 +359,13 @@ mod tests {
         );
 
         let response = MultipartForm::with_parts(vec![part]).into_response();
+        let content_length = response.headers()[http::header::CONTENT_LENGTH]
+            .to_str()
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
         let body = response.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(content_length, body.len());
         let body = std::str::from_utf8(&body).unwrap();
 
         assert!(body.contains(
