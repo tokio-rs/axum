@@ -150,7 +150,7 @@ mod tests {
     use bytes::Bytes;
     use futures_util::{stream, StreamExt};
     use http_body::{Body as _, Frame, SizeHint};
-    use http_body_util::{BodyExt, Full};
+    use http_body_util::{BodyExt, StreamBody};
     use std::{
         convert::Infallible,
         pin::Pin,
@@ -172,9 +172,8 @@ mod tests {
                 let parts: Vec<_> = contents
                     .iter()
                     .map(|contents| {
-                        let body = Full::new(Bytes::copy_from_slice(contents))
-                            .with_trailers(async { Some(Ok(http::HeaderMap::new())) });
-                        Some(Part::new("test", [], Body::new(body)))
+                        let body = Body::from(Bytes::copy_from_slice(contents));
+                        Some(Part::new("test", [], body))
                     })
                     .collect();
                 let mut body = Multipart::new("test", parts, trailing_crlf);
@@ -201,8 +200,9 @@ mod tests {
     #[tokio::test]
     async fn streams_body_chunks_in_order() {
         let chunks = stream::iter([
-            Ok::<_, std::io::Error>(Bytes::from_static(b"ab")),
-            Ok(Bytes::from_static(b"cd")),
+            Ok::<_, std::io::Error>(Frame::data(Bytes::from_static(b"ab"))),
+            Ok(Frame::data(Bytes::from_static(b"cd"))),
+            Ok(Frame::trailers(http::HeaderMap::new())),
         ])
         .then(|chunk| async move {
             tokio::task::yield_now().await;
@@ -211,12 +211,14 @@ mod tests {
         let part = Part::new(
             "test",
             [("Content-Type", "text/plain")],
-            Body::from_stream(chunks),
+            Body::new(StreamBody::new(chunks)),
         );
         let mut body = Multipart::new("test", [Some(part), None], false);
         assert_eq!(body.size_hint().exact(), None);
 
-        let bytes = (&mut body).collect().await.unwrap().to_bytes();
+        let collected = (&mut body).collect().await.unwrap();
+        assert!(collected.trailers().is_none());
+        let bytes = collected.to_bytes();
         assert_eq!(
             bytes.as_ref(),
             b"--test\r\nContent-Type: text/plain\r\n\r\nabcd\r\n--test--"
