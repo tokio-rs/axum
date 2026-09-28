@@ -1300,6 +1300,34 @@ async fn connect_going_to_default_fallback() {
     assert!(body.is_empty());
 }
 
+// https://httpwg.org/specs/rfc9110.html#CONNECT
+#[crate::test]
+async fn successful_connect_drops_body_and_framing_headers() {
+    let app = Router::new().fallback(|| async {
+        (
+            [
+                (CONTENT_LENGTH, "5"),
+                (http::header::TRANSFER_ENCODING, "chunked"),
+            ],
+            "hello",
+        )
+    });
+
+    let req = Request::builder()
+        .uri("example.com:443")
+        .method(Method::CONNECT)
+        .header(HOST, "example.com:443")
+        .body(Body::empty())
+        .unwrap();
+
+    let res = app.oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(res.headers().get(CONTENT_LENGTH).is_none());
+    assert!(res.headers().get(http::header::TRANSFER_ENCODING).is_none());
+    let body = res.collect().await.unwrap().to_bytes();
+    assert!(body.is_empty());
+}
+
 #[crate::test]
 async fn impl_handler_for_into_response() {
     let app = Router::new().route("/things", post((StatusCode::CREATED, "thing created")));
