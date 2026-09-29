@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `MethodFilter::QUERY`, `routing::query[_service]` and `MethodRouter::query[_service]` ([#3801])
 - **fixed:** `MethodRouter::merge` no longer lists a method twice in the `Allow`
   header after merging `get` and `head` ([#3836])
+- **changed:** `Router::merge` no longer wraps service routes in another `Route`,
+  which saves a clone and a layer of boxing on every request to them ([#3909])
 - **changed:** Update `Router::route_service` docs for `axum::body::Body` instead of
   the removed `BoxBody` type ([#3890])
 
@@ -50,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3721]: https://github.com/tokio-rs/axum/pull/3721
 [#3742]: https://github.com/tokio-rs/axum/pull/3742
 [#3836]: https://github.com/tokio-rs/axum/pull/3836
+[#3909]: https://github.com/tokio-rs/axum/pull/3909
 [#3757]: https://github.com/tokio-rs/axum/pull/3757
 [#3829]: https://github.com/tokio-rs/axum/pull/3829
 [#3801]: https://github.com/tokio-rs/axum/pull/3801
