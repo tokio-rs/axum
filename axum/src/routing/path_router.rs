@@ -124,7 +124,8 @@ where
 
             match route {
                 Endpoint::MethodRouter(method_router) => self.route(path, method_router)?,
-                Endpoint::Route(route) => self.route_service(path, route)?,
+                // Already a `Route`, so don't wrap it in another one
+                Endpoint::Route(route) => self.route_endpoint(path, Endpoint::Route(route))?,
             }
         }
 
