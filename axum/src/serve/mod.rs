@@ -8,16 +8,19 @@ use std::{
     hash::{BuildHasher, Hasher},
     io,
     marker::PhantomData,
-    pin::pin,
+    pin::{pin, Pin},
     sync::Arc,
+    task::{ready, Context, Poll},
     time::Duration,
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
+use futures_core::future::BoxFuture;
 use futures_util::{
     future::{select, Either},
     FutureExt,
 };
+use http::{header, HeaderValue, Method, StatusCode, Version};
 use http_body::Body as HttpBody;
 use hyper::body::Incoming;
 use hyper_util::rt::TokioIo;
@@ -25,7 +28,11 @@ use hyper_util::rt::TokioIo;
 use hyper_util::rt::TokioTimer;
 #[cfg(any(feature = "http1", feature = "http2"))]
 use hyper_util::{server::conn::auto::Builder, service::TowerToHyperService};
-use tokio::{sync::watch, task::JoinHandle};
+use pin_project_lite::pin_project;
+use tokio::{
+    sync::{watch, Notify},
+    task::JoinHandle,
+};
 use tower::ServiceExt as _;
 use tower_service::Service;
 
@@ -122,6 +129,7 @@ where
         make_service,
         executor: TokioExecutor,
         connection_lifetime_limits: ConnectionLifetimeLimits::default(),
+        rotation_signal: None,
         _marker: PhantomData,
     }
 }
@@ -389,6 +397,7 @@ pub struct Serve<L, M, S, B, E = TokioExecutor> {
     make_service: M,
     executor: E,
     connection_lifetime_limits: ConnectionLifetimeLimits,
+    rotation_signal: Option<BoxFuture<'static, ()>>,
     _marker: PhantomData<fn(B) -> S>,
 }
 
@@ -422,6 +431,9 @@ where
     ///
     /// Similarly to [`serve`], although this future resolves to `io::Result<()>`, it will never
     /// error. It returns `Ok(())` only after the `signal` future completes.
+    ///
+    /// To move clients to another server before you shut this one down, see
+    /// [`with_connection_rotation`](Self::with_connection_rotation).
     pub fn with_graceful_shutdown<F>(self, signal: F) -> WithGracefulShutdown<L, M, S, F, B, E>
     where
         F: Future<Output = ()> + Send + 'static,
@@ -431,9 +443,109 @@ where
             make_service: self.make_service,
             executor: self.executor,
             connection_lifetime_limits: self.connection_lifetime_limits,
+            rotation_signal: self.rotation_signal,
             signal,
             _marker: PhantomData,
         }
+    }
+
+    /// Starts to close connections when the provided future completes, and keeps serving.
+    ///
+    /// This is also known as "lame duck" mode. The server still accepts connections and still
+    /// answers requests. It only tells every client that the connection it uses must not be used
+    /// again. Clients then open a new connection, and a load balancer can send them to another
+    /// server. Use this before a shutdown, while this server can still answer requests.
+    ///
+    /// What the client sees depends on the protocol:
+    ///
+    /// * HTTP/1: the response to the request that runs at that moment has a `connection: close`
+    ///   header. The connection closes after that response. A connection that is idle at that
+    ///   moment closes immediately, as it does after an idle timeout.
+    /// * HTTP/2: the server sends a GOAWAY frame. Requests that run at that moment finish. The
+    ///   client starts no new request on that connection.
+    ///
+    /// Connections that are accepted after the signal are served in the same way: each one answers
+    /// its request, and that response tells the client to close the connection. A connection that
+    /// has not sent a request yet stays open until it has been answered once. The server never
+    /// closes a connection before it has answered the request on it.
+    ///
+    /// A connection that was upgraded, for example a WebSocket connection, is not closed. Such a
+    /// connection is no longer an HTTP connection that the server can shut down.
+    ///
+    /// # Cost
+    ///
+    /// In this mode each HTTP/1 connection serves about one request. A client that keeps sending
+    /// requests to this server must open a new connection for almost every request. This costs
+    /// time on both sides. Use this mode only for the short time before a shutdown. Do not use it
+    /// as a permanent setting.
+    ///
+    /// # Difference to graceful shutdown
+    ///
+    /// [`with_graceful_shutdown`](Self::with_graceful_shutdown) stops the server. It stops
+    /// accepting connections, lets the requests that run at that moment finish, and then the
+    /// future returned by [`serve`] completes.
+    ///
+    /// This method does not stop the server. The server keeps accepting connections and keeps
+    /// answering requests. Use both methods together to first move the clients away, and then to
+    /// stop.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::{Router, routing::get};
+    ///
+    /// # async {
+    /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
+    ///
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, router)
+    ///     .with_connection_rotation(rotation_signal())
+    ///     .with_graceful_shutdown(shutdown_signal())
+    ///     .await;
+    /// # };
+    ///
+    /// async fn rotation_signal() {
+    ///     // for example, wait for `SIGTERM`
+    /// }
+    ///
+    /// async fn shutdown_signal() {
+    ///     // for example, wait a few seconds after `SIGTERM`
+    /// }
+    /// ```
+    ///
+    /// The signal is a future, so any channel can start the rotation. This sends the signal from
+    /// another task:
+    ///
+    /// ```
+    /// use axum::{Router, routing::get};
+    ///
+    /// # async {
+    /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    ///
+    /// let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+    ///
+    /// tokio::spawn(async move {
+    ///     // ...
+    ///     let _ = tx.send(());
+    /// });
+    ///
+    /// axum::serve(listener, router)
+    ///     .with_connection_rotation(async move {
+    ///         let _ = rx.await;
+    ///     })
+    ///     .await;
+    /// # };
+    /// ```
+    ///
+    /// This method can be called before or after
+    /// [`with_graceful_shutdown`](Self::with_graceful_shutdown).
+    pub fn with_connection_rotation<F>(mut self, signal: F) -> Self
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        self.rotation_signal = Some(Box::pin(signal));
+        self
     }
 
     /// Returns the local address this server is bound to.
@@ -505,6 +617,7 @@ where
             make_service: self.make_service,
             executor,
             connection_lifetime_limits: self.connection_lifetime_limits,
+            rotation_signal: self.rotation_signal,
             _marker: PhantomData,
         }
     }
@@ -530,18 +643,24 @@ where
             mut make_service,
             executor,
             connection_lifetime_limits,
+            rotation_signal,
             _marker,
         } = self;
 
         let (_signal_tx, signal_rx) = watch::channel(());
         let (_close_tx, close_rx) = watch::channel(());
+        let rotation_rx = rotation_channel(rotation_signal, &executor);
+        let signals = ConnectionSignals {
+            shutdown: signal_rx,
+            rotation: rotation_rx,
+            close: close_rx,
+        };
 
         loop {
             let (io, remote_addr) = listener.accept().await;
             handle_connection(
                 &mut make_service,
-                &signal_rx,
-                &close_rx,
+                &signals,
                 io,
                 remote_addr,
                 &executor,
@@ -565,6 +684,7 @@ where
             make_service,
             executor,
             connection_lifetime_limits,
+            rotation_signal,
             _marker: _,
         } = self;
 
@@ -572,7 +692,8 @@ where
         s.field("listener", listener)
             .field("make_service", make_service)
             .field("executor", executor)
-            .field("connection_lifetime_limits", connection_lifetime_limits);
+            .field("connection_lifetime_limits", connection_lifetime_limits)
+            .field("connection_rotation", &rotation_signal.is_some());
 
         s.finish()
     }
@@ -608,6 +729,7 @@ pub struct WithGracefulShutdown<L, M, S, F, B, E = TokioExecutor> {
     make_service: M,
     executor: E,
     connection_lifetime_limits: ConnectionLifetimeLimits,
+    rotation_signal: Option<BoxFuture<'static, ()>>,
     signal: F,
     _marker: PhantomData<fn(B) -> S>,
 }
@@ -635,6 +757,7 @@ where
             make_service: self.make_service,
             executor,
             connection_lifetime_limits: self.connection_lifetime_limits,
+            rotation_signal: self.rotation_signal,
             signal: self.signal,
             _marker: PhantomData,
         }
@@ -646,6 +769,17 @@ where
     /// See [`Serve::connection_lifetime_limits`] and [`ConnectionLifetimeLimits`] for details.
     pub fn connection_lifetime_limits(mut self, limits: ConnectionLifetimeLimits) -> Self {
         self.connection_lifetime_limits = limits;
+        self
+    }
+
+    /// Starts to close connections when the provided future completes, and keeps serving.
+    ///
+    /// See [`Serve::with_connection_rotation`] for details.
+    pub fn with_connection_rotation<F2>(mut self, signal: F2) -> Self
+    where
+        F2: Future<Output = ()> + Send + 'static,
+    {
+        self.rotation_signal = Some(Box::pin(signal));
         self
     }
 }
@@ -671,6 +805,7 @@ where
             mut make_service,
             executor,
             connection_lifetime_limits,
+            rotation_signal,
             signal,
             _marker,
         } = self;
@@ -683,6 +818,12 @@ where
         });
 
         let (close_tx, close_rx) = watch::channel(());
+        let rotation_rx = rotation_channel(rotation_signal, &executor);
+        let signals = ConnectionSignals {
+            shutdown: signal_rx.clone(),
+            rotation: rotation_rx,
+            close: close_rx,
+        };
 
         loop {
             let (io, remote_addr) =
@@ -699,8 +840,7 @@ where
 
             handle_connection(
                 &mut make_service,
-                &signal_rx,
-                &close_rx,
+                &signals,
                 io,
                 remote_addr,
                 &executor,
@@ -709,7 +849,9 @@ where
             .await;
         }
 
-        drop(close_rx);
+        // Drops this runner's own `close` receiver along with the rest, so that
+        // `close_tx` is left with only the connection tasks' receivers.
+        drop(signals);
         drop(listener);
 
         trace!(
@@ -735,6 +877,7 @@ where
             make_service,
             executor: _,
             connection_lifetime_limits,
+            rotation_signal,
             signal,
             _marker: _,
         } = self;
@@ -744,6 +887,7 @@ where
             .field("make_service", make_service)
             .field("connection_lifetime_limits", connection_lifetime_limits)
             .field("signal", signal)
+            .field("connection_rotation", &rotation_signal.is_some())
             .finish()
     }
 }
@@ -785,10 +929,56 @@ where
     }
 }
 
+/// Creates the channel that tells the connection tasks to close their connections.
+///
+/// The sender is dropped once `signal` completes. Without a signal the sender is given back to the
+/// caller, which keeps it open for as long as the server runs.
+/// The watch channels a connection task listens on, bundled so that each one
+/// does not have to be threaded through [`handle_connection`] separately.
+struct ConnectionSignals {
+    /// Graceful shutdown. Its sender is dropped once the server stops
+    /// accepting, and the connection task then shuts its connection down and
+    /// waits for the requests still in flight.
+    shutdown: watch::Receiver<()>,
+    /// Connection rotation, or `None` when no rotation signal was given. Its
+    /// sender is dropped once connections start rotating, and the connection
+    /// task then shuts its connection down while the server keeps accepting.
+    rotation: Option<watch::Receiver<()>>,
+    /// Dropped by the connection task when it is done, so that the server can
+    /// wait for every task before resolving.
+    close: watch::Receiver<()>,
+}
+
+fn rotation_channel<E>(
+    signal: Option<BoxFuture<'static, ()>>,
+    executor: &E,
+) -> Option<watch::Receiver<()>>
+where
+    E: Executor,
+{
+    let signal = signal?;
+
+    let (rotation_tx, rotation_rx) = watch::channel(());
+
+    executor.execute(async move {
+        // The signal is the caller's future and may never complete, so stop
+        // waiting on it once every receiver is gone. Otherwise this task, and
+        // the signal it holds, would outlive the server it rotates.
+        let closed = rotation_tx.closed();
+        if let Either::Right(_) = select(signal, pin!(closed)).await {
+            trace!("server stopped before the connection rotation signal, dropping it");
+            return;
+        }
+        trace!("received connection rotation signal. Telling tasks to close their connections");
+        drop(rotation_tx);
+    });
+
+    Some(rotation_rx)
+}
+
 async fn handle_connection<L, M, S, B, E>(
     make_service: &mut M,
-    signal_rx: &watch::Receiver<()>,
-    close_rx: &watch::Receiver<()>,
+    signals: &ConnectionSignals,
     io: <L as Listener>::Io,
     remote_addr: <L as Listener>::Addr,
     executor: &E,
@@ -805,11 +995,22 @@ async fn handle_connection<L, M, S, B, E>(
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
     E: Executor,
 {
-    let mut signal_rx = signal_rx.clone();
+    let mut signal_rx = signals.shutdown.clone();
     let connection_lifetime_limits = connection_lifetime_limits.clone();
     let io = TokioIo::new(io);
 
     trace!("connection {remote_addr:?} accepted");
+
+    // Nothing to watch and nothing to notify when no rotation signal was given.
+    let rotation = signals
+        .rotation
+        .clone()
+        .map(|rotation_rx| (rotation_rx, Arc::new(Notify::new())));
+    // Notified once the connection has a request to answer.
+    let first_request = rotation.as_ref().map(|(_, notify)| notify.clone());
+    let rotation_rx = rotation
+        .as_ref()
+        .map(|(rotation_rx, _)| rotation_rx.clone());
 
     make_service
         .ready()
@@ -823,10 +1024,18 @@ async fn handle_connection<L, M, S, B, E>(
         })
         .await
         .unwrap_or_else(|err| match err {})
-        .map_request(|req: Request<Incoming>| req.map(Body::new));
+        .map_request(move |req: Request<Incoming>| {
+            if let Some(first_request) = &first_request {
+                first_request.notify_one();
+            }
+            req.map(Body::new)
+        });
 
-    let hyper_service = TowerToHyperService::new(tower_service);
-    let close_rx = close_rx.clone();
+    let hyper_service = CloseWhenRotating {
+        inner: TowerToHyperService::new(tower_service),
+        rotation: rotation_rx,
+    };
+    let close_rx = signals.close.clone();
 
     let hyper_executor = HyperExecutor(executor.clone());
     executor.execute(async move {
@@ -842,7 +1051,32 @@ async fn handle_connection<L, M, S, B, E>(
         builder.http2().enable_connect_protocol();
 
         let mut conn = pin!(builder.serve_connection_with_upgrades(io, hyper_service));
-        let mut signal_closed = pin!(signal_rx.changed().fuse());
+
+        // Neither channel sends values, so `changed` only returns once its
+        // sender is dropped.
+        let signal_closed = async {
+            let _ = signal_rx.changed().await;
+            trace!("signal received in task, starting graceful shutdown");
+        };
+
+        let rotation_started = async {
+            let Some((mut rotation_rx, first_request)) = rotation else {
+                return std::future::pending().await;
+            };
+            let _ = rotation_rx.changed().await;
+            // hyper closes a connection that has not read a request yet, instead of shutting it
+            // down gracefully. Waiting for the first request keeps that exchange alive: the client
+            // gets its response, and that response is what tells it to close the connection.
+            first_request.notified().await;
+            trace!("rotation signal received in task, starting graceful shutdown");
+        };
+
+        // Both signals start the same graceful shutdown of this connection, so
+        // only the first one matters. Fused because it fires at most once.
+        let mut shutdown = pin!(async {
+            select(pin!(signal_closed), pin!(rotation_started)).await;
+        }
+        .fuse());
 
         // Age limit for the connection (with optional jitter). When it
         // elapses we start a graceful shutdown of this connection and re-arm the
@@ -857,24 +1091,15 @@ async fn handle_connection<L, M, S, B, E>(
         let mut age_fired = false;
 
         loop {
-            match select(
-                conn.as_mut(),
-                select(signal_closed.as_mut(), timer.as_mut()),
-            )
-            .await
-            {
+            match select(conn.as_mut(), select(shutdown.as_mut(), timer.as_mut())).await {
                 Either::Left((result, _)) => {
                     if let Err(_err) = result {
                         trace!("failed to serve connection: {_err:#}");
                     }
                     break;
                 }
-                Either::Right((Either::Left((Err(_), _)), _)) => {
-                    trace!("signal received in task, starting graceful shutdown");
+                Either::Right((Either::Left(((), _)), _)) => {
                     conn.as_mut().graceful_shutdown();
-                }
-                Either::Right((Either::Left((Ok(()), _)), _)) => {
-                    unreachable!("shutdown channel never sends values")
                 }
                 Either::Right((Either::Right(_), _)) if !age_fired => {
                     age_fired = true;
@@ -891,6 +1116,94 @@ async fn handle_connection<L, M, S, B, E>(
 
         drop(close_rx);
     });
+}
+
+/// Tells an HTTP/1 client that its connection is over, by putting
+/// `connection: close` on the response to the request it has just sent.
+///
+/// The connection task starts a graceful shutdown as well, but it can only do
+/// that the next time it polls the connection, and a handler that answers
+/// straight away leaves hyper nothing to wait for: the response goes out inside
+/// the same poll, before the task runs again. The client would then be given a
+/// response that says the connection is reusable, and the connection closed
+/// under it. Setting the header where the response is produced puts it on the
+/// response the client actually receives, whenever the handler finishes.
+///
+/// HTTP/2 has no `connection` header, and does not need one: a `GOAWAY` reaches
+/// the client whenever the connection task sends it, without having to ride on
+/// a response.
+struct CloseWhenRotating<S> {
+    inner: S,
+    /// The rotation channel, or `None` when no rotation signal was given. Its
+    /// sender is dropped once connections start rotating.
+    rotation: Option<watch::Receiver<()>>,
+}
+
+impl<S, B> hyper::service::Service<Request<Incoming>> for CloseWhenRotating<S>
+where
+    S: hyper::service::Service<Request<Incoming>, Response = Response<B>>,
+{
+    type Response = S::Response;
+    type Error = S::Error;
+    type Future = CloseWhenRotatingFuture<S::Future>;
+
+    fn call(&self, req: Request<Incoming>) -> Self::Future {
+        // HTTP/2 has no `connection` header, and a `CONNECT` that succeeds
+        // turns the connection into a tunnel rather than ending it, so neither
+        // response is one to put the header on. Whether connections are
+        // rotating is asked later, once the response is ready: rotation may
+        // start while this request is still being handled.
+        let rotation = (req.version() < Version::HTTP_2 && req.method() != Method::CONNECT)
+            .then(|| self.rotation.clone())
+            .flatten();
+
+        CloseWhenRotatingFuture {
+            rotation,
+            inner: self.inner.call(req),
+        }
+    }
+}
+
+pin_project! {
+    /// Response future for [`CloseWhenRotating`].
+    struct CloseWhenRotatingFuture<F> {
+        #[pin]
+        inner: F,
+        // The rotation channel, or `None` when this response is not one to put
+        // the header on.
+        rotation: Option<watch::Receiver<()>>,
+    }
+}
+
+impl<F, B, E> Future for CloseWhenRotatingFuture<F>
+where
+    F: Future<Output = Result<Response<B>, E>>,
+{
+    type Output = F::Output;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+        let mut response = ready!(this.inner.poll(cx)?);
+
+        // `has_changed` fails once the sender has been dropped, which is what
+        // starting the rotation does. Asking here rather than when the request
+        // arrived is what covers a rotation that started while the handler ran,
+        // which is otherwise the one case the header would miss.
+        let rotating = this
+            .rotation
+            .as_ref()
+            .is_some_and(|rotation| rotation.has_changed().is_err());
+
+        // An upgrade answers with `connection: upgrade`, and the connection
+        // carries on as something that is no longer HTTP for us to close.
+        if rotating && response.status() != StatusCode::SWITCHING_PROTOCOLS {
+            response
+                .headers_mut()
+                .append(header::CONNECTION, HeaderValue::from_static("close"));
+        }
+
+        Poll::Ready(Ok(response))
+    }
 }
 
 /// An incoming stream.
@@ -1149,6 +1462,20 @@ mod tests {
         serve(TcpListener::bind(addr).await.unwrap(), router.clone())
             .with_graceful_shutdown(std::future::pending())
             .with_executor(exec.clone());
+
+        // with_connection_rotation, in both orders
+        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .with_connection_rotation(std::future::pending())
+            .with_graceful_shutdown(std::future::pending())
+            .with_executor(exec.clone());
+        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .with_graceful_shutdown(std::future::pending())
+            .with_connection_rotation(std::future::pending())
+            .with_executor(exec.clone());
+        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .with_connection_rotation(std::future::pending())
+            .with_executor(exec.clone());
+
         serve(TcpListener::bind(addr).await.unwrap(), get(handler)).with_executor(exec.clone());
         serve(
             TcpListener::bind(addr).await.unwrap(),
@@ -1442,6 +1769,413 @@ mod tests {
         }
 
         assert_eq!(count.load(Ordering::SeqCst), 2);
+    }
+
+    const GET_ROOT: &[u8] = b"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n";
+
+    // Sends one request and then reads until the server closes the connection.
+    async fn request_until_close<S>(stream: &mut S) -> String
+    where
+        S: AsyncRead + AsyncWrite + Unpin,
+    {
+        stream.write_all(GET_ROOT).await.unwrap();
+        read_until_close(stream).await
+    }
+
+    // Reads until the server closes the connection.
+    async fn read_until_close<S>(stream: &mut S) -> String
+    where
+        S: AsyncRead + Unpin,
+    {
+        let mut response = String::new();
+        tokio::time::timeout(Duration::from_secs(2), stream.read_to_string(&mut response))
+            .await
+            .expect("the server did not close the connection")
+            .unwrap();
+        response
+    }
+
+    fn assert_closing_response(response: &str, body: &str) {
+        assert!(response.starts_with("HTTP/1.1 200 OK\r\n"), "{response:?}");
+        assert!(
+            response.to_lowercase().contains("connection: close"),
+            "{response:?}"
+        );
+        assert!(response.ends_with(body), "{response:?}");
+    }
+
+    // A request that is in flight when the rotation signal fires is answered, and its response
+    // tells the client that the connection is over.
+    #[crate::test]
+    async fn connection_rotation_closes_an_existing_connection() {
+        use std::sync::Arc;
+
+        let started = Arc::new(tokio::sync::Notify::new());
+        let release = Arc::new(tokio::sync::Notify::new());
+        let (rotate_tx, rotate_rx) = tokio::sync::oneshot::channel::<()>();
+
+        let app = Router::new().route("/", {
+            let started = started.clone();
+            let release = release.clone();
+            get(move || {
+                let started = started.clone();
+                let release = release.clone();
+                async move {
+                    started.notify_one();
+                    release.notified().await;
+                    "done"
+                }
+            })
+        });
+
+        let (mut client, server) = io::duplex(1024);
+
+        tokio::spawn(
+            serve(ReadyListener(Some(server)), app)
+                .with_connection_rotation(async move {
+                    rotate_rx.await.ok();
+                })
+                .into_future(),
+        );
+
+        client.write_all(GET_ROOT).await.unwrap();
+
+        // Wait until the handler runs, so that the request is in flight.
+        started.notified().await;
+        rotate_tx.send(()).unwrap();
+
+        // Give the connection task time to see the signal before the response is written.
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        release.notify_one();
+
+        let response = read_until_close(&mut client).await;
+
+        assert_closing_response(&response, "done");
+    }
+
+    // A connection that is accepted while connections rotate is served as well. Without this, a
+    // client that reconnects during the rotation would sit on this server again.
+    #[crate::test]
+    async fn connection_rotation_serves_new_connections() {
+        let (rotate_tx, rotate_rx) = tokio::sync::oneshot::channel::<()>();
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let app = Router::new().route("/", get(|| async { "hello" }));
+
+        tokio::spawn(
+            serve(listener, app)
+                .with_connection_rotation(async move {
+                    rotate_rx.await.ok();
+                })
+                .into_future(),
+        );
+
+        rotate_tx.send(()).unwrap();
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        // The server keeps accepting. Each connection answers its request and closes after it.
+        for _ in 0..2 {
+            let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+            let response = request_until_close(&mut stream).await;
+
+            assert_closing_response(&response, "hello");
+        }
+    }
+
+    // A connection that has not sent a request yet is still deciding which protocol it speaks.
+    // Shutting it down at that point would close it before the client is served.
+    #[crate::test]
+    async fn connection_rotation_waits_for_the_first_request() {
+        let (rotate_tx, rotate_rx) = tokio::sync::oneshot::channel::<()>();
+
+        let app = Router::new().route("/", get(|| async { "hello" }));
+
+        let (mut client, server) = io::duplex(1024);
+
+        tokio::spawn(
+            serve(ReadyListener(Some(server)), app)
+                .with_connection_rotation(async move {
+                    rotate_rx.await.ok();
+                })
+                .into_future(),
+        );
+
+        // Give the server time to accept the connection. The client has sent nothing on it, so the
+        // server does not know yet which protocol the client speaks.
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        rotate_tx.send(()).unwrap();
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        // The request is answered, that response tells the client that the connection is over,
+        // and the connection closes after it.
+        let response = request_until_close(&mut client).await;
+
+        assert_closing_response(&response, "hello");
+    }
+
+    // A connection that is upgraded during rotation is no longer an HTTP connection that the
+    // server can close, so its response must not claim otherwise.
+    #[cfg(all(feature = "http1", feature = "ws"))]
+    #[crate::test]
+    async fn connection_rotation_leaves_an_upgrade_alone() {
+        use futures_util::{SinkExt, StreamExt};
+        use tokio_tungstenite::{tungstenite, WebSocketStream};
+
+        use crate::{
+            extract::ws::{Message, WebSocketUpgrade},
+            routing::any,
+        };
+
+        let (rotate_tx, rotate_rx) = tokio::sync::oneshot::channel::<()>();
+
+        let app = Router::new().route(
+            "/ws",
+            any(|ws: WebSocketUpgrade| async move {
+                ws.on_upgrade(|mut socket| async move {
+                    while let Some(Ok(Message::Text(text))) = socket.recv().await {
+                        socket.send(Message::Text(text)).await.ok();
+                    }
+                })
+            }),
+        );
+
+        let (client, server) = io::duplex(1024);
+
+        tokio::spawn(
+            serve(ReadyListener(Some(server)), app)
+                .with_connection_rotation(async move {
+                    rotate_rx.await.ok();
+                })
+                .into_future(),
+        );
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        rotate_tx.send(()).unwrap();
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn.with_upgrades());
+
+        let request = Request::builder()
+            .uri("/ws")
+            .header("connection", "upgrade")
+            .header("upgrade", "websocket")
+            .header("sec-websocket-version", "13")
+            .header("sec-websocket-key", "dGhlIHNhbXBsZSBub25jZQ==")
+            .body(Body::empty())
+            .unwrap();
+        let mut response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::SWITCHING_PROTOCOLS);
+        let closing = response
+            .headers()
+            .get_all(http::header::CONNECTION)
+            .iter()
+            .filter_map(|value| value.to_str().ok())
+            .flat_map(|value| value.split(','))
+            .any(|token| token.trim().eq_ignore_ascii_case("close"));
+        assert!(
+            !closing,
+            "the upgrade response told the client to close the connection: {:?}",
+            response.headers(),
+        );
+
+        let upgraded = hyper::upgrade::on(&mut response).await.unwrap();
+        let mut ws = WebSocketStream::from_raw_socket(
+            TokioIo::new(upgraded),
+            tungstenite::protocol::Role::Client,
+            None,
+        )
+        .await;
+
+        ws.send(tungstenite::Message::Text("hi".into()))
+            .await
+            .expect("the upgraded connection was closed by the rotation");
+        let echoed = ws
+            .next()
+            .await
+            .expect("the upgraded connection ended")
+            .expect("the upgraded connection failed");
+        assert_eq!(echoed.into_text().unwrap().as_str(), "hi");
+    }
+
+    // The rotation signal is the caller's future and may never complete. The task that waits on it
+    // must not outlive the server, or it keeps whatever that future holds alive with it.
+    #[crate::test]
+    async fn connection_rotation_signal_does_not_outlive_the_server() {
+        use std::sync::{
+            atomic::{AtomicBool, Ordering},
+            Arc,
+        };
+
+        struct SetOnDrop(Arc<AtomicBool>);
+
+        impl Drop for SetOnDrop {
+            fn drop(&mut self) {
+                self.0.store(true, Ordering::SeqCst);
+            }
+        }
+
+        let dropped = Arc::new(AtomicBool::new(false));
+        let guard = SetOnDrop(dropped.clone());
+
+        let (_client, server) = io::duplex(1024);
+        let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+
+        let server = tokio::spawn(
+            serve(ReadyListener(Some(server)), Router::new())
+                // A rotation signal that never completes, holding a resource.
+                .with_connection_rotation(async move {
+                    let _guard = guard;
+                    std::future::pending::<()>().await;
+                })
+                .with_graceful_shutdown(async move {
+                    shutdown_rx.await.ok();
+                })
+                .into_future(),
+        );
+
+        shutdown_tx.send(()).unwrap();
+        tokio::time::timeout(Duration::from_secs(5), server)
+            .await
+            .expect("the server did not stop")
+            .unwrap();
+
+        for _ in 0..50 {
+            tokio::task::yield_now().await;
+        }
+
+        assert!(
+            dropped.load(Ordering::SeqCst),
+            "the rotation signal outlived the server",
+        );
+    }
+
+    // HTTP/2 clients get a GOAWAY frame. The request that runs at that moment still finishes, and
+    // the connection ends after it.
+    #[crate::test]
+    #[cfg(feature = "http2")]
+    async fn connection_rotation_closes_an_existing_http2_connection() {
+        use std::sync::Arc;
+
+        use hyper_util::rt::TokioExecutor;
+
+        let started = Arc::new(tokio::sync::Notify::new());
+        let release = Arc::new(tokio::sync::Notify::new());
+        let (rotate_tx, rotate_rx) = tokio::sync::oneshot::channel::<()>();
+
+        let app = Router::new().route("/", {
+            let started = started.clone();
+            let release = release.clone();
+            get(move || {
+                let started = started.clone();
+                let release = release.clone();
+                async move {
+                    started.notify_one();
+                    release.notified().await;
+                    "done"
+                }
+            })
+        });
+
+        let (client, server) = io::duplex(1024);
+
+        tokio::spawn(
+            serve(ReadyListener(Some(server)), app)
+                .with_connection_rotation(async move {
+                    rotate_rx.await.ok();
+                })
+                .into_future(),
+        );
+
+        let io = TokioIo::new(client);
+        let (sender, conn) = hyper::client::conn::http2::Builder::new(TokioExecutor::new())
+            .handshake(io)
+            .await
+            .unwrap();
+        let conn_handle = tokio::spawn(conn);
+
+        // This clone stays alive for the whole test. An HTTP/2 client connection only ends on its
+        // own once every sender is dropped, so the connection can only end here because the server
+        // closed it.
+        let mut idle_sender = sender.clone();
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let request_fut = tokio::spawn({
+            let mut sender = sender;
+            async move { sender.send_request(request).await }
+        });
+
+        // Wait until the handler runs, so that the request is in flight.
+        started.notified().await;
+        rotate_tx.send(()).unwrap();
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        release.notify_one();
+
+        let response = request_fut.await.unwrap().unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(Body::new(response.into_body()), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"done");
+
+        // The client's connection ends once the server has sent the GOAWAY frame and the request
+        // has finished.
+        tokio::time::timeout(Duration::from_secs(2), conn_handle)
+            .await
+            .expect("connection did not end after the rotation signal")
+            .unwrap()
+            .unwrap();
+
+        // The client cannot start a new request on it either.
+        assert!(idle_sender.ready().await.is_err());
+    }
+
+    // Rotation keeps the server running. Only the graceful shutdown signal stops it.
+    #[crate::test]
+    async fn connection_rotation_then_graceful_shutdown() {
+        let (rotate_tx, rotate_rx) = tokio::sync::oneshot::channel::<()>();
+        let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let app = Router::new().route("/", get(|| async { "hello" }));
+
+        let server_task = tokio::spawn(
+            serve(listener, app)
+                .with_connection_rotation(async move {
+                    rotate_rx.await.ok();
+                })
+                .with_graceful_shutdown(async move {
+                    shutdown_rx.await.ok();
+                })
+                .into_future(),
+        );
+
+        rotate_tx.send(()).unwrap();
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        // The server still answers requests while it rotates connections.
+        let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+        let response = request_until_close(&mut stream).await;
+        assert_closing_response(&response, "hello");
+
+        assert!(
+            !server_task.is_finished(),
+            "serve resolved before the graceful shutdown signal",
+        );
+
+        shutdown_tx.send(()).unwrap();
+
+        tokio::time::timeout(Duration::from_secs(2), server_task)
+            .await
+            .expect("serve future did not resolve after the graceful shutdown signal")
+            .unwrap();
     }
 
     #[crate::test]
