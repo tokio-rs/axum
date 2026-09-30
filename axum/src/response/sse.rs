@@ -306,12 +306,26 @@ impl Event {
     /// Panics if any `data` has already been written before.
     ///
     /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
-    pub fn data<T>(self, data: T) -> Self
+    pub fn data<T>(mut self, data: T) -> Self
     where
         T: AsRef<str>,
     {
+        let data = data.as_ref();
+
+        // Writing an empty string to the data writer is a no-op, but an event
+        // without any `data` field is never dispatched by `EventSource`, so
+        // write an empty `data: ` field instead.
+        if data.is_empty() {
+            if self.flags.contains(EventFlags::HAS_DATA) {
+                panic!("Called `Event::data*` multiple times");
+            }
+            self.flags.insert(EventFlags::HAS_DATA);
+            self.field("data", "");
+            return self;
+        }
+
         let mut writer = self.into_data_writer();
-        let _ = writer.write_str(data.as_ref());
+        let _ = writer.write_str(data);
         writer.into_event()
     }
 
@@ -736,6 +750,17 @@ mod tests {
     use serde_json::value::RawValue;
     use std::{collections::HashMap, convert::Infallible};
     use tokio_stream::StreamExt as _;
+
+    #[test]
+    fn empty_data_still_writes_data_field() {
+        // Browsers only dispatch an event if it has at least one `data` field,
+        // so an empty `data` must still be written as `data: `.
+        let event = Event::default().data("");
+        assert_eq!(&*event.finalize(), b"data: \n\n");
+
+        let event = Event::default().event("deleted").data("");
+        assert_eq!(&*event.finalize(), b"event: deleted\ndata: \n\n");
+    }
 
     #[test]
     fn leading_space_is_not_stripped() {
