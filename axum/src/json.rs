@@ -136,9 +136,16 @@ where
 }
 
 fn json_content_type(headers: &HeaderMap) -> bool {
-    headers
-        .get(header::CONTENT_TYPE)
-        .and_then(|content_type| content_type.to_str().ok())
+    let Some(content_type) = headers.get(header::CONTENT_TYPE) else {
+        return false;
+    };
+    // Most clients send exactly this, and it needs no parsing
+    if content_type.as_bytes() == b"application/json" {
+        return true;
+    }
+    content_type
+        .to_str()
+        .ok()
         .and_then(|content_type| content_type.parse::<mime::Mime>().ok())
         .is_some_and(|mime| {
             mime.type_() == "application"
@@ -291,7 +298,10 @@ mod tests {
         assert!(valid_json_content_type("application/json; charset=utf-8").await);
         assert!(valid_json_content_type("application/json;charset=utf-8").await);
         assert!(valid_json_content_type("application/cloudevents+json").await);
+        assert!(valid_json_content_type("Application/JSON").await);
         assert!(!valid_json_content_type("text/json").await);
+        assert!(!valid_json_content_type("application/jsonx").await);
+        assert!(!valid_json_content_type("application/json-seq").await);
     }
 
     #[crate::test]
