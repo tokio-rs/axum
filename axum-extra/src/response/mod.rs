@@ -12,6 +12,9 @@ mod attachment;
 #[cfg(feature = "multipart")]
 pub mod multiple;
 
+#[cfg(any(feature = "file-stream", feature = "multipart"))]
+mod multipart;
+
 #[cfg(feature = "error-response")]
 mod error_response;
 
