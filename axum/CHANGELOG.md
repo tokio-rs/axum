@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Successful responses to `CONNECT` no longer keep `content-length` or
   `transfer-encoding` headers after their body is removed ([#3907])
 - **changed:** Requests to routes wrapped by `Router::layer` no longer clone every
-  inner layer, so their cost no longer grows superlinearly with layer depth ([#PR])
+  inner layer, so their cost no longer grows superlinearly with layer depth ([#3915])
 
 [#3984]: https://github.com/tokio-rs/axum/pull/3984
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
@@ -70,7 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3779]: https://github.com/tokio-rs/axum/pull/3779
 [#3928]: https://github.com/tokio-rs/axum/pull/3928
 [#3907]: https://github.com/tokio-rs/axum/pull/3907
-[#PR]: https://github.com/tokio-rs/axum/pull/PR
+[#3915]: https://github.com/tokio-rs/axum/pull/3915
 
 # 0.8.9
 
