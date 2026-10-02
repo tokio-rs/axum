@@ -15,6 +15,7 @@ use std::{
     fmt,
     future::Future,
     pin::Pin,
+    sync::Arc,
     task::{ready, Context, Poll},
 };
 use tower::{
@@ -28,7 +29,7 @@ use tower_service::Service;
 ///
 /// You normally shouldn't need to care about this type. It's used in
 /// [`Router::layer`](super::Router::layer).
-pub struct Route<E = Infallible>(BoxCloneSyncService<Request, Response, E>);
+pub struct Route<E = Infallible>(Arc<BoxCloneSyncService<Request, Response, E>>);
 
 impl<E> Route<E> {
     pub(crate) fn new<T>(svc: T) -> Self
@@ -37,24 +38,31 @@ impl<E> Route<E> {
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
-        Self(BoxCloneSyncService::new(MapIntoResponse::new(svc)))
+        Self(Arc::new(BoxCloneSyncService::new(MapIntoResponse::new(
+            svc,
+        ))))
     }
 
-    /// Variant of [`Route::call`] that takes ownership of the route to avoid cloning.
-    pub(crate) fn call_owned(self, req: Request<Body>) -> RouteFuture<E> {
-        let req = req.map(Body::new);
-        self.oneshot_inner_owned(req).not_top_level()
+    /// Variant of [`Route::call`] that doesn't need `&mut self`.
+    pub(crate) fn call_ref(&self, req: Request<Body>) -> RouteFuture<E> {
+        self.oneshot_inner(req.map(Body::new)).not_top_level()
     }
 
     pub(crate) fn oneshot_inner(&self, req: Request) -> RouteFuture<E> {
         let method = req.method().clone();
-        RouteFuture::new(method, self.0.clone().oneshot(req))
+        RouteFuture::new(method, BoxCloneSyncService::clone(&self.0).oneshot(req))
     }
 
     /// Variant of [`Route::oneshot_inner`] that takes ownership of the route to avoid cloning.
     pub(crate) fn oneshot_inner_owned(self, req: Request) -> RouteFuture<E> {
         let method = req.method().clone();
-        RouteFuture::new(method, self.0.oneshot(req))
+        let svc = Arc::try_unwrap(self.0).unwrap_or_else(|svc| BoxCloneSyncService::clone(&svc));
+        RouteFuture::new(method, svc.oneshot(req))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn ptr_eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
     }
 
     pub(crate) fn layer<L, NewError>(self, layer: L) -> Route<NewError>

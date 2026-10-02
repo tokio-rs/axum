@@ -317,7 +317,7 @@ where
                     Endpoint::MethodRouter(method_router) => {
                         Ok(method_router.call_with_state(req, state))
                     }
-                    Endpoint::Route(route) => Ok(route.clone().call_owned(req)),
+                    Endpoint::Route(route) => Ok(route.call_ref(req)),
                 }
             }
             // explicitly handle all variants in case matchit adds
@@ -422,5 +422,35 @@ pub(crate) fn path_for_nested_route<'a>(prefix: &'a str, path: &'a str) -> Cow<'
         prefix.into()
     } else {
         format!("{prefix}{path}").into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn merge_keeps_service_routes_as_they_are() {
+        let mut other = PathRouter::<()>::default();
+        other
+            .route_service(
+                "/svc",
+                tower::service_fn(|_: Request| async { Ok::<_, Infallible>("ok") }),
+            )
+            .unwrap();
+        let Endpoint::Route(original) = &other.routes[0] else {
+            panic!("expected a service route");
+        };
+        let original = original.clone();
+
+        let mut router = PathRouter::<()>::default();
+        router.merge(other).unwrap();
+
+        // Counting service clones can't tell a wrapped route from the original,
+        // because the outer `Route` only clones an `Arc`
+        let Endpoint::Route(merged) = &router.routes[0] else {
+            panic!("expected a service route");
+        };
+        assert!(merged.ptr_eq(&original));
     }
 }
