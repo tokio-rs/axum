@@ -1208,7 +1208,7 @@ where
                     match $svc {
                         MethodEndpoint::None => {}
                         MethodEndpoint::Route(route) => {
-                            return route.clone().oneshot_inner_owned($req);
+                            return route.oneshot_inner($req);
                         }
                         MethodEndpoint::BoxedHandler(handler) => {
                             let route = handler.clone().into_route(state);
