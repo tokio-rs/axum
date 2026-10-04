@@ -1231,7 +1231,7 @@ mod tests {
                 req.headers_mut()
                     .append(header::UPGRADE, value.parse().unwrap());
             }
-            let on_upgrade = hyper::upgrade::on(&mut Request::new(()));
+            let on_upgrade = hyper::upgrade::on(Request::new(()));
             req.extensions_mut().insert(on_upgrade);
             let (mut parts, _) = req.into_parts();
             let result = WebSocketUpgrade::from_request_parts(&mut parts, &()).await;
