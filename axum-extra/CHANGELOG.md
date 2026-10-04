@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **fixed:** `JsonDeserializer` rejects trailing non-whitespace after a JSON value.
 - **breaking:** Remove the deprecated `Host`, `Scheme` and `OptionalPath`
   extractors ([#3599])
   - Also remove `HostRejection` which only had `FailedToResolveHost`
