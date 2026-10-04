@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- **fixed:** `JsonDeserializer` rejects trailing non-whitespace after a JSON value.
+- **fixed:** `JsonDeserializer` rejects trailing non-whitespace after a JSON
+  value ([#3916])
 - **breaking:** Remove the deprecated `Host`, `Scheme` and `OptionalPath`
   extractors ([#3599])
   - Also remove `HostRejection` which only had `FailedToResolveHost`
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning].
 - **fixed:** Escape multipart `Content-Disposition` parameters and reject
   newlines in field names and filenames ([#3776])
 
+[#3916]: https://github.com/tokio-rs/axum/pull/3916
 [#3599]: https://github.com/tokio-rs/axum/pull/3599
 [#3586]: https://github.com/tokio-rs/axum/pull/3586
 [#3801]: https://github.com/tokio-rs/axum/pull/3801
