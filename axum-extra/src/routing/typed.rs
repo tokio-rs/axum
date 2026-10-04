@@ -386,13 +386,88 @@ impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, 
 
 #[cfg(test)]
 mod tests {
-    use crate::routing::TypedPath;
+    use crate::routing::{RouterExt, TypedPath};
+    use axum::{
+        body::Body,
+        extract::FromRequestParts,
+        http::{Request, StatusCode},
+        response::{IntoResponse, Response},
+        Router,
+    };
     use serde::{Deserialize, Serialize};
+    use tower::ServiceExt;
 
     #[derive(TypedPath, Deserialize)]
     #[typed_path("/users/{id}")]
     struct UsersShow {
         id: i32,
+    }
+
+    #[tokio::test]
+    async fn unit_path_with_escaped_braces() {
+        #[derive(Debug, TypedPath)]
+        #[typed_path("/literal/{{braces}}")]
+        struct EscapedBraces;
+
+        assert_eq!(EscapedBraces::PATH, "/literal/{{braces}}");
+        assert_eq!(EscapedBraces.to_string(), "/literal/{braces}");
+
+        let app = Router::new().typed_get(|_: EscapedBraces| async { "matched" });
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri(EscapedBraces.to_uri())
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 100)
+            .await
+            .unwrap();
+        assert_eq!(body, "matched");
+
+        let (mut parts, _) = Request::builder()
+            .uri("/literal/{other}")
+            .body(())
+            .unwrap()
+            .into_parts();
+        let rejection = EscapedBraces::from_request_parts(&mut parts, &())
+            .await
+            .unwrap_err();
+        assert_eq!(rejection, StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn unit_path_with_escaped_braces_and_custom_rejection() {
+        #[derive(Debug, TypedPath)]
+        #[typed_path("/literal/{{braces}}", rejection(CustomRejection))]
+        struct EscapedBraces;
+
+        #[derive(Debug, Default)]
+        struct CustomRejection;
+
+        impl IntoResponse for CustomRejection {
+            fn into_response(self) -> Response {
+                StatusCode::BAD_REQUEST.into_response()
+            }
+        }
+
+        for (uri, matches) in [("/literal/{braces}", true), ("/literal/{other}", false)] {
+            let (mut parts, _) = Request::builder().uri(uri).body(()).unwrap().into_parts();
+            let result = EscapedBraces::from_request_parts(&mut parts, &()).await;
+
+            if matches {
+                result.unwrap();
+            } else {
+                assert_eq!(
+                    result.unwrap_err().into_response().status(),
+                    StatusCode::BAD_REQUEST
+                );
+            }
+        }
     }
 
     #[derive(Serialize)]
