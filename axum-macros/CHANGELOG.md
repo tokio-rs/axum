@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **fixed:** Match escaped braces when extracting unit `TypedPath` structs.
+- **fixed:** Match escaped braces when extracting unit `TypedPath` structs
+  ([#3917])
 - **breaking:** `#[from_request(via(Extractor))]` now uses the extractor's
   rejection type instead of `axum::response::Response` ([#3261])
 - **breaking:** `Option<T>` fields in `#[derive(FromRequest)]` and
@@ -18,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Option<T>` must implement `OptionalFromRequest` or
   `OptionalFromRequestParts`. ([#3623])
 
+[#3917]: https://github.com/tokio-rs/axum/pull/3917
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
 [#3623]: https://github.com/tokio-rs/axum/issues/3623
 
