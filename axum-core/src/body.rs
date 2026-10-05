@@ -184,14 +184,6 @@ impl Stream for BodyDataStream {
             }
         }
     }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let size_hint = self.inner.size_hint();
-        let lower = usize::try_from(size_hint.lower()).unwrap_or_default();
-        let upper = size_hint.upper().and_then(|v| usize::try_from(v).ok());
-        (lower, upper)
-    }
 }
 
 impl http_body::Body for BodyDataStream {
@@ -250,4 +242,41 @@ where
 fn test_try_downcast() {
     assert_eq!(try_downcast::<i32, _>(5_u32), Err(5_u32));
     assert_eq!(try_downcast::<i32, _>(5_i32), Ok(5_i32));
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn data_stream_size_hint_counts_items_not_bytes() {
+    let mut stream = Body::from("hello").into_data_stream();
+    let (lower, upper) = Stream::size_hint(&stream);
+    assert_eq!(http_body::Body::size_hint(&stream).exact(), Some(5));
+
+    let mut count = 0;
+    while let Some(chunk) = std::future::poll_fn(|cx| Pin::new(&mut stream).poll_next(cx)).await {
+        assert_eq!(chunk.unwrap(), "hello");
+        count += 1;
+    }
+
+    assert_eq!(count, 1);
+    assert!(lower <= count);
+    assert!(upper.map_or(true, |upper| count <= upper));
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn data_stream_size_hint_includes_errors() {
+    let body = http_body_util::Limited::new(Body::from("hello"), 0);
+    let mut stream = Body::new(body).into_data_stream();
+    let (lower, upper) = Stream::size_hint(&stream);
+    assert_eq!(http_body::Body::size_hint(&stream).exact(), Some(0));
+
+    let mut count = 0;
+    while let Some(chunk) = std::future::poll_fn(|cx| Pin::new(&mut stream).poll_next(cx)).await {
+        assert!(chunk.is_err());
+        count += 1;
+    }
+
+    assert_eq!(count, 1);
+    assert!(lower <= count);
+    assert!(upper.map_or(true, |upper| count <= upper));
 }
