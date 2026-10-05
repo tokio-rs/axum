@@ -574,15 +574,11 @@ fn header_eq(headers: &HeaderMap, key: &HeaderName, value: &'static str) -> bool
 }
 
 fn header_contains(headers: &HeaderMap, key: &HeaderName, value: &'static str) -> bool {
-    let Some(header) = headers.get(key) else {
-        return false;
-    };
-
-    if let Ok(header) = std::str::from_utf8(header.as_bytes()) {
-        header.to_ascii_lowercase().contains(value)
-    } else {
-        false
-    }
+    headers
+        .get_all(key)
+        .iter()
+        .flat_map(|header| header.as_bytes().split(|&b| b == b','))
+        .any(|token| token.trim_ascii().eq_ignore_ascii_case(value.as_bytes()))
 }
 
 /// A stream of WebSocket messages.
@@ -1167,6 +1163,59 @@ mod tests {
     use tokio::net::TcpStream;
     use tokio_tungstenite::tungstenite;
     use tower::ServiceExt;
+
+    #[crate::test]
+    async fn connection_header_accepts_upgrade_tokens() {
+        for connection in [
+            vec!["Upgrade"],
+            vec!["keep-alive, \tUpGrAdE\t"],
+            vec!["keep-alive", "Upgrade"],
+        ] {
+            let mut req = Request::builder()
+                .header("upgrade", "websocket")
+                .header("sec-websocket-key", "6D69KGBOr4Re+Nj6zx9aQA==")
+                .header("sec-websocket-version", "13");
+            for value in &connection {
+                req = req.header("connection", *value);
+            }
+            let mut req = req.body(Body::empty()).unwrap();
+            let on_upgrade = hyper::upgrade::on(&mut req);
+            req.extensions_mut().insert(on_upgrade);
+            let (mut parts, _) = req.into_parts();
+
+            let result = WebSocketUpgrade::from_request_parts(&mut parts, &()).await;
+            assert!(result.is_ok(), "{connection:?}: {result:?}");
+        }
+    }
+
+    #[crate::test]
+    async fn connection_header_rejects_upgrade_substrings() {
+        for connection in [
+            "not-upgrade",
+            "upgraded",
+            "keep-alive, x-upgrade",
+            "\"upgrade\"",
+            "keep-alive upgrade",
+        ] {
+            let req = Request::builder()
+                .header("upgrade", "websocket")
+                .header("connection", connection)
+                .header("sec-websocket-key", "6D69KGBOr4Re+Nj6zx9aQA==")
+                .header("sec-websocket-version", "13")
+                .body(Body::empty())
+                .unwrap();
+            let (mut parts, _) = req.into_parts();
+
+            let result = WebSocketUpgrade::from_request_parts(&mut parts, &()).await;
+            assert!(
+                matches!(
+                    result,
+                    Err(WebSocketUpgradeRejection::InvalidConnectionHeader(_))
+                ),
+                "{connection:?}: {result:?}"
+            );
+        }
+    }
 
     #[crate::test]
     async fn rejects_http_1_0_requests() {
