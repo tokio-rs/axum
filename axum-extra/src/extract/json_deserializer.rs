@@ -110,9 +110,9 @@ where
     /// Deserialize the request body into the target type.
     /// See [`JsonDeserializer`] for more details.
     pub fn deserialize(&'a self) -> Result<T, JsonDeserializerRejection> {
-        let deserializer = &mut serde_json::Deserializer::from_slice(&self.bytes);
+        let mut deserializer = serde_json::Deserializer::from_slice(&self.bytes);
 
-        let value = match serde_path_to_error::deserialize(deserializer) {
+        let value = match serde_path_to_error::deserialize(&mut deserializer) {
             Ok(value) => value,
             Err(err) => {
                 let rejection = match err.inner().classify() {
@@ -133,6 +133,8 @@ where
                 return Err(rejection);
             }
         };
+
+        deserializer.end().map_err(JsonSyntaxError::from_err)?;
 
         Ok(value)
     }
@@ -240,6 +242,59 @@ mod tests {
         let body = res.text().await;
 
         assert_eq!(body, "bar");
+    }
+
+    #[tokio::test]
+    async fn deserialize_body_with_trailing_whitespace() {
+        #[derive(Deserialize)]
+        struct Input<'a> {
+            foo: &'a str,
+        }
+
+        async fn handler(deserializer: JsonDeserializer<Input<'_>>) -> Response {
+            match deserializer.deserialize() {
+                Ok(input) => input.foo.to_owned().into_response(),
+                Err(err) => err.into_response(),
+            }
+        }
+
+        let app = Router::new().route("/", post(handler));
+        let client = TestClient::new(app);
+
+        for body in [r#"{"foo":"bar"}"#, "{\"foo\":\"bar\"} \t\r\n"] {
+            let res = client
+                .post("/")
+                .header("content-type", "application/json")
+                .body(body)
+                .await;
+
+            assert_eq!(res.status(), StatusCode::OK);
+            assert_eq!(res.text().await, "bar");
+        }
+    }
+
+    #[tokio::test]
+    async fn deserialize_body_rejects_trailing_content() {
+        async fn handler(deserializer: JsonDeserializer<Value>) -> Response {
+            match deserializer.deserialize() {
+                Err(JsonDeserializerRejection::JsonSyntaxError(err)) => err.into_response(),
+                result => panic!("expected a JSON syntax error, got {result:?}"),
+            }
+        }
+
+        let app = Router::new().route("/", post(handler));
+        let client = TestClient::new(app);
+
+        for body in [r#"{"x":1} garbage"#, r#"{"x":1} {"x":2}"#] {
+            let res = client
+                .post("/")
+                .header("content-type", "application/json")
+                .body(body)
+                .await;
+
+            assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+            assert!(res.text().await.contains("trailing characters"));
+        }
     }
 
     #[tokio::test]
