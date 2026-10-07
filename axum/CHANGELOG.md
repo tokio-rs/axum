@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **breaking:** `tower-log` is no longer a default feature. Enable it explicitly to keep
+  `tower`'s `log` feature turned on ([#3921])
 - **breaking:** Router fallbacks are now properly merged for nested routers ([#3158])
 - **breaking:** `#[from_request(via(Extractor))]` now uses the extractor's
   rejection type instead of `axum::response::Response` ([#3261])
@@ -59,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3867]: https://github.com/tokio-rs/axum/pull/3867
 [#3890]: https://github.com/tokio-rs/axum/pull/3890
 [#3779]: https://github.com/tokio-rs/axum/pull/3779
+[#3921]: https://github.com/tokio-rs/axum/issues/3921
 
 # 0.8.9
 
