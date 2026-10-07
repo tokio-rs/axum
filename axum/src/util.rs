@@ -38,6 +38,18 @@ impl PercentDecodedStr {
             .map(|decoded| Self(decoded.as_ref().into()))
     }
 
+    pub(crate) fn new_lossy<S>(s: S) -> Self
+    where
+        S: AsRef<str>,
+    {
+        Self(
+            percent_encoding::percent_decode(s.as_ref().as_bytes())
+                .decode_utf8_lossy()
+                .as_ref()
+                .into(),
+        )
+    }
+
     pub(crate) fn as_str(&self) -> &str {
         &self.0
     }

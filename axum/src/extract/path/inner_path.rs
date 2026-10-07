@@ -182,28 +182,14 @@ fn get_inner_params(parts: &Parts) -> Result<&[(Arc<str>, PercentDecodedStr)], I
         .get::<UrlParams>()
         .ok_or(MissingPathParams)?;
 
-    match url_params {
-        UrlParams::Params {
-            params,
-            inner_start,
-        } => {
-            let inner_params = params
-                .get(*inner_start..)
-                .expect("Mismatch between url params and count of captures. This is bug in axum. Please file an issue.");
-
-            Ok(inner_params)
-        }
-        UrlParams::InvalidUtf8InPathParam { key } => {
-            let error = PathDeserializationError {
-                kind: ErrorKind::InvalidUtf8InPathParam {
-                    key: key.to_string(),
-                },
-            };
-            Err(InnerPathRejection::from(FailedToDeserializePathParams(
-                error,
-            )))
-        }
-    }
+    url_params.inner().map_err(|key| {
+        let error = PathDeserializationError {
+            kind: ErrorKind::InvalidUtf8InPathParam {
+                key: key.to_string(),
+            },
+        };
+        InnerPathRejection::from(FailedToDeserializePathParams(error))
+    })
 }
 
 #[cfg(test)]
@@ -694,15 +680,44 @@ mod tests {
     async fn invalid_utf8_in_nest_prefix_capture() {
         let app = Router::new().nest(
             "/org/{org}",
+            Router::new()
+                .route(
+                    "/team/{team_id}",
+                    get(|InnerPath(inner): InnerPath<Params>| async move {
+                        assert_eq!(inner, params(&[("team_id", "1337")]));
+                        "teams#show"
+                    }),
+                )
+                .route(
+                    "/user/{user_id}",
+                    get(|_: Path<Params>| async move { "users#show" }),
+                ),
+        );
+        let client = TestClient::new(app);
+
+        let res = client.get("/org/%FF/team/1337").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "teams#show");
+
+        // `Path` includes the outer capture, so it still rejects the request
+        let res = client.get("/org/%FF/user/42").await;
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(res.text().await, "Invalid URL: Invalid UTF-8 in `org`");
+    }
+
+    #[crate::test]
+    async fn invalid_utf8_in_nest_prefix_and_inner_capture() {
+        let app = Router::new().nest(
+            "/org/{org}",
             Router::new().route(
                 "/team/{team_id}",
                 get(|_: InnerPath<Params>| async move { "teams#show" }),
             ),
         );
-        let res = TestClient::new(app).get("/org/%FF/team/1337").await;
+        let res = TestClient::new(app).get("/org/%FF/team/%FE").await;
 
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
-        assert_eq!(res.text().await, "Invalid URL: Invalid UTF-8 in `org`");
+        assert_eq!(res.text().await, "Invalid URL: Invalid UTF-8 in `team_id`");
     }
 
     #[crate::test]

@@ -511,13 +511,14 @@ impl RawPathParams {
     pub fn from_request_extensions(
         extensions: &Extensions,
     ) -> Result<Self, RawPathParamsRejection> {
-        match extensions.get::<UrlParams>() {
-            Some(UrlParams::Params { params, .. }) => Ok(Self(params.clone())),
-            Some(UrlParams::InvalidUtf8InPathParam { key }) => Err(InvalidUtf8InPathParam {
+        let url_params = extensions.get::<UrlParams>().ok_or(MissingPathParams)?;
+
+        match url_params.all() {
+            Ok(params) => Ok(Self(params.to_vec())),
+            Err(key) => Err(InvalidUtf8InPathParam {
                 key: Arc::clone(key),
             }
             .into()),
-            None => Err(MissingPathParams.into()),
         }
     }
 
@@ -599,17 +600,14 @@ fn get_params(parts: &Parts) -> Result<&[(Arc<str>, PercentDecodedStr)], PathRej
         .get::<UrlParams>()
         .ok_or(MissingPathParams)?;
 
-    match url_params {
-        UrlParams::Params { params, .. } => Ok(params),
-        UrlParams::InvalidUtf8InPathParam { key } => {
-            let error = PathDeserializationError {
-                kind: ErrorKind::InvalidUtf8InPathParam {
-                    key: key.to_string(),
-                },
-            };
-            Err(PathRejection::from(FailedToDeserializePathParams(error)))
-        }
-    }
+    url_params.all().map_err(|key| {
+        let error = PathDeserializationError {
+            kind: ErrorKind::InvalidUtf8InPathParam {
+                key: key.to_string(),
+            },
+        };
+        PathRejection::from(FailedToDeserializePathParams(error))
+    })
 }
 
 fn serialize_path_params<T, E>(params: &[(Arc<str>, PercentDecodedStr)]) -> Result<T, E>
