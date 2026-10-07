@@ -389,7 +389,7 @@ where
         // clone inside `oneshot_inner` so that the `Router` and subsequently the `State` is not
         // cloned too much.
         tap_inner!(self, mut this => {
-            _ = this.path_router.route_endpoint(
+            _ = this.path_router.fallback_root(
                 "/",
                 endpoint.clone().layer(
                     layer_fn(
