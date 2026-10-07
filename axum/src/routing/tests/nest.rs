@@ -238,6 +238,74 @@ async fn nest_cannot_contain_wildcards() {
     _ = Router::<()>::new().nest("/one/{*rest}", Router::new());
 }
 
+fn assert_nest_wildcard_error(prefix: &str, result: std::thread::Result<Router>) {
+    let panic = result.expect_err("nesting at a wildcard prefix must panic");
+    let message = panic
+        .downcast_ref::<String>()
+        .map(String::as_str)
+        .or_else(|| panic.downcast_ref::<&str>().copied());
+    assert_eq!(
+        message,
+        Some("Invalid route: nested routes cannot contain wildcards (*)"),
+        "prefix: {prefix:?}",
+    );
+}
+
+const WILDCARD_NEST_PREFIXES: &[&str] = &[
+    "/{*rest}",
+    "/foo{*rest}",
+    "/{*rest}}}",
+    "/{{{*rest}",
+    "/prefix{{literal}}{*rest}",
+    "/{{{{{*rest}}}",
+    "/api/{version}/files{*rest}",
+    "/é{*rest}",
+];
+
+#[test]
+fn nest_wildcard_prefixes_are_rejected() {
+    for &prefix in WILDCARD_NEST_PREFIXES {
+        for root_route in [false, true] {
+            let result = std::panic::catch_unwind(|| {
+                let inner = if root_route {
+                    Router::new().route("/", get(|| async {}))
+                } else {
+                    Router::new()
+                };
+                Router::new().nest(prefix, inner)
+            });
+            assert_nest_wildcard_error(prefix, result);
+        }
+    }
+}
+
+#[test]
+fn nest_wildcard_service_prefixes_are_rejected() {
+    for &prefix in WILDCARD_NEST_PREFIXES {
+        let result =
+            std::panic::catch_unwind(|| Router::new().nest_service(prefix, get(|| async {})));
+        assert_nest_wildcard_error(prefix, result);
+    }
+}
+
+#[test]
+fn nest_wildcard_escaped_literals_are_accepted() {
+    for prefix in [
+        "/{{*rest}}",
+        "/prefix{{*rest}}",
+        "/{{{{*rest}}}}",
+        "/{{prefix}}/{{*rest}}",
+        "/{capture}/{{*rest}}",
+        "/foo{capture}x{{suffix}}",
+        "/{{{capture}",
+        "/{capture}}}",
+        "/literal*",
+    ] {
+        let _: Router = Router::new().nest(prefix, Router::new().route("/", get(|| async {})));
+        let _: Router = Router::new().nest_service(prefix, get(|| async {}));
+    }
+}
+
 #[crate::test]
 async fn outer_middleware_still_see_whole_url() {
     #[derive(Clone)]

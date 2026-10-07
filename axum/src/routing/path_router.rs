@@ -403,10 +403,12 @@ fn validate_nest_path(path: &str) -> Result<&str, &'static str> {
         return Err("Nesting at `/` is not supported.");
     }
 
-    if path.split('/').any(|segment| {
-        segment.starts_with("{*") && segment.ends_with('}') && !segment.ends_with("}}")
-    }) {
-        return Err("Invalid route: nested routes cannot contain wildcards (*)");
+    let mut bytes = path.bytes();
+    while let Some(byte) = bytes.next() {
+        // Consuming the next byte skips escaped `{{` pairs.
+        if byte == b'{' && bytes.next() == Some(b'*') {
+            return Err("Invalid route: nested routes cannot contain wildcards (*)");
+        }
     }
 
     Ok(path)
