@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **changed:** Update `Router::route_service` docs for `axum::body::Body` instead of
   the removed `BoxBody` type ([#3890])
 - **fixed:** `Router::nest` and `Router::nest_service` now reject wildcard prefixes
-  with static text or escaped braces
+  with static text or escaped braces ([#3933])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
@@ -64,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3890]: https://github.com/tokio-rs/axum/pull/3890
 [#3779]: https://github.com/tokio-rs/axum/pull/3779
 [#3928]: https://github.com/tokio-rs/axum/pull/3928
+[#3933]: https://github.com/tokio-rs/axum/pull/3933
 
 # 0.8.9
 
