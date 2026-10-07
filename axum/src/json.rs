@@ -181,16 +181,19 @@ where
             }
         }
 
-        let mut deserializer = serde_json::Deserializer::from_slice(bytes);
+        // like `deserialize_with_error_path`, which can't be used here because of `end`
+        serde_json::from_slice(bytes).map(Self).or_else(|_| {
+            let mut deserializer = serde_json::Deserializer::from_slice(bytes);
 
-        serde_path_to_error::deserialize(&mut deserializer)
-            .map_err(make_rejection)
-            .and_then(|value| {
-                deserializer
-                    .end()
-                    .map(|()| Self(value))
-                    .map_err(|err| JsonSyntaxError::from_err(err).into())
-            })
+            serde_path_to_error::deserialize(&mut deserializer)
+                .map_err(make_rejection)
+                .and_then(|value| {
+                    deserializer
+                        .end()
+                        .map(|()| Self(value))
+                        .map_err(|err| JsonSyntaxError::from_err(err).into())
+                })
+        })
     }
 }
 

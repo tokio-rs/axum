@@ -46,7 +46,6 @@ default = [
     "original-uri",
     "query",
     "tokio",
-    "tower-log",
     "tracing",
 ]
 form = [

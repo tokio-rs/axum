@@ -84,8 +84,8 @@ where
         match req.extract().await {
             Ok(RawForm(bytes)) => {
                 let deserializer =
-                    serde_html_form::Deserializer::new(form_urlencoded::parse(&bytes));
-                let value = serde_path_to_error::deserialize(deserializer).map_err(
+                    || serde_html_form::Deserializer::new(form_urlencoded::parse(&bytes));
+                let value = crate::util::deserialize_with_error_path(deserializer).map_err(
                     |err| -> FormRejection {
                         if is_get_or_head {
                             FailedToDeserializeForm::from_err(err).into()
