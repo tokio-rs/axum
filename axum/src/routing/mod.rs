@@ -319,6 +319,8 @@ where
     }
 
     /// True if the router currently has at least one route added.
+    ///
+    /// Router fallbacks do not count as routes.
     #[must_use]
     pub fn has_routes(&self) -> bool {
         self.inner.path_router.has_routes()
@@ -389,7 +391,7 @@ where
         // clone inside `oneshot_inner` so that the `Router` and subsequently the `State` is not
         // cloned too much.
         tap_inner!(self, mut this => {
-            _ = this.path_router.route_endpoint(
+            _ = this.path_router.fallback_endpoint(
                 "/",
                 endpoint.clone().layer(
                     layer_fn(
@@ -409,7 +411,7 @@ where
                 )
             );
 
-            _ = this.path_router.route_endpoint(
+            _ = this.path_router.fallback_endpoint(
                 FALLBACK_PARAM_PATH,
                 endpoint.layer(
                     layer_fn(

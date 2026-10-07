@@ -1071,7 +1071,7 @@ where
 
     #[doc = include_str!("../docs/method_routing/route_layer.md")]
     #[track_caller]
-    pub fn route_layer<L>(mut self, layer: L) -> Self
+    pub fn route_layer<L>(self, layer: L) -> Self
     where
         L: Layer<Route<E>> + Clone + Send + Sync + 'static,
         L::Service: Service<Request, Error = E> + Clone + Send + Sync + 'static,
@@ -1099,16 +1099,25 @@ where
 
         let layer_fn = move |svc| Route::new(layer.layer(svc));
 
-        self.get = self.get.map(layer_fn.clone());
-        self.head = self.head.map(layer_fn.clone());
-        self.delete = self.delete.map(layer_fn.clone());
-        self.options = self.options.map(layer_fn.clone());
-        self.patch = self.patch.map(layer_fn.clone());
-        self.post = self.post.map(layer_fn.clone());
-        self.put = self.put.map(layer_fn.clone());
-        self.trace = self.trace.map(layer_fn.clone());
-        self.connect = self.connect.map(layer_fn.clone());
-        self.query = self.query.map(layer_fn);
+        self.map_method_routes(layer_fn)
+    }
+
+    pub(super) fn map_method_routes<F>(mut self, f: F) -> Self
+    where
+        F: FnOnce(Route<E>) -> Route<E> + Clone + Send + Sync + 'static,
+        E: 'static,
+        S: 'static,
+    {
+        self.get = self.get.map(f.clone());
+        self.head = self.head.map(f.clone());
+        self.delete = self.delete.map(f.clone());
+        self.options = self.options.map(f.clone());
+        self.patch = self.patch.map(f.clone());
+        self.post = self.post.map(f.clone());
+        self.put = self.put.map(f.clone());
+        self.trace = self.trace.map(f.clone());
+        self.connect = self.connect.map(f.clone());
+        self.query = self.query.map(f);
 
         self
     }
