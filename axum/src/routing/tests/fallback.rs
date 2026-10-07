@@ -408,3 +408,194 @@ async fn state_isnt_cloned_too_much_with_fallback() {
 
     assert_eq!(state.count(), 3);
 }
+
+#[crate::test]
+async fn reset_fallback_removes_handler_and_service() {
+    for app in [
+        Router::new().fallback(|| async { "fallback" }),
+        Router::new().fallback_service(service_fn(|_: Request| async {
+            Ok::<_, Infallible>("fallback")
+        })),
+    ] {
+        let app = app.reset_fallback().reset_fallback();
+        assert!(!app.has_routes());
+        let client = TestClient::new(app);
+
+        for path in ["/", "/missing"] {
+            let res = client.get(path).await;
+            assert_eq!(res.status(), StatusCode::NOT_FOUND);
+            assert_eq!(res.text().await, "");
+        }
+    }
+}
+
+#[crate::test]
+async fn reset_fallback_preserves_explicit_root() {
+    let app = Router::new()
+        .route("/", get(|| async { "root" }))
+        .fallback(|| async { "fallback" })
+        .reset_fallback();
+    let client = TestClient::new(app);
+
+    assert_eq!(client.get("/").await.text().await, "root");
+    assert_eq!(client.get("/missing").await.status(), StatusCode::NOT_FOUND);
+}
+
+#[crate::test]
+async fn reset_fallback_preserves_root_added_after_fallback() {
+    let app = Router::new()
+        .fallback(|| async { "fallback" })
+        .route("/", get(|| async { "root" }))
+        .reset_fallback();
+    let client = TestClient::new(app);
+
+    assert_eq!(client.get("/").await.text().await, "root");
+    let res = client.post("/").await;
+    assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+    assert_eq!(res.headers()[ALLOW], "GET,HEAD");
+    assert_eq!(client.get("/missing").await.status(), StatusCode::NOT_FOUND);
+}
+
+#[crate::test]
+async fn reset_fallback_preserves_explicit_catch_all() {
+    let app = Router::new()
+        .route("/{*rest}", get(|| async { "catch-all" }))
+        .fallback(|| async { "fallback" })
+        .reset_fallback();
+    let client = TestClient::new(app);
+
+    assert_eq!(client.get("/").await.status(), StatusCode::NOT_FOUND);
+    assert_eq!(client.get("/some/path").await.text().await, "catch-all");
+}
+
+#[crate::test]
+async fn reset_fallback_preserves_nested_fallback() {
+    let app = Router::new()
+        .nest("/nested", Router::new().fallback(|| async { "nested" }))
+        .fallback(|| async { "outer" })
+        .reset_fallback();
+    let client = TestClient::new(app);
+
+    for path in ["/nested", "/nested/missing"] {
+        assert_eq!(client.get(path).await.text().await, "nested");
+    }
+    for path in ["/", "/missing"] {
+        assert_eq!(client.get(path).await.status(), StatusCode::NOT_FOUND);
+    }
+}
+
+#[crate::test]
+async fn reset_fallback_does_not_affect_clones() {
+    let original = Router::new().fallback(|| async { "original" });
+    let reset = TestClient::new(original.clone().reset_fallback());
+    let original = TestClient::new(original);
+
+    for path in ["/", "/missing"] {
+        assert_eq!(reset.get(path).await.status(), StatusCode::NOT_FOUND);
+        assert_eq!(original.get(path).await.text().await, "original");
+    }
+}
+
+#[crate::test]
+async fn reset_fallback_allows_merging_another_fallback() {
+    for reset_first in [false, true] {
+        let reset = Router::new()
+            .route("/kept", get(|| async { "kept" }))
+            .fallback(|| async { "old" })
+            .reset_fallback();
+        let fallback = Router::new().fallback(|| async { "new" });
+        let app = if reset_first {
+            reset.merge(fallback)
+        } else {
+            fallback.merge(reset)
+        };
+        let client = TestClient::new(app);
+
+        assert_eq!(client.get("/kept").await.text().await, "kept");
+        for path in ["/", "/missing"] {
+            assert_eq!(client.get(path).await.text().await, "new");
+        }
+    }
+}
+
+#[crate::test]
+async fn reset_fallback_preserves_root_merged_with_fallback() {
+    for fallback_first in [false, true] {
+        let root = Router::new().route("/", get(|| async { "root" }));
+        let fallback = Router::new().fallback(|| async { "fallback" });
+        let app = if fallback_first {
+            fallback.merge(root)
+        } else {
+            root.merge(fallback)
+        };
+        let client = TestClient::new(app.reset_fallback());
+
+        assert_eq!(client.get("/").await.text().await, "root");
+        let res = client.post("/").await;
+        assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(res.headers()[ALLOW], "GET,HEAD");
+        assert_eq!(client.get("/missing").await.status(), StatusCode::NOT_FOUND);
+    }
+}
+
+#[crate::test]
+async fn reset_fallback_removes_merged_service_fallback() {
+    for fallback_first in [false, true] {
+        let routes = Router::new().route("/kept", get(|| async { "kept" }));
+        let fallback = Router::new().fallback_service(service_fn(|_: Request| async {
+            Ok::<_, Infallible>("fallback")
+        }));
+        let app = if fallback_first {
+            fallback.merge(routes)
+        } else {
+            routes.merge(fallback)
+        };
+        let client = TestClient::new(app.reset_fallback());
+
+        assert_eq!(client.get("/kept").await.text().await, "kept");
+        for path in ["/", "/missing"] {
+            assert_eq!(client.get(path).await.status(), StatusCode::NOT_FOUND);
+        }
+    }
+}
+
+#[crate::test]
+async fn reset_fallback_preserves_root_after_state_and_layer() {
+    async fn set_header(mut res: Response) -> Response {
+        res.headers_mut()
+            .insert("x-root", "present".parse().unwrap());
+        res
+    }
+
+    let app = Router::new()
+        .fallback(|| async { "fallback" })
+        .route(
+            "/",
+            get(|State(state): State<&'static str>| async move { state }),
+        )
+        .with_state("root")
+        .layer(map_response(set_header))
+        .reset_fallback();
+    let client = TestClient::new(app);
+
+    let res = client.get("/").await;
+    assert_eq!(res.headers()["x-root"], "present");
+    assert_eq!(res.text().await, "root");
+    assert_eq!(client.get("/missing").await.status(), StatusCode::NOT_FOUND);
+}
+
+#[crate::test]
+async fn reset_fallback_preserves_method_not_allowed_fallback() {
+    let app = Router::new()
+        .fallback(|| async { "fallback" })
+        .route("/", get(|| async { "root" }))
+        .method_not_allowed_fallback(|| async { (StatusCode::IM_A_TEAPOT, "method fallback") })
+        .reset_fallback();
+    let client = TestClient::new(app);
+
+    assert_eq!(client.get("/").await.text().await, "root");
+    let res = client.post("/").await;
+    assert_eq!(res.status(), StatusCode::IM_A_TEAPOT);
+    assert_eq!(res.text().await, "method fallback");
+    assert_eq!(client.get("/missing").await.status(), StatusCode::NOT_FOUND);
+}

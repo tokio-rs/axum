@@ -16,6 +16,21 @@ use super::{
 pub(super) struct PathRouter<S> {
     routes: Vec<Endpoint<S>>,
     node: Arc<Node>,
+    fallback_routes: HashMap<RouteId, FallbackRoute<S>>,
+}
+
+struct FallbackRoute<S> {
+    // Explicit method routes merged into an endpoint installed by
+    // `Router::fallback`, kept separately for `reset_fallback`.
+    explicit: Option<MethodRouter<S>>,
+}
+
+impl<S> Clone for FallbackRoute<S> {
+    fn clone(&self) -> Self {
+        Self {
+            explicit: self.explicit.clone(),
+        }
+    }
 }
 
 fn validate_path(path: &str) -> Result<(), &'static str> {
@@ -37,6 +52,15 @@ where
         path: &str,
         method_router: MethodRouter<S>,
     ) -> Result<(), Cow<'static, str>> {
+        self.route_with_fallback(path, method_router, None)
+    }
+
+    fn route_with_fallback(
+        &mut self,
+        path: &str,
+        method_router: MethodRouter<S>,
+        fallback: Option<FallbackRoute<S>>,
+    ) -> Result<(), Cow<'static, str>> {
         validate_path(path)?;
 
         if let Some((route_id, Endpoint::MethodRouter(prev_method_router))) = self
@@ -47,15 +71,43 @@ where
         {
             // if we're adding a new `MethodRouter` to a route that already has one just
             // merge them. This makes `.route("/", get(_)).route("/", post(_))` work
+            let explicit = if self.fallback_routes.contains_key(&route_id) || fallback.is_some() {
+                let previous = self
+                    .fallback_routes
+                    .get(&route_id)
+                    .map(|fallback| fallback.explicit.clone())
+                    .unwrap_or_else(|| Some(prev_method_router.clone()));
+                let incoming = fallback
+                    .map(|fallback| fallback.explicit)
+                    .unwrap_or_else(|| Some(method_router.clone()));
+                let explicit = match (previous, incoming) {
+                    (Some(previous), Some(incoming)) => {
+                        Some(previous.merge_for_path(Some(path), incoming)?)
+                    }
+                    (previous, incoming) => previous.or(incoming),
+                };
+                Some(explicit)
+            } else {
+                None
+            };
+
             let service = Endpoint::MethodRouter(
                 prev_method_router
                     .clone()
                     .merge_for_path(Some(path), method_router)?,
             );
+            if let Some(explicit) = explicit {
+                self.fallback_routes
+                    .insert(route_id, FallbackRoute { explicit });
+            }
+
             self.routes[route_id.0] = service;
         } else {
             let endpoint = Endpoint::MethodRouter(method_router);
-            self.new_route(path, endpoint)?;
+            let id = self.new_route(path, endpoint)?;
+            if let Some(fallback) = fallback {
+                self.fallback_routes.insert(id, fallback);
+            }
         }
 
         Ok(())
@@ -70,6 +122,13 @@ where
             if let Endpoint::MethodRouter(rt) = endpoint {
                 *rt = rt.clone().default_fallback(handler.clone());
             }
+        }
+        for router in self
+            .fallback_routes
+            .values_mut()
+            .filter_map(|fallback| fallback.explicit.as_mut())
+        {
+            *router = router.clone().default_fallback(handler.clone());
         }
     }
 
@@ -105,15 +164,52 @@ where
             .map_err(|err| format!("Invalid route {path:?}: {err}"))
     }
 
-    fn new_route(&mut self, path: &str, endpoint: Endpoint<S>) -> Result<(), String> {
+    fn new_route(&mut self, path: &str, endpoint: Endpoint<S>) -> Result<RouteId, String> {
         let id = RouteId(self.routes.len());
         self.set_node(path, id)?;
         self.routes.push(endpoint);
+        Ok(id)
+    }
+
+    pub(super) fn fallback_endpoint(
+        &mut self,
+        path: &str,
+        endpoint: Endpoint<S>,
+    ) -> Result<(), String> {
+        let id = self.new_route(path, endpoint)?;
+        self.fallback_routes
+            .insert(id, FallbackRoute { explicit: None });
         Ok(())
     }
 
+    pub(super) fn reset_fallback(&mut self) {
+        if self.fallback_routes.is_empty() {
+            return;
+        }
+
+        let node = std::mem::take(&mut self.node);
+        let mut fallback_routes = std::mem::take(&mut self.fallback_routes);
+        for (id, endpoint) in std::mem::take(&mut self.routes).into_iter().enumerate() {
+            let id = RouteId(id);
+            let endpoint = match fallback_routes.remove(&id) {
+                Some(FallbackRoute {
+                    explicit: Some(explicit),
+                }) => Endpoint::MethodRouter(explicit),
+                Some(FallbackRoute { explicit: None }) => continue,
+                None => endpoint,
+            };
+            let path = &node.route_id_to_path[&id];
+            self.new_route(path, endpoint)
+                .expect("previously registered route could not be restored");
+        }
+    }
+
     pub(super) fn merge(&mut self, other: Self) -> Result<(), Cow<'static, str>> {
-        let Self { routes, node } = other;
+        let Self {
+            routes,
+            node,
+            mut fallback_routes,
+        } = other;
 
         for (id, route) in routes.into_iter().enumerate() {
             let route_id = RouteId(id);
@@ -122,10 +218,18 @@ where
                 .get(&route_id)
                 .expect("no path for route id. This is a bug in axum. Please file an issue");
 
+            let fallback = fallback_routes.remove(&route_id);
             match route {
-                Endpoint::MethodRouter(method_router) => self.route(path, method_router)?,
+                Endpoint::MethodRouter(method_router) => {
+                    self.route_with_fallback(path, method_router, fallback)?;
+                }
                 // `route_service` would wrap this `Route` in another `Route`
-                endpoint @ Endpoint::Route(_) => self.route_endpoint(path, endpoint)?,
+                endpoint @ Endpoint::Route(_) => {
+                    let id = self.new_route(path, endpoint)?;
+                    if let Some(fallback) = fallback {
+                        self.fallback_routes.insert(id, fallback);
+                    }
+                }
             }
         }
 
@@ -139,7 +243,13 @@ where
     ) -> Result<(), Cow<'static, str>> {
         let prefix = validate_nest_path(path_to_nest_at)?;
 
-        let Self { routes, node } = router;
+        let Self {
+            routes,
+            node,
+            // Nested fallbacks belong to the nested router and must survive
+            // resetting this router's fallback.
+            fallback_routes: _,
+        } = router;
 
         for (id, endpoint) in routes.into_iter().enumerate() {
             let route_id = RouteId(id);
@@ -223,6 +333,18 @@ where
         Self {
             routes,
             node: self.node,
+            fallback_routes: self
+                .fallback_routes
+                .into_iter()
+                .map(|(id, fallback)| {
+                    (
+                        id,
+                        FallbackRoute {
+                            explicit: fallback.explicit.map(|router| router.layer(layer.clone())),
+                        },
+                    )
+                })
+                .collect(),
         }
     }
 
@@ -251,6 +373,18 @@ where
         Self {
             routes,
             node: self.node,
+            fallback_routes: self
+                .fallback_routes
+                .into_iter()
+                .map(|(id, fallback)| {
+                    (
+                        id,
+                        FallbackRoute {
+                            explicit: fallback.explicit.map(|router| router.layer(layer.clone())),
+                        },
+                    )
+                })
+                .collect(),
         }
     }
 
@@ -273,6 +407,20 @@ where
         PathRouter {
             routes,
             node: self.node,
+            fallback_routes: self
+                .fallback_routes
+                .into_iter()
+                .map(|(id, fallback)| {
+                    (
+                        id,
+                        FallbackRoute {
+                            explicit: fallback
+                                .explicit
+                                .map(|router| router.with_state(state.clone())),
+                        },
+                    )
+                })
+                .collect(),
         }
     }
 
@@ -332,6 +480,7 @@ impl<S> Default for PathRouter<S> {
         Self {
             routes: Default::default(),
             node: Default::default(),
+            fallback_routes: Default::default(),
         }
     }
 }
@@ -350,6 +499,7 @@ impl<S> Clone for PathRouter<S> {
         Self {
             routes: self.routes.clone(),
             node: self.node.clone(),
+            fallback_routes: self.fallback_routes.clone(),
         }
     }
 }

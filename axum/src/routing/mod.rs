@@ -376,6 +376,7 @@ where
     /// [`merge`]: Self::merge
     pub fn reset_fallback(self) -> Self {
         tap_inner!(self, mut this => {
+            this.path_router.reset_fallback();
             this.default_fallback = true;
             this.catch_all_fallback = Fallback::Default(Route::new(NotFound));
         })
@@ -389,7 +390,7 @@ where
         // clone inside `oneshot_inner` so that the `Router` and subsequently the `State` is not
         // cloned too much.
         tap_inner!(self, mut this => {
-            _ = this.path_router.route_endpoint(
+            _ = this.path_router.fallback_endpoint(
                 "/",
                 endpoint.clone().layer(
                     layer_fn(
@@ -409,7 +410,7 @@ where
                 )
             );
 
-            _ = this.path_router.route_endpoint(
+            _ = this.path_router.fallback_endpoint(
                 FALLBACK_PARAM_PATH,
                 endpoint.layer(
                     layer_fn(
