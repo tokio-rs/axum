@@ -8,8 +8,9 @@ use std::{
     hash::{BuildHasher, Hasher},
     io,
     marker::PhantomData,
-    pin::pin,
+    pin::{pin, Pin},
     sync::Arc,
+    task::{ready, Context, Poll},
     time::Duration,
 };
 
@@ -18,13 +19,15 @@ use futures_util::{
     future::{select, Either},
     FutureExt,
 };
-use http_body::Body as HttpBody;
+use http::{Method, StatusCode};
+use http_body::{Body as HttpBody, Frame, SizeHint};
 use hyper::body::Incoming;
 use hyper_util::rt::TokioIo;
 #[cfg(feature = "http1")]
 use hyper_util::rt::TokioTimer;
 #[cfg(any(feature = "http1", feature = "http2"))]
 use hyper_util::{server::conn::auto::Builder, service::TowerToHyperService};
+use pin_project_lite::pin_project;
 use tokio::{sync::watch, task::JoinHandle};
 use tower::ServiceExt as _;
 use tower_service::Service;
@@ -137,7 +140,9 @@ where
 /// It also bounds the worst case when a client's connection pool has no
 /// rotation of its own.
 ///
-/// The only limit currently available is [`MaxConnectionAge`].
+/// Two limits are available: [`max_connection_age`] caps how long a connection
+/// lives, and [`max_connection_idle`] closes a connection that is not being
+/// used. They can be set together.
 ///
 /// # Example
 ///
@@ -149,26 +154,33 @@ where
 /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
 /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 ///
-/// let limits = ConnectionLifetimeLimits::new().max_connection_age(
-///     MaxConnectionAge::new(Duration::from_secs(10 * 60))
-///         // Random per-connection jitter added to the age, to avoid
-///         // synchronized reconnect storms when many connections were
-///         // established at once.
-///         .jitter(Duration::from_secs(60))
-///         // Hard cap on how long to wait for in-flight work after the age
-///         // limit fires before forcibly closing.
-///         .grace(Duration::from_secs(30)),
-/// );
+/// let limits = ConnectionLifetimeLimits::new()
+///     .max_connection_age(
+///         MaxConnectionAge::new(Duration::from_secs(10 * 60))
+///             // Random per-connection jitter added to the age, to avoid
+///             // synchronized reconnect storms when many connections were
+///             // established at once.
+///             .jitter(Duration::from_secs(60))
+///             // Hard cap on how long to wait for in-flight work after the age
+///             // limit fires before forcibly closing.
+///             .grace(Duration::from_secs(30)),
+///     )
+///     // Close a connection that has served nothing for five minutes.
+///     .max_connection_idle(Duration::from_secs(5 * 60));
 ///
 /// axum::serve(listener, router)
 ///     .connection_lifetime_limits(limits)
 ///     .await;
 /// # };
 /// ```
+///
+/// [`max_connection_age`]: ConnectionLifetimeLimits::max_connection_age
+/// [`max_connection_idle`]: ConnectionLifetimeLimits::max_connection_idle
 #[derive(Clone, Debug, Default)]
 #[must_use]
 pub struct ConnectionLifetimeLimits {
     max_connection_age: Option<MaxConnectionAge>,
+    max_connection_idle: Option<Duration>,
 }
 
 impl ConnectionLifetimeLimits {
@@ -194,6 +206,91 @@ impl ConnectionLifetimeLimits {
     /// treated like any other in-flight stream.
     pub fn max_connection_age(mut self, age: MaxConnectionAge) -> Self {
         self.max_connection_age = Some(age);
+        self
+    }
+
+    /// Close a connection that has had no request in flight for `idle`.
+    ///
+    /// The clock starts when the connection goes idle and is reset as soon as a
+    /// request arrives. A connection that keeps serving requests is therefore
+    /// never closed by this limit, however long it lives. That is what sets it
+    /// apart from [`max_connection_age`], which caps the lifetime of busy
+    /// connections too.
+    ///
+    /// A request counts as in flight until its response body has been fully
+    /// sent, so a slow handler or a streaming response keeps the connection
+    /// busy. For HTTP/2 the count covers every stream, so the connection is
+    /// idle only while no stream is open.
+    ///
+    /// Once the limit elapses, a graceful shutdown of the connection is
+    /// started, the same way [`MaxConnectionAge`] does it: HTTP/1 closes the
+    /// connection after the current request, HTTP/2 sends a `GOAWAY`. There is
+    /// no grace period, because an idle connection has no in-flight work to
+    /// wait for.
+    ///
+    /// This releases the memory and the file descriptor of connections that a
+    /// client holds open but does not use. The trade-off is latency: a client
+    /// that pauses for longer than the limit pays for a new connection, and for
+    /// a new TLS handshake, on its next request. Set the limit above the idle
+    /// timeout of the clients you expect.
+    ///
+    /// Connection idle time is unbounded by default.
+    ///
+    /// # Requests that race the limit
+    ///
+    /// A request only counts as in flight once its headers have arrived in
+    /// full. A connection whose limit elapses while a client is part way
+    /// through sending a request is therefore closed under it, and that client
+    /// sees the connection end with no response and no error.
+    ///
+    /// This is the race every HTTP/1.1 client already has to handle, because a
+    /// connection it believes is reusable can always have been closed by the
+    /// server at the same moment, and clients retry idempotent requests when it
+    /// happens. What is particular to this limit is that the deadline falls
+    /// precisely when a connection is idle, which is also when a connection
+    /// pool is most likely to reach for it. Set the limit well above the idle
+    /// timeout of the clients you expect, so that they retire connections
+    /// before the server does, rather than relying on the window being narrow.
+    ///
+    /// # Upgraded connections
+    ///
+    /// This limit never closes a connection that has been upgraded, e.g. to a
+    /// WebSocket or via `CONNECT`. An upgraded HTTP/1 connection is handed to
+    /// the upgrade handler and [`serve`] stops tracking it. An upgraded HTTP/2
+    /// stream stays on the tracked connection, and [`serve`] cannot see the
+    /// traffic on it, so it counts as in flight for the rest of the
+    /// connection's life.
+    ///
+    /// For HTTP/2 that outlasts the upgraded stream itself: the count is never
+    /// given back, so a single WebSocket leaves this limit disabled on the
+    /// connection that carried it even after that WebSocket has closed. Set
+    /// [`max_connection_age`] as well if such connections still need a bound.
+    /// A stream counts as upgraded once a `CONNECT` request is answered with a
+    /// success status, so a handler that answers `CONNECT` without upgrading
+    /// has the same effect.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use axum::{Router, routing::get, serve::ConnectionLifetimeLimits};
+    ///
+    /// # async {
+    /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    ///
+    /// let limits =
+    ///     ConnectionLifetimeLimits::new().max_connection_idle(Duration::from_secs(5 * 60));
+    ///
+    /// axum::serve(listener, router)
+    ///     .connection_lifetime_limits(limits)
+    ///     .await;
+    /// # };
+    /// ```
+    ///
+    /// [`max_connection_age`]: ConnectionLifetimeLimits::max_connection_age
+    pub fn max_connection_idle(mut self, idle: Duration) -> Self {
+        self.max_connection_idle = Some(idle);
         self
     }
 }
@@ -302,6 +399,45 @@ fn sleep_or_pending(duration: Option<Duration>) -> Either<tokio::time::Sleep, Pe
     match duration {
         Some(duration) => Either::Left(tokio::time::sleep(duration)),
         None => Either::Right(std::future::pending()),
+    }
+}
+
+/// Completes once a connection has had no request in flight for `limit`.
+///
+/// `in_flight` carries the number of requests the connection is currently
+/// serving, published by [`TrackInFlight`]. The wait starts over every time a
+/// request arrives, so a connection that keeps serving requests never reaches
+/// the limit. Never completes if there is no limit to apply, in which case
+/// there is no channel to watch either.
+async fn idle_limit_elapsed(limit: Option<Duration>, in_flight: Option<watch::Receiver<usize>>) {
+    let (Some(limit), Some(mut in_flight)) = (limit, in_flight) else {
+        return std::future::pending().await;
+    };
+
+    // `changed` fails once the sender is dropped, which happens with the
+    // service that holds it. The count can never change again then, and the
+    // connection is already on its way out, so treat that like the limit being
+    // reached rather than waiting forever.
+    loop {
+        // The `Ref` returned by `borrow_and_update` holds a read lock on the
+        // value, so take a copy of the count before awaiting anything.
+        let count = *in_flight.borrow_and_update();
+
+        if count > 0 {
+            if in_flight.changed().await.is_err() {
+                break;
+            }
+            continue;
+        }
+
+        let sleep = pin!(tokio::time::sleep(limit));
+        let arrived = pin!(in_flight.changed());
+        match select(sleep, arrived).await {
+            // A request arrived, so start the wait over.
+            Either::Right((Ok(()), _)) => {}
+            // The limit elapsed with nothing arriving.
+            Either::Left(_) | Either::Right((Err(_), _)) => break,
+        }
     }
 }
 
@@ -785,6 +921,18 @@ where
     }
 }
 
+/// What asked a connection task to shut its connection down, other than the
+/// connection finishing on its own.
+enum ShutdownTrigger {
+    /// The shutdown signal passed to [`Serve::with_graceful_shutdown`] fired.
+    Signal,
+    /// The age timer fired, which is the age limit the first time and the grace
+    /// period after that.
+    Age,
+    /// The connection had no request in flight for the idle limit.
+    Idle,
+}
+
 async fn handle_connection<L, M, S, B, E>(
     make_service: &mut M,
     signal_rx: &watch::Receiver<()>,
@@ -825,7 +973,24 @@ async fn handle_connection<L, M, S, B, E>(
         .unwrap_or_else(|err| match err {})
         .map_request(|req: Request<Incoming>| req.map(Body::new));
 
-    let hyper_service = TowerToHyperService::new(tower_service);
+    // Requests in flight on this connection: the service counts them up and
+    // down, and the connection task treats a count of zero as idle. The channel
+    // only exists when there is an idle limit to apply, so a connection without
+    // one neither counts anything nor pays for the channel.
+    let max_connection_idle = connection_lifetime_limits.max_connection_idle;
+    let (in_flight_tx, in_flight_rx) = match max_connection_idle {
+        Some(_) => {
+            let (tx, rx) = watch::channel(0usize);
+            (Some(Arc::new(tx)), Some(rx))
+        }
+        None => (None, None),
+    };
+
+    let hyper_service = TrackInFlight {
+        inner: TowerToHyperService::new(tower_service),
+        in_flight: in_flight_tx,
+    };
+
     let close_rx = close_rx.clone();
 
     let hyper_executor = HyperExecutor(executor.clone());
@@ -856,10 +1021,19 @@ async fn handle_connection<L, M, S, B, E>(
         let mut timer = pin!(sleep_or_pending(max_age));
         let mut age_fired = false;
 
+        // Idle limit for the connection. Unlike the age timer this only runs
+        // while nothing is in flight, so it never fires on a connection that is
+        // still being used. It is fused because it fires at most once: after
+        // that the connection is already shutting down gracefully.
+        let mut idle = pin!(idle_limit_elapsed(max_connection_idle, in_flight_rx).fuse());
+
         loop {
-            match select(
+            let trigger = match select(
                 conn.as_mut(),
-                select(signal_closed.as_mut(), timer.as_mut()),
+                select(
+                    select(signal_closed.as_mut(), timer.as_mut()),
+                    idle.as_mut(),
+                ),
             )
             .await
             {
@@ -869,28 +1043,180 @@ async fn handle_connection<L, M, S, B, E>(
                     }
                     break;
                 }
-                Either::Right((Either::Left((Err(_), _)), _)) => {
+                Either::Right((Either::Left((Either::Left((Err(_), _)), _)), _)) => {
+                    ShutdownTrigger::Signal
+                }
+                Either::Right((Either::Left((Either::Left((Ok(()), _)), _)), _)) => {
+                    unreachable!("shutdown channel never sends values")
+                }
+                Either::Right((Either::Left((Either::Right(_), _)), _)) => ShutdownTrigger::Age,
+                Either::Right((Either::Right(_), _)) => ShutdownTrigger::Idle,
+            };
+
+            match trigger {
+                ShutdownTrigger::Signal => {
                     trace!("signal received in task, starting graceful shutdown");
                     conn.as_mut().graceful_shutdown();
                 }
-                Either::Right((Either::Left((Ok(()), _)), _)) => {
-                    unreachable!("shutdown channel never sends values")
-                }
-                Either::Right((Either::Right(_), _)) if !age_fired => {
+                ShutdownTrigger::Age if !age_fired => {
                     age_fired = true;
                     trace!("max connection age reached, starting graceful shutdown");
                     conn.as_mut().graceful_shutdown();
                     timer.set(sleep_or_pending(grace));
                 }
-                Either::Right((Either::Right(_), _)) => {
+                ShutdownTrigger::Age => {
                     trace!("max connection age grace period elapsed, closing connection");
                     break;
+                }
+                ShutdownTrigger::Idle => {
+                    trace!("max connection idle reached, starting graceful shutdown");
+                    conn.as_mut().graceful_shutdown();
                 }
             }
         }
 
         drop(close_rx);
     });
+}
+
+/// Publishes how many requests a connection is serving, so that its connection
+/// task can tell when the connection is idle.
+///
+/// A request is counted from the moment the service is called until its
+/// response body ends, rather than until the handler returns a response: a
+/// streaming response is still being served long after that.
+struct TrackInFlight<S> {
+    inner: S,
+    /// The count of requests in flight, or `None` when there is no idle limit
+    /// and nothing needs counting.
+    in_flight: Option<Arc<watch::Sender<usize>>>,
+}
+
+impl<S, B> hyper::service::Service<Request<Incoming>> for TrackInFlight<S>
+where
+    S: hyper::service::Service<Request<Incoming>, Response = Response<B>>,
+{
+    type Response = Response<TrackedBody<B>>;
+    type Error = S::Error;
+    type Future = TrackInFlightFuture<S::Future>;
+
+    fn call(&self, req: Request<Incoming>) -> Self::Future {
+        TrackInFlightFuture {
+            connect: req.method() == Method::CONNECT,
+            guard: self.in_flight.clone().map(InFlightGuard::new),
+            inner: self.inner.call(req),
+        }
+    }
+}
+
+pin_project! {
+    /// Response future for [`TrackInFlight`].
+    struct TrackInFlightFuture<F> {
+        #[pin]
+        inner: F,
+        guard: Option<InFlightGuard>,
+        // Whether the request used the `CONNECT` method, which together with a
+        // successful response means the stream was handed to an upgrade.
+        connect: bool,
+    }
+}
+
+impl<F, B, E> Future for TrackInFlightFuture<F>
+where
+    F: Future<Output = Result<Response<B>, E>>,
+{
+    type Output = Result<Response<TrackedBody<B>>, E>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+        let response = ready!(this.inner.poll(cx)?);
+
+        // An upgraded stream keeps carrying traffic that `serve` cannot see, so
+        // its count is never given back and the connection counts as busy for
+        // the rest of its life. HTTP/1 answers an upgrade with `101`, HTTP/2
+        // answers an extended `CONNECT` with a success status.
+        let upgraded = response.status() == StatusCode::SWITCHING_PROTOCOLS
+            || (*this.connect && response.status().is_success());
+        if upgraded {
+            if let Some(guard) = this.guard.as_mut() {
+                guard.upgraded = true;
+            }
+        }
+
+        Poll::Ready(Ok(response.map(|body| TrackedBody {
+            inner: body,
+            guard: this.guard.take(),
+        })))
+    }
+}
+
+pin_project! {
+    /// Response body returned by [`TrackInFlight`], which counts its request as
+    /// in flight until the body ends.
+    struct TrackedBody<B> {
+        #[pin]
+        inner: B,
+        guard: Option<InFlightGuard>,
+    }
+}
+
+impl<B> HttpBody for TrackedBody<B>
+where
+    B: HttpBody,
+{
+    type Data = B::Data;
+    type Error = B::Error;
+
+    fn poll_frame(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
+        let this = self.project();
+        let frame = ready!(this.inner.poll_frame(cx));
+
+        // The end of the body is the end of the request. A body that is dropped
+        // part way, because the response failed or the client went away, drops
+        // the guard instead and has the same effect.
+        if frame.is_none() {
+            *this.guard = None;
+        }
+
+        Poll::Ready(frame)
+    }
+
+    fn is_end_stream(&self) -> bool {
+        self.inner.is_end_stream()
+    }
+
+    fn size_hint(&self) -> SizeHint {
+        self.inner.size_hint()
+    }
+}
+
+/// Holds one request's place in the in-flight count for as long as it is alive.
+struct InFlightGuard {
+    in_flight: Arc<watch::Sender<usize>>,
+    /// Set once the request's stream has been handed to an upgrade, in which
+    /// case the count is never given back.
+    upgraded: bool,
+}
+
+impl InFlightGuard {
+    fn new(in_flight: Arc<watch::Sender<usize>>) -> Self {
+        in_flight.send_modify(|count| *count += 1);
+        Self {
+            in_flight,
+            upgraded: false,
+        }
+    }
+}
+
+impl Drop for InFlightGuard {
+    fn drop(&mut self) {
+        if !self.upgraded {
+            self.in_flight.send_modify(|count| *count -= 1);
+        }
+    }
 }
 
 /// An incoming stream.
@@ -1157,11 +1483,13 @@ mod tests {
         .with_executor(exec);
 
         // connection_lifetime_limits, composable with the other builder methods in any order
-        let limits = ConnectionLifetimeLimits::new().max_connection_age(
-            MaxConnectionAge::new(Duration::from_secs(60))
-                .jitter(Duration::from_secs(10))
-                .grace(Duration::from_secs(5)),
-        );
+        let limits = ConnectionLifetimeLimits::new()
+            .max_connection_age(
+                MaxConnectionAge::new(Duration::from_secs(60))
+                    .jitter(Duration::from_secs(10))
+                    .grace(Duration::from_secs(5)),
+            )
+            .max_connection_idle(Duration::from_secs(30));
         serve(TcpListener::bind(addr).await.unwrap(), router.clone())
             .connection_lifetime_limits(limits.clone());
         serve(TcpListener::bind(addr).await.unwrap(), router.clone())
@@ -2005,5 +2333,568 @@ mod tests {
             .await
             .expect("serve future did not resolve after the connection was force-closed")
             .unwrap();
+    }
+
+    // After `max_connection_idle` elapses with nothing in flight, the
+    // connection is gracefully shut down by the server, which the client
+    // observes as its connection task completing.
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_idle_closes_idle_connection() {
+        let app = Router::new().route("/", get(|| async { "ok" }));
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new().max_connection_idle(Duration::from_secs(10)),
+                )
+                .into_future(),
+        );
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        let conn_handle = tokio::spawn(conn);
+
+        // A first request succeeds normally before the connection goes idle.
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let _ = to_bytes(Body::new(response.into_body()), usize::MAX)
+            .await
+            .unwrap();
+
+        // With (paused) time auto-advancing, the idle limit elapses and the
+        // server closes the connection, completing the client's conn task.
+        tokio::time::timeout(Duration::from_secs(30), conn_handle)
+            .await
+            .expect("connection was not closed after max_connection_idle elapsed")
+            .unwrap()
+            .ok();
+    }
+
+    // A connection that never sends a single byte is idle from the moment it is
+    // accepted, so the limit closes it without a request ever being served.
+    // This goes through a different path in hyper than a connection that has
+    // served something: the protocol has not been determined yet, so there is
+    // no HTTP/1 or HTTP/2 connection to shut down gracefully.
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_idle_closes_a_connection_that_is_never_used() {
+        use tokio::io::AsyncReadExt;
+
+        let app = Router::new().route("/", get(|| async { "ok" }));
+        let (mut client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new().max_connection_idle(Duration::from_secs(10)),
+                )
+                .into_future(),
+        );
+
+        // Never send anything, and read until the server hangs up.
+        let mut buf = [0u8; 8];
+        let read = tokio::time::timeout(Duration::from_secs(60), client.read(&mut buf))
+            .await
+            .expect("a connection that was never used was not closed by max_connection_idle")
+            .unwrap();
+        assert_eq!(read, 0, "expected EOF, got {read} bytes");
+    }
+
+    // A request that is in flight for longer than the idle limit keeps the
+    // connection busy, so the limit never elapses and the response arrives.
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_idle_waits_for_slow_handler() {
+        // The handler takes 30s, six times the 5s idle limit.
+        let app = Router::new().route(
+            "/",
+            get(|| async {
+                tokio::time::sleep(Duration::from_secs(30)).await;
+                "done"
+            }),
+        );
+
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new().max_connection_idle(Duration::from_secs(5)),
+                )
+                .into_future(),
+        );
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let response = tokio::time::timeout(Duration::from_secs(60), sender.send_request(request))
+            .await
+            .expect("in-flight request did not resolve")
+            .expect("in-flight request failed: a busy connection must not count as idle");
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    // A request is in flight until its response body has been fully sent, not
+    // until the handler returns a response, so a response that streams for
+    // longer than the idle limit still arrives in full.
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_idle_waits_for_streaming_response_body() {
+        use futures_util::stream;
+
+        const CHUNK: &str = "chunk";
+        const CHUNKS: usize = 5;
+
+        // Five chunks five seconds apart span 25s, five times the 5s idle
+        // limit. The handler itself returns straight away.
+        let app = Router::new().route(
+            "/",
+            get(|| async {
+                Body::from_stream(stream::unfold(0usize, |sent| async move {
+                    if sent == CHUNKS {
+                        return None;
+                    }
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                    Some((Ok::<_, std::io::Error>(CHUNK), sent + 1))
+                }))
+            }),
+        );
+
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new().max_connection_idle(Duration::from_secs(5)),
+                )
+                .into_future(),
+        );
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = tokio::time::timeout(
+            Duration::from_secs(60),
+            to_bytes(Body::new(response.into_body()), usize::MAX),
+        )
+        .await
+        .expect("streaming response did not finish")
+        .expect("streaming response was cut short");
+        assert_eq!(body.len(), CHUNKS * CHUNK.len());
+
+        // The connection stayed open through all of it. It would have been
+        // closed after the streaming response if the idle limit had elapsed
+        // while the body was still being sent.
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let response = sender
+            .send_request(request)
+            .await
+            .expect("connection was closed while a response body was still streaming");
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    // The HTTP/2 equivalent of `max_connection_idle_closes_idle_connection`:
+    // the server sends GOAWAY once the idle limit elapses, completing the
+    // client's connection task.
+    #[cfg(feature = "http2")]
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_idle_closes_idle_connection_http2() {
+        use hyper_util::rt::TokioExecutor;
+
+        let app = Router::new().route("/", get(|| async { "ok" }));
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new().max_connection_idle(Duration::from_secs(10)),
+                )
+                .into_future(),
+        );
+
+        let io = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http2::Builder::new(TokioExecutor::new())
+            .handshake(io)
+            .await
+            .unwrap();
+        let conn_handle = tokio::spawn(conn);
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let _ = to_bytes(Body::new(response.into_body()), usize::MAX)
+            .await
+            .unwrap();
+
+        tokio::time::timeout(Duration::from_secs(30), conn_handle)
+            .await
+            .expect("HTTP/2 connection was not closed after max_connection_idle elapsed")
+            .unwrap()
+            .ok();
+    }
+
+    // HTTP/2 multiplexes, so a connection is idle only while no stream is open,
+    // not once the most recent request finished. A connection with one stream
+    // still open is never shut down, however long the other streams have been
+    // done for.
+    #[cfg(feature = "http2")]
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_idle_waits_for_open_stream_http2() {
+        use std::sync::Arc;
+
+        use hyper_util::rt::TokioExecutor;
+        use tokio::sync::Notify;
+
+        let started = Arc::new(Notify::new());
+        let release = Arc::new(Notify::new());
+
+        let app = Router::new()
+            .route(
+                "/blocked",
+                get({
+                    let started = started.clone();
+                    let release = release.clone();
+                    move || {
+                        let started = started.clone();
+                        let release = release.clone();
+                        async move {
+                            started.notify_one();
+                            release.notified().await;
+                            "blocked"
+                        }
+                    }
+                }),
+            )
+            .route("/quick", get(|| async { "quick" }));
+
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new().max_connection_idle(Duration::from_secs(5)),
+                )
+                .into_future(),
+        );
+
+        let io = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http2::Builder::new(TokioExecutor::new())
+            .handshake(io)
+            .await
+            .unwrap();
+        tokio::spawn(conn);
+
+        // Open a stream that stays open, and wait until the server is serving
+        // it.
+        let blocked = {
+            let mut sender = sender.clone();
+            let request = Request::builder()
+                .uri("/blocked")
+                .body(Body::empty())
+                .unwrap();
+            tokio::spawn(async move { sender.send_request(request).await })
+        };
+        started.notified().await;
+
+        // A second stream that opens and closes again while the first one is
+        // open. The connection is still busy afterwards, because one stream is
+        // still open.
+        let request = Request::builder()
+            .uri("/quick")
+            .body(Body::empty())
+            .unwrap();
+        let response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let _ = to_bytes(Body::new(response.into_body()), usize::MAX)
+            .await
+            .unwrap();
+
+        // Well past the idle limit, the connection must still accept new
+        // streams: it would refuse them after a GOAWAY.
+        tokio::time::sleep(Duration::from_secs(30)).await;
+        let request = Request::builder()
+            .uri("/quick")
+            .body(Body::empty())
+            .unwrap();
+        let response = sender
+            .send_request(request)
+            .await
+            .expect("connection was shut down while a stream was still open");
+        assert_eq!(response.status(), StatusCode::OK);
+        let _ = to_bytes(Body::new(response.into_body()), usize::MAX)
+            .await
+            .unwrap();
+
+        release.notify_one();
+        let response = tokio::time::timeout(Duration::from_secs(30), blocked)
+            .await
+            .expect("the open stream did not resolve")
+            .unwrap()
+            .expect("the open stream failed");
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    // An upgraded HTTP/1 connection is handed to the upgrade handler, and the
+    // traffic on it is invisible to `serve`, so a WebSocket that says nothing
+    // for longer than the idle limit must not be closed under it.
+    #[cfg(all(feature = "http1", feature = "ws"))]
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_idle_never_closes_an_upgraded_connection_http1() {
+        use futures_util::{SinkExt, StreamExt};
+        use tokio_tungstenite::{tungstenite, WebSocketStream};
+
+        use crate::{
+            extract::ws::{Message, WebSocketUpgrade},
+            routing::any,
+        };
+
+        let app = Router::new().route(
+            "/ws",
+            any(|ws: WebSocketUpgrade| async move {
+                ws.on_upgrade(|mut socket| async move {
+                    while let Some(Ok(Message::Text(text))) = socket.recv().await {
+                        socket.send(Message::Text(text)).await.ok();
+                    }
+                })
+            }),
+        );
+
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new().max_connection_idle(Duration::from_secs(5)),
+                )
+                .into_future(),
+        );
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn.with_upgrades());
+
+        let request = Request::builder()
+            .uri("/ws")
+            .header("connection", "upgrade")
+            .header("upgrade", "websocket")
+            .header("sec-websocket-version", "13")
+            .header("sec-websocket-key", "dGhlIHNhbXBsZSBub25jZQ==")
+            .body(Body::empty())
+            .unwrap();
+        let mut response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::SWITCHING_PROTOCOLS);
+
+        let upgraded = hyper::upgrade::on(&mut response).await.unwrap();
+        let mut ws = WebSocketStream::from_raw_socket(
+            TokioIo::new(upgraded),
+            tungstenite::protocol::Role::Client,
+            None,
+        )
+        .await;
+
+        // Say nothing for well past the idle limit, then check the socket is
+        // still there.
+        tokio::time::sleep(Duration::from_secs(60)).await;
+
+        ws.send(tungstenite::Message::Text("hi".into()))
+            .await
+            .expect("upgraded HTTP/1 connection was closed by the idle limit");
+        let echoed = tokio::time::timeout(Duration::from_secs(30), ws.next())
+            .await
+            .expect("no echo from the upgraded HTTP/1 connection")
+            .expect("the upgraded HTTP/1 connection ended")
+            .expect("the upgraded HTTP/1 connection failed");
+        assert_eq!(echoed.into_text().unwrap().as_str(), "hi");
+    }
+
+    // An upgraded HTTP/2 stream keeps carrying traffic that `serve` cannot see,
+    // so it counts as in flight for the rest of the connection's life and the
+    // idle limit never closes the connection under it.
+    #[cfg(all(feature = "http2", feature = "ws"))]
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_idle_never_closes_an_upgraded_connection_http2() {
+        use hyper_util::rt::TokioExecutor;
+
+        use crate::{extract::ws::WebSocketUpgrade, routing::any};
+
+        let app = Router::new()
+            .route(
+                "/ws",
+                any(|ws: WebSocketUpgrade| async move {
+                    ws.on_upgrade(
+                        |mut socket| async move { while socket.recv().await.is_some() {} },
+                    )
+                }),
+            )
+            .route("/", get(|| async { "ok" }));
+
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new().max_connection_idle(Duration::from_secs(5)),
+                )
+                .into_future(),
+        );
+
+        let io = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http2::Builder::new(TokioExecutor::new())
+            .handshake(io)
+            .await
+            .unwrap();
+
+        // Wait a little for the SETTINGS frame that advertises extended
+        // CONNECT to go through.
+        for _ in 0..10 {
+            tokio::task::yield_now().await;
+        }
+        assert!(conn.is_extended_connect_protocol_enabled());
+        tokio::spawn(conn);
+
+        let request = http::Request::builder()
+            .method(http::Method::CONNECT)
+            .extension(hyper::ext::Protocol::from_static("websocket"))
+            .uri("/ws")
+            .header("sec-websocket-version", "13")
+            .body(Body::empty())
+            .unwrap();
+        let mut response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        // Hold the upgraded stream open without sending anything on it.
+        let _upgraded = hyper::upgrade::on(&mut response).await.unwrap();
+
+        // Well past the idle limit, the connection must still accept new
+        // streams: it would refuse them after a GOAWAY.
+        tokio::time::sleep(Duration::from_secs(30)).await;
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let response = sender
+            .send_request(request)
+            .await
+            .expect("connection was shut down under an upgraded stream");
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    // With both limits set, a connection that goes idle is closed by the idle
+    // limit long before it reaches the age limit.
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_idle_closes_connection_before_max_connection_age() {
+        let age = Duration::from_secs(10 * 60);
+        let idle = Duration::from_secs(5);
+
+        let app = Router::new().route("/", get(|| async { "ok" }));
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new()
+                        .max_connection_age(MaxConnectionAge::new(age))
+                        .max_connection_idle(idle),
+                )
+                .into_future(),
+        );
+
+        let start = tokio::time::Instant::now();
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        let conn_handle = tokio::spawn(conn);
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let _ = to_bytes(Body::new(response.into_body()), usize::MAX)
+            .await
+            .unwrap();
+
+        tokio::time::timeout(age, conn_handle)
+            .await
+            .expect("connection was not closed after max_connection_idle elapsed")
+            .unwrap()
+            .ok();
+
+        let closed_after = start.elapsed();
+        assert!(
+            closed_after < age,
+            "connection closed after {closed_after:?}, which is the age limit {age:?} rather \
+             than the idle limit {idle:?}",
+        );
+    }
+
+    // With both limits set, the age limit still bounds a connection that never
+    // goes idle: the idle limit alone would let a stuck handler hold it open
+    // forever.
+    #[tokio::test(start_paused = true)]
+    async fn max_connection_age_still_applies_to_a_connection_that_is_never_idle() {
+        use std::{future::pending, sync::Arc};
+
+        use tokio::sync::Notify;
+
+        let started = Arc::new(Notify::new());
+        let app = Router::new().route("/", {
+            let started = started.clone();
+            get(move || {
+                let started = started.clone();
+                async move {
+                    started.notify_one();
+                    pending::<()>().await;
+                    "unreachable"
+                }
+            })
+        });
+
+        let (client, server) = io::duplex(1024);
+        let listener = ReadyListener(Some(server));
+
+        tokio::spawn(
+            serve(listener, app)
+                .connection_lifetime_limits(
+                    ConnectionLifetimeLimits::new()
+                        .max_connection_age(
+                            MaxConnectionAge::new(Duration::from_secs(10))
+                                .grace(Duration::from_secs(5)),
+                        )
+                        .max_connection_idle(Duration::from_secs(60)),
+                )
+                .into_future(),
+        );
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let send = tokio::spawn(async move { sender.send_request(request).await });
+
+        // Wait until the (never-completing) handler is actually running, which
+        // keeps the connection busy for the rest of the test.
+        started.notified().await;
+
+        // age (10s) + grace (5s) later, the connection is force-closed, so the
+        // in-flight request resolves with an error.
+        let result = tokio::time::timeout(Duration::from_secs(30), send)
+            .await
+            .expect("request was not aborted within the grace period")
+            .unwrap();
+        assert!(
+            result.is_err(),
+            "expected the in-flight request to fail when the connection is force-closed",
+        );
     }
 }
