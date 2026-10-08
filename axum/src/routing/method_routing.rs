@@ -683,7 +683,8 @@ where
     /// returning HTTP 405 is stored, and can be queried with this method.
     ///
     /// Returns `None` if the `MethodRouter` was constructed with [`any`] or
-    /// has had a [`fallback`][Self::fallback] set.
+    /// has had a [`fallback`][Self::fallback] set, or if no methods have been
+    /// configured (e.g. a fresh [`MethodRouter::new()`]).
     pub fn method_filter(&self) -> Option<MethodFilter> {
         let Self {
             get,
@@ -718,8 +719,7 @@ where
         ]
         .into_iter()
         .filter_map(|(ep, f)| ep.is_some().then_some(f))
-        .reduce(MethodFilter::or)
-        .expect("can't create a MethodRouter with all-default handlers");
+        .reduce(MethodFilter::or)?;
 
         Some(filter)
     }
@@ -1733,6 +1733,9 @@ mod tests {
         );
 
         let router: MethodRouter = any(|| async {});
+        assert_eq!(router.method_filter(), None);
+
+        let router: MethodRouter = MethodRouter::new();
         assert_eq!(router.method_filter(), None);
     }
 
