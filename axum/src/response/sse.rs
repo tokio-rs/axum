@@ -306,26 +306,16 @@ impl Event {
     /// Panics if any `data` has already been written before.
     ///
     /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
-    pub fn data<T>(mut self, data: T) -> Self
+    pub fn data<T>(self, data: T) -> Self
     where
         T: AsRef<str>,
     {
-        let data = data.as_ref();
-
-        // Writing an empty string to the data writer is a no-op, but an event
-        // without any `data` field is never dispatched by `EventSource`, so
-        // write an empty `data: ` field instead.
-        if data.is_empty() {
-            if self.flags.contains(EventFlags::HAS_DATA) {
-                panic!("Called `Event::data*` multiple times");
-            }
-            self.flags.insert(EventFlags::HAS_DATA);
-            self.field("data", "");
-            return self;
-        }
-
         let mut writer = self.into_data_writer();
-        let _ = writer.write_str(data);
+        // Start the field even for an empty string: an event without any
+        // `data` field is never dispatched by `EventSource`, so `data("")`
+        // must still produce `data: `.
+        writer.start_data();
+        let _ = writer.write_str(data.as_ref());
         writer.into_event()
     }
 
@@ -530,6 +520,19 @@ impl EventDataWriter {
 }
 
 impl EventDataWriter {
+    // Writes the `data: ` prefix of the first data field, unless this writer
+    // has already started one.
+    fn start_data(&mut self) {
+        if !std::mem::replace(&mut self.data_written, true) {
+            if self.event.flags.contains(EventFlags::HAS_DATA) {
+                panic!("Called `Event::data*` multiple times");
+            }
+
+            let _ = self.event.buffer.as_mut().write_str("data: ");
+            self.event.flags.insert(EventFlags::HAS_DATA);
+        }
+    }
+
     // Assumption: underlying writer never returns an error:
     // <https://docs.rs/bytes/latest/src/bytes/buf/writer.rs.html#79-82>
     fn write_buf(&mut self, buf: &[u8]) -> usize {
@@ -537,19 +540,10 @@ impl EventDataWriter {
             return 0;
         }
 
+        self.start_data();
+
         let pending_cr = mem::take(&mut self.pending_cr);
-        let buffer = self.event.buffer.as_mut();
-
-        if !std::mem::replace(&mut self.data_written, true) {
-            if self.event.flags.contains(EventFlags::HAS_DATA) {
-                panic!("Called `Event::data*` multiple times");
-            }
-
-            let _ = buffer.write_str("data: ");
-            self.event.flags.insert(EventFlags::HAS_DATA);
-        }
-
-        let mut writer = buffer.writer();
+        let mut writer = self.event.buffer.as_mut().writer();
 
         if pending_cr && buf[0] != b'\n' {
             let _ = writer.write_all(b"data: ");
