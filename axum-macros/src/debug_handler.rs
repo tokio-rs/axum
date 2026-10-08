@@ -871,7 +871,7 @@ fn skip_next_arg(arg: &FnArg, kind: FunctionKind) -> bool {
                         .path
                         .segments
                         .last()
-                        .map_or(true, |path_segment| path_segment.ident != "Next")
+                        .is_none_or(|path_segment| path_segment.ident != "Next")
                 } else {
                     true
                 }
