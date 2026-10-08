@@ -504,7 +504,7 @@ where
                 return Err(InvalidConnectionHeader.into());
             }
 
-            if !header_eq(&parts.headers, &header::UPGRADE, "websocket") {
+            if !header_contains(&parts.headers, &header::UPGRADE, "websocket") {
                 return Err(InvalidUpgradeHeader.into());
             }
 
@@ -574,15 +574,11 @@ fn header_eq(headers: &HeaderMap, key: &HeaderName, value: &'static str) -> bool
 }
 
 fn header_contains(headers: &HeaderMap, key: &HeaderName, value: &'static str) -> bool {
-    let Some(header) = headers.get(key) else {
-        return false;
-    };
-
-    if let Ok(header) = std::str::from_utf8(header.as_bytes()) {
-        header.to_ascii_lowercase().contains(value)
-    } else {
-        false
-    }
+    headers
+        .get_all(key)
+        .iter()
+        .flat_map(|header| header.as_bytes().split(|&byte| byte == b','))
+        .any(|token| token.trim_ascii().eq_ignore_ascii_case(value.as_bytes()))
 }
 
 /// A stream of WebSocket messages.
@@ -1167,6 +1163,151 @@ mod tests {
     use tokio::net::TcpStream;
     use tokio_tungstenite::tungstenite;
     use tower::ServiceExt;
+
+    #[test]
+    fn upgrade_header_tokens() {
+        for (name, token) in [
+            (header::CONNECTION, "upgrade"),
+            (header::UPGRADE, "websocket"),
+        ] {
+            for value in [
+                token.to_owned(),
+                token.to_ascii_uppercase(),
+                format!("keep-alive, {token}"),
+                format!("\t{token}\t, keep-alive"),
+                format!(", , {token},"),
+            ] {
+                let mut headers = HeaderMap::new();
+                headers.insert(&name, value.parse().unwrap());
+                assert!(header_contains(&headers, &name, token), "{name}: {value}");
+            }
+            for value in [
+                String::new(),
+                "keep-alive".to_owned(),
+                format!("x-{token}"),
+                format!("{token}-suffix"),
+                format!("keep-alive {token}"),
+                format!("\"{token}\""),
+                format!("{token}/1"),
+            ] {
+                let mut headers = HeaderMap::new();
+                headers.insert(&name, value.parse().unwrap());
+                assert!(!header_contains(&headers, &name, token), "{name}: {value}");
+            }
+            let mut headers = HeaderMap::new();
+            assert!(!header_contains(&headers, &name, token));
+            headers.append(&name, HeaderValue::from_static("keep-alive"));
+            headers.append(&name, HeaderValue::from_str(token).unwrap());
+            assert!(header_contains(&headers, &name, token));
+            headers.clear();
+            headers.append(&name, HeaderValue::from_bytes(b"\xff").unwrap());
+            headers.append(&name, HeaderValue::from_str(token).unwrap());
+            assert!(header_contains(&headers, &name, token));
+        }
+    }
+
+    #[crate::test]
+    async fn extracts_upgrade_with_list_headers() {
+        for (connection, upgrade) in [
+            (vec!["Upgrade"], vec!["websocket"]),
+            (vec!["keep-alive, Upgrade"], vec!["websocket"]),
+            (vec!["keep-alive", "Upgrade"], vec!["websocket"]),
+            (vec!["Upgrade", "keep-alive"], vec!["websocket"]),
+            (vec!["\tUpGrAdE\t"], vec!["WebSocket"]),
+            (vec!["Upgrade"], vec!["h2c, websocket"]),
+            (vec!["Upgrade"], vec!["h2c", "websocket"]),
+            (vec!["keep-alive", "Upgrade"], vec!["h2c", "websocket"]),
+        ] {
+            let mut req = Request::builder()
+                .header(header::SEC_WEBSOCKET_KEY, "dGhlIHNhbXBsZSBub25jZQ==")
+                .header(header::SEC_WEBSOCKET_VERSION, "13")
+                .body(Body::empty())
+                .unwrap();
+            for value in &connection {
+                req.headers_mut()
+                    .append(header::CONNECTION, value.parse().unwrap());
+            }
+            for value in &upgrade {
+                req.headers_mut()
+                    .append(header::UPGRADE, value.parse().unwrap());
+            }
+            let on_upgrade = hyper::upgrade::on(Request::new(()));
+            req.extensions_mut().insert(on_upgrade);
+            let (mut parts, _) = req.into_parts();
+            let result = WebSocketUpgrade::from_request_parts(&mut parts, &()).await;
+            assert!(result.is_ok(), "{connection:?}, {upgrade:?}: {result:?}");
+        }
+    }
+
+    #[crate::test]
+    async fn rejects_upgrade_substrings() {
+        for (name, values, expected_body) in [
+            (
+                header::CONNECTION,
+                vec!["x-upgrade", "upgrades", "keep-alive upgrade"],
+                "Connection header did not include 'upgrade'",
+            ),
+            (
+                header::UPGRADE,
+                vec!["x-websocket", "websockets", "websocket/1"],
+                "`Upgrade` header did not include 'websocket'",
+            ),
+        ] {
+            for value in values {
+                let req = Request::builder()
+                    .header(header::CONNECTION, "upgrade")
+                    .header(header::UPGRADE, "websocket")
+                    .header(header::SEC_WEBSOCKET_KEY, "dGhlIHNhbXBsZSBub25jZQ==")
+                    .header(header::SEC_WEBSOCKET_VERSION, "13")
+                    .body(Body::empty())
+                    .unwrap();
+                let (mut parts, _) = req.into_parts();
+                parts.headers.insert(&name, value.parse().unwrap());
+                let rejection = WebSocketUpgrade::from_request_parts(&mut parts, &())
+                    .await
+                    .unwrap_err();
+                assert_eq!(
+                    rejection.status(),
+                    StatusCode::BAD_REQUEST,
+                    "{name}: {value}"
+                );
+                assert_eq!(rejection.body_text(), expected_body, "{name}: {value}");
+            }
+        }
+    }
+
+    #[crate::test]
+    async fn integration_test_list_headers() {
+        let addr = spawn_service(echo_app());
+        let io = TokioIo::new(TcpStream::connect(addr).await.unwrap());
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await.unwrap();
+        tokio::spawn(async move { conn.with_upgrades().await.unwrap() });
+        let req = Request::builder()
+            .uri("/echo")
+            .header(header::HOST, addr.to_string())
+            .header(header::CONNECTION, "keep-alive")
+            .header(header::CONNECTION, "Upgrade")
+            .header(header::UPGRADE, "h2c")
+            .header(header::UPGRADE, "WebSocket")
+            .header(header::SEC_WEBSOCKET_KEY, "dGhlIHNhbXBsZSBub25jZQ==")
+            .header(header::SEC_WEBSOCKET_VERSION, "13")
+            .header(header::SEC_WEBSOCKET_PROTOCOL, TEST_ECHO_APP_REQ_SUBPROTO)
+            .body(Body::empty())
+            .unwrap();
+        let mut response = sender.send_request(req).await.unwrap();
+        assert_eq!(response.status(), StatusCode::SWITCHING_PROTOCOLS);
+        assert_eq!(response.headers()[header::CONNECTION], "upgrade");
+        assert_eq!(response.headers()[header::UPGRADE], "websocket");
+        assert_eq!(
+            response.headers()[header::SEC_WEBSOCKET_ACCEPT],
+            "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
+        );
+        let upgraded = hyper::upgrade::on(&mut response).await.unwrap();
+        let socket =
+            WebSocketStream::from_raw_socket(TokioIo::new(upgraded), protocol::Role::Client, None)
+                .await;
+        test_echo_app(socket, response.headers()).await;
+    }
 
     #[crate::test]
     async fn rejects_http_1_0_requests() {
