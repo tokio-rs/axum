@@ -17,6 +17,14 @@ allow = [
 [bans]
 multiple-versions = "deny"
 highlight = "all"
+skip = [
+    # Tungstenite's test client uses the newer crypto stack; headers and cookie
+    # still require the older versions. Keep these exceptions version-specific.
+    { name = "sha1", version = "=0.11.0" },
+    { name = "digest", version = "=0.11.3" },
+    { name = "block-buffer", version = "=0.12.1" },
+    { name = "crypto-common", version = "=0.2.2" },
+]
 skip-tree = [
     # parking_lot pulls in old versions of windows-sys
     { name = "windows-sys" },
