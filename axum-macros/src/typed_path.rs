@@ -13,6 +13,10 @@ pub(crate) fn expand(item_struct: &ItemStruct) -> syn::Result<TokenStream> {
         ..
     } = item_struct;
 
+    let methodless = !attrs
+        .iter()
+        .any(|attr| attr.path().is_ident("typed_method"));
+
     if !generics.params.is_empty() || generics.where_clause.is_some() {
         return Err(syn::Error::new_spanned(
             generics,
@@ -39,13 +43,21 @@ pub(crate) fn expand(item_struct: &ItemStruct) -> syn::Result<TokenStream> {
                 &path,
                 &segments,
                 rejection.as_ref(),
+                methodless,
             ))
         }
         syn::Fields::Unnamed(fields) => {
             let segments = parse_path(&path)?;
-            expand_unnamed_fields(fields, ident, &path, &segments, rejection.as_ref())
+            expand_unnamed_fields(
+                fields,
+                ident,
+                &path,
+                &segments,
+                rejection.as_ref(),
+                methodless,
+            )
         }
-        syn::Fields::Unit => expand_unit_fields(ident, &path, rejection.as_ref()),
+        syn::Fields::Unit => expand_unit_fields(ident, &path, rejection.as_ref(), methodless),
     }
 }
 
@@ -103,9 +115,11 @@ fn expand_named_fields(
     path: &LitStr,
     segments: &[Segment],
     rejection: Option<&syn::Path>,
+    methodless: bool,
 ) -> TokenStream {
     let format_str = format_str_from_path(segments);
     let captures = captures_from_path(segments);
+    let methodless_impl = methodless_typed_path_impl(ident, path.span(), methodless);
 
     let typed_path_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
@@ -161,6 +175,7 @@ fn expand_named_fields(
 
     quote! {
         #typed_path_impl
+        #methodless_impl
         #display_impl
         #from_request_impl
     }
@@ -172,6 +187,7 @@ fn expand_unnamed_fields(
     path: &LitStr,
     segments: &[Segment],
     rejection: Option<&syn::Path>,
+    methodless: bool,
 ) -> syn::Result<TokenStream> {
     let num_captures = segments
         .iter()
@@ -212,6 +228,7 @@ fn expand_unnamed_fields(
 
     let format_str = format_str_from_path(segments);
     let captures = captures_from_path(segments);
+    let methodless_impl = methodless_typed_path_impl(ident, path.span(), methodless);
 
     let typed_path_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
@@ -266,6 +283,7 @@ fn expand_unnamed_fields(
 
     Ok(quote! {
         #typed_path_impl
+        #methodless_impl
         #display_impl
         #from_request_impl
     })
@@ -283,6 +301,7 @@ fn expand_unit_fields(
     ident: &syn::Ident,
     path: &LitStr,
     rejection: Option<&syn::Path>,
+    methodless: bool,
 ) -> syn::Result<TokenStream> {
     for segment in parse_path(path)? {
         match segment {
@@ -302,6 +321,7 @@ fn expand_unit_fields(
             const PATH: &'static str = #path;
         }
     };
+    let methodless_impl = methodless_typed_path_impl(ident, path.span(), methodless);
 
     let display_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
@@ -350,9 +370,21 @@ fn expand_unit_fields(
 
     Ok(quote! {
         #typed_path_impl
+        #methodless_impl
         #display_impl
         #from_request_impl
     })
+}
+
+fn methodless_typed_path_impl(ident: &syn::Ident, span: Span, methodless: bool) -> TokenStream {
+    if methodless {
+        quote_spanned! {span=>
+            #[automatically_derived]
+            impl ::axum_extra::routing::MethodlessTypedPath for #ident {}
+        }
+    } else {
+        quote!()
+    }
 }
 
 fn format_str_from_path(segments: &[Segment]) -> String {
