@@ -407,7 +407,7 @@ mod tests {
 
     #[crate::test]
     async fn matching_colon() {
-        let app = Router::new().without_v07_checks().route(
+        let app = Router::new().route(
             "/:foo",
             get(|path: MatchedPath| async move { path.as_str().to_owned() }),
         );
@@ -427,7 +427,7 @@ mod tests {
 
     #[crate::test]
     async fn matching_asterisk() {
-        let app = Router::new().without_v07_checks().route(
+        let app = Router::new().route(
             "/*foo",
             get(|path: MatchedPath| async move { path.as_str().to_owned() }),
         );

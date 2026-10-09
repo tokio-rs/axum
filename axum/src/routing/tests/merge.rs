@@ -1,6 +1,7 @@
 use super::*;
 use crate::extract::OriginalUri;
 use serde_json::{json, Value};
+use std::sync::Arc;
 use tower::limit::ConcurrencyLimitLayer;
 
 #[crate::test]
@@ -392,4 +393,49 @@ async fn middleware_that_return_early() {
         StatusCode::NOT_FOUND
     );
     assert_eq!(client.get("/public").await.status(), StatusCode::OK);
+}
+
+#[crate::test]
+async fn merged_service_routes_are_not_wrapped_again() {
+    struct Svc(Arc<AtomicUsize>);
+
+    impl Clone for Svc {
+        fn clone(&self) -> Self {
+            self.0.fetch_add(1, Ordering::SeqCst);
+            Self(self.0.clone())
+        }
+    }
+
+    impl Service<Request> for Svc {
+        type Response = Response;
+        type Error = Infallible;
+        type Future = Ready<Result<Response, Infallible>>;
+
+        fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, _req: Request) -> Self::Future {
+            ready(Ok("hello".into_response()))
+        }
+    }
+
+    async fn clones_per_request(app: Router, clones: &AtomicUsize) -> usize {
+        let before = clones.load(Ordering::SeqCst);
+        let res = app
+            .oneshot(Request::get("/svc").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        clones.load(Ordering::SeqCst) - before
+    }
+
+    let clones = Arc::new(AtomicUsize::new(0));
+    let direct = Router::new().route_service("/svc", Svc(clones.clone()));
+    let merged = Router::new().merge(Router::new().route_service("/svc", Svc(clones.clone())));
+
+    assert_eq!(
+        clones_per_request(merged, &clones).await,
+        clones_per_request(direct, &clones).await,
+    );
 }

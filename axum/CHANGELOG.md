@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   produced by body-changing layers such as `RequestBodyLimitLayer`. Direct
   `ServiceExt::ready` calls may now need an explicit request type, such as
   `ServiceExt::<Request>::ready(&mut middleware)` ([#2492])
+- **breaking:** `tower-log` is no longer a default feature. Enable it explicitly to keep
+  `tower`'s `log` feature turned on ([#3928])
 - **breaking:** Router fallbacks are now properly merged for nested routers ([#3158])
 - **breaking:** `#[from_request(via(Extractor))]` now uses the extractor's
   rejection type instead of `axum::response::Response` ([#3261])
@@ -26,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with a body in a response tuple ([#3721])
 - **added:** Add `RawPathParams::from_request_extensions` ([#3757])
 - **added:** `sse::Event::raw` for events with fully custom payloads ([#3829])
+- **added:** `serve::ConnectionLifetimeLimits` and `Serve::connection_lifetime_limits` for bounding the
+  lifetime of individual connections via `serve::MaxConnectionAge` (with `jitter` and `grace`),
+  forcing clients to rotate connections ([#3779])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
 - **changed:** Reduced contention in `axum::serve` shutdown notification with many
@@ -36,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `MethodFilter::QUERY`, `routing::query[_service]` and `MethodRouter::query[_service]` ([#3801])
 - **fixed:** `MethodRouter::merge` no longer lists a method twice in the `Allow`
   header after merging `get` and `head` ([#3836])
+- **changed:** `Router::merge` no longer wraps service routes in another `Route`,
+  which saves a clone and a layer of boxing on every request to them ([#3909])
 - **changed:** Update `Router::route_service` docs for `axum::body::Body` instead of
   the removed `BoxBody` type ([#3890])
 
@@ -52,11 +59,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3721]: https://github.com/tokio-rs/axum/pull/3721
 [#3742]: https://github.com/tokio-rs/axum/pull/3742
 [#3836]: https://github.com/tokio-rs/axum/pull/3836
+[#3909]: https://github.com/tokio-rs/axum/pull/3909
 [#3757]: https://github.com/tokio-rs/axum/pull/3757
 [#3829]: https://github.com/tokio-rs/axum/pull/3829
 [#3801]: https://github.com/tokio-rs/axum/pull/3801
 [#3867]: https://github.com/tokio-rs/axum/pull/3867
 [#3890]: https://github.com/tokio-rs/axum/pull/3890
+[#3779]: https://github.com/tokio-rs/axum/pull/3779
+[#3928]: https://github.com/tokio-rs/axum/pull/3928
 
 # 0.8.9
 
