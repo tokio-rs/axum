@@ -159,10 +159,24 @@ where
 
 fn prefix_matches(prefix_segment: &str, path_segment: &str) -> bool {
     if let Some((prefix, suffix)) = capture_prefix_suffix(prefix_segment) {
-        path_segment.starts_with(prefix) && path_segment.ends_with(suffix)
+        let mut path = path_segment.bytes();
+        unescape_braces(prefix.bytes()).all(|byte| path.next() == Some(byte))
+            && unescape_braces(suffix.bytes().rev()).all(|byte| path.next_back() == Some(byte))
     } else {
-        prefix_segment == path_segment
+        unescape_braces(prefix_segment.bytes()).eq(path_segment.bytes())
     }
+}
+
+fn unescape_braces(mut bytes: impl Iterator<Item = u8>) -> impl Iterator<Item = u8> {
+    std::iter::from_fn(move || {
+        let byte = bytes.next()?;
+        if matches!(byte, b'{' | b'}') {
+            // Literal braces in a route pattern are escaped by doubling them.
+            // Captures have already been removed from the pattern.
+            bytes.next();
+        }
+        Some(byte)
+    })
 }
 
 /// Takes a segment and returns prefix and suffix of the path, omitting the capture. Currently,

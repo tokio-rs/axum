@@ -302,6 +302,33 @@ async fn nest_at_capture() {
     assert_eq!(res.text().await, "a=foo b=bar");
 }
 
+#[crate::test]
+async fn nest_at_escaped_braces() {
+    for (prefix, path) in [
+        ("/{{api}}", "/{api}"),
+        ("/{{start}}v{version}x{{end}}", "/{start}v1x{end}"),
+        ("/{{{version}}}", "/{v1}"),
+    ] {
+        let inner = Router::new()
+            .route("/", get(|uri: Uri| async move { uri.to_string() }))
+            .route("/users", get(|uri: Uri| async move { uri.to_string() }));
+        let app = Router::new().nest(prefix, inner);
+
+        for suffix in ["", "/users"] {
+            let request = Request::builder()
+                .uri(format!("{path}{suffix}?page=2"))
+                .body(Body::empty())
+                .unwrap();
+            let response = app.clone().oneshot(request).await.unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+            let body = response.into_body().collect().await.unwrap().to_bytes();
+            let expected_path = if suffix.is_empty() { "/" } else { suffix };
+            assert_eq!(body, format!("{expected_path}?page=2"));
+        }
+    }
+}
+
 // Not `crate::test` because `nest_service` would fail.
 #[tokio::test]
 async fn nest_at_prefix_capture() {
