@@ -296,7 +296,7 @@ dependencies = [
  "serde_html_form",
  "serde_json",
  "serde_path_to_error",
- "sha1 0.10.6",
+ "sha1 0.11.0",
  "sync_wrapper",
  "tokio",
  "tokio-tungstenite 0.30.0",
