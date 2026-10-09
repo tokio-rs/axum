@@ -137,10 +137,6 @@ serde_html_form = { version = "0.4.0", optional = true, default-features = false
 serde_json = { version = "1.0.29", features = ["raw_value"], optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }
 sha1 = { version = "0.10", optional = true }
-# The defaults are `connect` and `handshake`. axum uses Hyper's upgraded stream
-# and handles the handshake itself, so neither is needed. `connect` also enables
-# `handshake`, so it cannot be retained without pulling in the newer SHA-1 stack.
-# The dev-dependency keeps both defaults for the WebSocket test client.
 tokio-tungstenite = { version = "0.30.0", default-features = false, optional = true }
 tracing = { version = "0.1", default-features = false, optional = true }
 
