@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **breaking:** Allow `from_fn` and `from_fn_with_state` middleware to accept bodies
+  produced by body-changing layers such as `RequestBodyLimitLayer`. Direct
+  `ServiceExt::ready` calls may now need an explicit request type, such as
+  `ServiceExt::<Request>::ready(&mut middleware)` ([#2492])
 - **breaking:** `tower-log` is no longer a default feature. Enable it explicitly to keep
   `tower`'s `log` feature turned on ([#3928])
 - **breaking:** Router fallbacks are now properly merged for nested routers ([#3158])
@@ -42,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **changed:** Update `Router::route_service` docs for `axum::body::Body` instead of
   the removed `BoxBody` type ([#3890])
 
+[#2492]: https://github.com/tokio-rs/axum/issues/2492
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
 [#3205]: https://github.com/tokio-rs/axum/pull/3205
