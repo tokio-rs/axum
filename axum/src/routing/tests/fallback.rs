@@ -408,3 +408,163 @@ async fn state_isnt_cloned_too_much_with_fallback() {
 
     assert_eq!(state.count(), 3);
 }
+
+fn with_test_fallback(router: Router, service: bool) -> Router {
+    if service {
+        router.fallback_service(service_fn(|_: Request| async {
+            Ok::<_, Infallible>("router fallback")
+        }))
+    } else {
+        router.fallback(|| async { "router fallback" })
+    }
+}
+
+#[crate::test]
+async fn fallback_root_method_rejection_is_order_independent() {
+    for service in [false, true] {
+        for fallback_first in [false, true] {
+            let root = get(|| async { "root" });
+            let app = if fallback_first {
+                with_test_fallback(Router::new(), service).route("/", root)
+            } else {
+                with_test_fallback(Router::new().route("/", root), service)
+            };
+            let client = TestClient::new(app);
+
+            assert_eq!(client.get("/").await.text().await, "root");
+            let res = client.post("/").await;
+            assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+            assert_eq!(res.headers()[ALLOW], "GET,HEAD");
+            assert_eq!(client.get("/missing").await.text().await, "router fallback");
+        }
+    }
+}
+
+#[crate::test]
+async fn fallback_root_method_custom_fallback_is_preserved() {
+    for service in [false, true] {
+        for fallback_first in [false, true] {
+            let root = get(|| async { "root" })
+                .fallback(|| async { (StatusCode::IM_A_TEAPOT, "method fallback") });
+            let app = if fallback_first {
+                with_test_fallback(Router::new(), service).route("/", root)
+            } else {
+                with_test_fallback(Router::new().route("/", root), service)
+            };
+            let client = TestClient::new(app);
+
+            assert_eq!(client.get("/").await.text().await, "root");
+            let res = client.post("/").await;
+            assert_eq!(res.status(), StatusCode::IM_A_TEAPOT);
+            assert_eq!(res.text().await, "method fallback");
+        }
+    }
+}
+
+#[crate::test]
+async fn fallback_root_method_registrations_still_merge() {
+    for service in [false, true] {
+        let app = with_test_fallback(Router::new(), service)
+            .route("/", get(|| async { "get" }))
+            .route("/", post(|| async { "post" }));
+        let client = TestClient::new(app);
+
+        assert_eq!(client.get("/").await.text().await, "get");
+        assert_eq!(client.post("/").await.text().await, "post");
+        let res = client.put("/").await;
+        assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+        let mut allowed = res.headers()[ALLOW]
+            .to_str()
+            .unwrap()
+            .split(',')
+            .collect::<Vec<_>>();
+        allowed.sort_unstable();
+        assert_eq!(allowed, ["GET", "HEAD", "POST"]);
+    }
+}
+
+#[crate::test]
+async fn fallback_root_method_rejection_survives_merge() {
+    for service in [false, true] {
+        for fallback_first in [false, true] {
+            let root = Router::new().route("/", get(|| async { "root" }));
+            let fallback = with_test_fallback(Router::new(), service);
+            let app = if fallback_first {
+                fallback.merge(root)
+            } else {
+                root.merge(fallback)
+            };
+            let client = TestClient::new(app);
+
+            assert_eq!(client.get("/").await.text().await, "root");
+            let res = client.post("/").await;
+            assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+            assert_eq!(res.headers()[ALLOW], "GET,HEAD");
+            assert_eq!(client.get("/missing").await.text().await, "router fallback");
+        }
+    }
+}
+
+#[crate::test]
+async fn fallback_root_method_rejection_survives_nesting() {
+    for service in [false, true] {
+        let inner = with_test_fallback(Router::new(), service).route("/", get(|| async { "root" }));
+        let app = Router::new().nest("/api", inner);
+        let client = TestClient::new(app);
+
+        assert_eq!(client.get("/api").await.text().await, "root");
+        let res = client.post("/api").await;
+        assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(res.headers()[ALLOW], "GET,HEAD");
+        assert_eq!(
+            client.get("/api/missing").await.text().await,
+            "router fallback"
+        );
+    }
+}
+
+#[crate::test]
+async fn fallback_root_method_rejection_for_route_service() {
+    for service in [false, true] {
+        for fallback_first in [false, true] {
+            let root = get(|| async { "root" });
+            let app = if fallback_first {
+                with_test_fallback(Router::new(), service).route_service("/", root)
+            } else {
+                with_test_fallback(Router::new().route_service("/", root), service)
+            };
+            let client = TestClient::new(app);
+
+            assert_eq!(client.get("/").await.text().await, "root");
+            let res = client.post("/").await;
+            assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+            assert_eq!(res.headers()[ALLOW], "GET,HEAD");
+            assert_eq!(client.get("/missing").await.text().await, "router fallback");
+        }
+    }
+}
+
+#[tokio::test]
+async fn fallback_root_method_rejection_for_outer_route() {
+    for service in [false, true] {
+        for fallback_first in [false, true] {
+            let inner = with_test_fallback(Router::new(), service);
+            let root = get(|| async { "root" });
+            let app = if fallback_first {
+                Router::new().nest("/api", inner).route("/api", root)
+            } else {
+                Router::new().route("/api", root).nest("/api", inner)
+            };
+            let client = TestClient::new(app);
+
+            assert_eq!(client.get("/api").await.text().await, "root");
+            let res = client.post("/api").await;
+            assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+            assert_eq!(res.headers()[ALLOW], "GET,HEAD");
+            assert_eq!(
+                client.get("/api/missing").await.text().await,
+                "router fallback"
+            );
+        }
+    }
+}

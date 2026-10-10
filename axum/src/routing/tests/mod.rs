@@ -649,7 +649,7 @@ async fn colliding_fallback_with_root() {
 
     let client = TestClient::new(router);
 
-    // This works because fallback registers `any` so the `get` gets merged into it.
+    // The explicit root route replaces the root endpoint installed by the fallback.
     let res = client.get("/").await;
     let body = res.text().await;
     assert_eq!(body, "root");
