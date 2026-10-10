@@ -99,6 +99,9 @@ struct RouterInner<S> {
     path_router: PathRouter<S>,
     default_fallback: bool,
     catch_all_fallback: Fallback<S>,
+    /// Every handler has already been turned into a `Route` by `with_state`,
+    /// so `serve` can hand out clones of this router as they are.
+    finalized: bool,
 }
 
 impl<S> Default for Router<S>
@@ -144,6 +147,7 @@ macro_rules! tap_inner {
         {
             let mut $inner = $self_.into_inner();
             $($stmt)*;
+            $inner.finalized = false;
             Router {
                 inner: Arc::new($inner),
             }
@@ -165,6 +169,7 @@ where
                 path_router: Default::default(),
                 default_fallback: true,
                 catch_all_fallback: Fallback::Default(Route::new(NotFound)),
+                finalized: false,
             }),
         }
     }
@@ -176,6 +181,7 @@ where
                 path_router: arc.path_router.clone(),
                 default_fallback: arc.default_fallback,
                 catch_all_fallback: arc.catch_all_fallback.clone(),
+                finalized: arc.finalized,
             },
         }
     }
@@ -222,6 +228,7 @@ where
             // requests with an empty path. If we were to inherit the catch-all fallback
             // it would end up matching `/{path}/*` which doesn't match empty paths.
             catch_all_fallback: _,
+            finalized: _,
         } = router.into_inner();
 
         tap_inner!(self, mut this => {
@@ -257,6 +264,7 @@ where
             path_router,
             default_fallback,
             catch_all_fallback,
+            finalized: _,
         } = other.into_inner();
 
         map_inner!(self, mut this => {
@@ -281,6 +289,7 @@ where
                 .merge(catch_all_fallback)
                 .unwrap_or_else(|| panic!("Cannot merge two `Router`s that both have a fallback"));
 
+            this.finalized = false;
             this
         })
     }
@@ -298,6 +307,7 @@ where
             path_router: this.path_router.layer(layer.clone()),
             default_fallback: this.default_fallback,
             catch_all_fallback: this.catch_all_fallback.map(|route| route.layer(layer)),
+            finalized: this.finalized,
         })
     }
 
@@ -315,6 +325,7 @@ where
             path_router: this.path_router.route_layer(layer),
             default_fallback: this.default_fallback,
             catch_all_fallback: this.catch_all_fallback,
+            finalized: this.finalized,
         })
     }
 
@@ -439,6 +450,7 @@ where
             path_router: this.path_router.with_state(state.clone()),
             default_fallback: this.default_fallback,
             catch_all_fallback: this.catch_all_fallback.with_state(state),
+            finalized: true,
         })
     }
 
@@ -583,8 +595,13 @@ const _: () = {
 
         fn call(&mut self, _req: serve::IncomingStream<'_, L>) -> Self::Future {
             // call `Router::with_state` such that everything is turned into `Route` eagerly
-            // rather than doing that per request
-            std::future::ready(Ok(self.clone().with_state(())))
+            // rather than doing that per request, and only once: `self` is the
+            // only handle `serve` holds, so taking it lets `with_state` move the
+            // routes instead of deep-cloning them for every connection
+            if !self.inner.finalized {
+                *self = std::mem::take(self).with_state(());
+            }
+            std::future::ready(Ok(self.clone()))
         }
     }
 };
