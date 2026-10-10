@@ -505,6 +505,140 @@ mod tests {
         );
     }
 
+    async fn assert_response_parts_error(
+        response: Response,
+        expected_status: StatusCode,
+        expected_body: &str,
+    ) {
+        let status = response.status();
+        assert!(response.extensions().get::<IntoResponseFailed>().is_some());
+        let body = crate::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(body, expected_body);
+        assert_eq!(status, expected_status);
+    }
+
+    #[crate::test]
+    async fn force_status_code_overrides_invalid_header_name() {
+        let response = (
+            ForceStatusCode(StatusCode::IM_A_TEAPOT),
+            [("invalid header name", "value")],
+            "original body",
+        )
+            .into_response();
+
+        assert_response_parts_error(
+            response,
+            StatusCode::IM_A_TEAPOT,
+            "invalid HTTP header name",
+        )
+        .await;
+    }
+
+    #[crate::test]
+    async fn force_status_code_overrides_later_invalid_header_value() {
+        let response = (
+            ForceStatusCode(StatusCode::IM_A_TEAPOT),
+            [("x-valid", "value")],
+            [("x-invalid", "bad\nvalue")],
+            "original body",
+        )
+            .into_response();
+
+        assert_response_parts_error(
+            response,
+            StatusCode::IM_A_TEAPOT,
+            "failed to parse header value",
+        )
+        .await;
+    }
+
+    #[crate::test]
+    async fn force_status_code_preserves_custom_response_part_error() {
+        struct FailingPart;
+
+        #[derive(Clone)]
+        struct ErrorDetails(&'static str);
+
+        impl IntoResponseParts for FailingPart {
+            type Error = Response;
+
+            fn into_response_parts(
+                self,
+                _response: ResponseParts,
+            ) -> Result<ResponseParts, Self::Error> {
+                Err(Response::builder()
+                    .status(StatusCode::BAD_GATEWAY)
+                    .header("x-error-code", "upstream-unavailable")
+                    .extension(ErrorDetails("retry later"))
+                    .body(crate::body::Body::from("custom error body"))
+                    .unwrap())
+            }
+        }
+
+        let response = (
+            ForceStatusCode(StatusCode::IM_A_TEAPOT),
+            FailingPart,
+            "original body",
+        )
+            .into_response();
+
+        assert_eq!(response.headers()["x-error-code"], "upstream-unavailable");
+        assert_eq!(
+            response.extensions().get::<ErrorDetails>().unwrap().0,
+            "retry later",
+        );
+        assert_response_parts_error(response, StatusCode::IM_A_TEAPOT, "custom error body").await;
+    }
+
+    #[crate::test]
+    async fn force_status_code_overrides_nested_header_errors() {
+        for (headers, expected_body) in [
+            (
+                [("invalid header name", "value")],
+                "invalid HTTP header name",
+            ),
+            (
+                [("x-invalid", "bad\nvalue")],
+                "failed to parse header value",
+            ),
+        ] {
+            let response = (
+                ForceStatusCode(StatusCode::IM_A_TEAPOT),
+                ([("x-valid", "value")], headers, "original body"),
+            )
+                .into_response();
+
+            assert_response_parts_error(response, StatusCode::IM_A_TEAPOT, expected_body).await;
+        }
+    }
+
+    #[crate::test]
+    async fn status_code_preserves_header_errors() {
+        for (headers, expected_body) in [
+            (
+                [("invalid header name", "value")],
+                "invalid HTTP header name",
+            ),
+            (
+                [("x-invalid", "bad\nvalue")],
+                "failed to parse header value",
+            ),
+        ] {
+            let response = (
+                StatusCode::IM_A_TEAPOT,
+                [("x-valid", "value")],
+                headers,
+                "original body",
+            )
+                .into_response();
+
+            assert_response_parts_error(response, StatusCode::INTERNAL_SERVER_ERROR, expected_body)
+                .await;
+        }
+    }
+
     #[crate::test]
     async fn status_code_tuple_doesnt_override_error_json() {
         let app = Router::new()

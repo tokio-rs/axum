@@ -17,11 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Make the `BytesMut` extractor ignore non-data frames from custom
   request bodies, matching the `Bytes` extractor ([#3811])
 - **fixed:** `BodyDataStream` no longer reports invalid values in `Stream::size_hint` ([#3925])
+- **fixed:** `ForceStatusCode` now overrides the status even when response parts
+  fail to convert ([#3934])
 
 [#3721]: https://github.com/tokio-rs/axum/pull/3721
 [#3742]: https://github.com/tokio-rs/axum/pull/3742
 [#3811]: https://github.com/tokio-rs/axum/pull/3811
 [#3925]: https://github.com/tokio-rs/axum/pull/3925
+[#3934]: https://github.com/tokio-rs/axum/pull/3934
 
 # 0.5.6
 
