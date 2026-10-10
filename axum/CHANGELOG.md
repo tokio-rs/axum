@@ -41,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which saves a clone and a layer of boxing on every request to them ([#3909])
 - **changed:** Update `Router::route_service` docs for `axum::body::Body` instead of
   the removed `BoxBody` type ([#3890])
+- **fixed:** `Router::route_layer` no longer applies middleware to router
+  fallbacks ([#3932])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
@@ -62,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3890]: https://github.com/tokio-rs/axum/pull/3890
 [#3779]: https://github.com/tokio-rs/axum/pull/3779
 [#3928]: https://github.com/tokio-rs/axum/pull/3928
+[#3932]: https://github.com/tokio-rs/axum/pull/3932
 
 # 0.8.9
 
