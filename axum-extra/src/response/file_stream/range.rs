@@ -3,13 +3,13 @@
 //! Parsing preserves open-ended and suffix ranges until the file size is known. Normalization
 //! then resolves them into inclusive byte offsets and discards unsatisfiable ranges.
 
-use std::{num::IntErrorKind, str::FromStr};
+use std::str::FromStr;
 
 /// Maximum number of ranges accepted from one header value.
 pub(super) const MAX_RANGES: usize = 8;
 
 /// One parsed byte-range specification before the file size is known.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum RangeSpec {
     /// `start-end`, with inclusive byte offsets.
     Bounded { start: u64, end: u64 },
@@ -40,16 +40,7 @@ impl FromStr for RangeSpec {
             .ok_or(ParseRangeError::MissingHyphen)?;
         let (start, end) = (start.trim(), end.trim());
 
-        let parser = |base: &str, err: Self::Err| match base.parse::<u64>() {
-            Ok(value) => Ok(value),
-            Err(error)
-                if *error.kind() == IntErrorKind::PosOverflow
-                    && base.bytes().all(|digit| digit.is_ascii_digit()) =>
-            {
-                Ok(u64::MAX)
-            }
-            Err(_) => Err(err),
-        };
+        let parser = |base: &str, err: Self::Err| base.parse::<u64>().map_err(|_| err);
         match (start, end) {
             ("", "") => Err(ParseRangeError::EmptyRange),
             ("", end) => Ok(Self::Suffix {
@@ -87,11 +78,6 @@ impl RangeSpecs {
     fn iter(&self) -> impl Iterator<Item = RangeSpec> + '_ {
         self.ranges[..self.len].iter().copied().flatten()
     }
-
-    pub(super) fn has_positive_suffix(&self) -> bool {
-        self.iter()
-            .any(|range| matches!(range, RangeSpec::Suffix { length } if length > 0))
-    }
 }
 
 impl FromStr for RangeSpecs {
@@ -114,18 +100,28 @@ impl FromStr for RangeSpecs {
     }
 }
 
+/// A fixed-capacity collection of inclusive byte offsets resolved against a file's size.
+#[derive(Default)]
+pub(super) struct NormalizedRanges {
+    ranges: [(u64, u64); MAX_RANGES],
+    len: usize,
+}
+
+impl NormalizedRanges {
+    /// Returns only the populated ranges, excluding unused capacity.
+    pub(super) fn as_slice(&self) -> &[(u64, u64)] {
+        &self.ranges[..self.len]
+    }
+}
+
 /// Resolves parsed specifications against `total_size`.
 ///
-/// Explicit end offsets are clamped to the last byte. Unsatisfiable ranges are omitted, order is
-/// preserved, and the returned length identifies the populated prefix of the returned array.
-pub(super) fn normalize_range_specs(
-    range_specs: &RangeSpecs,
-    total_size: u64,
-) -> ([(u64, u64); MAX_RANGES], usize) {
-    let mut ranges = [(0, 0); MAX_RANGES];
-    let mut len = 0;
+/// Explicit end offsets are clamped to the last byte. Unsatisfiable ranges are omitted and
+/// order is preserved.
+pub(super) fn normalize_range_specs(range_specs: &RangeSpecs, total_size: u64) -> NormalizedRanges {
+    let mut ranges = NormalizedRanges::default();
     if total_size == 0 {
-        return (ranges, len);
+        return ranges;
     }
 
     let last = total_size - 1;
@@ -140,17 +136,28 @@ pub(super) fn normalize_range_specs(
         };
 
         if let Some(range) = range {
-            ranges[len] = range;
-            len += 1;
+            ranges.ranges[ranges.len] = range;
+            ranges.len += 1;
         }
     }
 
-    (ranges, len)
+    ranges
 }
 
 #[cfg(test)]
 mod tests {
     use super::{ParseRangeError, RangeSpec};
+
+    #[test]
+    fn parse_ranges() {
+        for (input, expected) in [
+            ("0-3", RangeSpec::Bounded { start: 0, end: 3 }),
+            ("-1", RangeSpec::Suffix { length: 1 }),
+            ("1-", RangeSpec::OpenEnded { start: 1 }),
+        ] {
+            assert_eq!(input.parse(), Ok(expected), "{input}");
+        }
+    }
 
     #[test]
     fn parse_errors() {
@@ -161,6 +168,12 @@ mod tests {
             ("0-x", ParseRangeError::InvalidEnd),
             ("-x", ParseRangeError::InvalidSuffixLength),
             ("5-3", ParseRangeError::EndBeforeStart),
+            ("18446744073709551616-", ParseRangeError::InvalidStart),
+            ("0-18446744073709551616", ParseRangeError::InvalidEnd),
+            (
+                "-18446744073709551616",
+                ParseRangeError::InvalidSuffixLength,
+            ),
             ("18446744073709551616x-", ParseRangeError::InvalidStart),
             ("0-18446744073709551616x", ParseRangeError::InvalidEnd),
             (

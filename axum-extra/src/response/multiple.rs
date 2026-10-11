@@ -10,7 +10,6 @@ use axum_core::{
 };
 use fastrand;
 use http::{header, HeaderMap, StatusCode};
-use http_body::Body as _;
 use mime::Mime;
 
 /// Create multipart forms to be used in API responses.
@@ -75,9 +74,6 @@ impl IntoResponse for MultipartForm {
             parts.push(Some(encoded));
         }
         let body = body::Body::new(multipart::Multipart::new(&boundary, parts, false));
-        if let Some(length) = body.size_hint().exact() {
-            headers.insert(header::CONTENT_LENGTH, length.into());
-        }
         (headers, body).into_response()
     }
 }
@@ -289,6 +285,7 @@ mod tests {
     use axum::{routing::get, Router};
     use axum_core::response::IntoResponse;
     use http::{Request, Response, StatusCode};
+    use http_body::Body as _;
     use http_body_util::BodyExt;
     use mime::Mime;
     use tower::ServiceExt;
@@ -359,13 +356,9 @@ mod tests {
         );
 
         let response = MultipartForm::with_parts(vec![part]).into_response();
-        let content_length = response.headers()[http::header::CONTENT_LENGTH]
-            .to_str()
-            .unwrap()
-            .parse::<usize>()
-            .unwrap();
+        let content_length = response.body().size_hint().exact().unwrap();
         let body = response.into_body().collect().await.unwrap().to_bytes();
-        assert_eq!(content_length, body.len());
+        assert_eq!(content_length, body.len() as u64);
         let body = std::str::from_utf8(&body).unwrap();
 
         assert!(body.contains(

@@ -212,24 +212,25 @@ where
         let file = File::open(path).await?;
         let metadata = file.metadata().await?;
         let total_size = metadata.len();
+        if total_size == 0 {
+            return full_file_response(path).await;
+        }
         let Ok(range_specs) = range_values.parse::<RangeSpecs>() else {
             return Ok(response_416(total_size));
         };
-        if total_size == 0 && range_specs.has_positive_suffix() {
-            return full_file_response(path).await;
-        }
-        let (ranges, len) = normalize_range_specs(&range_specs, total_size);
+        let ranges = normalize_range_specs(&range_specs, total_size);
+        let ranges = ranges.as_slice();
 
-        if len == 0 {
+        if ranges.is_empty() {
             return Ok(response_416(total_size));
         }
 
-        if len == 1 {
+        if ranges.len() == 1 {
             let (start, end) = ranges[0];
             return single_range_response(file, start, end, total_size).await;
         }
 
-        Ok(multipart_range_response(path, ranges, len, total_size))
+        Ok(multipart_range_response(path, ranges, total_size))
     }
 }
 
@@ -250,20 +251,11 @@ async fn single_range_response(
     Ok(FileStream::new(stream).into_range_response(start, end, total_size))
 }
 
-fn multipart_range_response(
-    path: &Path,
-    ranges: [(u64, u64); MAX_RANGES],
-    len: usize,
-    total_size: u64,
-) -> Response {
-    let boundary = multipart_boundary(total_size, len);
+fn multipart_range_response(path: &Path, ranges: &[(u64, u64)], total_size: u64) -> Response {
+    let boundary = multipart_boundary(total_size, ranges.len());
     let content_type = format!("multipart/byteranges; boundary={boundary}");
     let parts: [Option<multipart::Part>; MAX_RANGES] = std::array::from_fn(|index| {
-        if index >= len {
-            return None;
-        }
-
-        let (start, end) = ranges[index];
+        let &(start, end) = ranges.get(index)?;
         let content_range = format!("bytes {start}-{end}/{total_size}");
         let path = path.to_path_buf();
         let reader = stream::once(async move {
@@ -638,9 +630,9 @@ mod tests {
             ("bytes=4-", "bytes 4-9/10", "456789"),
             ("bytes=-4", "bytes 6-9/10", "6789"),
             ("bytes=-999", "bytes 0-9/10", "0123456789"),
-            ("bytes=-18446744073709551616", "bytes 0-9/10", "0123456789"),
+            ("bytes=-18446744073709551615", "bytes 0-9/10", "0123456789"),
             ("bytes=0-999", "bytes 0-9/10", "0123456789"),
-            ("bytes=0-18446744073709551616", "bytes 0-9/10", "0123456789"),
+            ("bytes=0-18446744073709551615", "bytes 0-9/10", "0123456789"),
         ] {
             let response = response_from_range_header(file.path(), range_header).await?;
             let headers = response.headers().clone();
@@ -678,12 +670,7 @@ mod tests {
     #[tokio::test]
     async fn response_range_header_unsatisfiable() -> Result<(), Box<dyn std::error::Error>> {
         let file = test_file(b"0123456789")?;
-        for range in [
-            "bytes=99-100",
-            "bytes=-0",
-            "bytes=9223372036854775808-",
-            "bytes=18446744073709551616-",
-        ] {
+        for range in ["bytes=99-100", "bytes=-0", "bytes=9223372036854775808-"] {
             let response = response_from_range_header(file.path(), range).await?;
             assert_eq!(response.status(), StatusCode::RANGE_NOT_SATISFIABLE);
             assert_eq!(
@@ -702,6 +689,9 @@ mod tests {
         for range_header in [
             "bytes=5-3",
             "bytes=abc-def",
+            "bytes=18446744073709551616-",
+            "bytes=-18446744073709551616",
+            "bytes=0-18446744073709551616",
             "bytes=-18446744073709551616x",
             "bytes=0-18446744073709551616x",
         ] {
@@ -877,27 +867,14 @@ mod tests {
 
     #[tokio::test]
     async fn response_range_empty_file() -> Result<(), Box<dyn std::error::Error>> {
-        let file = tempfile::NamedTempFile::new()?;
-        file.as_file().set_len(0)?;
-        let path = file.path().to_owned();
-        let range = HeaderValue::from_static("bytes=0-");
-
-        let response = FileStream::<ReaderStream<File>>::try_range_response(&path, &range)
-            .await
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::RANGE_NOT_SATISFIABLE);
-        assert_eq!(
-            response.headers().get(header::CONTENT_RANGE).unwrap(),
-            "bytes */0"
-        );
-
-        let suffix = HeaderValue::from_static("bytes=-1");
-        let response = FileStream::<ReaderStream<File>>::try_range_response(path, &suffix).await?;
-        assert_eq!(response.status(), StatusCode::OK);
-        assert!(response.headers().get(header::CONTENT_RANGE).is_none());
-        assert_eq!(response.headers().get(header::CONTENT_LENGTH).unwrap(), "0");
-        assert_eq!(body_text(response).await?, "");
+        let file = test_file(b"")?;
+        for range in ["bytes=0-", "bytes=-1", "bytes=0-0,1-2", "bytes=abc-def"] {
+            let response = response_from_range_header(file.path(), range).await?;
+            assert_eq!(response.status(), StatusCode::OK);
+            assert!(response.headers().get(header::CONTENT_RANGE).is_none());
+            assert_eq!(response.headers().get(header::CONTENT_LENGTH).unwrap(), "0");
+            assert_eq!(body_text(response).await?, "");
+        }
         Ok(())
     }
 
