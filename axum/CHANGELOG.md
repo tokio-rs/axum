@@ -41,8 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which saves a clone and a layer of boxing on every request to them ([#3909])
 - **changed:** Update `Router::route_service` docs for `axum::body::Body` instead of
   the removed `BoxBody` type ([#3890])
-- **changed:** `axum::serve` connection tasks no longer poll the shared shutdown notifier
-  on every wakeup, reducing lock contention when streaming many responses ([#3937])
+- **changed:** `axum::serve` gives each connection its own graceful shutdown channel instead of
+  a shared `watch` that every connection polled on each wakeup, reducing lock contention when
+  streaming many responses ([#3937])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261

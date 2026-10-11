@@ -8,19 +8,14 @@ use std::{
     hash::{BuildHasher, Hasher},
     io,
     marker::PhantomData,
-    pin::{pin, Pin},
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-    task::{Context, Poll, Wake, Waker},
+    pin::pin,
+    sync::{Arc, Mutex},
     time::Duration,
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
 use futures_util::{
     future::{select, Either},
-    task::AtomicWaker,
     FutureExt,
 };
 use http_body::Body as HttpBody;
@@ -30,7 +25,10 @@ use hyper_util::rt::TokioIo;
 use hyper_util::rt::TokioTimer;
 #[cfg(any(feature = "http1", feature = "http2"))]
 use hyper_util::{server::conn::auto::Builder, service::TowerToHyperService};
-use tokio::{sync::watch, task::JoinHandle};
+use tokio::{
+    sync::{oneshot, watch},
+    task::JoinHandle,
+};
 use tower::ServiceExt as _;
 use tower_service::Service;
 
@@ -310,61 +308,37 @@ fn sleep_or_pending(duration: Option<Duration>) -> Either<tokio::time::Sleep, Pe
     }
 }
 
-pin_project_lite::pin_project! {
-    /// Polls `inner` on its first poll and afterwards only once `inner`'s own waker has fired.
-    ///
-    /// Polling a pending `watch::Receiver::changed()` locks a notifier shared with other
-    /// receivers, so polling it on every wakeup of a busy task contends with all connections.
-    struct PollOnWake<F> {
-        #[pin]
-        inner: F,
-        signal: Arc<SignalWake>,
-        waker: Waker,
-    }
-}
+/// Tells connections to start a graceful shutdown.
+///
+/// Each connection gets its own oneshot channel, and shutting down drops every sender.
+/// Connection tasks poll their shutdown receiver on every wakeup, i.e. for every streamed body
+/// chunk. A pending oneshot receiver only touches that connection's channel, whereas pending
+/// `watch` receivers share a few locked notifiers across all connections.
+#[derive(Clone)]
+struct ConnectionShutdown(Arc<Mutex<Option<Vec<oneshot::Sender<()>>>>>);
 
-impl<F> PollOnWake<F> {
-    fn new(inner: F) -> Self {
-        let signal = Arc::new(SignalWake {
-            woken: AtomicBool::new(true),
-            task: AtomicWaker::new(),
-        });
-        Self {
-            inner,
-            waker: Waker::from(signal.clone()),
-            signal,
+impl ConnectionShutdown {
+    fn new() -> Self {
+        Self(Arc::new(Mutex::new(Some(Vec::new()))))
+    }
+
+    /// Returns a future that completes once [`Self::shutdown`] has been called.
+    fn subscribe(&self) -> impl Future<Output = ()> + Send + 'static {
+        let (tx, rx) = oneshot::channel();
+        if let Some(senders) = self.0.lock().unwrap().as_mut() {
+            // Forget finished connections before growing, so this stays proportional to the
+            // number of live connections.
+            if senders.len() == senders.capacity() {
+                senders.retain(|tx| !tx.is_closed());
+            }
+            senders.push(tx);
         }
-    }
-}
-
-impl<F: Future> Future for PollOnWake<F> {
-    type Output = F::Output;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-        // Register before checking the flag so a wake in between is not lost.
-        this.signal.task.register(cx.waker());
-        if !this.signal.woken.swap(false, Ordering::AcqRel) {
-            return Poll::Pending;
-        }
-        this.inner.poll(&mut Context::from_waker(this.waker))
-    }
-}
-
-/// The waker handed to the wrapped future: records that it fired, then wakes the task.
-struct SignalWake {
-    woken: AtomicBool,
-    task: AtomicWaker,
-}
-
-impl Wake for SignalWake {
-    fn wake(self: Arc<Self>) {
-        self.wake_by_ref();
+        // After shutdown, `tx` is dropped here, so the connection starts shutting down at once.
+        rx.map(drop)
     }
 
-    fn wake_by_ref(self: &Arc<Self>) {
-        self.woken.store(true, Ordering::Release);
-        self.task.wake();
+    fn shutdown(&self) {
+        drop(self.0.lock().unwrap().take());
     }
 }
 
@@ -596,14 +570,13 @@ where
             _marker,
         } = self;
 
-        let (_signal_tx, signal_rx) = watch::channel(());
         let (_close_tx, close_rx) = watch::channel(());
 
         loop {
             let (io, remote_addr) = listener.accept().await;
             handle_connection(
                 &mut make_service,
-                &signal_rx,
+                std::future::pending(),
                 &close_rx,
                 io,
                 remote_addr,
@@ -739,10 +712,15 @@ where
         } = self;
 
         let (signal_tx, mut signal_rx) = watch::channel(());
-        executor.execute(async move {
-            signal.await;
-            trace!("received graceful shutdown signal. Telling tasks to shutdown");
-            drop(signal_tx);
+        let connection_shutdown = ConnectionShutdown::new();
+        executor.execute({
+            let connection_shutdown = connection_shutdown.clone();
+            async move {
+                signal.await;
+                trace!("received graceful shutdown signal. Telling tasks to shutdown");
+                connection_shutdown.shutdown();
+                drop(signal_tx);
+            }
         });
 
         let (close_tx, close_rx) = watch::channel(());
@@ -762,7 +740,7 @@ where
 
             handle_connection(
                 &mut make_service,
-                &signal_rx,
+                connection_shutdown.subscribe(),
                 &close_rx,
                 io,
                 remote_addr,
@@ -850,7 +828,7 @@ where
 
 async fn handle_connection<L, M, S, B, E>(
     make_service: &mut M,
-    signal_rx: &watch::Receiver<()>,
+    shutdown: impl Future<Output = ()> + Send + 'static,
     close_rx: &watch::Receiver<()>,
     io: <L as Listener>::Io,
     remote_addr: <L as Listener>::Addr,
@@ -868,7 +846,6 @@ async fn handle_connection<L, M, S, B, E>(
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
     E: Executor,
 {
-    let mut signal_rx = signal_rx.clone();
     let connection_lifetime_limits = connection_lifetime_limits.clone();
     let io = TokioIo::new(io);
 
@@ -905,9 +882,7 @@ async fn handle_connection<L, M, S, B, E>(
         builder.http2().enable_connect_protocol();
 
         let mut conn = pin!(builder.serve_connection_with_upgrades(io, hyper_service));
-        // The connection task wakes for every chunk it streams. Only re-poll the shutdown
-        // future when its own waker fired, so those wakeups skip the watch's shared notifier.
-        let mut signal_closed = pin!(PollOnWake::new(signal_rx.changed()).fuse());
+        let mut signal_closed = pin!(shutdown.fuse());
 
         // Age limit for the connection (with optional jitter). When it
         // elapses we start a graceful shutdown of this connection and re-arm the
@@ -934,12 +909,9 @@ async fn handle_connection<L, M, S, B, E>(
                     }
                     break;
                 }
-                Either::Right((Either::Left((Err(_), _)), _)) => {
+                Either::Right((Either::Left(((), _)), _)) => {
                     trace!("signal received in task, starting graceful shutdown");
                     conn.as_mut().graceful_shutdown();
-                }
-                Either::Right((Either::Left((Ok(()), _)), _)) => {
-                    unreachable!("shutdown channel never sends values")
                 }
                 Either::Right((Either::Right(_), _)) if !age_fired => {
                     age_fired = true;
@@ -1266,61 +1238,20 @@ mod tests {
         }
     }
 
-    #[test]
-    fn poll_on_wake_polls_inner_only_after_its_own_wake() {
-        use std::{
-            future::Future,
-            pin::Pin,
-            sync::{
-                atomic::{AtomicBool, AtomicUsize, Ordering},
-                Arc, Mutex,
-            },
-            task::{Context, Poll, Waker},
-        };
-
-        use super::PollOnWake;
-
-        struct CountPolls {
-            polls: Arc<AtomicUsize>,
-            ready: Arc<AtomicBool>,
-            waker: Arc<Mutex<Option<Waker>>>,
+    #[crate::test]
+    async fn connection_shutdown_notifies_live_and_late_connections() {
+        let shutdown = super::ConnectionShutdown::new();
+        let live = shutdown.subscribe();
+        // Finished connections are forgotten instead of accumulating.
+        for _ in 0..1000 {
+            drop(shutdown.subscribe());
         }
+        assert!(shutdown.0.lock().unwrap().as_ref().unwrap().capacity() <= 8);
 
-        impl Future for CountPolls {
-            type Output = ();
-
-            fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
-                self.polls.fetch_add(1, Ordering::SeqCst);
-                if self.ready.load(Ordering::SeqCst) {
-                    return Poll::Ready(());
-                }
-                *self.waker.lock().unwrap() = Some(cx.waker().clone());
-                Poll::Pending
-            }
-        }
-
-        let polls = Arc::new(AtomicUsize::new(0));
-        let ready = Arc::new(AtomicBool::new(false));
-        let inner_waker = Arc::new(Mutex::new(None));
-        let mut future = Box::pin(PollOnWake::new(CountPolls {
-            polls: polls.clone(),
-            ready: ready.clone(),
-            waker: inner_waker.clone(),
-        }));
-        let mut cx = Context::from_waker(Waker::noop());
-
-        // The first poll reaches the inner future; unrelated task wakeups do not.
-        assert!(future.as_mut().poll(&mut cx).is_pending());
-        for _ in 0..100 {
-            assert!(future.as_mut().poll(&mut cx).is_pending());
-        }
-        assert_eq!(polls.load(Ordering::SeqCst), 1);
-
-        // Once the inner future's own waker fires, the next poll reaches it again.
-        ready.store(true, Ordering::SeqCst);
-        inner_waker.lock().unwrap().take().unwrap().wake();
-        assert!(future.as_mut().poll(&mut cx).is_ready());
-        assert_eq!(polls.load(Ordering::SeqCst), 2);
+        shutdown.shutdown();
+        live.await;
+        // A connection accepted after shutdown starts shutting down right away.
+        shutdown.subscribe().await;
     }
 
     #[crate::test]
