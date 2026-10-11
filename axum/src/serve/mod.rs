@@ -8,14 +8,19 @@ use std::{
     hash::{BuildHasher, Hasher},
     io,
     marker::PhantomData,
-    pin::pin,
-    sync::Arc,
+    pin::{pin, Pin},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    task::{Context, Poll, Wake, Waker},
     time::Duration,
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
 use futures_util::{
     future::{select, Either},
+    task::AtomicWaker,
     FutureExt,
 };
 use http_body::Body as HttpBody;
@@ -302,6 +307,64 @@ fn sleep_or_pending(duration: Option<Duration>) -> Either<tokio::time::Sleep, Pe
     match duration {
         Some(duration) => Either::Left(tokio::time::sleep(duration)),
         None => Either::Right(std::future::pending()),
+    }
+}
+
+pin_project_lite::pin_project! {
+    /// Polls `inner` on its first poll and afterwards only once `inner`'s own waker has fired.
+    ///
+    /// Polling a pending `watch::Receiver::changed()` locks a notifier shared with other
+    /// receivers, so polling it on every wakeup of a busy task contends with all connections.
+    struct PollOnWake<F> {
+        #[pin]
+        inner: F,
+        signal: Arc<SignalWake>,
+        waker: Waker,
+    }
+}
+
+impl<F> PollOnWake<F> {
+    fn new(inner: F) -> Self {
+        let signal = Arc::new(SignalWake {
+            woken: AtomicBool::new(true),
+            task: AtomicWaker::new(),
+        });
+        Self {
+            inner,
+            waker: Waker::from(signal.clone()),
+            signal,
+        }
+    }
+}
+
+impl<F: Future> Future for PollOnWake<F> {
+    type Output = F::Output;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+        // Register before checking the flag so a wake in between is not lost.
+        this.signal.task.register(cx.waker());
+        if !this.signal.woken.swap(false, Ordering::AcqRel) {
+            return Poll::Pending;
+        }
+        this.inner.poll(&mut Context::from_waker(this.waker))
+    }
+}
+
+/// The waker handed to the wrapped future: records that it fired, then wakes the task.
+struct SignalWake {
+    woken: AtomicBool,
+    task: AtomicWaker,
+}
+
+impl Wake for SignalWake {
+    fn wake(self: Arc<Self>) {
+        self.wake_by_ref();
+    }
+
+    fn wake_by_ref(self: &Arc<Self>) {
+        self.woken.store(true, Ordering::Release);
+        self.task.wake();
     }
 }
 
@@ -842,7 +905,9 @@ async fn handle_connection<L, M, S, B, E>(
         builder.http2().enable_connect_protocol();
 
         let mut conn = pin!(builder.serve_connection_with_upgrades(io, hyper_service));
-        let mut signal_closed = pin!(signal_rx.changed().fuse());
+        // The connection task wakes for every chunk it streams. Only re-poll the shutdown
+        // future when its own waker fired, so those wakeups skip the watch's shared notifier.
+        let mut signal_closed = pin!(PollOnWake::new(signal_rx.changed()).fuse());
 
         // Age limit for the connection (with optional jitter). When it
         // elapses we start a graceful shutdown of this connection and re-arm the
@@ -1199,6 +1264,63 @@ mod tests {
             self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             tokio::spawn(fut)
         }
+    }
+
+    #[test]
+    fn poll_on_wake_polls_inner_only_after_its_own_wake() {
+        use std::{
+            future::Future,
+            pin::Pin,
+            sync::{
+                atomic::{AtomicBool, AtomicUsize, Ordering},
+                Arc, Mutex,
+            },
+            task::{Context, Poll, Waker},
+        };
+
+        use super::PollOnWake;
+
+        struct CountPolls {
+            polls: Arc<AtomicUsize>,
+            ready: Arc<AtomicBool>,
+            waker: Arc<Mutex<Option<Waker>>>,
+        }
+
+        impl Future for CountPolls {
+            type Output = ();
+
+            fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+                self.polls.fetch_add(1, Ordering::SeqCst);
+                if self.ready.load(Ordering::SeqCst) {
+                    return Poll::Ready(());
+                }
+                *self.waker.lock().unwrap() = Some(cx.waker().clone());
+                Poll::Pending
+            }
+        }
+
+        let polls = Arc::new(AtomicUsize::new(0));
+        let ready = Arc::new(AtomicBool::new(false));
+        let inner_waker = Arc::new(Mutex::new(None));
+        let mut future = Box::pin(PollOnWake::new(CountPolls {
+            polls: polls.clone(),
+            ready: ready.clone(),
+            waker: inner_waker.clone(),
+        }));
+        let mut cx = Context::from_waker(Waker::noop());
+
+        // The first poll reaches the inner future; unrelated task wakeups do not.
+        assert!(future.as_mut().poll(&mut cx).is_pending());
+        for _ in 0..100 {
+            assert!(future.as_mut().poll(&mut cx).is_pending());
+        }
+        assert_eq!(polls.load(Ordering::SeqCst), 1);
+
+        // Once the inner future's own waker fires, the next poll reaches it again.
+        ready.store(true, Ordering::SeqCst);
+        inner_waker.lock().unwrap().take().unwrap().wake();
+        assert!(future.as_mut().poll(&mut cx).is_ready());
+        assert_eq!(polls.load(Ordering::SeqCst), 2);
     }
 
     #[crate::test]
