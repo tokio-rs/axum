@@ -308,16 +308,16 @@ fn sleep_or_pending(duration: Option<Duration>) -> Either<tokio::time::Sleep, Pe
     }
 }
 
-/// Tells connections to start a graceful shutdown.
+/// Signals a graceful shutdown to the accept loop and to every connection.
 ///
-/// Each connection gets its own oneshot channel, and shutting down drops every sender.
-/// Connection tasks poll their shutdown receiver on every wakeup, i.e. for every streamed body
-/// chunk. A pending oneshot receiver only touches that connection's channel, whereas pending
-/// `watch` receivers share a few locked notifiers across all connections.
+/// Each subscriber gets its own oneshot channel, and shutting down drops every sender.
+/// Connection tasks poll their receiver on every wakeup, i.e. for every streamed body chunk.
+/// A pending oneshot receiver only touches its own channel, whereas pending `watch` receivers
+/// share a few locked notifiers across all connections.
 #[derive(Clone)]
-struct ConnectionShutdown(Arc<Mutex<Option<Vec<oneshot::Sender<()>>>>>);
+struct ShutdownSignal(Arc<Mutex<Option<Vec<oneshot::Sender<()>>>>>);
 
-impl ConnectionShutdown {
+impl ShutdownSignal {
     fn new() -> Self {
         Self(Arc::new(Mutex::new(Some(Vec::new()))))
     }
@@ -326,14 +326,14 @@ impl ConnectionShutdown {
     fn subscribe(&self) -> impl Future<Output = ()> + Send + 'static {
         let (tx, rx) = oneshot::channel();
         if let Some(senders) = self.0.lock().unwrap().as_mut() {
-            // Forget finished connections before growing, so this stays proportional to the
+            // Forget finished subscribers before growing, so this stays proportional to the
             // number of live connections.
             if senders.len() == senders.capacity() {
                 senders.retain(|tx| !tx.is_closed());
             }
             senders.push(tx);
         }
-        // After shutdown, `tx` is dropped here, so the connection starts shutting down at once.
+        // After shutdown, `tx` is dropped here, so a late subscriber sees the shutdown at once.
         rx.map(drop)
     }
 
@@ -711,15 +711,14 @@ where
             _marker,
         } = self;
 
-        let (signal_tx, mut signal_rx) = watch::channel(());
-        let connection_shutdown = ConnectionShutdown::new();
+        let shutdown = ShutdownSignal::new();
+        let mut signal_received = pin!(shutdown.subscribe());
         executor.execute({
-            let connection_shutdown = connection_shutdown.clone();
+            let shutdown = shutdown.clone();
             async move {
                 signal.await;
                 trace!("received graceful shutdown signal. Telling tasks to shutdown");
-                connection_shutdown.shutdown();
-                drop(signal_tx);
+                shutdown.shutdown();
             }
         });
 
@@ -727,20 +726,17 @@ where
 
         loop {
             let (io, remote_addr) =
-                match select(pin!(listener.accept()), pin!(signal_rx.changed())).await {
+                match select(pin!(listener.accept()), signal_received.as_mut()).await {
                     Either::Left((conn, _)) => conn,
-                    Either::Right((Err(_), _)) => {
+                    Either::Right(((), _)) => {
                         trace!("signal received, not accepting new connections");
                         break;
-                    }
-                    Either::Right((Ok(()), _)) => {
-                        unreachable!("shutdown channel never sends values")
                     }
                 };
 
             handle_connection(
                 &mut make_service,
-                connection_shutdown.subscribe(),
+                shutdown.subscribe(),
                 &close_rx,
                 io,
                 remote_addr,
@@ -1239,8 +1235,8 @@ mod tests {
     }
 
     #[crate::test]
-    async fn connection_shutdown_notifies_live_and_late_connections() {
-        let shutdown = super::ConnectionShutdown::new();
+    async fn shutdown_signal_notifies_live_and_late_subscribers() {
+        let shutdown = super::ShutdownSignal::new();
         let live = shutdown.subscribe();
         // Finished connections are forgotten instead of accumulating.
         for _ in 0..1000 {
@@ -1250,7 +1246,7 @@ mod tests {
 
         shutdown.shutdown();
         live.await;
-        // A connection accepted after shutdown starts shutting down right away.
+        // A connection accepted after shutdown sees it right away.
         shutdown.subscribe().await;
     }
 
