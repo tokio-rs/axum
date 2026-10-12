@@ -44,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **changed:** `axum::serve` gives each connection its own graceful shutdown channel instead of
   a shared `watch` that every connection polled on each wakeup, reducing lock contention when
   streaming many responses ([#3937])
+- **fixed:** Successful responses to `CONNECT` no longer keep `content-length` or
+  `transfer-encoding` headers after their body is removed ([#3907])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
@@ -66,6 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3937]: https://github.com/tokio-rs/axum/pull/3937
 [#3779]: https://github.com/tokio-rs/axum/pull/3779
 [#3928]: https://github.com/tokio-rs/axum/pull/3928
+[#3907]: https://github.com/tokio-rs/axum/pull/3907
 
 # 0.8.9
 
