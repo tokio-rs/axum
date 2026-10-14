@@ -172,7 +172,9 @@ where
     type Rejection = PathRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        get_params(parts).and_then(serialize_path_params).map(Self)
+        get_params(parts)
+            .and_then(|params| serialize_path_params(&params))
+            .map(Self)
     }
 }
 
@@ -512,11 +514,13 @@ impl RawPathParams {
         extensions: &Extensions,
     ) -> Result<Self, RawPathParamsRejection> {
         match extensions.get::<UrlParams>() {
-            Some(UrlParams::Params { params, .. }) => Ok(Self(params.clone())),
-            Some(UrlParams::InvalidUtf8InPathParam { key }) => Err(InvalidUtf8InPathParam {
-                key: Arc::clone(key),
-            }
-            .into()),
+            Some(url_params) => match url_params.all() {
+                Ok(params) => Ok(Self(params)),
+                Err(key) => Err(InvalidUtf8InPathParam {
+                    key: Arc::clone(key),
+                }
+                .into()),
+            },
             None => Err(MissingPathParams.into()),
         }
     }
@@ -593,23 +597,20 @@ impl IntoResponse for InvalidUtf8InPathParam {
     }
 }
 
-fn get_params(parts: &Parts) -> Result<&[(Arc<str>, PercentDecodedStr)], PathRejection> {
+fn get_params(parts: &Parts) -> Result<Vec<(Arc<str>, PercentDecodedStr)>, PathRejection> {
     let url_params = parts
         .extensions
         .get::<UrlParams>()
         .ok_or(MissingPathParams)?;
 
-    match url_params {
-        UrlParams::Params { params, .. } => Ok(params),
-        UrlParams::InvalidUtf8InPathParam { key } => {
-            let error = PathDeserializationError {
-                kind: ErrorKind::InvalidUtf8InPathParam {
-                    key: key.to_string(),
-                },
-            };
-            Err(PathRejection::from(FailedToDeserializePathParams(error)))
-        }
-    }
+    url_params.all().map_err(|key| {
+        let error = PathDeserializationError {
+            kind: ErrorKind::InvalidUtf8InPathParam {
+                key: key.to_string(),
+            },
+        };
+        PathRejection::from(FailedToDeserializePathParams(error))
+    })
 }
 
 fn serialize_path_params<T, E>(params: &[(Arc<str>, PercentDecodedStr)]) -> Result<T, E>

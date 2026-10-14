@@ -16,7 +16,8 @@ use std::sync::Arc;
 ///
 /// Any percent encoded parameters will be automatically decoded. The decoded
 /// parameters must be valid UTF-8, otherwise `InnerPath` will fail and return a `400
-/// Bad Request` response.
+/// Bad Request` response. Only the captures of the innermost router are checked:
+/// an invalid capture matched by an outer router does not make `InnerPath` fail.
 ///
 /// # `InnerPath` vs [`Path`]
 /// [`Path`] gives you every capture in the request path, including those matched by enclosing
@@ -148,7 +149,7 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         get_inner_params(parts)
-            .and_then(serialize_path_params)
+            .and_then(|params| serialize_path_params(&params))
             .map(Self)
     }
 }
@@ -176,34 +177,22 @@ where
     }
 }
 
-fn get_inner_params(parts: &Parts) -> Result<&[(Arc<str>, PercentDecodedStr)], InnerPathRejection> {
+fn get_inner_params(
+    parts: &Parts,
+) -> Result<Vec<(Arc<str>, PercentDecodedStr)>, InnerPathRejection> {
     let url_params = parts
         .extensions
         .get::<UrlParams>()
         .ok_or(MissingPathParams)?;
 
-    match url_params {
-        UrlParams::Params {
-            params,
-            inner_start,
-        } => {
-            let inner_params = params
-                .get(*inner_start..)
-                .expect("Mismatch between url params and count of captures. This is bug in axum. Please file an issue.");
-
-            Ok(inner_params)
-        }
-        UrlParams::InvalidUtf8InPathParam { key } => {
-            let error = PathDeserializationError {
-                kind: ErrorKind::InvalidUtf8InPathParam {
-                    key: key.to_string(),
-                },
-            };
-            Err(InnerPathRejection::from(FailedToDeserializePathParams(
-                error,
-            )))
-        }
-    }
+    url_params.inner().map_err(|key| {
+        let error = PathDeserializationError {
+            kind: ErrorKind::InvalidUtf8InPathParam {
+                key: key.to_string(),
+            },
+        };
+        InnerPathRejection::from(FailedToDeserializePathParams(error))
+    })
 }
 
 #[cfg(test)]
@@ -696,7 +685,25 @@ mod tests {
             "/org/{org}",
             Router::new().route(
                 "/team/{team_id}",
-                get(|_: InnerPath<Params>| async move { "teams#show" }),
+                get(|InnerPath(inner): InnerPath<Params>| async move {
+                    assert_eq!(inner, params(&[("team_id", "1337")]));
+                    "teams#show"
+                }),
+            ),
+        );
+        let res = TestClient::new(app).get("/org/%FF/team/1337").await;
+
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "teams#show");
+    }
+
+    #[crate::test]
+    async fn invalid_utf8_in_nest_prefix_capture_still_fails_path() {
+        let app = Router::new().nest(
+            "/org/{org}",
+            Router::new().route(
+                "/team/{team_id}",
+                get(|_: Path<Params>| async move { "teams#show" }),
             ),
         );
         let res = TestClient::new(app).get("/org/%FF/team/1337").await;

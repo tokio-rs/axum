@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the removed `BoxBody` type ([#3890])
 - **fixed:** Successful responses to `CONNECT` no longer keep `content-length` or
   `transfer-encoding` headers after their body is removed ([#3907])
+- **fixed:** `InnerPath` no longer fails when a capture matched by an outer router
+  isn't valid UTF-8, as it only reads the innermost router's captures ([#3904])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
@@ -65,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3779]: https://github.com/tokio-rs/axum/pull/3779
 [#3928]: https://github.com/tokio-rs/axum/pull/3928
 [#3907]: https://github.com/tokio-rs/axum/pull/3907
+[#3904]: https://github.com/tokio-rs/axum/issues/3904
 
 # 0.8.9
 
