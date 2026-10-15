@@ -138,7 +138,7 @@ where
     type Rejection = OptionalQueryRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        if let Some(query) = parts.uri.query() {
+        if let Some(query) = parts.uri.query().filter(|q| !q.is_empty()) {
             let deserializer =
                 serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
             let value = serde_path_to_error::deserialize(deserializer)
@@ -279,6 +279,11 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.post("/").body("").await;
+
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "None");
+
+        let res = client.post("/?").body("").await;
 
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "None");

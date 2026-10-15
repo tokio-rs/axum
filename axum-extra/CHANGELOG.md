@@ -27,7 +27,9 @@ and this project adheres to [Semantic Versioning].
 - **added:** Add `RouterExt::typed_query` ([#3801])
 - **fixed:** Escape multipart `Content-Disposition` parameters and reject
   newlines in field names and filenames ([#3776])
+- **fixed:** Deserialize empty query strings into `None` in `OptionalQuery` ([#3942])
 
+[#3942]: https://github.com/tokio-rs/axum/issues/3942
 [#3916]: https://github.com/tokio-rs/axum/pull/3916
 [#3599]: https://github.com/tokio-rs/axum/pull/3599
 [#3586]: https://github.com/tokio-rs/axum/pull/3586
