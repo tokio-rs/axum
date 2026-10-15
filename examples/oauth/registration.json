@@ -1,0 +1,6 @@
+{
+  "redirect_uris": ["http://127.0.0.1:3000/auth/authorized"],
+  "grant_types": ["authorization_code"],
+  "response_types": ["code"],
+  "scope": "openid profile email"
+}
