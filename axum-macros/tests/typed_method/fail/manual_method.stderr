@@ -1,0 +1,28 @@
+error[E0277]: this typed path cannot be used with method-specific typed routing
+  --> tests/typed_method/fail/manual_method.rs:43:39
+   |
+43 |     let _: Router<()> = Router::new().typed_get(handler);
+   |                                       ^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `axum_extra::routing::MethodlessTypedPath` is not implemented for `ManualPath`
+  --> tests/typed_method/fail/manual_method.rs:10:1
+   |
+10 | struct ManualPath;
+   | ^^^^^^^^^^^^^^^^^
+   = note: use `RouterExt::typed` for types that implement `TypedMethod`; manually implemented methodless paths must implement `MethodlessTypedPath`
+help: the trait `axum_extra::routing::MethodlessTypedPath` is implemented for `WithQueryParams<P, T>`
+  --> $WORKSPACE/axum-extra/src/routing/typed.rs
+   |
+   | / impl<P, T> MethodlessTypedPath for WithQueryParams<P, T>
+   | | where
+   | |     P: MethodlessTypedPath,
+   | |     T: Serialize,
+   | |_________________^
+note: required by a bound in `axum_extra::routing::RouterExt::typed_get`
+  --> $WORKSPACE/axum-extra/src/routing/mod.rs
+   |
+   |     fn typed_get<H, T, P>(self, handler: H) -> Self
+   |        --------- required by a bound in this associated function
+...
+   |         P: MethodlessTypedPath;
+   |            ^^^^^^^^^^^^^^^^^^^ required by this bound in `RouterExt::typed_get`

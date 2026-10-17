@@ -1,0 +1,11 @@
+error: cannot find attribute `typed_method` in this scope
+ --> tests/typed_method/fail/typed_path_method_attribute.rs:5:3
+  |
+5 | #[typed_method(axum::routing::MethodFilter::GET)]
+  |   ^^^^^^^^^^^^
+  |
+help: a derive helper attribute with a similar name exists
+  |
+5 - #[typed_method(axum::routing::MethodFilter::GET)]
+5 + #[typed_path(axum::routing::MethodFilter::GET)]
+  |
