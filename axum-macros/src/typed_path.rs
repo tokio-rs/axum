@@ -296,6 +296,8 @@ fn expand_unit_fields(
         }
     }
 
+    let literal_path = path.value().replace("{{", "{").replace("}}", "}");
+
     let typed_path_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
         impl ::axum_extra::routing::TypedPath for #ident {
@@ -339,7 +341,7 @@ fn expand_unit_fields(
                 parts: &mut ::axum::http::request::Parts,
                 _state: &S,
             ) -> ::std::result::Result<Self, Self::Rejection> {
-                if parts.uri.path() == <Self as ::axum_extra::routing::TypedPath>::PATH {
+                if parts.uri.path() == #literal_path {
                     Ok(Self)
                 } else {
                     #create_rejection
