@@ -1,6 +1,6 @@
 use axum_core::{
     body,
-    response::{IntoResponse, Response},
+    response::{IntoResponse, IntoResponseFailed, Response},
     BoxError,
 };
 use bytes::Bytes;
@@ -136,6 +136,7 @@ where
             .unwrap_or_else(|e| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
+                    IntoResponseFailed,
                     format!("build FileStream response error: {e}"),
                 )
                     .into_response()
@@ -291,6 +292,7 @@ where
             .unwrap_or_else(|e| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
+                    IntoResponseFailed,
                     format!("build FileStream response error: {e}"),
                 )
                     .into_response()
@@ -302,12 +304,73 @@ where
 mod tests {
     use super::*;
     use axum::{extract::Request, routing::get, Router};
+    use axum_core::response::ForceStatusCode;
     use body::Body;
     use http::HeaderMap;
     use http_body_util::BodyExt;
     use std::io::Cursor;
     use tokio_util::io::ReaderStream;
     use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn invalid_filename_preserves_error_status() {
+        for file_name in ["report\n.txt", "report\r.txt", "report\0.txt"] {
+            let stream = ReaderStream::new(Cursor::new(b"data"));
+            let response = (
+                StatusCode::CREATED,
+                [("x-download", "ready")],
+                FileStream::new(stream).file_name(file_name),
+            )
+                .into_response();
+
+            assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+            assert!(response.extensions().get::<IntoResponseFailed>().is_some());
+            assert!(!response.headers().contains_key(header::CONTENT_DISPOSITION));
+            assert!(!response.headers().contains_key("x-download"));
+
+            let body = response.into_body().collect().await.unwrap().to_bytes();
+            assert!(body.starts_with(b"build FileStream response error: "));
+        }
+    }
+
+    #[tokio::test]
+    async fn valid_filename_allows_status_override() {
+        let stream = ReaderStream::new(Cursor::new(b"data"));
+        let response = (
+            StatusCode::CREATED,
+            FileStream::new(stream)
+                .file_name("report.txt")
+                .content_size(4),
+        )
+            .into_response();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        assert!(response.extensions().get::<IntoResponseFailed>().is_none());
+        assert_eq!(response.headers()[header::CONTENT_LENGTH], "4");
+        assert_eq!(
+            response.headers()[header::CONTENT_DISPOSITION],
+            "attachment; filename=\"report.txt\"",
+        );
+        assert_eq!(
+            response.into_body().collect().await.unwrap().to_bytes(),
+            "data",
+        );
+    }
+
+    #[tokio::test]
+    async fn force_status_code_overrides_invalid_filename_error() {
+        let stream = ReaderStream::new(Cursor::new(b"data"));
+        let response = (
+            ForceStatusCode(StatusCode::CREATED),
+            FileStream::new(stream).file_name("report\n.txt"),
+        )
+            .into_response();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        assert!(response.extensions().get::<IntoResponseFailed>().is_some());
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        assert!(body.starts_with(b"build FileStream response error: "));
+    }
 
     #[tokio::test]
     async fn response() -> Result<(), Box<dyn std::error::Error>> {
