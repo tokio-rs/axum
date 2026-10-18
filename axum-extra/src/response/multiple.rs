@@ -1,7 +1,7 @@
 //! Generate forms to use in responses.
 
 use super::content_disposition::{contains_newlines, EscapedQuotedString};
-use axum_core::response::{IntoResponse, Response};
+use axum_core::response::{IntoResponse, IntoResponseFailed, Response};
 use fastrand;
 use http::{header, HeaderMap, StatusCode};
 use mime::Mime;
@@ -37,6 +37,7 @@ impl IntoResponse for MultipartForm {
         let Some(boundary) = generate_boundary_for_parts(&self.parts) else {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
+                IntoResponseFailed,
                 "Unable to generate multipart boundary",
             )
                 .into_response();
@@ -49,6 +50,7 @@ impl IntoResponse for MultipartForm {
             Err(_) => {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
+                    IntoResponseFailed,
                     "Invalid multipart boundary generated",
                 )
                     .into_response()
@@ -63,6 +65,7 @@ impl IntoResponse for MultipartForm {
             let Ok(serialized_part) = part.serialize() else {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
+                    IntoResponseFailed,
                     "Invalid multipart field name or filename",
                 )
                     .into_response();
@@ -374,6 +377,58 @@ mod tests {
         assert_eq!(&body[..], b"Invalid multipart field name or filename");
 
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn multipart_form_errors_preserve_status() {
+        for (name, filename) in [
+            ("bad\r\nx-extra: injected", "file.txt"),
+            ("field", "bad\nfile.txt"),
+        ] {
+            let form = MultipartForm::from_iter([Part::file(name, filename, b"hi".to_vec())]);
+            let response = (StatusCode::CREATED, form).into_response();
+
+            assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+            let body = response.into_body().collect().await.unwrap().to_bytes();
+            assert_eq!(&body[..], b"Invalid multipart field name or filename");
+        }
+    }
+
+    #[tokio::test]
+    async fn multipart_form_boundary_errors_preserve_status() {
+        fastrand::seed(0);
+        let contents = (0..super::BOUNDARY_GENERATION_ATTEMPTS)
+            .map(|_| generate_boundary())
+            .collect::<Vec<_>>()
+            .join("\r\n");
+        let form = MultipartForm::from_iter([Part::text("field".to_owned(), &contents)]);
+
+        fastrand::seed(0);
+        let response = (StatusCode::CREATED, form).into_response();
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(&body[..], b"Unable to generate multipart boundary");
+    }
+
+    #[test]
+    fn multipart_form_success_allows_status_override() {
+        let form = MultipartForm::from_iter([Part::text("field".to_owned(), "value")]);
+        let response = (StatusCode::CREATED, form).into_response();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+    }
+
+    #[test]
+    fn multipart_form_error_allows_forced_status_override() {
+        let form = MultipartForm::from_iter([Part::file("bad\r\nfield", "file.txt", vec![])]);
+        let response = (
+            axum_core::response::ForceStatusCode(StatusCode::IM_A_TEAPOT),
+            form,
+        )
+            .into_response();
+
+        assert_eq!(response.status(), StatusCode::IM_A_TEAPOT);
     }
 
     #[test]
