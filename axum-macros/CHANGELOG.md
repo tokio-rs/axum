@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **fixed:** `TypedPath` captures named `f` no longer shadow the generated
+  formatter and cause compilation errors.
 - **fixed:** Report invalid `TypedPath` capture names without panicking ([#3918])
 - **breaking:** `#[from_request(via(Extractor))]` now uses the extractor's
   rejection type instead of `axum::response::Response` ([#3261])
