@@ -114,7 +114,9 @@ pub(crate) fn set_matched_path_for_request(
 
     if matched_path.ends_with(NEST_TAIL_PARAM_CAPTURE) {
         extensions.insert(MatchedNestedPath(matched_path));
-        debug_assert!(extensions.remove::<MatchedPath>().is_none());
+        // A previous matched path can exist when forwarding a request to another router.
+        // Hide it until the nested service has matched the rest of the path.
+        extensions.remove::<MatchedPath>();
     } else {
         extensions.insert(MatchedPath(matched_path));
         extensions.remove::<MatchedNestedPath>();
@@ -388,6 +390,87 @@ mod tests {
 
         let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
+    async fn forwarding_to_nested_service_hides_incomplete_matched_path() {
+        use tower::ServiceExt;
+
+        let app = Router::new().route(
+            "/{*path}",
+            any(|req: Request| {
+                Router::new()
+                    .nest_service(
+                        "/foo",
+                        get(
+                            |matched_path: Option<MatchedPath>, req: Request| async move {
+                                assert!(matched_path.is_none());
+                                assert!(req.extensions().get::<MatchedPath>().is_none());
+                                req.uri().path().to_owned()
+                            },
+                        ),
+                    )
+                    .oneshot(req)
+            }),
+        );
+
+        let res = app
+            .oneshot(
+                Request::builder()
+                    .uri("/foo/bar")
+                    .body(crate::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(
+            crate::body::to_bytes(res.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+            "/bar"
+        );
+    }
+
+    #[crate::test]
+    async fn forwarding_to_nested_router_preserves_matched_path_prefix() {
+        use tower::ServiceExt;
+
+        let app = Router::new().route(
+            "/{*path}",
+            any(|req: Request| {
+                Router::new()
+                    .nest_service(
+                        "/foo",
+                        Router::new().route(
+                            "/bar",
+                            get(|matched_path: MatchedPath| async move {
+                                matched_path.as_str().to_owned()
+                            }),
+                        ),
+                    )
+                    .oneshot(req)
+            }),
+        );
+
+        let res = app
+            .oneshot(
+                Request::builder()
+                    .uri("/foo/bar")
+                    .body(crate::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(
+            crate::body::to_bytes(res.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+            "/{*path}/foo/bar",
+        );
     }
 
     #[crate::test]
