@@ -236,7 +236,7 @@ macro_rules! impl_service {
             F: FnMut($($ty,)* Response<ResBody>) -> Fut + Clone + Send + 'static,
             $( $ty: FromRequestParts<S> + Send, )*
             Fut: Future + Send + 'static,
-            Fut::Output: IntoResponse + Send + 'static,
+            Fut::Output: IntoResponse + 'static,
             I: Service<Request<B>, Response = Response<ResBody>, Error = Infallible>
                 + Clone
                 + Send
@@ -345,6 +345,31 @@ mod tests {
     #[allow(unused_imports)]
     use super::*;
     use crate::{test_helpers::TestClient, Router};
+
+    #[crate::test]
+    async fn supports_non_send_responses() {
+        use std::rc::Rc;
+
+        struct LocalResponse(Rc<str>);
+
+        impl IntoResponse for LocalResponse {
+            fn into_response(self) -> Response {
+                (http::StatusCode::CREATED, self.0.to_string()).into_response()
+            }
+        }
+
+        async fn map(_res: Response) -> LocalResponse {
+            tokio::task::yield_now().await;
+            LocalResponse(Rc::from("mapped response"))
+        }
+
+        let app = Router::new().layer(map_response(map));
+        let client = TestClient::new(app);
+
+        let res = client.get("/").await;
+        assert_eq!(res.status(), http::StatusCode::CREATED);
+        assert_eq!(res.text().await, "mapped response");
+    }
 
     #[crate::test]
     async fn works() {
