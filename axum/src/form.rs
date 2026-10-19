@@ -243,6 +243,80 @@ mod tests {
         ));
     }
 
+    fn content_type_test_client() -> TestClient {
+        let app = Router::new()
+            .route(
+                "/form",
+                on(
+                    MethodFilter::POST,
+                    |Form(value): Form<Pagination>| async move {
+                        assert_eq!(value.size, Some(10));
+                        StatusCode::NO_CONTENT
+                    },
+                ),
+            )
+            .route(
+                "/raw",
+                on(MethodFilter::POST, |RawForm(bytes): RawForm| async move {
+                    assert_eq!(bytes, "size=10");
+                    StatusCode::NO_CONTENT
+                }),
+            );
+        TestClient::new(app)
+    }
+
+    #[crate::test]
+    async fn content_type_accepts_case_insensitive_media_types() {
+        let client = content_type_test_client();
+
+        for content_type in [
+            "application/x-www-form-urlencoded",
+            "application/x-www-form-urlencoded; charset=utf-8",
+            "Application/X-WWW-Form-Urlencoded",
+            "APPLICATION/X-WWW-FORM-URLENCODED; Charset=\"UTF-8\"",
+        ] {
+            for path in ["/form", "/raw"] {
+                let res = client
+                    .post(path)
+                    .header(CONTENT_TYPE, content_type)
+                    .body("size=10")
+                    .await;
+                assert_eq!(
+                    res.status(),
+                    StatusCode::NO_CONTENT,
+                    "{path}: {content_type}"
+                );
+            }
+        }
+    }
+
+    #[crate::test]
+    async fn content_type_rejects_prefix_matches_and_invalid_media_types() {
+        let client = content_type_test_client();
+
+        for content_type in [
+            "application/x-www-form-urlencoded-extra",
+            "application/x-www-form-urlencoded+json",
+            "application/x-www-form-urlencodedx; charset=utf-8",
+            "application/x-www-form-urlencoded; charset",
+            "application/x-www-form-urlencoded; charset=\"unterminated",
+            "application/x-www-form-urlencoded, application/json",
+        ] {
+            for path in ["/form", "/raw"] {
+                let res = client
+                    .post(path)
+                    .header(CONTENT_TYPE, content_type)
+                    .body("size=10")
+                    .await;
+                assert_eq!(
+                    res.status(),
+                    StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                    "{path}: {content_type}",
+                );
+            }
+        }
+    }
+
     #[tokio::test]
     async fn deserialize_error_status_codes() {
         #[allow(dead_code)]
