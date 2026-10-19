@@ -17,11 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Make the `BytesMut` extractor ignore non-data frames from custom
   request bodies, matching the `Bytes` extractor ([#3811])
 - **fixed:** `BodyDataStream` no longer reports invalid values in `Stream::size_hint` ([#3925])
+- **changed:** `ErrorResponse` is now marked with
+  `#[allow(clippy::result_large_err)]`, and its documentation describes how to
+  silence that lint in crates using `axum::response::Result`. ([#3965])
 
 [#3721]: https://github.com/tokio-rs/axum/pull/3721
 [#3742]: https://github.com/tokio-rs/axum/pull/3742
 [#3811]: https://github.com/tokio-rs/axum/pull/3811
 [#3925]: https://github.com/tokio-rs/axum/pull/3925
+[#3965]: https://github.com/tokio-rs/axum/pull/3965
 
 # 0.5.6
 
