@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **fixed:** `FileStream` response construction errors retain their error status
+  when combined with an explicit status code.
 - **fixed:** `JsonDeserializer` rejects trailing non-whitespace after a JSON
   value ([#3916])
 - **breaking:** Remove the deprecated `Host`, `Scheme` and `OptionalPath`
