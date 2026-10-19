@@ -335,15 +335,17 @@ fn expand_unit_fields(
         {
             type Rejection = #rejection_assoc_type;
 
-            async fn from_request_parts(
+            fn from_request_parts(
                 parts: &mut ::axum::http::request::Parts,
                 _state: &S,
-            ) -> ::std::result::Result<Self, Self::Rejection> {
-                if parts.uri.path() == <Self as ::axum_extra::routing::TypedPath>::PATH {
-                    Ok(Self)
-                } else {
-                    #create_rejection
-                }
+            ) -> impl ::std::future::Future<Output = ::std::result::Result<Self, Self::Rejection>> {
+                ::std::future::ready(
+                    if parts.uri.path() == <Self as ::axum_extra::routing::TypedPath>::PATH {
+                        Ok(Self)
+                    } else {
+                        #create_rejection
+                    }
+                )
             }
         }
     };
