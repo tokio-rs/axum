@@ -92,7 +92,15 @@ pub(super) fn has_content_type(headers: &HeaderMap, expected_content_type: &mime
         return false;
     };
 
-    content_type.starts_with(expected_content_type.as_ref())
+    // The media type has to match exactly. Only parameters (separated by `;`) may
+    // follow it, so `application/x-www-form-urlencoded-evil` is not a form.
+    match content_type.strip_prefix(expected_content_type.as_ref()) {
+        Some(rest) => {
+            let rest = rest.trim_start();
+            rest.is_empty() || rest.starts_with(';')
+        }
+        None => false,
+    }
 }
 
 #[cfg(test)]

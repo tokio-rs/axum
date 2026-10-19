@@ -243,6 +243,44 @@ mod tests {
         ));
     }
 
+    #[crate::test]
+    async fn test_content_type_with_parameters() {
+        // parameters after the media type are allowed
+        let req = Request::builder()
+            .uri("http://example.com/test")
+            .method(Method::POST)
+            .header(
+                CONTENT_TYPE,
+                "application/x-www-form-urlencoded; charset=utf-8",
+            )
+            .body(Body::from("size=10"))
+            .unwrap();
+        assert_eq!(
+            Form::<Pagination>::from_request(req, &()).await.unwrap().0,
+            Pagination {
+                size: Some(10),
+                page: None,
+            }
+        );
+    }
+
+    #[crate::test]
+    async fn test_incorrect_content_type_with_same_prefix() {
+        // a media type that only starts with `application/x-www-form-urlencoded` is not a form
+        let req = Request::builder()
+            .uri("http://example.com/test")
+            .method(Method::POST)
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded-evil")
+            .body(Body::from("size=10"))
+            .unwrap();
+        assert!(matches!(
+            Form::<Pagination>::from_request(req, &())
+                .await
+                .unwrap_err(),
+            FormRejection::InvalidFormContentType(InvalidFormContentType)
+        ));
+    }
+
     #[tokio::test]
     async fn deserialize_error_status_codes() {
         #[allow(dead_code)]
