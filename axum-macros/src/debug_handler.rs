@@ -596,7 +596,6 @@ fn request_consuming_type_name(ty: &Type) -> Option<&'static str> {
         "Request" => "Request<_>",
         "Bytes" => "Bytes",
         "String" => "String",
-        "Parts" => "Parts",
         _ => return None,
     };
 
