@@ -1405,6 +1405,87 @@ mod tests {
     // has a direct unit test (in `serve::listener::tests`); `tap_io` did not have
     // a runtime test, so its documented contract was only covered at the type level
     // by `if_it_compiles_it_works`.
+    // `serve(listener, router)` used to run `self.clone().with_state(())` on
+    // every accepted connection. The `Arc` behind `Router` is shared with
+    // `serve`, so that fell back to deep-cloning every route's service for each
+    // connection and kept the copy alive for as long as the connection was open.
+    #[crate::test]
+    async fn new_connection_does_not_clone_route_services() {
+        use std::{
+            convert::Infallible,
+            future::{ready, Ready},
+            sync::{
+                atomic::{AtomicUsize, Ordering},
+                Arc,
+            },
+            task::{Context, Poll},
+        };
+
+        use axum_core::response::IntoResponse;
+        use tower_service::Service;
+
+        struct Svc(Arc<AtomicUsize>);
+
+        impl Clone for Svc {
+            fn clone(&self) -> Self {
+                self.0.fetch_add(1, Ordering::SeqCst);
+                Self(self.0.clone())
+            }
+        }
+
+        impl Service<Request> for Svc {
+            type Response = crate::response::Response;
+            type Error = Infallible;
+            type Future = Ready<Result<Self::Response, Infallible>>;
+
+            fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+                Poll::Ready(Ok(()))
+            }
+
+            fn call(&mut self, _req: Request) -> Self::Future {
+                ready(Ok("ok".into_response()))
+            }
+        }
+
+        async fn connect(
+            addr: std::net::SocketAddr,
+        ) -> hyper::client::conn::http1::SendRequest<Body> {
+            let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+            let (sender, conn) = hyper::client::conn::http1::handshake(TokioIo::new(stream))
+                .await
+                .unwrap();
+            tokio::spawn(conn);
+            sender
+        }
+
+        async fn clones_during(
+            sender: &mut hyper::client::conn::http1::SendRequest<Body>,
+            clones: &AtomicUsize,
+        ) -> usize {
+            let before = clones.load(Ordering::SeqCst);
+            let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+            let response = sender.send_request(request).await.unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            clones.load(Ordering::SeqCst) - before
+        }
+
+        let clones = Arc::new(AtomicUsize::new(0));
+        let app = Router::new().route_service("/", Svc(clones.clone()));
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(serve(listener, app).into_future());
+
+        let mut first = connect(addr).await;
+        clones_during(&mut first, &clones).await;
+        let per_request = clones_during(&mut first, &clones).await;
+
+        let mut second = connect(addr).await;
+        let first_request_on_new_connection = clones_during(&mut second, &clones).await;
+
+        assert_eq!(first_request_on_new_connection, per_request);
+    }
+
     #[crate::test]
     async fn tap_io_runs_on_each_accepted_connection() {
         use std::sync::{
