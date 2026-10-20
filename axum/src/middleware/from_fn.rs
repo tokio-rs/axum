@@ -14,8 +14,10 @@ use tower_layer::Layer;
 use tower_service::Service;
 
 use crate::{
+    body::{Body, Bytes, HttpBody},
     response::{IntoResponse, Response},
     util::MapIntoResponse,
+    BoxError,
 };
 
 /// Create a middleware from an async function.
@@ -27,6 +29,11 @@ use crate::{
 /// 3. Take exactly one [`FromRequest`] extractor as the second to last argument.
 /// 4. Take [`Next`](Next) as the last argument.
 /// 5. Return something that implements [`IntoResponse`].
+///
+/// Incoming request bodies are converted to [`Body`] before running the extractors.
+/// This allows the middleware to follow layers that change the request body type.
+/// When calling [`tower::ServiceExt::ready`] directly on this middleware, the request
+/// type may need to be specified, for example `ServiceExt::<Request>::ready(&mut middleware)`.
 ///
 /// Note that this function doesn't support extracting [`State`]. For that, use [`from_fn_with_state`].
 ///
@@ -256,7 +263,7 @@ macro_rules! impl_service {
         [$($ty:ident),*], $last:ident
     ) => {
         #[allow(non_snake_case, unused_mut)]
-        impl<F, Fut, Out, S, I, $($ty,)* $last> Service<Request> for FromFn<F, S, I, ($($ty,)* $last,)>
+        impl<F, Fut, Out, S, I, B, $($ty,)* $last> Service<Request<B>> for FromFn<F, S, I, ($($ty,)* $last,)>
         where
             F: FnMut($($ty,)* $last, Next) -> Fut + Clone + Send + 'static,
             $( $ty: FromRequestParts<S> + Send, )*
@@ -270,6 +277,8 @@ macro_rules! impl_service {
                 + 'static,
             I::Response: IntoResponse,
             I::Future: Send + 'static,
+            B: HttpBody<Data = Bytes> + Send + 'static,
+            B::Error: Into<BoxError>,
             S: Clone + Send + Sync + 'static,
         {
             type Response = Response;
@@ -280,7 +289,9 @@ macro_rules! impl_service {
                 self.inner.poll_ready(cx)
             }
 
-            fn call(&mut self, req: Request) -> Self::Future {
+            fn call(&mut self, req: Request<B>) -> Self::Future {
+                let req = req.map(Body::new);
+
                 let not_ready_inner = self.inner.clone();
                 let ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
 
@@ -385,10 +396,16 @@ impl fmt::Debug for ResponseFuture {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Body, routing::get, Router};
+    use crate::{
+        body::{Body, Bytes},
+        extract::State,
+        routing::{get, post},
+        Router,
+    };
     use http::{HeaderMap, StatusCode};
-    use http_body_util::BodyExt;
-    use tower::ServiceExt;
+    use http_body_util::{BodyExt, Full};
+    use tower::{ServiceBuilder, ServiceExt};
+    use tower_http::limit::RequestBodyLimitLayer;
 
     #[crate::test]
     async fn basic() {
@@ -414,5 +431,70 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
         let body = res.collect().await.unwrap().to_bytes();
         assert_eq!(&body[..], b"ok");
+    }
+
+    #[crate::test]
+    async fn body_changing_layer_with_state() {
+        async fn add_state_header(
+            State(state): State<&'static str>,
+            req: Request,
+            next: Next,
+        ) -> Response {
+            let mut response = next.run(req).await;
+            response
+                .headers_mut()
+                .insert("x-state", state.parse().unwrap());
+            response
+        }
+
+        let app = Router::new()
+            .route("/", post(|body: Bytes| async move { body }))
+            .layer(
+                ServiceBuilder::new()
+                    .layer(RequestBodyLimitLayer::new(4))
+                    .layer(from_fn_with_state("shared", add_state_header)),
+            );
+
+        for (body, expected_status) in [
+            ("body", StatusCode::OK),
+            ("too long", StatusCode::PAYLOAD_TOO_LARGE),
+        ] {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/")
+                        .body(Body::from(body))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), expected_status);
+            assert_eq!(response.headers()["x-state"], "shared");
+            if expected_status == StatusCode::OK {
+                assert_eq!(response.collect().await.unwrap().to_bytes(), body);
+            }
+        }
+    }
+
+    #[crate::test]
+    async fn custom_request_body() {
+        async fn read_body(body: Bytes, next: Next) -> Response {
+            next.run(Request::new(Body::from(body))).await
+        }
+
+        let service = from_fn(read_body).layer(tower::service_fn(|req: Request| async move {
+            Ok::<_, Infallible>(Response::new(req.into_body()))
+        }));
+
+        let response = service
+            .oneshot(Request::new(Full::new(Bytes::from_static(b"custom body"))))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.collect().await.unwrap().to_bytes(), "custom body");
     }
 }
