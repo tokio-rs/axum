@@ -225,18 +225,13 @@ impl Part {
     }
 
     fn contains_boundary(&self, boundary: &str) -> bool {
-        let boundary_bytes = boundary.as_bytes();
-
         self.name.contains(boundary)
             || self
                 .filename
                 .as_ref()
                 .is_some_and(|filename| filename.contains(boundary))
             || self.mime_type.to_string().contains(boundary)
-            || self
-                .contents
-                .windows(boundary_bytes.len())
-                .any(|window| window == boundary_bytes)
+            || memchr::memmem::find(&self.contents, boundary.as_bytes()).is_some()
     }
 }
 
@@ -414,5 +409,21 @@ mod tests {
 
         assert_eq!(body.matches(&boundary_marker).count(), 2);
         assert_eq!(body.matches(&colliding_boundary_marker).count(), 1);
+    }
+
+    #[test]
+    fn contains_boundary_finds_boundary_anywhere_in_contents() {
+        let boundary = "abcdef";
+        for (contents, expected) in [
+            (&b"abcdef"[..], true),
+            (b"abcdef trailing", true),
+            (b"leading abcdef", true),
+            (b"abcde", false),
+            (b"abcdeabcdeF", false),
+            (b"", false),
+        ] {
+            let part = Part::file("file", "file.bin", contents.to_vec());
+            assert_eq!(part.contains_boundary(boundary), expected, "{contents:?}");
+        }
     }
 }
