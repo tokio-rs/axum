@@ -173,10 +173,10 @@ impl SignedCookieJar {
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
     pub fn from_headers(headers: &HeaderMap, key: Key) -> Self {
         let mut jar = cookie::CookieJar::new();
-        let mut signed_jar = jar.signed_mut(&key);
         for cookie in cookies_from_request(headers) {
-            if let Some(cookie) = signed_jar.verify(cookie) {
-                signed_jar.add_original(cookie);
+            // keep the signed value, `SignedJar::add_original` would sign it all over again
+            if jar.signed(&key).verify(cookie.clone()).is_some() {
+                jar.add_original(cookie);
             }
         }
 
@@ -330,5 +330,28 @@ impl<K> Clone for SignedCookieJar<K> {
             key: self.key.clone(),
             _marker: self._marker,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_headers_keeps_the_signed_value() {
+        let key = Key::generate();
+        let mut signed = cookie::CookieJar::new();
+        signed.signed_mut(&key).add(Cookie::new("key", "value"));
+        let signed = signed.get("key").unwrap().value().to_owned();
+
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            http::header::COOKIE,
+            format!("key={signed}").parse().unwrap(),
+        );
+        let jar = SignedCookieJar::<Key>::from_headers(&headers, key);
+
+        assert_eq!(jar.jar.get("key").unwrap().value(), signed);
+        assert_eq!(jar.get("key").unwrap().value(), "value");
     }
 }

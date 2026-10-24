@@ -27,12 +27,15 @@ and this project adheres to [Semantic Versioning].
 - **added:** Add `RouterExt::typed_query` ([#3801])
 - **fixed:** Escape multipart `Content-Disposition` parameters and reject
   newlines in field names and filenames ([#3776])
+- **changed:** `PrivateCookieJar` and `SignedCookieJar` no longer re-seal
+  every incoming cookie in `from_headers` ([#3974])
 
 [#3916]: https://github.com/tokio-rs/axum/pull/3916
 [#3599]: https://github.com/tokio-rs/axum/pull/3599
 [#3586]: https://github.com/tokio-rs/axum/pull/3586
 [#3801]: https://github.com/tokio-rs/axum/pull/3801
 [#3776]: https://github.com/tokio-rs/axum/pull/3776
+[#3974]: https://github.com/tokio-rs/axum/pull/3974
 
 # 0.12.6
 
