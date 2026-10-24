@@ -13,6 +13,10 @@ use tokio::{
 };
 use tokio_util::io::ReaderStream;
 
+// `tokio::fs::File` runs every read on the blocking pool, so `ReaderStream`'s 4 KiB default
+// means one blocking task per 4 KiB. tower-http's `ServeDir` uses the same 64 KiB.
+const CHUNK_SIZE: usize = 64 * 1024;
+
 /// Encapsulate the file stream.
 ///
 /// The encapsulated file stream construct requires passing in a stream.
@@ -211,7 +215,7 @@ where
 
         file.seek(std::io::SeekFrom::Start(start)).await?;
 
-        let stream = ReaderStream::new(file.take(end - start + 1));
+        let stream = ReaderStream::with_capacity(file.take(end - start + 1), CHUNK_SIZE);
 
         Ok(FileStream::new(stream).into_range_response(start, end, total_size))
     }
@@ -257,7 +261,7 @@ impl FileStream<ReaderStream<File>> {
         }
 
         Ok(Self {
-            stream: ReaderStream::new(file),
+            stream: ReaderStream::with_capacity(file, CHUNK_SIZE),
             file_name,
             content_size,
         })
@@ -702,6 +706,33 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::RANGE_NOT_SATISFIABLE);
+        Ok(())
+    }
+
+    async fn frame_sizes(response: Response) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
+        let mut body = response.into_body();
+        let mut sizes = Vec::new();
+        while let Some(frame) = body.frame().await {
+            sizes.push(frame?.into_data().unwrap().len());
+        }
+        Ok(sizes)
+    }
+
+    #[tokio::test]
+    async fn file_is_read_in_large_chunks() -> Result<(), Box<dyn std::error::Error>> {
+        let file = tempfile::NamedTempFile::new()?;
+        file.as_file().set_len(3 * CHUNK_SIZE as u64 + 10)?;
+
+        let response = FileStream::from_path(file.path()).await?.into_response();
+        assert_eq!(
+            frame_sizes(response).await?,
+            [CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE, 10]
+        );
+
+        let end = 2 * CHUNK_SIZE as u64 + 9;
+        let response =
+            FileStream::<ReaderStream<File>>::try_range_response(file.path(), 10, end).await?;
+        assert_eq!(frame_sizes(response).await?, [CHUNK_SIZE, CHUNK_SIZE]);
         Ok(())
     }
 }
