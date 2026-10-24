@@ -188,6 +188,7 @@ dependencies = [
  "http-body",
  "http-body-util",
  "hyper",
+ "memchr",
  "mime",
  "multer",
  "percent-encoding",
