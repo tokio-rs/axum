@@ -13,7 +13,6 @@ use crate::{
 use axum_core::{
     extract::OptionalFromRequestParts,
     response::{IntoResponse, Response},
-    RequestPartsExt as _,
 };
 use http::{request::Parts, Extensions, StatusCode};
 use serde_core::de::DeserializeOwned;
@@ -31,6 +30,10 @@ use std::{fmt, sync::Arc};
 /// You can use `Option<Path<T>>` as an extractor to allow the same handler to
 /// be used in a route with parameters that deserialize to `T`, and another
 /// route with no parameters at all.
+///
+/// If the route has no parameters, `None` is returned regardless of `T`.
+/// Otherwise the parameters are deserialized as with `Path<T>`, and any error
+/// is returned as a rejection.
 ///
 /// # Example
 ///
@@ -187,13 +190,12 @@ where
         parts: &mut Parts,
         _state: &S,
     ) -> Result<Option<Self>, Self::Rejection> {
-        match parts.extract::<Self>().await {
-            Ok(Self(params)) => Ok(Some(Self(params))),
-            Err(PathRejection::FailedToDeserializePathParams(e)) if e.kind().is_zero_params() => {
-                Ok(None)
-            }
-            Err(e) => Err(e),
+        let params = get_params(parts)?;
+        if params.is_empty() {
+            return Ok(None);
         }
+
+        serialize_path_params(params).map(|params| Some(Self(params)))
     }
 }
 
@@ -337,12 +339,6 @@ pub enum ErrorKind {
 
     /// Catch-all variant for errors that don't fit any other variant.
     Message(String),
-}
-
-impl ErrorKind {
-    fn is_zero_params(&self) -> bool {
-        matches!(&self, Self::WrongNumberOfParameters { got: 0, .. })
-    }
 }
 
 impl fmt::Display for ErrorKind {
@@ -659,6 +655,44 @@ mod tests {
 
         let res = client.get("/users/42").await;
         assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
+    async fn optional_path_is_none_without_params() {
+        #[derive(Deserialize)]
+        struct Params {
+            id: u32,
+        }
+
+        async fn handler(params: Option<Path<Params>>) -> String {
+            match params {
+                Some(Path(params)) => params.id.to_string(),
+                None => "none".to_owned(),
+            }
+        }
+
+        let app = Router::new()
+            .route("/users", get(handler))
+            .route("/users/{id}", get(handler))
+            .route(
+                "/all",
+                get(|params: Option<Path<HashMap<String, String>>>| async move {
+                    format!("{:?}", params.map(|Path(params)| params))
+                }),
+            );
+        let client = TestClient::new(app);
+
+        let res = client.get("/users").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "none");
+
+        let res = client.get("/users/42").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "42");
+
+        let res = client.get("/all").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "None");
     }
 
     #[crate::test]

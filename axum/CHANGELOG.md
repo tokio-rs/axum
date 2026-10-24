@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the removed `BoxBody` type ([#3890])
 - **fixed:** Successful responses to `CONNECT` no longer keep `content-length` or
   `transfer-encoding` headers after their body is removed ([#3907])
+- **breaking:** `Option<Path<T>>` now returns `None` for any `T` on routes without
+  parameters. Previously struct targets were rejected with `400 Bad Request`,
+  and map, `Vec` or all-default struct targets returned `Some` of an empty or
+  default value ([#3972])
 
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
@@ -65,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3779]: https://github.com/tokio-rs/axum/pull/3779
 [#3928]: https://github.com/tokio-rs/axum/pull/3928
 [#3907]: https://github.com/tokio-rs/axum/pull/3907
+[#3972]: https://github.com/tokio-rs/axum/pull/3972
 
 # 0.8.9
 

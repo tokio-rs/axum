@@ -6,7 +6,6 @@ use crate::extract::FromRequestParts;
 use crate::routing::url_params::UrlParams;
 use crate::util::PercentDecodedStr;
 use axum_core::extract::OptionalFromRequestParts;
-use axum_core::RequestPartsExt;
 use http::request::Parts;
 use serde_core::de::DeserializeOwned;
 use std::sync::Arc;
@@ -29,6 +28,10 @@ use std::sync::Arc;
 /// You can use `Option<InnerPath<T>>` as an extractor to allow the same handler to
 /// be used in a route with parameters that deserialize to `T`, and another
 /// route with no parameters at all.
+///
+/// If there are no inner captures, `None` is returned regardless of `T`.
+/// Otherwise the captures are deserialized as with `InnerPath<T>`, and any
+/// error is returned as a rejection.
 ///
 /// # Example
 ///
@@ -164,15 +167,12 @@ where
         parts: &mut Parts,
         _state: &S,
     ) -> Result<Option<Self>, Self::Rejection> {
-        match parts.extract::<Self>().await {
-            Ok(Self(params)) => Ok(Some(Self(params))),
-            Err(InnerPathRejection::FailedToDeserializePathParams(e))
-                if e.kind().is_zero_params() =>
-            {
-                Ok(None)
-            }
-            Err(e) => Err(e),
+        let params = get_inner_params(parts)?;
+        if params.is_empty() {
+            return Ok(None);
         }
+
+        serialize_path_params(params).map(|params| Some(Self(params)))
     }
 }
 
@@ -431,6 +431,37 @@ mod tests {
 
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "static");
+    }
+
+    #[crate::test]
+    async fn optional_inner_path_is_none_without_inner_captures() {
+        #[derive(serde::Deserialize)]
+        struct UserId {
+            id: u32,
+        }
+
+        async fn handler(user: Option<InnerPath<UserId>>) -> String {
+            match user {
+                Some(InnerPath(user)) => user.id.to_string(),
+                None => "none".to_owned(),
+            }
+        }
+
+        let app = Router::new().nest(
+            "/org/{org}",
+            Router::new()
+                .route("/users", get(handler))
+                .route("/users/{id}", get(handler)),
+        );
+        let client = TestClient::new(app);
+
+        let res = client.get("/org/acme/users").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "none");
+
+        let res = client.get("/org/acme/users/42").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "42");
     }
 
     #[crate::test]
