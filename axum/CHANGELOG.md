@@ -44,9 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Successful responses to `CONNECT` no longer keep `content-length` or
   `transfer-encoding` headers after their body is removed ([#3907])
 - **fixed:** Nested router fallbacks no longer return `404 Not Found` for the nested
-  prefix with a trailing slash ([#2252])
+  prefix with a trailing slash ([#3976])
 
-[#2252]: https://github.com/tokio-rs/axum/issues/2252
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
 [#3205]: https://github.com/tokio-rs/axum/pull/3205
@@ -68,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3779]: https://github.com/tokio-rs/axum/pull/3779
 [#3928]: https://github.com/tokio-rs/axum/pull/3928
 [#3907]: https://github.com/tokio-rs/axum/pull/3907
+[#3976]: https://github.com/tokio-rs/axum/pull/3976
 
 # 0.8.9
 
