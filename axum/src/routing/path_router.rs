@@ -136,6 +136,7 @@ where
         &mut self,
         path_to_nest_at: &str,
         router: Self,
+        has_custom_fallback: bool,
     ) -> Result<(), Cow<'static, str>> {
         let prefix = validate_nest_path(path_to_nest_at)?;
 
@@ -150,15 +151,32 @@ where
 
             let path = path_for_nested_route(prefix, inner_path);
 
+            // A fallback is registered at `/` and `/{*FALLBACK_PARAM}`. The catch-all
+            // doesn't match an empty path, so the nested prefix with a trailing slash
+            // (e.g. `/nested/`) would otherwise return 404. Register the root fallback
+            // at that path as well.
+            let fallback_path =
+                if has_custom_fallback && &**inner_path == "/" && !path.ends_with('/') {
+                    Some(format!("{path}/"))
+                } else {
+                    None
+                };
+
             let layer = (
                 StripPrefix::layer(prefix),
                 SetNestedPath::layer(path_to_nest_at),
             );
             match endpoint.layer(layer) {
                 Endpoint::MethodRouter(method_router) => {
+                    if let Some(fallback_path) = fallback_path.as_deref() {
+                        self.route(fallback_path, method_router.clone())?;
+                    }
                     self.route(&path, method_router)?;
                 }
                 Endpoint::Route(route) => {
+                    if let Some(fallback_path) = fallback_path.as_deref() {
+                        self.route_endpoint(fallback_path, Endpoint::Route(route.clone()))?;
+                    }
                     self.route_endpoint(&path, Endpoint::Route(route))?;
                 }
             }

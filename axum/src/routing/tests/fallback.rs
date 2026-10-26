@@ -408,3 +408,110 @@ async fn state_isnt_cloned_too_much_with_fallback() {
 
     assert_eq!(state.count(), 3);
 }
+
+// https://github.com/tokio-rs/axum/issues/2252
+#[crate::test]
+async fn nested_fallback_on_nested_root() {
+    async fn fallback(path: Option<Path<String>>) -> (StatusCode, &'static str) {
+        assert!(path.is_none());
+        (StatusCode::NOT_FOUND, "inner fallback")
+    }
+
+    let app = Router::new().nest(
+        "/nested",
+        Router::new()
+            .route("/{id}", get(|| async { "id" }))
+            .fallback(fallback),
+    );
+
+    let client = TestClient::new(app);
+
+    for path in ["/nested", "/nested/"] {
+        let res = client.get(path).await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND, "{path}");
+        assert_eq!(res.text().await, "inner fallback", "{path}");
+    }
+
+    let res = client.get("/nested/does-not-exist").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "id");
+}
+
+#[crate::test]
+async fn nested_fallback_service_on_nested_root() {
+    let app = Router::new().nest(
+        "/nested",
+        Router::new().fallback_service(tower::service_fn(|_req: Request| async {
+            Ok::<_, Infallible>("inner fallback")
+        })),
+    );
+
+    let client = TestClient::new(app);
+
+    for path in ["/nested", "/nested/"] {
+        let res = client.get(path).await;
+        assert_eq!(res.status(), StatusCode::OK, "{path}");
+        assert_eq!(res.text().await, "inner fallback", "{path}");
+    }
+
+    let res = client.get("/nested/does-not-exist/extra").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "inner fallback");
+}
+
+#[crate::test]
+async fn deeply_nested_fallback_on_nested_root() {
+    let app = Router::new().nest(
+        "/outer",
+        Router::new().nest(
+            "/inner",
+            Router::new().fallback(|| async { (StatusCode::NOT_FOUND, "inner fallback") }),
+        ),
+    );
+
+    let client = TestClient::new(app);
+
+    for path in ["/outer/inner", "/outer/inner/"] {
+        let res = client.get(path).await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND, "{path}");
+        assert_eq!(res.text().await, "inner fallback", "{path}");
+    }
+
+    let res = client.get("/outer/inner/does-not-exist/extra").await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    assert_eq!(res.text().await, "inner fallback");
+}
+
+#[crate::test]
+async fn nested_fallback_with_captured_prefix() {
+    let app = Router::new().nest(
+        "/org/{org}",
+        Router::new().fallback(|| async { "inner fallback" }),
+    );
+
+    let client = TestClient::new(app);
+
+    for path in ["/org/acme", "/org/acme/"] {
+        let res = client.get(path).await;
+        assert_eq!(res.status(), StatusCode::OK, "{path}");
+        assert_eq!(res.text().await, "inner fallback", "{path}");
+    }
+}
+
+#[crate::test]
+async fn nested_fallback_with_trailing_slash_in_nest_path() {
+    let app = Router::new().nest(
+        "/nested/",
+        Router::new().fallback(|| async { "inner fallback" }),
+    );
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/nested/").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "inner fallback");
+
+    let res = client.get("/nested/does-not-exist").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "inner fallback");
+}

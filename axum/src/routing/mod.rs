@@ -217,15 +217,15 @@ where
 
         let RouterInner {
             path_router,
-            default_fallback: _,
             // we don't need to inherit the catch-all fallback. It is only used for CONNECT
             // requests with an empty path. If we were to inherit the catch-all fallback
             // it would end up matching `/{path}/*` which doesn't match empty paths.
             catch_all_fallback: _,
+            default_fallback,
         } = router.into_inner();
 
         tap_inner!(self, mut this => {
-            panic_on_err!(this.path_router.nest(path, path_router));
+            panic_on_err!(this.path_router.nest(path, path_router, !default_fallback));
         })
     }
 
