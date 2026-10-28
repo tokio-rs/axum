@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **fixed:** Preserve `MultipartForm` error status codes when combined with an
+  outer status code.
 - **fixed:** `JsonDeserializer` rejects trailing non-whitespace after a JSON
   value ([#3916])
 - **breaking:** Remove the deprecated `Host`, `Scheme` and `OptionalPath`
