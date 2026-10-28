@@ -227,9 +227,10 @@ async fn all_the_uris(
     }))
 }
 
-#[crate::test]
+// Not crate::test because `nest_service` conflicts on route `/foo`.
+#[tokio::test]
 async fn nesting_and_seeing_the_right_uri() {
-    let one = Router::new().nest("/foo/", Router::new().route("/bar", get(all_the_uris)));
+    let one = Router::new().nest("/foo", Router::new().route("/bar", get(all_the_uris)));
     let two = Router::new().route("/foo", get(all_the_uris));
 
     let client = TestClient::new(one.merge(two));
@@ -257,10 +258,11 @@ async fn nesting_and_seeing_the_right_uri() {
     );
 }
 
-#[crate::test]
+// Not crate::test because `nest_service` conflicts on route `/foo`.
+#[tokio::test]
 async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
     let one = Router::new().nest(
-        "/foo/",
+        "/foo",
         Router::new().nest("/bar", Router::new().route("/baz", get(all_the_uris))),
     );
     let two = Router::new().route("/foo", get(all_the_uris));
@@ -288,6 +290,17 @@ async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
             "original_uri": "/foo",
         })
     );
+}
+
+#[tokio::test]
+#[should_panic(
+    expected = r#"Invalid route "/foo": Insertion failed due to conflict with previously registered route: /foo"#
+)]
+async fn nest_service_root_route_conflict() {
+    let one = Router::new().nest_service("/foo", Router::new().route("/bar", get(all_the_uris)));
+    let two = Router::new().route("/foo", get(all_the_uris));
+
+    let _: Router = one.merge(two);
 }
 
 #[crate::test]
