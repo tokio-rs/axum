@@ -15,7 +15,7 @@ use tokio_util::io::ReaderStream;
 
 // `tokio::fs::File` runs every read on the blocking pool, so `ReaderStream`'s 4 KiB default
 // means one blocking task per 4 KiB. tower-http's `ServeDir` uses the same 64 KiB.
-const CHUNK_SIZE: usize = 64 * 1024;
+const DEFAULT_CHUNK_SIZE: usize = 64 * 1024;
 
 /// Encapsulate the file stream.
 ///
@@ -188,7 +188,18 @@ where
     pub async fn try_range_response(
         file_path: impl AsRef<Path>,
         start: u64,
+        end: u64,
+    ) -> io::Result<Response> {
+        Self::try_range_response_with_chunk_size(file_path, start, end, DEFAULT_CHUNK_SIZE).await
+    }
+
+    /// Like [`FileStream::try_range_response`], but reads the file in chunks of `chunk_size`
+    /// bytes instead of the default 64 KiB.
+    pub async fn try_range_response_with_chunk_size(
+        file_path: impl AsRef<Path>,
+        start: u64,
         mut end: u64,
+        chunk_size: usize,
     ) -> io::Result<Response> {
         let mut file = File::open(file_path).await?;
 
@@ -215,7 +226,7 @@ where
 
         file.seek(std::io::SeekFrom::Start(start)).await?;
 
-        let stream = ReaderStream::with_capacity(file.take(end - start + 1), CHUNK_SIZE);
+        let stream = ReaderStream::with_capacity(file.take(end - start + 1), chunk_size);
 
         Ok(FileStream::new(stream).into_range_response(start, end, total_size))
     }
@@ -246,6 +257,15 @@ impl FileStream<ReaderStream<File>> {
     /// # let _: Router = app;
     /// ```
     pub async fn from_path(path: impl AsRef<Path>) -> io::Result<Self> {
+        Self::from_path_with_chunk_size(path, DEFAULT_CHUNK_SIZE).await
+    }
+
+    /// Like [`FileStream::from_path`], but reads the file in chunks of `chunk_size` bytes
+    /// instead of the default 64 KiB.
+    pub async fn from_path_with_chunk_size(
+        path: impl AsRef<Path>,
+        chunk_size: usize,
+    ) -> io::Result<Self> {
         let file = File::open(&path).await?;
         let mut content_size = None;
         let mut file_name = None;
@@ -261,7 +281,7 @@ impl FileStream<ReaderStream<File>> {
         }
 
         Ok(Self {
-            stream: ReaderStream::with_capacity(file, CHUNK_SIZE),
+            stream: ReaderStream::with_capacity(file, chunk_size),
             file_name,
             content_size,
         })
@@ -721,18 +741,47 @@ mod tests {
     #[tokio::test]
     async fn file_is_read_in_large_chunks() -> Result<(), Box<dyn std::error::Error>> {
         let file = tempfile::NamedTempFile::new()?;
-        file.as_file().set_len(3 * CHUNK_SIZE as u64 + 10)?;
+        file.as_file().set_len(3 * DEFAULT_CHUNK_SIZE as u64 + 10)?;
 
         let response = FileStream::from_path(file.path()).await?.into_response();
         assert_eq!(
             frame_sizes(response).await?,
-            [CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE, 10]
+            [
+                DEFAULT_CHUNK_SIZE,
+                DEFAULT_CHUNK_SIZE,
+                DEFAULT_CHUNK_SIZE,
+                10
+            ]
         );
 
-        let end = 2 * CHUNK_SIZE as u64 + 9;
+        let end = 2 * DEFAULT_CHUNK_SIZE as u64 + 9;
         let response =
             FileStream::<ReaderStream<File>>::try_range_response(file.path(), 10, end).await?;
-        assert_eq!(frame_sizes(response).await?, [CHUNK_SIZE, CHUNK_SIZE]);
+        assert_eq!(
+            frame_sizes(response).await?,
+            [DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE]
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn custom_chunk_size() -> Result<(), Box<dyn std::error::Error>> {
+        let file = tempfile::NamedTempFile::new()?;
+        file.as_file().set_len(2500)?;
+
+        let response = FileStream::from_path_with_chunk_size(file.path(), 1000)
+            .await?
+            .into_response();
+        assert_eq!(frame_sizes(response).await?, [1000, 1000, 500]);
+
+        let response = FileStream::<ReaderStream<File>>::try_range_response_with_chunk_size(
+            file.path(),
+            100,
+            2099,
+            1000,
+        )
+        .await?;
+        assert_eq!(frame_sizes(response).await?, [1000, 1000]);
         Ok(())
     }
 }

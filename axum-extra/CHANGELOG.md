@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning].
 - **fixed:** Escape multipart `Content-Disposition` parameters and reject
   newlines in field names and filenames ([#3776])
 - **changed:** `FileStream` reads files in 64 KiB chunks instead of 4 KiB ([#3973])
+- **added:** Add `FileStream::from_path_with_chunk_size` and
+  `FileStream::try_range_response_with_chunk_size` ([#3973])
 
 [#3916]: https://github.com/tokio-rs/axum/pull/3916
 [#3599]: https://github.com/tokio-rs/axum/pull/3599
