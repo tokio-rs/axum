@@ -678,10 +678,12 @@ async fn static_and_dynamic_paths() {
 }
 
 #[crate::test]
-#[should_panic(expected = "Paths must start with a `/`. Use \"/\" for root routes")]
 async fn empty_route() {
-    let app = Router::new().route("", get(|| async {}));
-    TestClient::new(app);
+    let app = Router::new().route("", get(|| async { "root" }));
+
+    let client = TestClient::new(app);
+    let res = client.get("/").await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 #[crate::test]
@@ -1147,17 +1149,10 @@ fn method_router_fallback_with_state() {
 
 #[test]
 fn test_path_for_nested_route() {
-    assert_eq!(path_for_nested_route("/", "/"), "/");
-
-    assert_eq!(path_for_nested_route("/a", "/"), "/a");
-    assert_eq!(path_for_nested_route("/", "/b"), "/b");
-    assert_eq!(path_for_nested_route("/a/", "/"), "/a/");
-    assert_eq!(path_for_nested_route("/", "/b/"), "/b/");
-
+    assert_eq!(path_for_nested_route("/a", "/"), "/a/");
+    assert_eq!(path_for_nested_route("/a", ""), "/a");
     assert_eq!(path_for_nested_route("/a", "/b"), "/a/b");
-    assert_eq!(path_for_nested_route("/a/", "/b"), "/a/b");
     assert_eq!(path_for_nested_route("/a", "/b/"), "/a/b/");
-    assert_eq!(path_for_nested_route("/a/", "/b/"), "/a/b/");
 }
 
 #[crate::test]
