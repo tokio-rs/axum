@@ -308,7 +308,7 @@ where
 
     /// Add a special root route identical to the `/` handler.
     ///
-    /// If the returned [`Nested`] is nested under `/prefix`, both `/prefix` and `/prefix` will be
+    /// If the returned [`Nested`] is nested under `/prefix`, both `/prefix` and `/prefix/` will be
     /// handled by the same handler originally routed to `/` in the inner router.
     ///
     /// If there is no handler set for `/`, this does nothing and both of the routes will be handled
