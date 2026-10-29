@@ -24,6 +24,8 @@ skip = [
     { name = "digest", version = "0.11" },
     { name = "block-buffer", version = "0.12" },
     { name = "crypto-common", version = "0.2" },
+    # tokio 1.53 requires tokio-macros 2.7, which uses syn 3
+    { name = "syn", version = "3" },
 ]
 skip-tree = [
     # parking_lot pulls in old versions of windows-sys

@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning].
   following pattern which lead to a panic before because the two
   `route_with_tsr` calls would both attempt to register a method-independent
   redirect ([#3586]):
+- **fixed:** `Attachment::filename` keeps non-ASCII UTF-8 filenames instead of
+  dropping them ([#3978])
 
   ```rust
   Router::new()
@@ -37,6 +39,7 @@ and this project adheres to [Semantic Versioning].
 [#3801]: https://github.com/tokio-rs/axum/pull/3801
 [#3776]: https://github.com/tokio-rs/axum/pull/3776
 [#3973]: https://github.com/tokio-rs/axum/pull/3973
+[#3978]: https://github.com/tokio-rs/axum/pull/3978
 
 # 0.12.6
 
