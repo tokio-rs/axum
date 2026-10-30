@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning].
 - **added:** Add `RouterExt::typed_query` ([#3801])
 - **fixed:** Escape multipart `Content-Disposition` parameters and reject
   newlines in field names and filenames ([#3776])
+- **changed:** `FileStream` reads files in 64 KiB chunks instead of 4 KiB ([#3973])
+- **added:** Add `FileStream::from_path_with_chunk_size` and
+  `FileStream::try_range_response_with_chunk_size` ([#3973])
 
 [#3968]: https://github.com/tokio-rs/axum/pull/3968
 [#3916]: https://github.com/tokio-rs/axum/pull/3916
@@ -39,6 +42,7 @@ and this project adheres to [Semantic Versioning].
 [#3586]: https://github.com/tokio-rs/axum/pull/3586
 [#3801]: https://github.com/tokio-rs/axum/pull/3801
 [#3776]: https://github.com/tokio-rs/axum/pull/3776
+[#3973]: https://github.com/tokio-rs/axum/pull/3973
 [#3978]: https://github.com/tokio-rs/axum/pull/3978
 
 # 0.12.6
