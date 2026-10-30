@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Report invalid `TypedPath` capture names without panicking ([#3918])
 - **fixed:** `#[debug_handler]` no longer treats `http::request::Parts` as an
   extractor that consumes the request body ([#3967])
+- **fixed:** `#[derive(FromRef)]` no longer calls `.clone()` on reference
+  fields of tuple structs, which triggered the `noop_method_call` lint ([#3983])
 - **breaking:** `#[from_request(via(Extractor))]` now uses the extractor's
   rejection type instead of `axum::response::Response` ([#3261])
 - **breaking:** `Option<T>` fields in `#[derive(FromRequest)]` and
@@ -22,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#3918]: https://github.com/tokio-rs/axum/pull/3918
 [#3967]: https://github.com/tokio-rs/axum/pull/3967
+[#3983]: https://github.com/tokio-rs/axum/pull/3983
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
 [#3623]: https://github.com/tokio-rs/axum/issues/3623
 
