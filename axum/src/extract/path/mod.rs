@@ -662,6 +662,45 @@ mod tests {
     }
 
     #[crate::test]
+    async fn nested_pair_values_return_internal_server_error() {
+        use crate::extract::InnerPath;
+
+        let app = Router::new()
+            .route(
+                "/tuple/{id}",
+                get(|_: Path<Vec<(String, (u32, u32))>>| async {}),
+            )
+            .route(
+                "/array/{id}",
+                get(|_: Path<Vec<(String, [u32; 2])>>| async {}),
+            )
+            .nest(
+                "/nested/{outer}",
+                Router::new()
+                    .route(
+                        "/tuple/{id}",
+                        get(|_: InnerPath<Vec<(String, (u32, u32))>>| async {}),
+                    )
+                    .route(
+                        "/array/{id}",
+                        get(|_: InnerPath<Vec<(String, [u32; 2])>>| async {}),
+                    ),
+            );
+        let client = TestClient::new(app);
+
+        for (path, type_name) in [
+            ("/tuple/42", "(u32, u32)"),
+            ("/array/42", "[u32; 2]"),
+            ("/nested/org/tuple/42", "(u32, u32)"),
+            ("/nested/org/array/42", "[u32; 2]"),
+        ] {
+            let res = client.get(path).await;
+            assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+            assert_eq!(res.text().await, format!("Unsupported type `{type_name}`"));
+        }
+    }
+
+    #[crate::test]
     async fn percent_decoding() {
         let app = Router::new().route(
             "/{key}",
