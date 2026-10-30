@@ -9,8 +9,8 @@ use tower_layer::Layer;
 use tower_service::Service;
 
 use super::{
-    future::RouteFuture, strip_prefix::StripPrefix, url_params, Endpoint, MethodRouter, Route,
-    RouteId, NEST_TAIL_PARAM,
+    future::RouteFuture, nested::NestedRootMarker, strip_prefix::StripPrefix, url_params, Endpoint,
+    MethodRouter, RootNestBehavior, Route, RouteId, NEST_TAIL_PARAM,
 };
 
 pub(super) struct PathRouter<S> {
@@ -136,10 +136,28 @@ where
         &mut self,
         path_to_nest_at: &str,
         router: Self,
+        root_behavior: &RootNestBehavior<S>,
     ) -> Result<(), Cow<'static, str>> {
+        /// Like [`RootNestBehavior`] but with the explicit root endpoint handled.
+        enum EmptiedRootNestBehavior {
+            RootOnly,
+            SlashOnly,
+            RootAndSlash,
+        }
+
         let prefix = validate_nest_path(path_to_nest_at)?;
 
         let Self { routes, node } = router;
+
+        let root_behavior = match root_behavior {
+            RootNestBehavior::ExplicitRoot(endpoint) => {
+                self.add_nested_route(path_to_nest_at, prefix, "", endpoint.clone())?;
+                EmptiedRootNestBehavior::SlashOnly
+            }
+            RootNestBehavior::RootOnly => EmptiedRootNestBehavior::RootOnly,
+            RootNestBehavior::SlashOnly => EmptiedRootNestBehavior::SlashOnly,
+            RootNestBehavior::RootAndSlash => EmptiedRootNestBehavior::RootAndSlash,
+        };
 
         for (id, endpoint) in routes.into_iter().enumerate() {
             let route_id = RouteId(id);
@@ -148,19 +166,47 @@ where
                 .get(&route_id)
                 .expect("no path for route id. This is a bug in axum. Please file an issue");
 
-            let path = path_for_nested_route(prefix, inner_path);
+            if &**inner_path == "/" {
+                match &root_behavior {
+                    EmptiedRootNestBehavior::RootOnly => {
+                        self.add_nested_route(path_to_nest_at, prefix, "", endpoint)?;
+                    }
+                    EmptiedRootNestBehavior::SlashOnly => {
+                        self.add_nested_route(path_to_nest_at, prefix, "/", endpoint)?;
+                    }
+                    EmptiedRootNestBehavior::RootAndSlash => {
+                        self.add_nested_route(path_to_nest_at, prefix, "", endpoint.clone())?;
+                        self.add_nested_route(path_to_nest_at, prefix, "/", endpoint)?;
+                    }
+                }
+                continue;
+            }
 
-            let layer = (
-                StripPrefix::layer(prefix),
-                SetNestedPath::layer(path_to_nest_at),
-            );
-            match endpoint.layer(layer) {
-                Endpoint::MethodRouter(method_router) => {
-                    self.route(&path, method_router)?;
-                }
-                Endpoint::Route(route) => {
-                    self.route_endpoint(&path, Endpoint::Route(route))?;
-                }
+            self.add_nested_route(path_to_nest_at, prefix, inner_path, endpoint)?;
+        }
+
+        Ok(())
+    }
+
+    fn add_nested_route(
+        &mut self,
+        path_to_nest_at: &str,
+        prefix: &str,
+        inner_path: &str,
+        endpoint: Endpoint<S>,
+    ) -> Result<(), Cow<'static, str>> {
+        let path = path_for_nested_route(prefix, inner_path);
+
+        let layer = (
+            StripPrefix::layer(prefix),
+            SetNestedPath::layer(path_to_nest_at),
+        );
+        match endpoint.layer(layer) {
+            Endpoint::MethodRouter(method_router) => {
+                self.route(&path, method_router)?;
+            }
+            Endpoint::Route(route) => {
+                self.route_endpoint(&path, Endpoint::Route(route))?;
             }
         }
 
@@ -177,14 +223,9 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        let path = validate_nest_path(path_to_nest_at)?;
-        let prefix = path;
+        let prefix = validate_nest_path(path_to_nest_at)?;
 
-        let path = if path.ends_with('/') {
-            format!("{path}{{*{NEST_TAIL_PARAM}}}")
-        } else {
-            format!("{path}/{{*{NEST_TAIL_PARAM}}}")
-        };
+        let path = format!("{prefix}/{{*{NEST_TAIL_PARAM}}}");
 
         let layer = (
             StripPrefix::layer(prefix),
@@ -198,10 +239,8 @@ where
         // prefix itself. Otherwise if you were to nest at `/foo` then `/foo` itself
         // wouldn't match, which it should
         self.route_endpoint(prefix, endpoint.clone())?;
-        if !prefix.ends_with('/') {
-            // same goes for `/foo/`, that should also match
-            self.route_endpoint(&format!("{prefix}/"), endpoint)?;
-        }
+        // same goes for `/foo/`, that should also match
+        self.route_endpoint(&format!("{prefix}/"), endpoint)?;
 
         Ok(())
     }
@@ -290,6 +329,15 @@ where
                 let original_uri = OriginalUri(req.uri().clone());
                 req.extensions_mut().insert(original_uri);
             }
+        }
+
+        if req.uri().path() == "/"
+            && matches!(
+                req.extensions().get::<NestedRootMarker>(),
+                Some(NestedRootMarker::Slash)
+            )
+        {
+            return Err((req, state));
         }
 
         let (mut parts, body) = req.into_parts();
@@ -402,6 +450,9 @@ fn validate_nest_path(path: &str) -> Result<&str, &'static str> {
     if path.len() < 2 {
         return Err("Nesting at `/` is not supported.");
     }
+    if path.ends_with("/") {
+        return Err("Nesting paths must not end with a `/`.");
+    }
 
     if path.split('/').any(|segment| {
         segment.starts_with("{*") && segment.ends_with('}') && !segment.ends_with("}}")
@@ -414,13 +465,12 @@ fn validate_nest_path(path: &str) -> Result<&str, &'static str> {
 
 pub(crate) fn path_for_nested_route<'a>(prefix: &'a str, path: &'a str) -> Cow<'a, str> {
     debug_assert!(prefix.starts_with('/'));
-    debug_assert!(path.starts_with('/'));
+    debug_assert!(!prefix.ends_with('/'));
 
-    if prefix.ends_with('/') {
-        format!("{prefix}{}", path.trim_start_matches('/')).into()
-    } else if path == "/" {
-        prefix.into()
+    if path.is_empty() {
+        Cow::Borrowed(prefix)
     } else {
-        format!("{prefix}{path}").into()
+        debug_assert!(path.starts_with('/'));
+        Cow::Owned(format!("{prefix}{path}"))
     }
 }
