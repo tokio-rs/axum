@@ -106,6 +106,7 @@ fn expand_named_fields(
 ) -> TokenStream {
     let format_str = format_str_from_path(segments);
     let captures = captures_from_path(segments);
+    let formatter = format_ident!("f", span = Span::mixed_site());
 
     let typed_path_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
@@ -119,10 +120,10 @@ fn expand_named_fields(
         impl ::std::fmt::Display for #ident {
             #[allow(clippy::unnecessary_to_owned)]
             #[allow(clippy::implicit_clone)]
-            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            fn fmt(&self, #formatter: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 let Self { #(#captures,)* } = self;
                 write!(
-                    f,
+                    #formatter,
                     #format_str,
                     #(
                         #captures = ::axum_extra::__private::utf8_percent_encode(
@@ -212,6 +213,7 @@ fn expand_unnamed_fields(
 
     let format_str = format_str_from_path(segments);
     let captures = captures_from_path(segments);
+    let formatter = format_ident!("f", span = Span::mixed_site());
 
     let typed_path_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
@@ -225,10 +227,10 @@ fn expand_unnamed_fields(
         impl ::std::fmt::Display for #ident {
             #[allow(clippy::unnecessary_to_owned)]
             #[allow(clippy::implicit_clone)]
-            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            fn fmt(&self, #formatter: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 let Self { #(#destructure_self)* } = self;
                 write!(
-                    f,
+                    #formatter,
                     #format_str,
                     #(
                         #captures = ::axum_extra::__private::utf8_percent_encode(
