@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **fixed:** Preserve request parts when `RequestExt::extract_parts` or
+  `extract_parts_with_state` is cancelled, including changes made by the extractor.
 - **added:** `ResponseParts::status` and `ResponseParts::status_mut` accessors,
   allowing `IntoResponseParts` implementations to set the response status ([#3721])
 - **added:** `Body::unknown` to model a body of unknown size, which can be

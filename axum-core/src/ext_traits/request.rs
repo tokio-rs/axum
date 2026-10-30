@@ -1,5 +1,6 @@
 use crate::body::Body;
 use crate::extract::{DefaultBodyLimitKind, FromRequest, FromRequestParts, Request};
+use http::request::Parts;
 use std::future::Future;
 
 mod sealed {
@@ -131,6 +132,9 @@ pub trait RequestExt: sealed::Sealed + Sized {
     ///
     /// This is just a convenience for `E::from_request_parts(parts, state)`.
     ///
+    /// If extraction is cancelled, the request retains its parts, including any
+    /// changes the extractor made before cancellation.
+    ///
     /// # Example
     ///
     /// ```
@@ -182,6 +186,9 @@ pub trait RequestExt: sealed::Sealed + Sized {
     /// Apply a parts extractor that requires some state to this `Request`.
     ///
     /// This is just a convenience for `E::from_request_parts(parts, state)`.
+    ///
+    /// If extraction is cancelled, the request retains its parts, including any
+    /// changes the extractor made before cancellation.
     ///
     /// # Example
     ///
@@ -259,6 +266,22 @@ pub trait RequestExt: sealed::Sealed + Sized {
     fn into_limited_body(self) -> Body;
 }
 
+// Restore the parts even when the extraction future is dropped before completion.
+struct RequestPartsGuard<'a> {
+    request: &'a mut Request,
+    parts: Parts,
+}
+
+impl Drop for RequestPartsGuard<'_> {
+    fn drop(&mut self) {
+        std::mem::swap(self.request.version_mut(), &mut self.parts.version);
+        std::mem::swap(self.request.method_mut(), &mut self.parts.method);
+        std::mem::swap(self.request.uri_mut(), &mut self.parts.uri);
+        std::mem::swap(self.request.headers_mut(), &mut self.parts.headers);
+        std::mem::swap(self.request.extensions_mut(), &mut self.parts.extensions);
+    }
+}
+
 impl RequestExt for Request {
     fn extract<E, M>(self) -> impl Future<Output = Result<E, E::Rejection>> + Send
     where
@@ -300,17 +323,13 @@ impl RequestExt for Request {
         *req.uri_mut() = self.uri().clone();
         *req.headers_mut() = std::mem::take(self.headers_mut());
         *req.extensions_mut() = std::mem::take(self.extensions_mut());
-        let (mut parts, ()) = req.into_parts();
+        let (parts, ()) = req.into_parts();
+        let mut guard = RequestPartsGuard {
+            request: self,
+            parts,
+        };
 
-        let result = E::from_request_parts(&mut parts, state).await;
-
-        *self.version_mut() = parts.version;
-        *self.method_mut() = parts.method.clone();
-        *self.uri_mut() = parts.uri.clone();
-        *self.headers_mut() = std::mem::take(&mut parts.headers);
-        *self.extensions_mut() = std::mem::take(&mut parts.extensions);
-
-        result
+        E::from_request_parts(&mut guard.parts, state).await
     }
 
     fn with_limited_body(self) -> Request {
@@ -397,6 +416,127 @@ mod tests {
 
         assert_eq!(extracted_state, state);
         assert_eq!(req.headers()["x-foo"], "foo");
+    }
+
+    struct PendingExtractor;
+
+    impl FromRequestParts<()> for PendingExtractor {
+        type Rejection = std::convert::Infallible;
+
+        async fn from_request_parts(
+            _parts: &mut http::request::Parts,
+            _state: &(),
+        ) -> Result<Self, Self::Rejection> {
+            std::future::pending().await
+        }
+    }
+
+    #[tokio::test]
+    async fn extract_parts_cancellation_preserves_request() {
+        let mut req = Request::builder()
+            .method(Method::POST)
+            .uri("/original")
+            .version(http::Version::HTTP_2)
+            .header("x-original", "value")
+            .extension(42_u32)
+            .body(Body::from("payload"))
+            .unwrap();
+
+        {
+            let mut extraction = Box::pin(req.extract_parts::<PendingExtractor>());
+            std::future::poll_fn(|cx| {
+                assert!(extraction.as_mut().poll(cx).is_pending());
+                std::task::Poll::Ready(())
+            })
+            .await;
+        }
+
+        assert_eq!(req.method(), Method::POST);
+        assert_eq!(req.uri(), "/original");
+        assert_eq!(req.version(), http::Version::HTTP_2);
+        assert_eq!(req.headers()["x-original"], "value");
+        assert_eq!(req.extensions().get::<u32>(), Some(&42));
+        assert_eq!(req.extract::<String, _>().await.unwrap(), "payload");
+    }
+
+    enum ExtractionMode {
+        Pending,
+        Success,
+        Reject,
+    }
+
+    #[derive(Debug)]
+    struct ModifyParts;
+
+    impl FromRequestParts<ExtractionMode> for ModifyParts {
+        type Rejection = http::StatusCode;
+
+        async fn from_request_parts(
+            parts: &mut http::request::Parts,
+            state: &ExtractionMode,
+        ) -> Result<Self, Self::Rejection> {
+            parts.method = Method::PATCH;
+            parts.uri = "/changed".parse().unwrap();
+            parts.version = http::Version::HTTP_11;
+            parts.headers.insert("x-added", "added".parse().unwrap());
+            parts.extensions.insert(42_u32);
+
+            match state {
+                ExtractionMode::Pending => std::future::pending().await,
+                ExtractionMode::Success => Ok(Self),
+                ExtractionMode::Reject => Err(http::StatusCode::BAD_REQUEST),
+            }
+        }
+    }
+
+    async fn assert_modified_request(req: Request) {
+        assert_eq!(req.method(), Method::PATCH);
+        assert_eq!(req.uri(), "/changed");
+        assert_eq!(req.version(), http::Version::HTTP_11);
+        assert_eq!(req.headers()["x-original"], "value");
+        assert_eq!(req.headers()["x-added"], "added");
+        assert_eq!(req.extensions().get::<u32>(), Some(&42));
+        assert_eq!(req.extract::<String, _>().await.unwrap(), "payload");
+    }
+
+    #[tokio::test]
+    async fn extract_parts_with_state_cancellation_preserves_changes() {
+        let mut req = Request::builder()
+            .header("x-original", "value")
+            .body(Body::from("payload"))
+            .unwrap();
+
+        {
+            let mut extraction =
+                Box::pin(req.extract_parts_with_state::<ModifyParts, _>(&ExtractionMode::Pending));
+            std::future::poll_fn(|cx| {
+                assert!(extraction.as_mut().poll(cx).is_pending());
+                std::task::Poll::Ready(())
+            })
+            .await;
+        }
+
+        assert_modified_request(req).await;
+    }
+
+    #[tokio::test]
+    async fn extract_parts_with_state_preserves_changes_on_completion() {
+        for mode in [ExtractionMode::Success, ExtractionMode::Reject] {
+            let mut req = Request::builder()
+                .header("x-original", "value")
+                .body(Body::from("payload"))
+                .unwrap();
+
+            let result = req.extract_parts_with_state::<ModifyParts, _>(&mode).await;
+            match mode {
+                ExtractionMode::Success => assert!(result.is_ok()),
+                ExtractionMode::Reject => {
+                    assert_eq!(result.unwrap_err(), http::StatusCode::BAD_REQUEST);
+                }
+                ExtractionMode::Pending => unreachable!(),
+            }
+            assert_modified_request(req).await;
+        }
     }
 
     // this stuff just needs to compile
