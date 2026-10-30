@@ -200,8 +200,8 @@ mod tests {
     }
 
     #[crate::test]
-    async fn extracting_on_root_handler_in_nested_service() {
-        let app = Router::new().nest_service(
+    async fn extracting_on_root_handler_in_nested_router() {
+        let app = Router::new().nest(
             "/api",
             Router::new().route(
                 "/",
@@ -213,6 +213,20 @@ mod tests {
 
         let res = client.get("/api").await;
         assert_eq!(res.text().await, "/api");
+    }
+
+    // Not shared with `nest`, which has no `/api/` route here: the request gets a 404.
+    #[crate::test]
+    async fn extracting_on_root_handler_with_trailing_slash_in_nested_service() {
+        let app = Router::new().nest_service(
+            "/api",
+            Router::new().route(
+                "/",
+                get(|path: MatchedPath| async move { path.as_str().to_owned() }),
+            ),
+        );
+
+        let client = TestClient::new(app);
 
         let res = client.get("/api/").await;
         assert_eq!(res.text().await, "/api/");
