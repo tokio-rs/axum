@@ -31,10 +31,6 @@ use std::{fmt, sync::Arc};
 /// be used in a route with parameters that deserialize to `T`, and another
 /// route with no parameters at all.
 ///
-/// If the route has no parameters, `None` is returned regardless of `T`.
-/// Otherwise the parameters are deserialized as with `Path<T>`, and any error
-/// is returned as a rejection.
-///
 /// # Example
 ///
 /// These examples assume the `serde` feature of the [`uuid`] crate is enabled.
@@ -660,13 +656,13 @@ mod tests {
     #[crate::test]
     async fn optional_path_is_none_without_params() {
         #[derive(Deserialize)]
-        struct Params {
+        struct UserId {
             id: u32,
         }
 
-        async fn handler(params: Option<Path<Params>>) -> String {
-            match params {
-                Some(Path(params)) => params.id.to_string(),
+        async fn handler(user: Option<Path<UserId>>) -> String {
+            match user {
+                Some(Path(user)) => user.id.to_string(),
                 None => "none".to_owned(),
             }
         }
@@ -693,6 +689,38 @@ mod tests {
         let res = client.get("/all").await;
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "None");
+    }
+
+    #[crate::test]
+    async fn optional_path_rejects_too_few_params() {
+        #[allow(dead_code)]
+        #[derive(Deserialize)]
+        struct UserAndTeam {
+            user_id: u32,
+            team_id: u32,
+        }
+
+        let app = Router::new()
+            .route(
+                "/tuple/{user_id}",
+                get(|_: Option<Path<(u32, u32)>>| async {}),
+            )
+            .route(
+                "/struct/{user_id}",
+                get(|_: Option<Path<UserAndTeam>>| async {}),
+            );
+        let client = TestClient::new(app);
+
+        let res = client.get("/tuple/42").await;
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            res.text().await,
+            "Wrong number of path arguments for `Path`. Expected 2 but got 1"
+        );
+
+        let res = client.get("/struct/42").await;
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(res.text().await, "Invalid URL: missing field `team_id`");
     }
 
     #[crate::test]
