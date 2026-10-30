@@ -292,8 +292,10 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = self.path.to_string();
 
+        let mut added_question_mark = false;
         let params_start = out.find('?').map(|i| i + 1).unwrap_or_else(|| {
             out.push('?');
+            added_question_mark = true;
             out.len()
         });
         let mut urlencoder = form_urlencoded::Serializer::for_suffix(&mut out, params_start);
@@ -305,6 +307,12 @@ where
                     type_name::<T>(),
                 )
             });
+
+        // don't leave a dangling `?` if `params` didn't serialize to anything
+        if added_question_mark && out.len() == params_start {
+            out.pop();
+        }
+
         f.write_str(&out)?;
 
         Ok(())
@@ -447,6 +455,39 @@ mod tests {
         let uri = path.to_uri();
 
         assert_eq!(uri, "/test?foo=foo&bar=123&baz=true");
+
+        let path = EndsWithQuestionMark.with_query_params(Vec::<(&str, &str)>::new());
+
+        assert_eq!(path.to_string(), "/test?");
+    }
+
+    #[test]
+    fn with_params_empty() {
+        #[derive(Serialize)]
+        struct OptionalParams {
+            foo: Option<&'static str>,
+            bar: Option<i32>,
+        }
+
+        let path = UsersShow { id: 1 }.with_query_params(OptionalParams {
+            foo: None,
+            bar: None,
+        });
+        assert_eq!(path.to_string(), "/users/1");
+        assert_eq!(path.to_uri().query(), None);
+
+        let path = UsersShow { id: 1 }.with_query_params(Vec::<(&str, &str)>::new());
+        assert_eq!(path.to_string(), "/users/1");
+
+        let path = UsersShow { id: 1 }
+            .with_query_params(Vec::<(&str, &str)>::new())
+            .with_query_params([("qux", 1337)]);
+        assert_eq!(path.to_string(), "/users/1?qux=1337");
+
+        let path = UsersShow { id: 1 }
+            .with_query_params([("qux", 1337)])
+            .with_query_params(Vec::<(&str, &str)>::new());
+        assert_eq!(path.to_string(), "/users/1?qux=1337");
     }
 
     #[cfg(feature = "with-rejection")]
