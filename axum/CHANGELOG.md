@@ -41,6 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which saves a clone and a layer of boxing on every request to them ([#3909])
 - **changed:** Update `Router::route_service` docs for `axum::body::Body` instead of
   the removed `BoxBody` type ([#3890])
+- **changed:** `axum::serve` gives each connection its own graceful shutdown channel instead of
+  a shared `watch` that every connection polled on each wakeup, reducing lock contention when
+  streaming many responses ([#3937])
 - **fixed:** Successful responses to `CONNECT` no longer keep `content-length` or
   `transfer-encoding` headers after their body is removed ([#3907])
 
@@ -62,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3801]: https://github.com/tokio-rs/axum/pull/3801
 [#3867]: https://github.com/tokio-rs/axum/pull/3867
 [#3890]: https://github.com/tokio-rs/axum/pull/3890
+[#3937]: https://github.com/tokio-rs/axum/pull/3937
 [#3779]: https://github.com/tokio-rs/axum/pull/3779
 [#3928]: https://github.com/tokio-rs/axum/pull/3928
 [#3907]: https://github.com/tokio-rs/axum/pull/3907
