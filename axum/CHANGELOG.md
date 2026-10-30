@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **fixed:** `middleware::Next::run` waits for inner service readiness, preventing
+  panics when using a cloned `Next` with concurrency-limited services.
 - **breaking:** `tower-log` is no longer a default feature. Enable it explicitly to keep
   `tower`'s `log` feature turned on ([#3928])
 - **breaking:** Router fallbacks are now properly merged for nested routers ([#3158])
