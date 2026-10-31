@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **fixed:** `TypedPath::with_query_params` no longer leaves a trailing `?` when
+  the params don't serialize to anything, for example when all fields are
+  `None` ([#3968])
 - **fixed:** `JsonDeserializer` rejects trailing non-whitespace after a JSON
   value ([#3916])
 - **breaking:** Remove the deprecated `Host`, `Scheme` and `OptionalPath`
@@ -30,6 +33,7 @@ and this project adheres to [Semantic Versioning].
 - **fixed:** Escape multipart `Content-Disposition` parameters and reject
   newlines in field names and filenames ([#3776])
 
+[#3968]: https://github.com/tokio-rs/axum/pull/3968
 [#3916]: https://github.com/tokio-rs/axum/pull/3916
 [#3599]: https://github.com/tokio-rs/axum/pull/3599
 [#3586]: https://github.com/tokio-rs/axum/pull/3586
