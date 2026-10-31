@@ -2,7 +2,7 @@ use crate::extract::Request;
 use crate::extract::{rejection::*, FromRequest};
 use axum_core::extract::OptionalFromRequest;
 use axum_core::response::{IntoResponse, IntoResponseFailed, Response};
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::Bytes;
 use http::{
     header::{self, HeaderMap, HeaderValue},
     StatusCode,
@@ -203,14 +203,14 @@ where
 {
     fn into_response(self) -> Response {
         // Extracted into separate fn so it's only compiled once for all T.
-        fn make_response(buf: BytesMut, ser_result: serde_json::Result<()>) -> Response {
+        fn make_response(buf: Vec<u8>, ser_result: serde_json::Result<()>) -> Response {
             match ser_result {
                 Ok(()) => (
                     [(
                         header::CONTENT_TYPE,
                         HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
                     )],
-                    buf.freeze(),
+                    buf,
                 )
                     .into_response(),
                 Err(err) => (
@@ -228,9 +228,9 @@ where
 
         // Use a small initial capacity of 128 bytes like serde_json::to_vec
         // https://docs.rs/serde_json/1.0.82/src/serde_json/ser.rs.html#2189
-        let mut buf = BytesMut::with_capacity(128).writer();
+        let mut buf = Vec::with_capacity(128);
         let res = serde_json::to_writer(&mut buf, &self.0);
-        make_response(buf.into_inner(), res)
+        make_response(buf, res)
     }
 }
 
