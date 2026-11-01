@@ -39,18 +39,20 @@ fn expand_field(state: &Ident, idx: usize, field: &Field) -> TokenStream {
     let field_ty = &field.ty;
     let span = field.ty.span();
 
-    let body = if let Some(field_ident) = &field.ident {
-        if matches!(field_ty, Type::Reference(_)) {
-            quote_spanned! {span=> state.#field_ident }
-        } else {
-            quote_spanned! {span=> state.#field_ident.clone() }
-        }
+    let field_access = if let Some(field_ident) = &field.ident {
+        quote_spanned! {span=> state.#field_ident }
     } else {
         let idx = syn::Index {
             index: idx as _,
             span: field.span(),
         };
-        quote_spanned! {span=> state.#idx.clone() }
+        quote_spanned! {span=> state.#idx }
+    };
+
+    let body = if matches!(field_ty, Type::Reference(_)) {
+        field_access
+    } else {
+        quote_spanned! {span=> #field_access.clone() }
     };
 
     quote_spanned! {span=>
