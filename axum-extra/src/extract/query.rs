@@ -139,14 +139,16 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         if let Some(query) = parts.uri.query() {
-            let deserializer =
-                serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
-            let value = serde_path_to_error::deserialize(deserializer)
-                .map_err(FailedToDeserializeQueryString::from_err)?;
-            Ok(Self(Some(value)))
-        } else {
-            Ok(Self(None))
+            if !query.is_empty() {
+                let deserializer =
+                    serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
+                let value = serde_path_to_error::deserialize(deserializer)
+                    .map_err(FailedToDeserializeQueryString::from_err)?;
+                return Ok(Self(Some(value)));
+            }
         }
+
+        Ok(Self(None))
     }
 }
 
@@ -279,6 +281,11 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.post("/").body("").await;
+
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "None");
+
+        let res = client.post("/?").body("").await;
 
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "None");
