@@ -1,5 +1,5 @@
 use super::{rejection::*, FromRequestParts};
-use crate::routing::{RouteId, NEST_TAIL_PARAM_CAPTURE};
+use crate::routing::{path_router::path_for_nested_route, RouteId, NEST_TAIL_PARAM_CAPTURE};
 use axum_core::extract::OptionalFromRequestParts;
 use http::request::Parts;
 use std::{collections::HashMap, convert::Infallible, sync::Arc};
@@ -132,8 +132,7 @@ fn append_nested_matched_path(matched_path: &Arc<str>, extensions: &http::Extens
             .strip_suffix(NEST_TAIL_PARAM_CAPTURE)
             .unwrap_or(previous);
 
-        let matched_path = format!("{previous}{matched_path}");
-        matched_path.into()
+        path_for_nested_route(previous, matched_path).into()
     } else {
         Arc::clone(matched_path)
     }
@@ -198,6 +197,39 @@ mod tests {
 
         let res = client.get("/foo/bar/baz").await;
         assert_eq!(res.text().await, "/{a}/{b}/{c}");
+    }
+
+    #[crate::test]
+    async fn extracting_on_root_handler_in_nested_router() {
+        let app = Router::new().nest(
+            "/api",
+            Router::new().route(
+                "/",
+                get(|path: MatchedPath| async move { path.as_str().to_owned() }),
+            ),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/api").await;
+        assert_eq!(res.text().await, "/api");
+    }
+
+    // Not shared with `nest`, which has no `/api/` route here: the request gets a 404.
+    #[crate::test]
+    async fn extracting_on_root_handler_with_trailing_slash_in_nested_service() {
+        let app = Router::new().nest_service(
+            "/api",
+            Router::new().route(
+                "/",
+                get(|path: MatchedPath| async move { path.as_str().to_owned() }),
+            ),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/api/").await;
+        assert_eq!(res.text().await, "/api/");
     }
 
     #[crate::test]
