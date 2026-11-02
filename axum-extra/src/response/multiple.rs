@@ -1,7 +1,13 @@
 //! Generate forms to use in responses.
 
-use super::content_disposition::{contains_newlines, EscapedQuotedString};
-use axum_core::response::{IntoResponse, Response};
+use super::{
+    content_disposition::{contains_newlines, EscapedQuotedString},
+    multipart,
+};
+use axum_core::{
+    body,
+    response::{IntoResponse, Response},
+};
 use fastrand;
 use http::{header, HeaderMap, StatusCode};
 use mime::Mime;
@@ -56,21 +62,19 @@ impl IntoResponse for MultipartForm {
         };
         // The use of unwrap is safe here because mime types are inherently string representable
         headers.insert(header::CONTENT_TYPE, mime_type.to_string().parse().unwrap());
-        let mut serialized_form: Vec<u8> = Vec::new();
+        let mut parts = Vec::with_capacity(self.parts.len());
         for part in self.parts {
-            // for each part, the boundary is preceded by two dashes
-            serialized_form.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
-            let Ok(serialized_part) = part.serialize() else {
+            let Ok(encoded) = part.into_multipart_part(&boundary) else {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Invalid multipart field name or filename",
                 )
                     .into_response();
             };
-            serialized_form.extend_from_slice(&serialized_part);
+            parts.push(Some(encoded));
         }
-        serialized_form.extend_from_slice(format!("--{boundary}--").as_bytes());
-        (headers, serialized_form).into_response()
+        let body = body::Body::new(multipart::Multipart::new(&boundary, parts, false));
+        (headers, body).into_response()
     }
 }
 
@@ -186,8 +190,8 @@ impl Part {
         })
     }
 
-    /// Serialize this part into a chunk that can be easily inserted into a larger form
-    pub(super) fn serialize(&self) -> Result<Vec<u8>, &'static str> {
+    /// Prepare this part for multipart serialization.
+    fn into_multipart_part(self, boundary: &str) -> Result<multipart::Part, &'static str> {
         // A part is serialized in this general format:
         // // the filename is optional
         // Content-Disposition: form-data; name="FIELD_NAME"; filename="FILENAME"\r\n
@@ -201,27 +205,25 @@ impl Part {
             return Err("Invalid multipart field name");
         }
 
-        // Format what we can as a string, then handle the rest at a byte level
-        let mut serialized_part = format!(
-            "Content-Disposition: form-data; name=\"{}\"",
-            EscapedQuotedString(&self.name)
-        );
+        let mut disposition = format!("form-data; name=\"{}\"", EscapedQuotedString(&self.name));
         // specify a filename if one was set
         if let Some(filename) = &self.filename {
             if contains_newlines(filename) {
                 return Err("Invalid multipart filename");
             }
-            serialized_part += &format!("; filename=\"{}\"", EscapedQuotedString(filename));
+            disposition += &format!("; filename=\"{}\"", EscapedQuotedString(filename));
         }
-        serialized_part += "\r\n";
-        // specify the MIME type
-        serialized_part += &format!("Content-Type: {}\r\n", self.mime_type);
-        serialized_part += "\r\n";
-        let mut part_bytes = serialized_part.as_bytes().to_vec();
-        part_bytes.extend_from_slice(&self.contents);
-        part_bytes.extend_from_slice(b"\r\n");
+        let content_type = self.mime_type.to_string();
+        let part = multipart::Part::new(
+            boundary,
+            [
+                ("Content-Disposition", disposition.as_str()),
+                ("Content-Type", content_type.as_str()),
+            ],
+            body::Body::from(self.contents),
+        );
 
-        Ok(part_bytes)
+        Ok(part)
     }
 
     fn contains_boundary(&self, boundary: &str) -> bool {
@@ -283,6 +285,7 @@ mod tests {
     use axum::{routing::get, Router};
     use axum_core::response::IntoResponse;
     use http::{Request, Response, StatusCode};
+    use http_body::Body as _;
     use http_body_util::BodyExt;
     use mime::Mime;
     use tower::ServiceExt;
@@ -311,7 +314,14 @@ mod tests {
         // content_type header
         let ct_header = response.headers().get("content-type").unwrap().to_str()?;
         let boundary = ct_header.split("boundary=").nth(1).unwrap().to_owned();
+        let content_length: usize = response
+            .headers()
+            .get("content-length")
+            .unwrap()
+            .to_str()?
+            .parse()?;
         let body: &[u8] = &response.into_body().collect().await?.to_bytes();
+        assert_eq!(content_length, body.len());
         assert_eq!(
             std::str::from_utf8(body)?,
             format!(
@@ -337,17 +347,21 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn multipart_part_escapes_content_disposition_params() {
+    #[tokio::test]
+    async fn multipart_part_escapes_content_disposition_params() {
         let part = Part::file(
             "field\"; injected=\"1",
             "evil\\name\"; filename*=UTF-8''pwned.txt; x=\"",
             b"hi".to_vec(),
         );
 
-        let body = String::from_utf8(part.serialize().unwrap()).unwrap();
+        let response = MultipartForm::with_parts(vec![part]).into_response();
+        let content_length = response.body().size_hint().exact().unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(content_length, body.len() as u64);
+        let body = std::str::from_utf8(&body).unwrap();
 
-        assert!(body.starts_with(
+        assert!(body.contains(
             "Content-Disposition: form-data; name=\"field\\\"; injected=\\\"1\"; filename=\"evil\\\\name\\\"; filename*=UTF-8''pwned.txt; x=\\\"\"\r\n"
         ));
     }
