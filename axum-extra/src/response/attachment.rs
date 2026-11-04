@@ -74,7 +74,7 @@ impl<T: IntoResponse> Attachment<T> {
     ///
     /// Non-ASCII filenames use a UTF-8 encoded `filename*` parameter, with an ASCII
     /// `filename` fallback for clients that do not support it. In the fallback,
-    /// each non-ASCII character and each `%` is replaced with `_`.
+    /// each non-ASCII character and each `%` is replaced with `?`.
     /// ASCII filenames use only the `filename` parameter.
     pub fn filename<H: TryInto<HeaderValue>>(mut self, value: H) -> Self {
         self.filename = match value.try_into() {
@@ -120,7 +120,7 @@ where
             } else {
                 let fallback: String = filename_str
                     .chars()
-                    .map(|c| if c.is_ascii() && c != '%' { c } else { '_' })
+                    .map(|c| if c.is_ascii() && c != '%' { c } else { '?' })
                     .collect();
                 format!(
                     "attachment; filename=\"{}\"; filename*=UTF-8''{}",
@@ -169,7 +169,7 @@ mod tests {
         let value = attachment.headers().get(CONTENT_DISPOSITION).unwrap();
         assert_eq!(
             std::str::from_utf8(value.as_bytes()).unwrap(),
-            "attachment; filename=\"Bericht-M_rz.pdf\"; filename*=UTF-8''Bericht-M%C3%A4rz.pdf"
+            "attachment; filename=\"Bericht-M?rz.pdf\"; filename*=UTF-8''Bericht-M%C3%A4rz.pdf"
         );
     }
 
@@ -186,26 +186,26 @@ mod tests {
         for (filename, expected) in [
             (
                 "résumé 100%.txt",
-                "attachment; filename=\"r_sum_ 100_.txt\"; filename*=UTF-8''r%C3%A9sum%C3%A9%20100%25.txt",
+                "attachment; filename=\"r?sum? 100?.txt\"; filename*=UTF-8''r%C3%A9sum%C3%A9%20100%25.txt",
             ),
             (
                 "🦀.txt",
-                "attachment; filename=\"_.txt\"; filename*=UTF-8''%F0%9F%A6%80.txt",
+                "attachment; filename=\"?.txt\"; filename*=UTF-8''%F0%9F%A6%80.txt",
             ),
             (
                 "éAZaz09!#$&+-.^_`|~.txt",
-                "attachment; filename=\"_AZaz09!#$&+-.^_`|~.txt\"; filename*=UTF-8''%C3%A9AZaz09!#$&+-.^_`|~.txt",
+                "attachment; filename=\"?AZaz09!#$&+-.^_`|~.txt\"; filename*=UTF-8''%C3%A9AZaz09!#$&+-.^_`|~.txt",
             ),
             (
                 "é \"\\%*';/?:@=[]{}()<>,.txt",
                 concat!(
-                    "attachment; filename=\"_ \\\"\\\\_*';/?:@=[]{}()<>,.txt\"; ",
+                    "attachment; filename=\"? \\\"\\\\?*';/?:@=[]{}()<>,.txt\"; ",
                     "filename*=UTF-8''%C3%A9%20%22%5C%25%2A%27%3B%2F%3F%3A%40%3D%5B%5D%7B%7D%28%29%3C%3E%2C.txt",
                 ),
             ),
             (
                 "é\t.txt",
-                "attachment; filename=\"_\t.txt\"; filename*=UTF-8''%C3%A9%09.txt",
+                "attachment; filename=\"?\t.txt\"; filename*=UTF-8''%C3%A9%09.txt",
             ),
         ] {
             let response = Attachment::new("data").filename(filename).into_response();
@@ -246,7 +246,7 @@ mod tests {
         assert_eq!(
             response.headers()[CONTENT_DISPOSITION],
             concat!(
-                "attachment; filename=\"_\\\"; filename*=UTF-8''pwned.txt; x=\\\"\"; ",
+                "attachment; filename=\"?\\\"; filename*=UTF-8''pwned.txt; x=\\\"\"; ",
                 "filename*=UTF-8''%C3%A9%22%3B%20filename%2A%3DUTF-8%27%27pwned.txt%3B%20x%3D%22",
             )
         );
