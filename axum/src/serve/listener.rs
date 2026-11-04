@@ -39,8 +39,6 @@ impl Listener for tokio::net::TcpListener {
         loop {
             match Self::accept(self).await {
                 Ok(tup) => {
-                    // hyper writes the head by itself when the body isn't ready yet (streams, SSE,
-                    // files), and with Nagle the body then waits for the client's delayed ACK.
                     let _ = tup.0.set_nodelay(true);
                     return tup;
                 }
@@ -99,8 +97,6 @@ pub trait ListenerExt: Listener + Sized {
     ///
     /// # Example
     ///
-    /// Turning off `TCP_NODELAY`, which is otherwise set on accepted TCP connections:
-    ///
     /// ```
     /// use axum::{Router, routing::get, serve::ListenerExt};
     /// use tracing::trace;
@@ -112,8 +108,8 @@ pub trait ListenerExt: Listener + Sized {
     ///     .await
     ///     .unwrap()
     ///     .tap_io(|tcp_stream| {
-    ///         if let Err(err) = tcp_stream.set_nodelay(false) {
-    ///             trace!("failed to unset TCP_NODELAY on incoming connection: {err:#}");
+    ///         if let Ok(addr) = tcp_stream.peer_addr() {
+    ///             trace!("accepted connection from {addr}");
     ///         }
     ///     });
     /// axum::serve(listener, router).await;
