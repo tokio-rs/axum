@@ -1329,6 +1329,82 @@ async fn successful_connect_drops_body_and_framing_headers() {
 }
 
 #[crate::test]
+async fn successful_connect_drops_unknown_length_body() {
+    for (method, status, expected_body) in [
+        (Method::CONNECT, StatusCode::OK, ""),
+        (Method::CONNECT, StatusCode::CREATED, ""),
+        (
+            Method::CONNECT,
+            StatusCode::PROXY_AUTHENTICATION_REQUIRED,
+            "streamed body",
+        ),
+        (Method::GET, StatusCode::OK, "streamed body"),
+    ] {
+        let app = Router::new().fallback(move || async move {
+            let stream = futures_util::stream::iter([Ok::<_, Infallible>("streamed body")]);
+            (status, Body::from_stream(stream))
+        });
+        let uri = if method == Method::CONNECT {
+            "example.com:443"
+        } else {
+            "/"
+        };
+        let req = Request::builder()
+            .method(method)
+            .uri(uri)
+            .body(Body::empty())
+            .unwrap();
+
+        let res = app.oneshot(req).await.unwrap();
+
+        assert_eq!(res.status(), status);
+        assert!(res.headers().get(CONTENT_LENGTH).is_none());
+        assert!(res.headers().get(http::header::TRANSFER_ENCODING).is_none());
+        assert_eq!(res.collect().await.unwrap().to_bytes(), expected_body);
+    }
+}
+
+#[crate::test]
+async fn successful_connect_drops_body_without_polling() {
+    use std::sync::{atomic::AtomicBool, Arc};
+
+    struct DropGuard(Arc<AtomicBool>);
+
+    impl Drop for DropGuard {
+        fn drop(&mut self) {
+            self.0.store(true, Ordering::SeqCst);
+        }
+    }
+
+    let dropped = Arc::new(AtomicBool::new(false));
+    let app = Router::new().fallback({
+        let dropped = Arc::clone(&dropped);
+        move || {
+            let guard = DropGuard(Arc::clone(&dropped));
+            async move {
+                Body::from_stream(futures_util::stream::poll_fn(
+                    move |_| -> Poll<Option<Result<Bytes, Infallible>>> {
+                        let _ = &guard;
+                        panic!("successful CONNECT response body must not be polled");
+                    },
+                ))
+            }
+        }
+    });
+    let req = Request::builder()
+        .method(Method::CONNECT)
+        .uri("example.com:443")
+        .body(Body::empty())
+        .unwrap();
+
+    let res = app.oneshot(req).await.unwrap();
+
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(dropped.load(Ordering::SeqCst));
+    assert!(res.collect().await.unwrap().to_bytes().is_empty());
+}
+
+#[crate::test]
 async fn impl_handler_for_into_response() {
     let app = Router::new().route("/things", post((StatusCode::CREATED, "thing created")));
 
