@@ -119,6 +119,7 @@ impl<S> fmt::Debug for Router<S> {
             .field("path_router", &self.inner.path_router)
             .field("default_fallback", &self.inner.default_fallback)
             .field("catch_all_fallback", &self.inner.catch_all_fallback)
+            .field("finalized", &self.inner.finalized)
             .finish()
     }
 }

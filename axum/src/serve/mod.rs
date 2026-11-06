@@ -1400,11 +1400,6 @@ mod tests {
             .unwrap();
     }
 
-    // Asserts that `ListenerExt::tap_io` invokes its closure on every accepted
-    // connection when used with `serve`. The sibling `ListenerExt::limit_connections`
-    // has a direct unit test (in `serve::listener::tests`); `tap_io` did not have
-    // a runtime test, so its documented contract was only covered at the type level
-    // by `if_it_compiles_it_works`.
     // `serve(listener, router)` used to run `self.clone().with_state(())` on
     // every accepted connection. The `Arc` behind `Router` is shared with
     // `serve`, so that fell back to deep-cloning every route's service for each
@@ -1486,6 +1481,11 @@ mod tests {
         assert_eq!(first_request_on_new_connection, per_request);
     }
 
+    // Asserts that `ListenerExt::tap_io` invokes its closure on every accepted
+    // connection when used with `serve`. The sibling `ListenerExt::limit_connections`
+    // has a direct unit test (in `serve::listener::tests`); `tap_io` did not have
+    // a runtime test, so its documented contract was only covered at the type level
+    // by `if_it_compiles_it_works`.
     #[crate::test]
     async fn tap_io_runs_on_each_accepted_connection() {
         use std::sync::{
