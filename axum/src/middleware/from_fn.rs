@@ -9,7 +9,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::util::BoxCloneSyncService;
+use tower::{util::BoxCloneSyncService, ServiceExt};
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -340,9 +340,9 @@ pub struct Next {
 }
 
 impl Next {
-    /// Execute the remaining middleware stack.
-    pub async fn run(mut self, req: Request) -> Response {
-        match self.inner.call(req).await {
+    /// Execute the remaining middleware stack, waiting for it to become ready.
+    pub async fn run(self, req: Request) -> Response {
+        match self.inner.oneshot(req).await {
             Ok(res) => res,
             Err(err) => match err {},
         }
@@ -414,5 +414,90 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
         let body = res.collect().await.unwrap().to_bytes();
         assert_eq!(&body[..], b"ok");
+    }
+
+    #[crate::test]
+    async fn cloned_next_can_retry_concurrency_limited_service() {
+        use std::sync::{
+            atomic::{AtomicUsize, Ordering},
+            Arc,
+        };
+        use tower::limit::ConcurrencyLimit;
+
+        async fn retry_once(req: Request, next: Next) -> Response {
+            let retry = next.clone();
+            let response = next.run(req).await;
+
+            if response.status() == StatusCode::SERVICE_UNAVAILABLE {
+                retry.run(Request::new(Body::empty())).await
+            } else {
+                response
+            }
+        }
+
+        let calls = Arc::new(AtomicUsize::new(0));
+        let inner = tower::service_fn({
+            let calls = Arc::clone(&calls);
+            move |_: Request| {
+                let status = if calls.fetch_add(1, Ordering::SeqCst) == 0 {
+                    StatusCode::SERVICE_UNAVAILABLE
+                } else {
+                    StatusCode::OK
+                };
+                async move { Ok::<_, Infallible>((status, "response").into_response()) }
+            }
+        });
+        let service = from_fn(retry_once).layer(ConcurrencyLimit::new(inner, 1));
+
+        let response = service.oneshot(Request::new(Body::empty())).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+        assert_eq!(response.collect().await.unwrap().to_bytes(), "response");
+    }
+
+    #[crate::test]
+    async fn cloned_next_waits_for_readiness() {
+        use std::sync::Arc;
+        use tokio::sync::Semaphore;
+        use tower::limit::ConcurrencyLimit;
+
+        let semaphore = Arc::new(Semaphore::new(1));
+        let middleware = from_fn({
+            let semaphore = Arc::clone(&semaphore);
+            move |req: Request, next: Next| {
+                let semaphore = Arc::clone(&semaphore);
+                async move {
+                    let cloned = next.clone();
+                    drop(next);
+
+                    let permit = semaphore.acquire_owned().await.unwrap();
+                    let mut response = Box::pin(cloned.run(req));
+                    std::future::poll_fn(|cx| {
+                        assert!(response.as_mut().poll(cx).is_pending());
+                        Poll::Ready(())
+                    })
+                    .await;
+                    drop(permit);
+                    response.await
+                }
+            }
+        });
+        let inner = tower::service_fn(|req: Request| async move {
+            Ok::<_, Infallible>(req.into_body().into_response())
+        });
+        let service = middleware.layer(ConcurrencyLimit::with_semaphore(
+            inner,
+            Arc::clone(&semaphore),
+        ));
+
+        let response = service
+            .oneshot(Request::new(Body::from("request body")))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.collect().await.unwrap().to_bytes(), "request body");
+        assert_eq!(semaphore.available_permits(), 1);
     }
 }
