@@ -1,7 +1,23 @@
 use super::content_disposition::EscapedQuotedString;
 use axum_core::response::IntoResponse;
 use http::{header, HeaderMap, HeaderValue};
+use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use tracing::error;
+
+// Encode everything except RFC 8187's attr-char characters.
+const FILENAME_ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC
+    .remove(b'!')
+    .remove(b'#')
+    .remove(b'$')
+    .remove(b'&')
+    .remove(b'+')
+    .remove(b'-')
+    .remove(b'.')
+    .remove(b'^')
+    .remove(b'_')
+    .remove(b'`')
+    .remove(b'|')
+    .remove(b'~');
 
 /// A file attachment response.
 ///
@@ -55,6 +71,11 @@ impl<T: IntoResponse> Attachment<T> {
     /// Sets the filename of the [`Attachment`].
     ///
     /// This updates the `Content-Disposition` header to add a filename.
+    ///
+    /// Non-ASCII filenames use a UTF-8 encoded `filename*` parameter, with an ASCII
+    /// `filename` fallback for clients that do not support it. In the fallback,
+    /// each non-ASCII character and each `%` is replaced with `?`.
+    /// ASCII filenames use only the `filename` parameter.
     pub fn filename<H: TryInto<HeaderValue>>(mut self, value: H) -> Self {
         self.filename = match value.try_into() {
             Ok(filename) if std::str::from_utf8(filename.as_bytes()).is_ok() => Some(filename),
@@ -91,10 +112,22 @@ where
         let content_disposition = if let Some(filename) = self.filename {
             let filename_str = std::str::from_utf8(filename.as_bytes())
                 .expect("filename was checked to be valid UTF-8");
-            let value = format!(
-                "attachment; filename=\"{}\"",
-                EscapedQuotedString(filename_str)
-            );
+            let value = if filename_str.is_ascii() {
+                format!(
+                    "attachment; filename=\"{}\"",
+                    EscapedQuotedString(filename_str)
+                )
+            } else {
+                let fallback: String = filename_str
+                    .chars()
+                    .map(|c| if c.is_ascii() && c != '%' { c } else { '?' })
+                    .collect();
+                format!(
+                    "attachment; filename=\"{}\"; filename*=UTF-8''{}",
+                    EscapedQuotedString(&fallback),
+                    utf8_percent_encode(filename_str, FILENAME_ENCODE_SET)
+                )
+            };
             HeaderValue::try_from(value).expect("This was a HeaderValue so this can not fail")
         } else {
             HeaderValue::from_static("attachment")
@@ -136,7 +169,7 @@ mod tests {
         let value = attachment.headers().get(CONTENT_DISPOSITION).unwrap();
         assert_eq!(
             std::str::from_utf8(value.as_bytes()).unwrap(),
-            "attachment; filename=\"Bericht-März.pdf\""
+            "attachment; filename=\"Bericht-M?rz.pdf\"; filename*=UTF-8''Bericht-M%C3%A4rz.pdf"
         );
     }
 
@@ -146,6 +179,77 @@ mod tests {
         let attachment = Attachment::new("data").filename(filename).into_response();
         let value = attachment.headers().get(CONTENT_DISPOSITION).unwrap();
         assert_eq!(value, "attachment");
+    }
+
+    #[test]
+    fn attachment_with_extended_filename() {
+        for (filename, expected) in [
+            (
+                "résumé 100%.txt",
+                "attachment; filename=\"r?sum? 100?.txt\"; filename*=UTF-8''r%C3%A9sum%C3%A9%20100%25.txt",
+            ),
+            (
+                "🦀.txt",
+                "attachment; filename=\"?.txt\"; filename*=UTF-8''%F0%9F%A6%80.txt",
+            ),
+            (
+                "éAZaz09!#$&+-.^_`|~.txt",
+                "attachment; filename=\"?AZaz09!#$&+-.^_`|~.txt\"; filename*=UTF-8''%C3%A9AZaz09!#$&+-.^_`|~.txt",
+            ),
+            (
+                "é \"\\%*';/?:@=[]{}()<>,.txt",
+                concat!(
+                    "attachment; filename=\"? \\\"\\\\?*';/?:@=[]{}()<>,.txt\"; ",
+                    "filename*=UTF-8''%C3%A9%20%22%5C%25%2A%27%3B%2F%3F%3A%40%3D%5B%5D%7B%7D%28%29%3C%3E%2C.txt",
+                ),
+            ),
+            (
+                "é\t.txt",
+                "attachment; filename=\"?\t.txt\"; filename*=UTF-8''%C3%A9%09.txt",
+            ),
+        ] {
+            let response = Attachment::new("data").filename(filename).into_response();
+            assert_eq!(response.headers()[CONTENT_DISPOSITION], expected, "{filename:?}");
+        }
+    }
+
+    #[test]
+    fn attachment_with_ascii_filename_preserves_spaces_and_percent() {
+        let response = Attachment::new("data")
+            .filename("report 100%20.txt")
+            .into_response();
+        assert_eq!(
+            response.headers()[CONTENT_DISPOSITION],
+            "attachment; filename=\"report 100%20.txt\""
+        );
+    }
+
+    #[test]
+    fn attachment_with_invalid_filename() {
+        for filename in [
+            "é\r\nx-injected: yes",
+            "é\n.txt",
+            "é\0.txt",
+            "é\x1f.txt",
+            "é\x7f.txt",
+        ] {
+            let response = Attachment::new("data").filename(filename).into_response();
+            assert_eq!(response.headers()[CONTENT_DISPOSITION], "attachment");
+        }
+    }
+
+    #[test]
+    fn attachment_extended_filename_escapes_parameter_injection() {
+        let response = Attachment::new("data")
+            .filename("é\"; filename*=UTF-8''pwned.txt; x=\"")
+            .into_response();
+        assert_eq!(
+            response.headers()[CONTENT_DISPOSITION],
+            concat!(
+                "attachment; filename=\"?\\\"; filename*=UTF-8''pwned.txt; x=\\\"\"; ",
+                "filename*=UTF-8''%C3%A9%22%3B%20filename%2A%3DUTF-8%27%27pwned.txt%3B%20x%3D%22",
+            )
+        );
     }
 
     #[test]
