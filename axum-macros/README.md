@@ -14,7 +14,7 @@ This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in
 
 ## Minimum supported Rust version
 
-axum-macros's MSRV is 1.85.
+axum-macros's MSRV is set by the `rust-version` field in its `Cargo.toml`.
 
 ## Getting Help
 
