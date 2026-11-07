@@ -25,6 +25,20 @@ pub struct Redirect {
 }
 
 impl Redirect {
+    /// Create a new [`Redirect`] that uses a [`301 Moved Permanently`][mdn] status code.
+    ///
+    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/301
+    pub fn moved_permanently(uri: impl Into<String>) -> Self {
+        Self::with_status_code(StatusCode::MOVED_PERMANENTLY, uri.into())
+    }
+
+    /// Create a new [`Redirect`] that uses a [`302 Found`][mdn] status code.
+    ///
+    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/302
+    pub fn found(uri: impl Into<String>) -> Self {
+        Self::with_status_code(StatusCode::FOUND, uri.into())
+    }
+
     /// Create a new [`Redirect`] that uses a [`303 See Other`][mdn] status code.
     ///
     /// This redirect instructs the client to change the method to GET for the subsequent request
@@ -156,6 +170,16 @@ mod tests {
     // based on the way it was constructed.
     #[test]
     fn correct_status() {
+        assert_eq!(
+            StatusCode::MOVED_PERMANENTLY,
+            Redirect::moved_permanently(EXAMPLE_URL).status_code()
+        );
+
+        assert_eq!(
+            StatusCode::FOUND,
+            Redirect::found(EXAMPLE_URL).status_code()
+        );
+
         assert_eq!(
             StatusCode::SEE_OTHER,
             Redirect::to(EXAMPLE_URL).status_code()
