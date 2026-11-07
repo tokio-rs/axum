@@ -135,8 +135,10 @@ macro_rules! map_inner {
         #[allow(redundant_semicolons)]
         {
             let $inner = $self_.into_inner();
+            let mut inner = $expr;
+            inner.finalized = false;
             Router {
-                inner: Arc::new($expr),
+                inner: Arc::new(inner),
             }
         }
     };
@@ -290,7 +292,6 @@ where
                 .merge(catch_all_fallback)
                 .unwrap_or_else(|| panic!("Cannot merge two `Router`s that both have a fallback"));
 
-            this.finalized = false;
             this
         })
     }
@@ -308,7 +309,7 @@ where
             path_router: this.path_router.layer(layer.clone()),
             default_fallback: this.default_fallback,
             catch_all_fallback: this.catch_all_fallback.map(|route| route.layer(layer)),
-            finalized: this.finalized,
+            finalized: false,
         })
     }
 
@@ -326,7 +327,7 @@ where
             path_router: this.path_router.route_layer(layer),
             default_fallback: this.default_fallback,
             catch_all_fallback: this.catch_all_fallback,
-            finalized: this.finalized,
+            finalized: false,
         })
     }
 
@@ -447,12 +448,15 @@ where
 
     #[doc = include_str!("../docs/routing/with_state.md")]
     pub fn with_state<S2>(self, state: S) -> Router<S2> {
-        map_inner!(self, this => RouterInner {
-            path_router: this.path_router.with_state(state.clone()),
-            default_fallback: this.default_fallback,
-            catch_all_fallback: this.catch_all_fallback.with_state(state),
-            finalized: true,
-        })
+        let this = self.into_inner();
+        Router {
+            inner: Arc::new(RouterInner {
+                path_router: this.path_router.with_state(state.clone()),
+                default_fallback: this.default_fallback,
+                catch_all_fallback: this.catch_all_fallback.with_state(state),
+                finalized: true,
+            }),
+        }
     }
 
     pub(crate) fn call_with_state(&self, req: Request, state: S) -> RouteFuture<Infallible> {
