@@ -1,6 +1,8 @@
 //! Routing between [`Service`]s and handlers.
 
-use self::{future::RouteFuture, not_found::NotFound, path_router::PathRouter};
+use self::{
+    future::RouteFuture, nested::RootNestBehavior, not_found::NotFound, path_router::PathRouter,
+};
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 #[cfg(feature = "matched-path")]
@@ -31,16 +33,18 @@ pub mod method_routing;
 
 mod into_make_service;
 mod method_filter;
+mod nested;
 mod not_found;
 pub(crate) mod path_router;
 mod route;
 mod strip_prefix;
-pub(crate) mod url_params;
-
 #[cfg(test)]
 mod tests;
+pub(crate) mod url_params;
 
-pub use self::{into_make_service::IntoMakeService, method_filter::MethodFilter, route::Route};
+pub use self::{
+    into_make_service::IntoMakeService, method_filter::MethodFilter, nested::Nested, route::Route,
+};
 
 pub use self::method_routing::{
     any, any_service, connect, connect_service, delete, delete_service, get, get_service, head,
@@ -210,10 +214,12 @@ where
     #[doc = include_str!("../docs/routing/nest.md")]
     #[doc(alias = "scope")] // Some other libs like actix-web use this term
     #[track_caller]
-    pub fn nest(self, path: &str, router: Self) -> Self {
+    pub fn nest(self, path: &str, router: impl Into<Nested<S>>) -> Self {
         if path.is_empty() || path == "/" {
             panic!("Nesting at the root is no longer supported. Use merge instead.");
         }
+
+        let (router, root) = router.into().into_inner();
 
         let RouterInner {
             path_router,
@@ -225,7 +231,15 @@ where
         } = router.into_inner();
 
         tap_inner!(self, mut this => {
-            panic_on_err!(this.path_router.nest(path, path_router));
+            panic_on_err!(
+                this
+                    .path_router
+                    .nest(
+                        path,
+                        path_router,
+                        &root,
+                    )
+            );
         })
     }
 
@@ -244,6 +258,90 @@ where
         tap_inner!(self, mut this => {
             panic_on_err!(this.path_router.nest_service(path, service));
         })
+    }
+
+    /// Add a special root route to the router.
+    ///
+    /// In HTTP, empty path and `/` are considered to be the same, so this distinction matters only
+    /// for nested routes like `/prefix` and `/prefix/`.  Therefore, the returned type is
+    /// [`Nested`], not [`Router`].
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     routing::{get, post},
+    ///     Router,
+    /// };
+    ///
+    /// let user_routes = Router::new()
+    ///     .route("/{id}", get(|| async {}))
+    ///     .route_root(post(|| async {}));
+    ///
+    /// let app = Router::new()
+    ///     .nest("/users", user_routes);
+    ///
+    /// // Our app now accepts
+    /// // - GET /users/{id}
+    /// // - POST /users
+    /// # let _: Router = app;
+    /// ```
+    pub fn route_root(self, method_router: MethodRouter<S>) -> Nested<S> {
+        Nested::new(
+            self,
+            RootNestBehavior::ExplicitRoot(Endpoint::MethodRouter(method_router)),
+        )
+    }
+
+    /// Like [`route_root`](Self::route_root), but accepts an arbitrary `Service`.
+    pub fn route_root_service<T>(self, service: T) -> Nested<S>
+    where
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
+        T::Response: IntoResponse,
+        T::Future: Send + 'static,
+    {
+        Nested::new(
+            self,
+            RootNestBehavior::ExplicitRoot(Endpoint::Route(Route::new(service))),
+        )
+    }
+
+    /// Add a special root route identical to the `/` handler.
+    ///
+    /// If the returned [`Nested`] is nested under `/prefix`, both `/prefix` and `/prefix/` will be
+    /// handled by the same handler originally routed to `/` in the inner router.
+    ///
+    /// If there is no handler set for `/`, this does nothing and both of the routes will be handled
+    /// by fallbacks.
+    ///
+    /// See [`route_root`](Self::route_root) for details on root routes.
+    pub fn route_root_to_slash_route(self) -> Nested<S> {
+        Nested::new(self, RootNestBehavior::RootAndSlash)
+    }
+
+    /// Move the `/` into the root route.
+    ///
+    /// If the returned [`Nested`] is nested under `/prefix`, `/prefix` will be handled by the
+    /// handler originally routed to `/` in the inner router. and `/prefix/` will be handled by the
+    /// nested router fallback.
+    ///
+    /// If there is no handler set for `/`, this does nothing and both of the routes will be handled
+    /// by fallbacks.
+    ///
+    /// See [`route_root`](Self::route_root) for details on root routes.
+    pub fn without_slash_route(self) -> Nested<S> {
+        Nested::new(self, RootNestBehavior::RootOnly)
+    }
+
+    /// Prepare the router to be nested.
+    ///
+    /// After nesting at `/prefix`, the `/` handler will be available at `/prefix/` and the route
+    /// `/prefix` will be handled by a fallback.
+    ///
+    /// See [`without_slash_route`](Self::without_slash_route) and
+    /// [`route_root_to_slash_route`](Self::route_root_to_slash_route) for alternatives.
+    pub fn without_root_route(self) -> Nested<S> {
+        Nested::new(self, RootNestBehavior::SlashOnly)
     }
 
     #[doc = include_str!("../docs/routing/merge.md")]

@@ -1,5 +1,5 @@
 use crate::routing::url_params;
-use http::{Request, Uri};
+use http::{uri::PathAndQuery, Request, Uri};
 use std::{
     sync::Arc,
     task::{Context, Poll},
@@ -7,6 +7,8 @@ use std::{
 use tower::Layer;
 use tower_layer::layer_fn;
 use tower_service::Service;
+
+use super::nested::NestedRootMarker;
 
 #[derive(Clone)]
 pub(super) struct StripPrefix<S> {
@@ -42,7 +44,25 @@ where
 
     fn call(&mut self, mut req: Request<B>) -> Self::Future {
         if let Some(new_uri) = strip_prefix(req.uri(), &self.prefix) {
-            *req.uri_mut() = new_uri;
+            match new_uri {
+                StrippedUri::Empty { query } => {
+                    let mut parts = req.uri().clone().into_parts();
+                    match query {
+                        Some(query) => {
+                            parts.path_and_query = Some(format!("?{query}").parse().unwrap());
+                        }
+                        None => parts.path_and_query = Some(PathAndQuery::from_static("/")),
+                    }
+                    *req.uri_mut() = Uri::from_parts(parts).unwrap();
+                    req.extensions_mut().insert(NestedRootMarker::Root);
+                }
+                StrippedUri::Uri(uri) => {
+                    if uri.path() == "/" {
+                        req.extensions_mut().insert(NestedRootMarker::Slash);
+                    }
+                    *req.uri_mut() = uri;
+                }
+            }
         }
         url_params::advance_inner_start(req.extensions_mut(), self.captures_count);
         self.inner.call(req)
@@ -53,7 +73,21 @@ fn count_captures(path: &str) -> usize {
     segments(path).filter_map(capture_prefix_suffix).count()
 }
 
-fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
+enum StrippedUri {
+    Empty { query: Option<String> },
+    Uri(Uri),
+}
+
+impl std::fmt::Display for StrippedUri {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Empty { query: _ } => Ok(()),
+            Self::Uri(uri) => uri.fmt(f),
+        }
+    }
+}
+
+fn strip_prefix(uri: &Uri, prefix: &str) -> Option<StrippedUri> {
     let path_and_query = uri.path_and_query()?;
 
     // Check whether the prefix matches the path and if so how long the matching prefix is.
@@ -99,9 +133,10 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
             //
             // For example:
             //
-            // prefix = /foo
-            // path   = /foo/bar
+            // prefix = /foo, path = /foo/bar  -> remainder `/bar`
+            // prefix = /foo, path = /foo/     -> remainder `/`
             Item::First(_) => {
+                *matching_prefix_length.as_mut().unwrap() -= 1;
                 break;
             }
             // the prefix had more segments than the path so there is no match
@@ -117,17 +152,22 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
     // panic
     let after_prefix = uri.path().split_at(matching_prefix_length?).1;
 
-    let new_path_and_query = match (after_prefix.starts_with('/'), path_and_query.query()) {
-        (true, None) => after_prefix.parse().unwrap(),
-        (true, Some(query)) => format!("{after_prefix}?{query}").parse().unwrap(),
-        (false, None) => format!("/{after_prefix}").parse().unwrap(),
-        (false, Some(query)) => format!("/{after_prefix}?{query}").parse().unwrap(),
+    let new_path_and_query = match (after_prefix.chars().next(), path_and_query.query()) {
+        (None, query) => {
+            return Some(StrippedUri::Empty {
+                query: query.map(ToOwned::to_owned),
+            })
+        }
+        (Some('/'), None) => after_prefix.parse().unwrap(),
+        (Some('/'), Some(query)) => format!("{after_prefix}?{query}").parse().unwrap(),
+        (Some(_), None) => format!("/{after_prefix}").parse().unwrap(),
+        (Some(_), Some(query)) => format!("/{after_prefix}?{query}").parse().unwrap(),
     };
 
     let mut parts = uri.clone().into_parts();
     parts.path_and_query = Some(new_path_and_query);
 
-    Some(Uri::from_parts(parts).unwrap())
+    Some(StrippedUri::Uri(Uri::from_parts(parts).unwrap()))
 }
 
 fn segments(s: &str) -> impl Iterator<Item = &str> {
@@ -250,13 +290,13 @@ mod tests {
         };
     }
 
-    test!(empty, uri = "/", prefix = "/", expected = Some("/"),);
+    test!(empty, uri = "/", prefix = "/", expected = Some(""),);
 
     test!(
         single_segment,
         uri = "/a",
         prefix = "/a",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(
@@ -285,7 +325,7 @@ mod tests {
         single_segment_trailing_slash,
         uri = "/a/",
         prefix = "/a/",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(
@@ -334,7 +374,7 @@ mod tests {
         multi_segment_trailing_slash,
         uri = "/a/b/",
         prefix = "/a/b/",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(
@@ -351,18 +391,13 @@ mod tests {
         expected = Some("/"),
     );
 
-    test!(
-        param_0,
-        uri = "/",
-        prefix = "/{param}",
-        expected = Some("/"),
-    );
+    test!(param_0, uri = "/", prefix = "/{param}", expected = Some(""),);
 
     test!(
         param_1,
         uri = "/a",
         prefix = "/{param}",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(
@@ -383,7 +418,7 @@ mod tests {
         param_4,
         uri = "/a/b",
         prefix = "/a/{param}",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(
@@ -404,14 +439,14 @@ mod tests {
         param_7,
         uri = "/b/a",
         prefix = "/{param}/a",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(
         param_8,
         uri = "/a/b/c",
         prefix = "/a/{param}/c",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(
@@ -434,7 +469,7 @@ mod tests {
         param_12,
         uri = "/a/",
         prefix = "/{param}/",
-        expected = Some("/"),
+        expected = Some(""),
     );
 
     test!(

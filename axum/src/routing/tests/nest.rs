@@ -118,6 +118,12 @@ fn nest_service_no_slash() {
 }
 
 #[crate::test]
+#[should_panic(expected = "Nesting paths must not end with a `/`.")]
+async fn nest_no_ending_slash() {
+    let _: Router = Router::new().nest("/x/", Router::new());
+}
+
+#[crate::test]
 async fn nested_url_extractor() {
     let app = Router::new().nest(
         "/foo",
@@ -374,42 +380,6 @@ async fn nest_with_and_without_trailing() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-#[tokio::test]
-async fn nesting_with_root_inner_router() {
-    let app = Router::new()
-        .nest_service("/service", Router::new().route("/", get(|| async {})))
-        .nest("/router", Router::new().route("/", get(|| async {})))
-        .nest("/router-slash/", Router::new().route("/", get(|| async {})));
-
-    let client = TestClient::new(app);
-
-    // `/service/` does match the `/service` prefix and the remaining path is technically
-    // empty, which is the same as `/` which matches `.route("/", _)`
-    let res = client.get("/service").await;
-    assert_eq!(res.status(), StatusCode::OK);
-
-    // `/service/` does match the `/service` prefix and the remaining path is `/`
-    // which matches `.route("/", _)`
-    //
-    // this is perhaps a little surprising but don't think there is much we can do
-    let res = client.get("/service/").await;
-    assert_eq!(res.status(), StatusCode::OK);
-
-    // at least it does work like you'd expect when using `nest`
-
-    let res = client.get("/router").await;
-    assert_eq!(res.status(), StatusCode::OK);
-
-    let res = client.get("/router/").await;
-    assert_eq!(res.status(), StatusCode::NOT_FOUND);
-
-    let res = client.get("/router-slash").await;
-    assert_eq!(res.status(), StatusCode::NOT_FOUND);
-
-    let res = client.get("/router-slash/").await;
-    assert_eq!(res.status(), StatusCode::OK);
-}
-
 macro_rules! nested_route_test {
     (
         $name:ident,
@@ -432,13 +402,9 @@ macro_rules! nested_route_test {
     };
 }
 
-// test cases taken from https://github.com/tokio-rs/axum/issues/714#issuecomment-1058144460
 nested_route_test!(nest_1, nest = "/a", route = "/", expected = "/a");
 nested_route_test!(nest_2, nest = "/a", route = "/a", expected = "/a/a");
 nested_route_test!(nest_3, nest = "/a", route = "/a/", expected = "/a/a/");
-nested_route_test!(nest_4, nest = "/a/", route = "/", expected = "/a/");
-nested_route_test!(nest_5, nest = "/a/", route = "/a", expected = "/a/a");
-nested_route_test!(nest_6, nest = "/a/", route = "/a/", expected = "/a/a/");
 
 #[crate::test]
 async fn colon_in_nested_route() {
@@ -563,4 +529,126 @@ async fn overriding_nested_service_router() {
     let res = client.get("/nest/after").await;
     let body = res.text().await;
     assert_eq!(body, "outer");
+}
+
+#[crate::test]
+async fn root_only_nested_router() {
+    let nested = Router::new()
+        .route("/", get(|| async { "slash" }))
+        .without_slash_route();
+
+    let router = Router::new().nest("/nest", nested);
+
+    let client = TestClient::new(router);
+
+    let res = client.get("/nest").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "slash");
+
+    let res = client.get("/nest/").await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[crate::test]
+async fn slash_only_nested_router() {
+    let nested = Router::new()
+        .route("/", get(|| async { "slash" }))
+        .without_root_route();
+
+    let router = Router::new().nest("/nest", nested);
+
+    let client = TestClient::new(router);
+
+    let res = client.get("/nest").await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let res = client.get("/nest/").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "slash");
+}
+
+#[crate::test]
+async fn root_and_slash_nested_router() {
+    let nested = Router::new()
+        .route("/", get(|| async { "slash" }))
+        .route_root_to_slash_route();
+
+    let router = Router::new().nest("/nest", nested);
+
+    let client = TestClient::new(router);
+
+    let res = client.get("/nest").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "slash");
+
+    let res = client.get("/nest/").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "slash");
+}
+
+#[crate::test]
+async fn explicit_root_route_nested_router() {
+    let nested = Router::new()
+        .route("/", get(|| async { "slash" }))
+        .route_root(get(|| async { "root" }));
+
+    let router = Router::new().nest("/nest", nested);
+
+    let client = TestClient::new(router);
+
+    let res = client.get("/nest").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "root");
+
+    let res = client.get("/nest/").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "slash");
+}
+
+#[crate::test]
+async fn default_nesting_behavior() {
+    let nested = Router::new().route("/", get(|| async { "slash" }));
+
+    let router = Router::new().nest("/nest", nested);
+
+    let client = TestClient::new(router);
+
+    let res = client.get("/nest").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "slash");
+
+    let res = client.get("/nest/").await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[cfg(all(feature = "original-uri", feature = "matched-path"))]
+#[crate::test]
+async fn explicit_root_route_extractors() {
+    use crate::extract::MatchedPath;
+    use crate::extract::NestedPath;
+    use crate::extract::OriginalUri;
+
+    let nested = Router::new().route_root(get(
+        |OriginalUri(original_uri): OriginalUri,
+         MatchedPath(matched_path): MatchedPath,
+         nested_path: NestedPath| async move {
+            format!("{original_uri} {matched_path} {}", nested_path.as_str())
+        },
+    ));
+
+    let router = Router::new().nest("/nest", nested);
+
+    let client = TestClient::new(router);
+
+    let res = client.get("/nest").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "/nest /nest /nest");
 }
