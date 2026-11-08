@@ -40,6 +40,9 @@ pub use self::listener::{ConnLimiter, ConnLimiterIo, Listener, ListenerExt, TapI
 /// [`Serve::connection_lifetime_limits`]). Everything else uses hyper's default configuration
 /// (including [timeouts]); use hyper or hyper-util if you need more control.
 ///
+/// `TCP_NODELAY` is set on connections accepted from a [`tokio::net::TcpListener`]. Use
+/// [`ListenerExt::tap_io`] to change that.
+///
 /// It supports both HTTP/1 as well as HTTP/2.
 ///
 /// # Examples
