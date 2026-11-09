@@ -1,7 +1,6 @@
 //! Serve services.
 
 use std::{
-    collections::HashMap,
     convert::Infallible,
     error::Error as StdError,
     fmt::Debug,
@@ -10,7 +9,7 @@ use std::{
     io,
     marker::PhantomData,
     pin::pin,
-    sync::{Arc, Mutex},
+    sync::Arc,
     time::Duration,
 };
 
@@ -26,10 +25,8 @@ use hyper_util::rt::TokioIo;
 use hyper_util::rt::TokioTimer;
 #[cfg(any(feature = "http1", feature = "http2"))]
 use hyper_util::{server::conn::auto::Builder, service::TowerToHyperService};
-use tokio::{
-    sync::{oneshot, watch},
-    task::JoinHandle,
-};
+use tokio::{sync::watch, task::JoinHandle};
+use tokio_util::sync::CancellationToken;
 use tower::ServiceExt as _;
 use tower_service::Service;
 
@@ -306,89 +303,6 @@ fn sleep_or_pending(duration: Option<Duration>) -> Either<tokio::time::Sleep, Pe
     match duration {
         Some(duration) => Either::Left(tokio::time::sleep(duration)),
         None => Either::Right(std::future::pending()),
-    }
-}
-
-/// Signals a graceful shutdown to the accept loop and to every connection.
-///
-/// Each subscriber gets its own oneshot channel, and shutting down drops every sender.
-/// Connection tasks poll their receiver on every wakeup, i.e. for every streamed body chunk.
-/// A pending oneshot receiver only touches its own channel, whereas pending `watch` receivers
-/// share a few locked notifiers across all connections.
-#[derive(Clone)]
-struct ShutdownSignal(Arc<Mutex<Option<Subscribers>>>);
-
-#[derive(Default)]
-struct Subscribers {
-    next_key: u64,
-    senders: HashMap<u64, oneshot::Sender<()>>,
-}
-
-impl ShutdownSignal {
-    fn new() -> Self {
-        Self(Arc::new(Mutex::new(Some(Subscribers::default()))))
-    }
-
-    /// Returns a future that completes once [`Self::shutdown`] has been called.
-    ///
-    /// Dropping the future unsubscribes, so finished connections don't leave senders behind.
-    fn subscribe(&self) -> impl Future<Output = ()> + Send + 'static {
-        let (tx, rx) = oneshot::channel();
-        let mut subscribers = self.0.lock().unwrap();
-        let (key, late_tx) = match subscribers.as_mut() {
-            Some(subscribers) => {
-                let key = subscribers.next_key;
-                subscribers.next_key += 1;
-                subscribers.senders.insert(key, tx);
-                (Some(key), None)
-            }
-            None => (None, Some(tx)),
-        };
-        drop(subscribers);
-        // After shutdown, the sender is dropped here, so a late subscriber sees it at once.
-        drop(late_tx);
-
-        let unsubscribe = Unsubscribe {
-            signal: self.clone(),
-            key,
-        };
-        async move {
-            let _unsubscribe = unsubscribe;
-            let _ = rx.await;
-        }
-    }
-
-    fn shutdown(&self) {
-        // Drop the senders after releasing the lock: dropping one wakes its task.
-        let subscribers = self.0.lock().unwrap().take();
-        drop(subscribers);
-    }
-}
-
-/// Removes a subscriber's sender when its future is dropped.
-struct Unsubscribe {
-    signal: ShutdownSignal,
-    key: Option<u64>,
-}
-
-impl Drop for Unsubscribe {
-    fn drop(&mut self) {
-        let Some(key) = self.key else { return };
-        let mut subscribers = self.signal.0.lock().unwrap();
-        let sender = subscribers.as_mut().and_then(|s| s.senders.remove(&key));
-        // Drop the sender after releasing the lock, as in `ShutdownSignal::shutdown`.
-        drop(subscribers);
-        drop(sender);
-    }
-}
-
-/// Starts the graceful shutdown when dropped, so it also starts if the shutdown signal
-/// future panics or its task is cancelled.
-struct ShutdownOnDrop(ShutdownSignal);
-
-impl Drop for ShutdownOnDrop {
-    fn drop(&mut self) {
-        self.0.shutdown();
     }
 }
 
@@ -761,13 +675,15 @@ where
             _marker,
         } = self;
 
-        let shutdown = ShutdownSignal::new();
-        let mut signal_received = pin!(shutdown.subscribe());
-        let shutdown_on_drop = ShutdownOnDrop(shutdown.clone());
+        let shutdown = CancellationToken::new();
+        let mut signal_received = pin!(shutdown.cancelled());
+        // Cancels when dropped, so the shutdown also starts if `signal` panics or its task is
+        // cancelled.
+        let cancel_on_drop = shutdown.clone().drop_guard();
         executor.execute(async move {
             signal.await;
             trace!("received graceful shutdown signal. Telling tasks to shutdown");
-            drop(shutdown_on_drop);
+            drop(cancel_on_drop);
         });
 
         let (close_tx, close_rx) = watch::channel(());
@@ -782,9 +698,12 @@ where
                     }
                 };
 
+            // Each connection waits on its own child token. Connection tasks poll this future on
+            // every wakeup, and polling a pending `cancelled()` future locks the token's state, so
+            // connections sharing one token would contend on that lock.
             handle_connection(
                 &mut make_service,
-                shutdown.subscribe(),
+                shutdown.child_token().cancelled_owned(),
                 &close_rx,
                 io,
                 remote_addr,
@@ -1280,23 +1199,6 @@ mod tests {
             self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             tokio::spawn(fut)
         }
-    }
-
-    #[crate::test]
-    async fn shutdown_signal_notifies_live_and_late_subscribers() {
-        let shutdown = super::ShutdownSignal::new();
-        let live = shutdown.subscribe();
-        // Finished subscribers are removed right away.
-        for _ in 0..1000 {
-            drop(shutdown.subscribe());
-        }
-        let subscribers = shutdown.0.lock().unwrap().as_ref().unwrap().senders.len();
-        assert_eq!(subscribers, 1);
-
-        shutdown.shutdown();
-        live.await;
-        // A connection accepted after shutdown sees it right away.
-        shutdown.subscribe().await;
     }
 
     #[crate::test]
