@@ -51,10 +51,14 @@ pub(super) fn insert_url_params(extensions: &mut Extensions, params: &Params<'_,
             current.extend(params);
         }
         (None, Ok(params)) => {
-            extensions.insert(UrlParams::Params {
-                params,
-                inner_start: 0,
-            });
+            // the extractors read a missing `UrlParams` as no params, so routes without any
+            // don't have to pay for the extension
+            if !params.is_empty() {
+                extensions.insert(UrlParams::Params {
+                    params,
+                    inner_start: 0,
+                });
+            }
         }
     }
 }
@@ -62,5 +66,24 @@ pub(super) fn insert_url_params(extensions: &mut Extensions, params: &Params<'_,
 pub(super) fn advance_inner_start(extensions: &mut Extensions, count: usize) {
     if let Some(UrlParams::Params { inner_start, .. }) = extensions.get_mut() {
         *inner_start += count;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn no_extension_without_params() {
+        let mut router = matchit::Router::new();
+        router.insert("/users", ()).unwrap();
+        router.insert("/users/{id}", ()).unwrap();
+
+        let mut extensions = Extensions::new();
+        insert_url_params(&mut extensions, &router.at("/users").unwrap().params);
+        assert!(extensions.is_empty());
+
+        insert_url_params(&mut extensions, &router.at("/users/1").unwrap().params);
+        assert!(extensions.get::<UrlParams>().is_some());
     }
 }
