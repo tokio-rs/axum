@@ -132,16 +132,13 @@ pub(crate) const FALLBACK_PARAM: &str = "__private__axum_fallback";
 pub(crate) const FALLBACK_PARAM_PATH: &str = "/{*__private__axum_fallback}";
 
 macro_rules! map_inner {
-    ( $self_:ident, $inner:pat_param => $expr:expr) => {
-        #[allow(redundant_semicolons)]
-        {
-            let $inner = $self_.into_inner();
-            Router {
-                inner: Arc::new($expr),
-                finalized: false,
-            }
+    ( $self_:ident, $inner:pat_param => $expr:expr) => {{
+        let $inner = $self_.into_inner();
+        Router {
+            inner: Arc::new($expr),
+            finalized: false,
         }
-    };
+    }};
 }
 
 macro_rules! tap_inner {
@@ -443,15 +440,13 @@ where
 
     #[doc = include_str!("../docs/routing/with_state.md")]
     pub fn with_state<S2>(self, state: S) -> Router<S2> {
-        let this = self.into_inner();
-        Router {
-            inner: Arc::new(RouterInner {
-                path_router: this.path_router.with_state(state.clone()),
-                default_fallback: this.default_fallback,
-                catch_all_fallback: this.catch_all_fallback.with_state(state),
-            }),
-            finalized: true,
-        }
+        let mut router = map_inner!(self, this => RouterInner {
+            path_router: this.path_router.with_state(state.clone()),
+            default_fallback: this.default_fallback,
+            catch_all_fallback: this.catch_all_fallback.with_state(state),
+        });
+        router.finalized = true;
+        router
     }
 
     pub(crate) fn call_with_state(&self, req: Request, state: S) -> RouteFuture<Infallible> {
