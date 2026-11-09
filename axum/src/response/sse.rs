@@ -311,6 +311,10 @@ impl Event {
         T: AsRef<str>,
     {
         let mut writer = self.into_data_writer();
+        // Start the field even for an empty string: an event without any
+        // `data` field is never dispatched by `EventSource`, so `data("")`
+        // must still produce `data: `.
+        writer.start_data();
         let _ = writer.write_str(data.as_ref());
         writer.into_event()
     }
@@ -516,6 +520,19 @@ impl EventDataWriter {
 }
 
 impl EventDataWriter {
+    // Writes the `data: ` prefix of the first data field, unless this writer
+    // has already started one.
+    fn start_data(&mut self) {
+        if !std::mem::replace(&mut self.data_written, true) {
+            if self.event.flags.contains(EventFlags::HAS_DATA) {
+                panic!("Called `Event::data*` multiple times");
+            }
+
+            let _ = self.event.buffer.as_mut().write_str("data: ");
+            self.event.flags.insert(EventFlags::HAS_DATA);
+        }
+    }
+
     // Assumption: underlying writer never returns an error:
     // <https://docs.rs/bytes/latest/src/bytes/buf/writer.rs.html#79-82>
     fn write_buf(&mut self, buf: &[u8]) -> usize {
@@ -523,19 +540,10 @@ impl EventDataWriter {
             return 0;
         }
 
+        self.start_data();
+
         let pending_cr = mem::take(&mut self.pending_cr);
-        let buffer = self.event.buffer.as_mut();
-
-        if !std::mem::replace(&mut self.data_written, true) {
-            if self.event.flags.contains(EventFlags::HAS_DATA) {
-                panic!("Called `Event::data*` multiple times");
-            }
-
-            let _ = buffer.write_str("data: ");
-            self.event.flags.insert(EventFlags::HAS_DATA);
-        }
-
-        let mut writer = buffer.writer();
+        let mut writer = self.event.buffer.as_mut().writer();
 
         if pending_cr && buf[0] != b'\n' {
             let _ = writer.write_all(b"data: ");
@@ -736,6 +744,17 @@ mod tests {
     use serde_json::value::RawValue;
     use std::{collections::HashMap, convert::Infallible};
     use tokio_stream::StreamExt as _;
+
+    #[test]
+    fn empty_data_still_writes_data_field() {
+        // Browsers only dispatch an event if it has at least one `data` field,
+        // so an empty `data` must still be written as `data: `.
+        let event = Event::default().data("");
+        assert_eq!(&*event.finalize(), b"data: \n\n");
+
+        let event = Event::default().event("deleted").data("");
+        assert_eq!(&*event.finalize(), b"event: deleted\ndata: \n\n");
+    }
 
     #[test]
     fn leading_space_is_not_stripped() {
