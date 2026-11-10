@@ -38,9 +38,13 @@ impl FromStr for RangeSpec {
             .trim()
             .split_once('-')
             .ok_or(ParseRangeError::MissingHyphen)?;
-        let (start, end) = (start.trim(), end.trim());
 
-        let parser = |base: &str, err: Self::Err| base.parse::<u64>().map_err(|_| err);
+        let parser = |base: &str, err: Self::Err| {
+            if !base.bytes().all(|byte| byte.is_ascii_digit()) {
+                return Err(err);
+            }
+            base.parse::<u64>().map_err(|_| err)
+        };
         match (start, end) {
             ("", "") => Err(ParseRangeError::EmptyRange),
             ("", end) => Ok(Self::Suffix {
@@ -168,6 +172,10 @@ mod tests {
             ("0-x", ParseRangeError::InvalidEnd),
             ("-x", ParseRangeError::InvalidSuffixLength),
             ("5-3", ParseRangeError::EndBeforeStart),
+            ("+0-", ParseRangeError::InvalidStart),
+            ("0-+1", ParseRangeError::InvalidEnd),
+            ("-+1", ParseRangeError::InvalidSuffixLength),
+            ("0 - 1", ParseRangeError::InvalidStart),
             ("18446744073709551616-", ParseRangeError::InvalidStart),
             ("0-18446744073709551616", ParseRangeError::InvalidEnd),
             (
