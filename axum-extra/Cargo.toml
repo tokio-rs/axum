@@ -46,7 +46,7 @@ file-stream = [
     "tokio?/fs",
     "tokio?/io-util",
 ]
-attachment = ["dep:tracing"]
+attachment = ["dep:percent-encoding", "dep:tracing"]
 error-response = ["dep:tracing", "tracing/std"]
 cookie = ["dep:cookie"]
 cookie-private = ["cookie", "cookie?/private"]
