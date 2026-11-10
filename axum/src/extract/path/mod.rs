@@ -883,7 +883,7 @@ mod tests {
     }
 
     #[crate::test]
-    async fn deserialize_wildcard_into_vec() {
+    async fn top_level_vec_wildcard_is_unsplit() {
         let app = Router::new().route(
             "/files/{*path}",
             get(|Path(segments): Path<Vec<String>>| async move { segments.join(",") }),
@@ -893,13 +893,34 @@ mod tests {
 
         let res = client.get("/files/a/b/c").await;
         assert_eq!(res.status(), StatusCode::OK);
-        assert_eq!(res.text().await, "a,b,c");
+        assert_eq!(res.text().await, "a/b/c");
+    }
 
-        // captures are percent-decoded before they are split, so an encoded
-        // slash also separates segments
-        let res = client.get("/files/a%20b/c%2Fd").await;
+    #[crate::test]
+    async fn deserialize_wildcard_into_vec_in_tuples() {
+        let app = Router::new()
+            .route(
+                "/{bucket}/{*key}",
+                get(
+                    |Path((bucket, key)): Path<(String, Vec<String>)>| async move {
+                        format!("{bucket}:{}", key.join(","))
+                    },
+                ),
+            )
+            .route(
+                "/solo/{*key}",
+                get(|Path((key,)): Path<(Vec<String>,)>| async move { key.join(",") }),
+            );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/my-bucket/a/b%2Fc").await;
         assert_eq!(res.status(), StatusCode::OK);
-        assert_eq!(res.text().await, "a b,c,d");
+        assert_eq!(res.text().await, "my-bucket:a,b,c");
+
+        let res = client.get("/solo/a/b").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "a,b");
     }
 
     #[crate::test]
