@@ -118,7 +118,7 @@ impl<T> From<T> for Protobuf<T> {
 
 impl<T> IntoResponse for Protobuf<T>
 where
-    T: Message + Default,
+    T: Message,
 {
     fn into_response(self) -> Response {
         let mut buf = BytesMut::with_capacity(self.0.encoded_len());
@@ -240,6 +240,32 @@ mod tests {
             .text()
             .await
             .starts_with("Failed to buffer the request body"));
+    }
+
+    #[tokio::test]
+    async fn encode_response_without_default_bound() {
+        // A generic Message need not implement Default to be serialized.
+        fn respond<T: Message>(value: T) -> Response {
+            Protobuf(value).into_response()
+        }
+
+        #[derive(prost::Message)]
+        struct Payload {
+            #[prost(string, tag = "1")]
+            value: String,
+        }
+
+        let payload = Payload {
+            value: "hello".to_owned(),
+        };
+        let expected = payload.encode_to_vec();
+        let response = respond(payload);
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(body.as_ref(), expected.as_slice());
     }
 
     #[tokio::test]
