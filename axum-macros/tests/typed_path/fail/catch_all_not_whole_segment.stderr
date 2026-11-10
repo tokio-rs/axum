@@ -1,0 +1,5 @@
+error: Wildcards must be at the end of the path
+ --> tests/typed_path/fail/catch_all_not_whole_segment.rs:5:14
+  |
+5 | #[typed_path("/files/{*rest}.txt")]
+  |              ^^^^^^^^^^^^^^^^^^^^

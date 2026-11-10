@@ -1,0 +1,23 @@
+error: Invalid capture name `user-id`: expected a Rust identifier
+ --> tests/typed_path/fail/invalid_capture_name.rs:5:14
+  |
+5 | #[typed_path("/users/{user-id}")]
+  |              ^^^^^^^^^^^^^^^^^^
+
+error: Invalid capture name `123`: expected a Rust identifier
+  --> tests/typed_path/fail/invalid_capture_name.rs:11:14
+   |
+11 | #[typed_path("/users/{123}")]
+   |              ^^^^^^^^^^^^^^
+
+error: Invalid capture name `file-name`: expected a Rust identifier
+  --> tests/typed_path/fail/invalid_capture_name.rs:15:14
+   |
+15 | #[typed_path("/files/{*file-name}")]
+   |              ^^^^^^^^^^^^^^^^^^^^^
+
+error: Invalid capture name `user_id `: expected a Rust identifier
+  --> tests/typed_path/fail/invalid_capture_name.rs:19:14
+   |
+19 | #[typed_path("/users/{user_id }")]
+   |              ^^^^^^^^^^^^^^^^^^^

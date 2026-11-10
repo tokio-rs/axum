@@ -335,15 +335,17 @@ fn expand_unit_fields(
         {
             type Rejection = #rejection_assoc_type;
 
-            async fn from_request_parts(
+            fn from_request_parts(
                 parts: &mut ::axum::http::request::Parts,
                 _state: &S,
-            ) -> ::std::result::Result<Self, Self::Rejection> {
-                if parts.uri.path() == <Self as ::axum_extra::routing::TypedPath>::PATH {
-                    Ok(Self)
-                } else {
-                    #create_rejection
-                }
+            ) -> impl ::std::future::Future<Output = ::std::result::Result<Self, Self::Rejection>> {
+                ::std::future::ready(
+                    if parts.uri.path() == <Self as ::axum_extra::routing::TypedPath>::PATH {
+                        Ok(Self)
+                    } else {
+                        #create_rejection
+                    }
+                )
             }
         }
     };
@@ -386,6 +388,8 @@ fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
         return Err(syn::Error::new_spanned(path, "paths must start with a `/`"));
     }
 
+    validate_path_segments(&value, path)?;
+
     let mut segments = Vec::new();
     let mut rest = value.as_str();
 
@@ -402,10 +406,15 @@ fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
                 return Err(syn::Error::new_spanned(path, "invalid capture in path"));
             }
 
-            segments.push(Segment::Capture(
-                capture.strip_prefix('*').unwrap_or(capture).to_owned(),
-                path.span(),
-            ));
+            let capture = capture.strip_prefix('*').unwrap_or(capture);
+            if syn::parse_str::<syn::Ident>(capture).map_or(true, |ident| ident != capture) {
+                return Err(syn::Error::new_spanned(
+                    path,
+                    format!("Invalid capture name `{capture}`: expected a Rust identifier"),
+                ));
+            }
+
+            segments.push(Segment::Capture(capture.to_owned(), path.span()));
 
             rest = &rest[end + 1..];
         } else {
@@ -419,6 +428,46 @@ fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
     }
 
     Ok(segments)
+}
+
+fn validate_path_segments(value: &str, path: &LitStr) -> syn::Result<()> {
+    let mut wildcard_seen = false;
+
+    for segment in value.split('/') {
+        if wildcard_seen {
+            return Err(syn::Error::new_spanned(
+                path,
+                "Wildcards must be at the end of the path",
+            ));
+        }
+
+        let mut capture_count = 0;
+        let mut rest = segment;
+        while let Some(start) = find_first_not_double(b'{', rest.as_bytes()) {
+            capture_count += 1;
+            rest = &rest[start + 1..];
+
+            if rest.starts_with('*') {
+                wildcard_seen = true;
+                // a wildcard capture must cover its entire segment
+                if start != 0 || rest.find('}') != Some(rest.len() - 1) {
+                    return Err(syn::Error::new_spanned(
+                        path,
+                        "Wildcards must be at the end of the path",
+                    ));
+                }
+            }
+        }
+
+        if capture_count > 1 {
+            return Err(syn::Error::new_spanned(
+                path,
+                "Cannot have multiple path parameters in a single segment",
+            ));
+        }
+    }
+
+    Ok(())
 }
 
 fn find_first_not_double(needle: u8, haystack: &[u8]) -> Option<usize> {

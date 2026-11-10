@@ -46,7 +46,6 @@ default = [
     "original-uri",
     "query",
     "tokio",
-    "tower-log",
     "tracing",
 ]
 form = [
@@ -72,9 +71,7 @@ query = [
 tokio = [
     "dep:hyper-util",
     "dep:tokio",
-    "tokio/rt",
     "tower/make",
-    "tokio/macros",
 ]
 tower-log = ["tower/log"]
 tracing = ["dep:tracing", "axum-core/tracing"]
@@ -102,17 +99,17 @@ __private_docs = [
 __private = ["tokio", "http1", "dep:reqwest"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { package = "tokio", version = "1.44", features = ["time", "net"], optional = true }
+tokio = { package = "tokio", version = "1.44", features = ["time", "rt", "net"], optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-tokio = { package = "tokio", version = "1.44", features = ["time"], optional = true }
+tokio = { package = "tokio", version = "1.44", features = ["time", "rt"], optional = true }
 
 [dependencies]
 axum-core = { path = "../axum-core", version = "0.5.6" }
 bytes = "1.7"
 futures-core = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
-http = "1.0.0"
+http = "1.5.0"
 http-body = "1.0.0"
 http-body-util = "0.1.0"
 itoa = "1.0.5"
@@ -139,8 +136,8 @@ reqwest = { version = "0.12", optional = true, default-features = false, feature
 serde_html_form = { version = "0.4.0", optional = true, default-features = false, features = ["std"] }
 serde_json = { version = "1.0.29", features = ["raw_value"], optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }
-sha1 = { version = "0.10", optional = true }
-tokio-tungstenite = { version = "0.29.0", optional = true }
+sha1 = { version = "0.11", optional = true }
+tokio-tungstenite = { version = "0.30.0", default-features = false, optional = true }
 tracing = { version = "0.1", default-features = false, optional = true }
 
 # doc dependencies
@@ -194,7 +191,7 @@ serde_json = { version = "1.0.29", features = ["raw_value"] }
 time = { version = "0.3", features = ["serde-human-readable"] }
 tokio = { package = "tokio", version = "1.44.2", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
 tokio-stream = "0.1"
-tokio-tungstenite = "0.29.0"
+tokio-tungstenite = "0.30.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.20", features = ["json"] }
 uuid = { version = "1.0", features = ["serde", "v4"] }

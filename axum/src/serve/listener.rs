@@ -38,7 +38,10 @@ impl Listener for tokio::net::TcpListener {
     async fn accept(&mut self) -> (Self::Io, Self::Addr) {
         loop {
             match Self::accept(self).await {
-                Ok(tup) => return tup,
+                Ok(tup) => {
+                    let _ = tup.0.set_nodelay(true);
+                    return tup;
+                }
                 Err(e) => handle_accept_error(e).await,
             }
         }
@@ -105,8 +108,8 @@ pub trait ListenerExt: Listener + Sized {
     ///     .await
     ///     .unwrap()
     ///     .tap_io(|tcp_stream| {
-    ///         if let Err(err) = tcp_stream.set_nodelay(true) {
-    ///             trace!("failed to set TCP_NODELAY on incoming connection: {err:#}");
+    ///         if let Ok(addr) = tcp_stream.peer_addr() {
+    ///             trace!("accepted connection from {addr}");
     ///         }
     ///     });
     /// axum::serve(listener, router).await;
@@ -279,6 +282,31 @@ mod tests {
     use tokio::{io, time};
 
     use super::{Listener, ListenerExt};
+
+    #[tokio::test]
+    async fn tcp_listener_sets_nodelay() {
+        let mut listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = Listener::local_addr(&listener).unwrap();
+        let _client = tokio::net::TcpStream::connect(addr).await.unwrap();
+
+        let (stream, _) = Listener::accept(&mut listener).await;
+
+        assert!(stream.nodelay().unwrap());
+    }
+
+    #[tokio::test]
+    async fn tap_io_can_unset_nodelay() {
+        let mut listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .unwrap()
+            .tap_io(|stream| stream.set_nodelay(false).unwrap());
+        let addr = listener.local_addr().unwrap();
+        let _client = tokio::net::TcpStream::connect(addr).await.unwrap();
+
+        let (stream, _) = listener.accept().await;
+
+        assert!(!stream.nodelay().unwrap());
+    }
 
     #[tokio::test(start_paused = true)]
     async fn limit_connections() {

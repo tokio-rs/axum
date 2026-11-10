@@ -1211,7 +1211,7 @@ async fn logging_rejections() {
 
     let events = capture_tracing::<RejectionEvent, _>(|| async {
         let app = Router::new()
-            .route("/extension", get(|_: Extension<Infallible>| async {}))
+            .route("/extension", get(|_: Extension<()>| async {}))
             .route("/string", post(|_: String| async {}));
 
         let client = TestClient::new(app);
@@ -1240,8 +1240,7 @@ async fn logging_rejections() {
                 fields: RejectionEvent {
                     message: "rejecting request".to_owned(),
                     status: 500,
-                    body: "Missing request extension: Extension of \
-                        type `core::convert::Infallible` was not found. \
+                    body: "Missing request extension: Extension of type `()` was not found. \
                         Perhaps you forgot to add it? See `axum::Extension`."
                         .to_owned(),
                     rejection_type: "axum::extract::rejection::MissingExtension".to_owned(),
@@ -1301,6 +1300,34 @@ async fn connect_going_to_default_fallback() {
     assert!(body.is_empty());
 }
 
+// https://httpwg.org/specs/rfc9110.html#CONNECT
+#[crate::test]
+async fn successful_connect_drops_body_and_framing_headers() {
+    let app = Router::new().fallback(|| async {
+        (
+            [
+                (CONTENT_LENGTH, "5"),
+                (http::header::TRANSFER_ENCODING, "chunked"),
+            ],
+            "hello",
+        )
+    });
+
+    let req = Request::builder()
+        .uri("example.com:443")
+        .method(Method::CONNECT)
+        .header(HOST, "example.com:443")
+        .body(Body::empty())
+        .unwrap();
+
+    let res = app.oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(res.headers().get(CONTENT_LENGTH).is_none());
+    assert!(res.headers().get(http::header::TRANSFER_ENCODING).is_none());
+    let body = res.collect().await.unwrap().to_bytes();
+    assert!(body.is_empty());
+}
+
 #[crate::test]
 async fn impl_handler_for_into_response() {
     let app = Router::new().route("/things", post((StatusCode::CREATED, "thing created")));
@@ -1310,22 +1337,6 @@ async fn impl_handler_for_into_response() {
     let res = client.post("/things").await;
     assert_eq!(res.status(), StatusCode::CREATED);
     assert_eq!(res.text().await, "thing created");
-}
-
-#[crate::test]
-#[should_panic(
-    expected = "Path segments must not start with `:`. For capture groups, use `{capture}`. If you meant to literally match a segment starting with a colon, call `without_v07_checks` on the router."
-)]
-async fn colon_in_route() {
-    _ = Router::<()>::new().route("/:foo", get(|| async move {}));
-}
-
-#[crate::test]
-#[should_panic(
-    expected = "Path segments must not start with `*`. For wildcard capture, use `{*wildcard}`. If you meant to literally match a segment starting with an asterisk, call `without_v07_checks` on the router."
-)]
-async fn asterisk_in_route() {
-    _ = Router::<()>::new().route("/*foo", get(|| async move {}));
 }
 
 #[crate::test]
@@ -1351,4 +1362,29 @@ async fn middleware_adding_body() {
     assert_eq!(header.unwrap().to_str().unwrap(), "3");
 
     assert_eq!(res.text().await, "…");
+}
+
+#[crate::test]
+async fn nested_body_limit_rejection() {
+    use crate::{
+        extract::Request,
+        middleware::{self, Next},
+        response::Response,
+    };
+    use axum_core::RequestExt;
+
+    async fn limit_middleware(req: Request, next: Next) -> Response {
+        let req = req.with_limited_body();
+        next.run(req).await
+    }
+
+    let app = Router::new()
+        .route("/", post(|_: Bytes| async {}))
+        .layer(middleware::from_fn(limit_middleware))
+        .layer(middleware::from_fn(limit_middleware))
+        .layer(DefaultBodyLimit::max(2));
+
+    let client = TestClient::new(app);
+    let res = client.post("/").body("123").await;
+    assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
 }

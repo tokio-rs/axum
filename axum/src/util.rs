@@ -9,6 +9,21 @@ use std::{
 };
 use tower::Service;
 
+/// Deserializes a `T`, and only if that fails does it again through `serde_path_to_error` to report
+/// where the error is. Tracking the path allocates for every field, so it's skipped when
+/// deserialization succeeds.
+#[cfg(any(feature = "form", feature = "query"))]
+pub(crate) fn deserialize_with_error_path<'de, D, T>(
+    mut make_deserializer: impl FnMut() -> D,
+) -> Result<T, serde_path_to_error::Error<D::Error>>
+where
+    D: serde_core::Deserializer<'de>,
+    T: serde_core::Deserialize<'de>,
+{
+    T::deserialize(make_deserializer())
+        .or_else(|_| serde_path_to_error::deserialize(make_deserializer()))
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct PercentDecodedStr(Arc<str>);
 

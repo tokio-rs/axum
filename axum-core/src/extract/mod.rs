@@ -29,9 +29,11 @@ pub use self::{
 pub type Request<T = Body> = http::Request<T>;
 
 mod private {
+    #[allow(clippy::empty_enums)] // We cannot use `!` yet in our MSRV.
     #[derive(Debug, Clone, Copy)]
     pub enum ViaParts {}
 
+    #[allow(clippy::empty_enums)] // We cannot use `!` yet in our MSRV.
     #[derive(Debug, Clone, Copy)]
     pub enum ViaRequest {}
 }

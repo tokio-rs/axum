@@ -36,7 +36,7 @@ URI.
 
 # Captures from outer routes
 
-Take care when using `nest` together with dynamic routes as nesting also
+Take care when using `nest` together with dynamic routes as the [`Path`] extractor also
 captures from the outer routes:
 
 ```rust
@@ -59,6 +59,8 @@ let users_api = Router::new().route("/users/{id}", get(users_get));
 let app = Router::new().nest("/{version}/api", users_api);
 # let _: Router = app;
 ```
+
+Use the [`InnerPath`] extractor if you only need the captured parameters from the inner router.
 
 # Differences from wildcard routes
 
@@ -191,4 +193,6 @@ router.
 - If `path` is empty.
 
 [`OriginalUri`]: crate::extract::OriginalUri
+[`InnerPath`]: crate::extract::InnerPath
+[`Path`]: crate::extract::Path
 [fallbacks]: Router::fallback
