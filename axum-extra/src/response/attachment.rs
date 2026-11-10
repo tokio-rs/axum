@@ -74,7 +74,7 @@ impl<T: IntoResponse> Attachment<T> {
     ///
     /// Non-ASCII filenames use a UTF-8 encoded `filename*` parameter, with an ASCII
     /// `filename` fallback for clients that do not support it. In the fallback,
-    /// each non-ASCII character and each `%` is replaced with `?`.
+    /// each non-ASCII character is replaced with `?`. Percent signs are preserved.
     /// ASCII filenames use only the `filename` parameter.
     pub fn filename<H: TryInto<HeaderValue>>(mut self, value: H) -> Self {
         self.filename = match value.try_into() {
@@ -120,7 +120,7 @@ where
             } else {
                 let fallback: String = filename_str
                     .chars()
-                    .map(|c| if c.is_ascii() && c != '%' { c } else { '?' })
+                    .map(|c| if c.is_ascii() { c } else { '?' })
                     .collect();
                 format!(
                     "attachment; filename=\"{}\"; filename*=UTF-8''{}",
@@ -186,7 +186,7 @@ mod tests {
         for (filename, expected) in [
             (
                 "résumé 100%.txt",
-                "attachment; filename=\"r?sum? 100?.txt\"; filename*=UTF-8''r%C3%A9sum%C3%A9%20100%25.txt",
+                "attachment; filename=\"r?sum? 100%.txt\"; filename*=UTF-8''r%C3%A9sum%C3%A9%20100%25.txt",
             ),
             (
                 "🦀.txt",
@@ -199,7 +199,7 @@ mod tests {
             (
                 "é \"\\%*';/?:@=[]{}()<>,.txt",
                 concat!(
-                    "attachment; filename=\"? \\\"\\\\?*';/?:@=[]{}()<>,.txt\"; ",
+                    "attachment; filename=\"? \\\"\\\\%*';/?:@=[]{}()<>,.txt\"; ",
                     "filename*=UTF-8''%C3%A9%20%22%5C%25%2A%27%3B%2F%3F%3A%40%3D%5B%5D%7B%7D%28%29%3C%3E%2C.txt",
                 ),
             ),
@@ -222,6 +222,28 @@ mod tests {
             response.headers()[CONTENT_DISPOSITION],
             "attachment; filename=\"report 100%20.txt\""
         );
+    }
+
+    #[test]
+    fn attachment_preserves_percent_signs_with_and_without_unicode() {
+        for (filename, expected) in [
+            ("resume 100%.pdf", "attachment; filename=\"resume 100%.pdf\""),
+            (
+                "résumé 100%.pdf",
+                "attachment; filename=\"r?sum? 100%.pdf\"; filename*=UTF-8''r%C3%A9sum%C3%A9%20100%25.pdf",
+            ),
+            (
+                "resume 100%20.pdf",
+                "attachment; filename=\"resume 100%20.pdf\"",
+            ),
+            (
+                "résumé 100%20.pdf",
+                "attachment; filename=\"r?sum? 100%20.pdf\"; filename*=UTF-8''r%C3%A9sum%C3%A9%20100%2520.pdf",
+            ),
+        ] {
+            let response = Attachment::new("data").filename(filename).into_response();
+            assert_eq!(response.headers()[CONTENT_DISPOSITION], expected, "{filename:?}");
+        }
     }
 
     #[test]
