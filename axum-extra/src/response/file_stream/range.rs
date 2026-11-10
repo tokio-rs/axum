@@ -39,8 +39,6 @@ impl FromStr for RangeSpec {
             .split_once('-')
             .ok_or(ParseRangeError::MissingHyphen)?;
 
-        // `first-pos`, `last-pos` and `suffix-length` are each `1*DIGIT` (RFC 9110 § 14.1.1),
-        // so reject what `u64::from_str` would otherwise accept, such as a leading `+`.
         let parser = |base: &str, err: Self::Err| {
             if !base.bytes().all(|byte| byte.is_ascii_digit()) {
                 return Err(err);
