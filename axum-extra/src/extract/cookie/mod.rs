@@ -116,8 +116,11 @@ fn cookies_from_request(headers: &HeaderMap) -> impl Iterator<Item = Cookie<'sta
     headers
         .get_all(COOKIE)
         .into_iter()
-        .filter_map(|value| value.to_str().ok())
-        .flat_map(|value| value.split(';'))
+        // Split before decoding so that a single cookie that isn't visible ASCII
+        // (e.g. a raw UTF-8 value set via `document.cookie`) doesn't cause every
+        // other cookie in the same header to be dropped.
+        .flat_map(|value| value.as_bytes().split(|&byte| byte == b';'))
+        .filter_map(|cookie| std::str::from_utf8(cookie).ok())
         .filter_map(|cookie| Cookie::parse_encoded(cookie.to_owned()).ok())
 }
 
@@ -311,6 +314,28 @@ mod tests {
                     .contains("key=;"));
             }
         };
+    }
+
+    #[test]
+    fn non_ascii_cookie_does_not_hide_other_cookies() {
+        // Browsers send cookie values set via `document.cookie` as raw UTF-8,
+        // and a cookie header may carry bytes that aren't valid UTF-8 at all.
+        // Neither should make the other cookies in the header disappear.
+        let mut headers = HeaderMap::new();
+        headers.append(
+            COOKIE,
+            http::HeaderValue::from_bytes("session=abc123; lang=Français".as_bytes()).unwrap(),
+        );
+        headers.append(
+            COOKIE,
+            http::HeaderValue::from_bytes(b"theme=dark; bad=\xff").unwrap(),
+        );
+
+        let jar = CookieJar::from_headers(&headers);
+        assert_eq!(jar.get("session").map(Cookie::value), Some("abc123"));
+        assert_eq!(jar.get("lang").map(Cookie::value), Some("Français"));
+        assert_eq!(jar.get("theme").map(Cookie::value), Some("dark"));
+        assert!(jar.get("bad").is_none());
     }
 
     cookie_test!(plaintext_cookies, CookieJar);
