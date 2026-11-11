@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** `#[from_request(via(Extractor))]` now uses the extractor's
   rejection type instead of `axum::response::Response` ([#3261])
 - **breaking:** `axum::serve` now applies hyper's default `header_read_timeout` ([#3478])
+- **changed:** `axum::serve` now sets `TCP_NODELAY` on connections accepted from a
+  `TcpListener`. Use `ListenerExt::tap_io` to turn it off ([#3984])
 - **breaking:** `axum::serve` future output type has been adjusted to remove `io::Result`
   (never returned `Err`) and be an uninhabited type if `with_graceful_shutdown` is not used
   (because it was already never terminating if that method wasn't used) ([#3601])
@@ -45,8 +47,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which saves a clone and a layer of boxing on every request to them ([#3909])
 - **changed:** Update `Router::route_service` docs for `axum::body::Body` instead of
   the removed `BoxBody` type ([#3890])
+- **fixed:** Successful responses to `CONNECT` no longer keep `content-length` or
+  `transfer-encoding` headers after their body is removed ([#3907])
 
 [#2492]: https://github.com/tokio-rs/axum/issues/2492
+[#3984]: https://github.com/tokio-rs/axum/pull/3984
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
 [#3205]: https://github.com/tokio-rs/axum/pull/3205
@@ -67,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3890]: https://github.com/tokio-rs/axum/pull/3890
 [#3779]: https://github.com/tokio-rs/axum/pull/3779
 [#3928]: https://github.com/tokio-rs/axum/pull/3928
+[#3907]: https://github.com/tokio-rs/axum/pull/3907
 
 # 0.8.9
 

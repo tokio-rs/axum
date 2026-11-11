@@ -85,12 +85,16 @@ pub(crate) struct RouteId(usize);
 #[must_use]
 pub struct Router<S = ()> {
     inner: Arc<RouterInner<S>>,
+    /// Every handler has already been turned into a `Route` by `with_state`,
+    /// so `serve` can hand out clones of this router as they are.
+    finalized: bool,
 }
 
 impl<S> Clone for Router<S> {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
+            finalized: self.finalized,
         }
     }
 }
@@ -116,6 +120,7 @@ impl<S> fmt::Debug for Router<S> {
             .field("path_router", &self.inner.path_router)
             .field("default_fallback", &self.inner.default_fallback)
             .field("catch_all_fallback", &self.inner.catch_all_fallback)
+            .field("finalized", &self.finalized)
             .finish()
     }
 }
@@ -127,15 +132,13 @@ pub(crate) const FALLBACK_PARAM: &str = "__private__axum_fallback";
 pub(crate) const FALLBACK_PARAM_PATH: &str = "/{*__private__axum_fallback}";
 
 macro_rules! map_inner {
-    ( $self_:ident, $inner:pat_param => $expr:expr) => {
-        #[allow(redundant_semicolons)]
-        {
-            let $inner = $self_.into_inner();
-            Router {
-                inner: Arc::new($expr),
-            }
+    ( $self_:ident, $inner:pat_param => $expr:expr) => {{
+        let $inner = $self_.into_inner();
+        Router {
+            inner: Arc::new($expr),
+            finalized: false,
         }
-    };
+    }};
 }
 
 macro_rules! tap_inner {
@@ -146,6 +149,7 @@ macro_rules! tap_inner {
             $($stmt)*;
             Router {
                 inner: Arc::new($inner),
+                finalized: false,
             }
         }
     };
@@ -166,6 +170,7 @@ where
                 default_fallback: true,
                 catch_all_fallback: Fallback::Default(Route::new(NotFound)),
             }),
+            finalized: false,
         }
     }
 
@@ -435,11 +440,13 @@ where
 
     #[doc = include_str!("../docs/routing/with_state.md")]
     pub fn with_state<S2>(self, state: S) -> Router<S2> {
-        map_inner!(self, this => RouterInner {
+        let mut router = map_inner!(self, this => RouterInner {
             path_router: this.path_router.with_state(state.clone()),
             default_fallback: this.default_fallback,
             catch_all_fallback: this.catch_all_fallback.with_state(state),
-        })
+        });
+        router.finalized = true;
+        router
     }
 
     pub(crate) fn call_with_state(&self, req: Request, state: S) -> RouteFuture<Infallible> {
@@ -583,8 +590,13 @@ const _: () = {
 
         fn call(&mut self, _req: serve::IncomingStream<'_, L>) -> Self::Future {
             // call `Router::with_state` such that everything is turned into `Route` eagerly
-            // rather than doing that per request
-            std::future::ready(Ok(self.clone().with_state(())))
+            // rather than doing that per request, and only once: `self` is the
+            // only handle `serve` holds, so taking it lets `with_state` move the
+            // routes instead of deep-cloning them for every connection
+            if !self.finalized {
+                *self = std::mem::take(self).with_state(());
+            }
+            std::future::ready(Ok(self.clone()))
         }
     }
 };

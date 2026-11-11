@@ -57,7 +57,7 @@ impl<T: IntoResponse> Attachment<T> {
     /// This updates the `Content-Disposition` header to add a filename.
     pub fn filename<H: TryInto<HeaderValue>>(mut self, value: H) -> Self {
         self.filename = match value.try_into() {
-            Ok(filename) if filename.to_str().is_ok() => Some(filename),
+            Ok(filename) if std::str::from_utf8(filename.as_bytes()).is_ok() => Some(filename),
             _ => {
                 error!("Attachment filename contains invalid characters");
                 None
@@ -89,9 +89,8 @@ where
         }
 
         let content_disposition = if let Some(filename) = self.filename {
-            let filename_str = filename
-                .to_str()
-                .expect("This was a HeaderValue so this can not fail");
+            let filename_str = std::str::from_utf8(filename.as_bytes())
+                .expect("filename was checked to be valid UTF-8");
             let value = format!(
                 "attachment; filename=\"{}\"",
                 EscapedQuotedString(filename_str)
@@ -127,6 +126,18 @@ mod tests {
             .into_response();
         let value = attachment.headers().get(CONTENT_DISPOSITION).unwrap();
         assert_eq!(value, "attachment; filename=\"report.pdf\"");
+    }
+
+    #[test]
+    fn attachment_with_non_ascii_filename() {
+        let attachment = Attachment::new("data")
+            .filename("Bericht-März.pdf")
+            .into_response();
+        let value = attachment.headers().get(CONTENT_DISPOSITION).unwrap();
+        assert_eq!(
+            std::str::from_utf8(value.as_bytes()).unwrap(),
+            "attachment; filename=\"Bericht-März.pdf\""
+        );
     }
 
     #[test]

@@ -34,8 +34,10 @@ where
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let query = parts.uri.query().unwrap_or_default();
         let deserializer =
-            serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
-        let value = serde_path_to_error::deserialize(deserializer)
+            || serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
+        // tracking the path allocates for every field, so only do it to build the error
+        let value = T::deserialize(deserializer())
+            .or_else(|_| serde_path_to_error::deserialize(deserializer()))
             .map_err(FailedToDeserializeQueryString::from_err)?;
         Ok(Self(value))
     }
@@ -140,8 +142,10 @@ where
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         if let Some(query) = parts.uri.query() {
             let deserializer =
-                serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
-            let value = serde_path_to_error::deserialize(deserializer)
+                || serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
+            // tracking the path allocates for every field, so only do it to build the error
+            let value = T::deserialize(deserializer())
+                .or_else(|_| serde_path_to_error::deserialize(deserializer()))
                 .map_err(FailedToDeserializeQueryString::from_err)?;
             Ok(Self(Some(value)))
         } else {
@@ -310,6 +314,27 @@ mod tests {
             .await;
 
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn optional_query_rejection_names_the_field() {
+        #[derive(Deserialize)]
+        #[allow(dead_code)]
+        struct Params {
+            n: i32,
+        }
+
+        async fn handler(_: OptionalQuery<Params>) {}
+
+        let app = Router::new().route("/", get(handler));
+        let client = TestClient::new(app);
+
+        let res = client.get("/?n=hi").await;
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            res.text().await,
+            "Failed to deserialize query string: n: invalid digit found in string"
+        );
     }
 
     #[test]
