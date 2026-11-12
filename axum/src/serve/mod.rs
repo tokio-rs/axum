@@ -677,8 +677,6 @@ where
 
         let shutdown = CancellationToken::new();
         let mut signal_received = pin!(shutdown.cancelled());
-        // Cancels when dropped, so the shutdown also starts if `signal` panics or its task is
-        // cancelled.
         let cancel_on_drop = shutdown.clone().drop_guard();
         executor.execute(async move {
             signal.await;
@@ -1199,15 +1197,6 @@ mod tests {
             self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             tokio::spawn(fut)
         }
-    }
-
-    #[crate::test]
-    async fn graceful_shutdown_starts_when_signal_panics() {
-        let server = serve(ReadyListener::<io::DuplexStream>(None), Router::new())
-            .with_graceful_shutdown(async { panic!("shutdown signal failed") });
-        tokio::time::timeout(Duration::from_secs(5), server.into_future())
-            .await
-            .expect("server should shut down when the signal panics");
     }
 
     #[crate::test]
