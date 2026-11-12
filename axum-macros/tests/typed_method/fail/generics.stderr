@@ -1,0 +1,13 @@
+error: `#[derive(TypedMethod)]` doesn't support generics
+ --> tests/typed_method/fail/generics.rs:6:14
+  |
+6 | struct MyPath<T>(T);
+  |              ^^^
+
+warning: unused import: `axum::routing::MethodFilter`
+ --> tests/typed_method/fail/generics.rs:1:5
+  |
+1 | use axum::routing::MethodFilter;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default

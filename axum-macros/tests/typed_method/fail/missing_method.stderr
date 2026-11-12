@@ -1,0 +1,7 @@
+error: Missing method filter: `#[typed_method(MethodFilter::GET)]`
+ --> tests/typed_method/fail/missing_method.rs:3:10
+  |
+3 | #[derive(TypedMethod)]
+  |          ^^^^^^^^^^^
+  |
+  = note: this error originates in the derive macro `TypedMethod` (in Nightly builds, run with -Z macro-backtrace for more info)
