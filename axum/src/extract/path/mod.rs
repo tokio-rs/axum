@@ -13,7 +13,6 @@ use crate::{
 use axum_core::{
     extract::OptionalFromRequestParts,
     response::{IntoResponse, Response},
-    RequestPartsExt as _,
 };
 use http::{request::Parts, Extensions, StatusCode};
 use serde_core::de::DeserializeOwned;
@@ -187,13 +186,12 @@ where
         parts: &mut Parts,
         _state: &S,
     ) -> Result<Option<Self>, Self::Rejection> {
-        match parts.extract::<Self>().await {
-            Ok(Self(params)) => Ok(Some(Self(params))),
-            Err(PathRejection::FailedToDeserializePathParams(e)) if e.kind().is_zero_params() => {
-                Ok(None)
-            }
-            Err(e) => Err(e),
+        let params = get_params(parts)?;
+        if params.is_empty() {
+            return Ok(None);
         }
+
+        serialize_path_params(params).map(|params| Some(Self(params)))
     }
 }
 
@@ -337,12 +335,6 @@ pub enum ErrorKind {
 
     /// Catch-all variant for errors that don't fit any other variant.
     Message(String),
-}
-
-impl ErrorKind {
-    fn is_zero_params(&self) -> bool {
-        matches!(&self, Self::WrongNumberOfParameters { got: 0, .. })
-    }
 }
 
 impl fmt::Display for ErrorKind {
@@ -659,6 +651,76 @@ mod tests {
 
         let res = client.get("/users/42").await;
         assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
+    async fn optional_path_is_none_without_params() {
+        #[derive(Deserialize)]
+        struct UserId {
+            id: u32,
+        }
+
+        async fn handler(user: Option<Path<UserId>>) -> String {
+            match user {
+                Some(Path(user)) => user.id.to_string(),
+                None => "none".to_owned(),
+            }
+        }
+
+        let app = Router::new()
+            .route("/users", get(handler))
+            .route("/users/{id}", get(handler))
+            .route(
+                "/all",
+                get(|params: Option<Path<HashMap<String, String>>>| async move {
+                    format!("{:?}", params.map(|Path(params)| params))
+                }),
+            );
+        let client = TestClient::new(app);
+
+        let res = client.get("/users").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "none");
+
+        let res = client.get("/users/42").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "42");
+
+        let res = client.get("/all").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "None");
+    }
+
+    #[crate::test]
+    async fn optional_path_rejects_too_few_params() {
+        #[allow(dead_code)]
+        #[derive(Deserialize)]
+        struct UserAndTeam {
+            user_id: u32,
+            team_id: u32,
+        }
+
+        let app = Router::new()
+            .route(
+                "/tuple/{user_id}",
+                get(|_: Option<Path<(u32, u32)>>| async {}),
+            )
+            .route(
+                "/struct/{user_id}",
+                get(|_: Option<Path<UserAndTeam>>| async {}),
+            );
+        let client = TestClient::new(app);
+
+        let res = client.get("/tuple/42").await;
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            res.text().await,
+            "Wrong number of path arguments for `Path`. Expected 2 but got 1"
+        );
+
+        let res = client.get("/struct/42").await;
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(res.text().await, "Invalid URL: missing field `team_id`");
     }
 
     #[crate::test]
