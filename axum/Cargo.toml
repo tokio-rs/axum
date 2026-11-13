@@ -71,6 +71,7 @@ query = [
 tokio = [
     "dep:hyper-util",
     "dep:tokio",
+    "dep:tokio-util",
     "tower/make",
 ]
 tower-log = ["tower/log"]
@@ -138,6 +139,7 @@ serde_json = { version = "1.0.29", features = ["raw_value"], optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }
 sha1 = { version = "0.11", optional = true }
 tokio-tungstenite = { version = "0.30.0", default-features = false, optional = true }
+tokio-util = { version = "0.7.5", optional = true }
 tracing = { version = "0.1", default-features = false, optional = true }
 
 # doc dependencies
