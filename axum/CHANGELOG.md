@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **fixed:** `Path` and `InnerPath` return an error instead of panicking when a
+  key-value pair contains an unsupported tuple or array value.
 - **breaking:** `tower-log` is no longer a default feature. Enable it explicitly to keep
   `tower`'s `log` feature turned on ([#3928])
 - **breaking:** Router fallbacks are now properly merged for nested routers ([#3158])
