@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **changed:** `AsyncReadBody` reads in 64 KiB chunks instead of 4 KiB ([#3991])
+- **added:** Add `AsyncReadBody::with_chunk_size` ([#3991])
 - **fixed:** `TypedPath::with_query_params` no longer leaves a trailing `?` when
   the params don't serialize to anything, for example when all fields are
   `None` ([#3968])
@@ -40,6 +42,7 @@ and this project adheres to [Semantic Versioning].
 [#3801]: https://github.com/tokio-rs/axum/pull/3801
 [#3776]: https://github.com/tokio-rs/axum/pull/3776
 [#3978]: https://github.com/tokio-rs/axum/pull/3978
+[#3991]: https://github.com/tokio-rs/axum/pull/3991
 
 # 0.12.6
 
