@@ -54,14 +54,28 @@ pin_project! {
     }
 }
 
+const DEFAULT_CHUNK_SIZE: usize = 64 * 1024;
+
 impl AsyncReadBody {
     /// Create a new `AsyncReadBody`.
+    ///
+    /// The reader is read in chunks of up to 64 KiB. Use
+    /// [`with_chunk_size`](Self::with_chunk_size) to change that.
     pub fn new<R>(read: R) -> Self
     where
         R: AsyncRead + Send + 'static,
     {
+        Self::with_chunk_size(read, DEFAULT_CHUNK_SIZE)
+    }
+
+    /// Create a new `AsyncReadBody` that reads up to `chunk_size` bytes at a
+    /// time.
+    pub fn with_chunk_size<R>(read: R, chunk_size: usize) -> Self
+    where
+        R: AsyncRead + Send + 'static,
+    {
         Self {
-            body: Body::from_stream(ReaderStream::new(read)),
+            body: Body::from_stream(ReaderStream::with_capacity(read, chunk_size)),
         }
     }
 }
@@ -92,5 +106,37 @@ impl HttpBody for AsyncReadBody {
 impl IntoResponse for AsyncReadBody {
     fn into_response(self) -> Response {
         self.body.into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use http_body_util::BodyExt;
+    use std::io::Cursor;
+
+    async fn frame_sizes(mut body: AsyncReadBody) -> Vec<usize> {
+        let mut sizes = Vec::new();
+        while let Some(frame) = body.frame().await {
+            sizes.push(frame.unwrap().into_data().unwrap().len());
+        }
+        sizes
+    }
+
+    #[tokio::test]
+    async fn reads_in_large_chunks() {
+        let data = vec![0; 2 * DEFAULT_CHUNK_SIZE + 10];
+
+        let body = AsyncReadBody::new(Cursor::new(data.clone()));
+        assert_eq!(
+            frame_sizes(body).await,
+            [DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE, 10]
+        );
+
+        let body = AsyncReadBody::with_chunk_size(Cursor::new(data), DEFAULT_CHUNK_SIZE + 10);
+        assert_eq!(
+            frame_sizes(body).await,
+            [DEFAULT_CHUNK_SIZE + 10, DEFAULT_CHUNK_SIZE]
+        );
     }
 }
