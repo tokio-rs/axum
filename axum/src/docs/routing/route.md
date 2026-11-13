@@ -77,6 +77,38 @@ Note that `/{*key}` doesn't match empty segments. Thus:
 - `/{*key}` doesn't match `/` but does match `/a`, `/a/`, etc.
 - `/x/{*key}` doesn't match `/x` or `/x/` but does match `/x/a`, `/x/a/`, etc.
 
+Wildcard captures can be extracted as one string, or deserialized into a
+sequence of segments when used as a struct field or tuple element:
+
+```rust
+use axum::{
+    Router,
+    routing::get,
+    extract::Path,
+};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct Params {
+    bucket: String,
+    key: Vec<String>,
+}
+
+let app: Router = Router::new()
+    // for `/my-bucket/a/b/c`, `key` is `["a", "b", "c"]`
+    .route("/{bucket}/{*key}", get(|Path(params): Path<Params>| async {}))
+    // the equivalent using a tuple
+    .route("/tuple/{bucket}/{*key}", get(|Path((bucket, key)): Path<(String, Vec<String>)>| async {}))
+    // a solo wildcard in a one-element tuple
+    .route("/solo/{*key}", get(|Path((key,)): Path<(Vec<String>,)>| async {}))
+    // a top-level `Vec` is not split: for `/raw/a/b`, it is `["a/b"]`
+    .route("/raw/{*key}", get(|Path(key): Path<Vec<String>>| async {}));
+```
+
+The capture is split on `/` and empty segments are skipped. Since captures are
+percent-decoded before they are split, a percent-encoded slash (`%2F`) also
+separates segments.
+
 Wildcard captures can also be extracted using [`Path`](crate::extract::Path):
 
 ```rust

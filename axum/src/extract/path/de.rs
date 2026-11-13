@@ -4,7 +4,7 @@ use serde_core::{
     de::{self, DeserializeSeed, EnumAccess, Error, MapAccess, SeqAccess, VariantAccess, Visitor},
     forward_to_deserialize_any, Deserializer,
 };
-use std::{any::type_name, sync::Arc};
+use std::{any::type_name, str::Split, sync::Arc};
 
 macro_rules! unsupported_type {
     ($trait_fn:ident) => {
@@ -147,6 +147,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
         visitor.visit_seq(SeqDeserializer {
             params: self.url_params,
             idx: 0,
+            allow_seq: false,
         })
     }
 
@@ -162,6 +163,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
         visitor.visit_seq(SeqDeserializer {
             params: self.url_params,
             idx: 0,
+            allow_seq: true,
         })
     }
 
@@ -182,6 +184,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
         visitor.visit_seq(SeqDeserializer {
             params: self.url_params,
             idx: 0,
+            allow_seq: true,
         })
     }
 
@@ -232,7 +235,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
 struct MapDeserializer<'de> {
     params: &'de [(Arc<str>, PercentDecodedStr)],
     key: Option<KeyOrIdx<'de>>,
-    value: Option<&'de PercentDecodedStr>,
+    value: Option<&'de str>,
 }
 
 impl<'de> MapAccess<'de> for MapDeserializer<'de> {
@@ -244,7 +247,7 @@ impl<'de> MapAccess<'de> for MapDeserializer<'de> {
     {
         match self.params.split_first() {
             Some(((key, value), tail)) => {
-                self.value = Some(value);
+                self.value = Some(value.as_str());
                 self.params = tail;
                 self.key = Some(KeyOrIdx::Key(key));
                 seed.deserialize(KeyDeserializer { key }).map(Some)
@@ -261,6 +264,7 @@ impl<'de> MapAccess<'de> for MapDeserializer<'de> {
             Some(value) => seed.deserialize(ValueDeserializer {
                 key: self.key.take(),
                 value,
+                allow_seq: true,
             }),
             None => Err(PathDeserializationError::custom("value is missing")),
         }
@@ -314,19 +318,19 @@ macro_rules! parse_value {
                     let kind = match key {
                         KeyOrIdx::Key(key) => ErrorKind::ParseErrorAtKey {
                             key: key.to_owned(),
-                            value: self.value.as_str().to_owned(),
+                            value: self.value.to_owned(),
                             expected_type: $ty,
                         },
                         KeyOrIdx::Idx { idx: index, key: _ } => ErrorKind::ParseErrorAtIndex {
                             index,
-                            value: self.value.as_str().to_owned(),
+                            value: self.value.to_owned(),
                             expected_type: $ty,
                         },
                     };
                     PathDeserializationError::new(kind)
                 } else {
                     PathDeserializationError::new(ErrorKind::ParseError {
-                        value: self.value.as_str().to_owned(),
+                        value: self.value.to_owned(),
                         expected_type: $ty,
                     })
                 }
@@ -339,7 +343,11 @@ macro_rules! parse_value {
 #[derive(Debug)]
 struct ValueDeserializer<'de> {
     key: Option<KeyOrIdx<'de>>,
-    value: &'de PercentDecodedStr,
+    value: &'de str,
+    /// Whether the value may be split on `/` and deserialized into a
+    /// sequence. This only applies one level deep: a split segment cannot be
+    /// split again, keeping nested sequences unsupported.
+    allow_seq: bool,
 }
 
 impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
@@ -382,7 +390,7 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
                 if let (ErrorKind::Message(message), Some(key)) = (&e.kind, self.key.as_ref()) {
                     PathDeserializationError::new(ErrorKind::DeserializeError {
                         key: key.key().to_owned(),
-                        value: self.value.as_str().to_owned(),
+                        value: self.value.to_owned(),
                         message: message.to_owned(),
                     })
                 } else {
@@ -440,7 +448,7 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     {
         struct PairDeserializer<'de> {
             key: Option<KeyOrIdx<'de>>,
-            value: Option<&'de PercentDecodedStr>,
+            value: Option<&'de str>,
         }
 
         impl<'de> SeqAccess<'de> for PairDeserializer<'de> {
@@ -464,7 +472,13 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
 
                 self.value
                     .take()
-                    .map(|value| seed.deserialize(ValueDeserializer { key: None, value }))
+                    .map(|value| {
+                        seed.deserialize(ValueDeserializer {
+                            key: None,
+                            value,
+                            allow_seq: false,
+                        })
+                    })
                     .transpose()
             }
         }
@@ -486,13 +500,20 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
         }
     }
 
-    fn deserialize_seq<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
-        Err(PathDeserializationError::unsupported_type(type_name::<
-            V::Value,
-        >()))
+        if !self.allow_seq {
+            return Err(PathDeserializationError::unsupported_type(type_name::<
+                V::Value,
+            >()));
+        }
+
+        visitor.visit_seq(SplitValueSeqAccess {
+            key: self.key.as_ref().map(|key| KeyOrIdx::Key(key.key())),
+            segments: self.value.split('/'),
+        })
     }
 
     fn deserialize_tuple_struct<V>(
@@ -606,6 +627,10 @@ impl<'de> VariantAccess<'de> for UnitVariant {
 struct SeqDeserializer<'de> {
     params: &'de [(Arc<str>, PercentDecodedStr)],
     idx: usize,
+    /// `allow_seq` for the element deserializers: a tuple position may split
+    /// its value into a sequence, an element of a sequence may not, keeping
+    /// nested sequences unsupported.
+    allow_seq: bool,
 }
 
 impl<'de> SeqAccess<'de> for SeqDeserializer<'de> {
@@ -622,11 +647,45 @@ impl<'de> SeqAccess<'de> for SeqDeserializer<'de> {
                 self.idx += 1;
                 Ok(Some(seed.deserialize(ValueDeserializer {
                     key: Some(KeyOrIdx::Idx { idx, key }),
-                    value,
+                    value: value.as_str(),
+                    allow_seq: self.allow_seq,
                 })?))
             }
             None => Ok(None),
         }
+    }
+}
+
+/// [`SeqAccess`] deserializing a single value, e.g. a wildcard capture, into
+/// a sequence by splitting it on `/`.
+///
+/// Empty segments are skipped, so captures with leading, trailing, or
+/// consecutive slashes don't produce empty elements.
+struct SplitValueSeqAccess<'de> {
+    key: Option<KeyOrIdx<'de>>,
+    segments: Split<'de, char>,
+}
+
+impl<'de> SeqAccess<'de> for SplitValueSeqAccess<'de> {
+    type Error = PathDeserializationError;
+
+    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
+    where
+        T: DeserializeSeed<'de>,
+    {
+        for segment in self.segments.by_ref() {
+            if !segment.is_empty() {
+                return seed
+                    .deserialize(ValueDeserializer {
+                        key: self.key.clone(),
+                        value: segment,
+                        allow_seq: false,
+                    })
+                    .map(Some);
+            }
+        }
+
+        Ok(None)
     }
 }
 
@@ -766,6 +825,130 @@ mod tests {
                 ("a".to_owned(), "foo".to_owned()),
                 ("b".to_owned(), "bar".to_owned())
             ]
+        );
+    }
+
+    #[test]
+    fn test_parse_wildcard_seq_in_struct() {
+        #[derive(Debug, Deserialize, Eq, PartialEq)]
+        struct Params {
+            bucket: String,
+            key: Vec<String>,
+        }
+
+        let url_params = create_url_params(vec![("bucket", "my-bucket"), ("key", "a/b/c")]);
+        assert_eq!(
+            Params::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            Params {
+                bucket: "my-bucket".to_owned(),
+                key: vec!["a".to_owned(), "b".to_owned(), "c".to_owned()],
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_wildcard_seq_in_tuple() {
+        let url_params = create_url_params(vec![("bucket", "my-bucket"), ("key", "a/b")]);
+        assert_eq!(
+            <(String, Vec<String>)>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            ("my-bucket".to_owned(), vec!["a".to_owned(), "b".to_owned()])
+        );
+
+        // empty segments are skipped in tuple position too
+        let url_params = create_url_params(vec![("bucket", "my-bucket"), ("key", "a/")]);
+        assert_eq!(
+            <(String, Vec<String>)>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            ("my-bucket".to_owned(), vec!["a".to_owned()])
+        );
+    }
+
+    #[test]
+    fn test_parse_wildcard_seq_in_solo_tuple() {
+        let url_params = create_url_params(vec![("key", "a/b/c")]);
+        assert_eq!(
+            <(Vec<String>,)>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            (vec!["a".to_owned(), "b".to_owned(), "c".to_owned()],)
+        );
+    }
+
+    #[test]
+    fn test_parse_wildcard_seq_empty_segments_in_struct() {
+        #[derive(Debug, Deserialize, Eq, PartialEq)]
+        struct Params {
+            key: Vec<String>,
+        }
+
+        for (value, expected) in [
+            ("x/", vec!["x"]),
+            ("/x", vec!["x"]),
+            ("x//y", vec!["x", "y"]),
+            ("", vec![]),
+            ("//", vec![]),
+        ] {
+            let url_params = create_url_params(vec![("key", value)]);
+            assert_eq!(
+                Params::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+                Params {
+                    key: expected.into_iter().map(str::to_owned).collect()
+                },
+                "for {value:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_top_level_vec_single_capture_is_unsplit() {
+        // top-level `Vec` keeps deserializing the single capture as one element
+        let url_params = create_url_params(vec![("path", "x/y/z")]);
+        assert_eq!(
+            <Vec<String>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            vec!["x/y/z".to_owned()]
+        );
+
+        for value in ["", "/", "//"] {
+            let url_params = create_url_params(vec![("path", value)]);
+            assert_eq!(
+                <Vec<String>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+                vec![value.to_owned()],
+                "for {value:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_top_level_vec_name_value_pairs() {
+        let url_params = create_url_params(vec![("a", "x"), ("b", "y")]);
+        assert_eq!(
+            <Vec<(String, String)>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            vec![
+                ("a".to_owned(), "x".to_owned()),
+                ("b".to_owned(), "y".to_owned())
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_wildcard_seq_all_empty_segments_in_struct() {
+        #[derive(Debug, Deserialize, Eq, PartialEq)]
+        struct Params {
+            key: Vec<String>,
+        }
+
+        let url_params = create_url_params(vec![("key", "/")]);
+        assert_eq!(
+            Params::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            Params { key: vec![] }
+        );
+    }
+
+    #[test]
+    fn test_parse_seq_tuple_string_string_single_param() {
+        // a single parameter still deserializes into `(key, value)` pairs,
+        // even if its value contains `/`
+        let url_params = create_url_params(vec![("a", "foo/bar")]);
+        assert_eq!(
+            <Vec<(String, String)>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            vec![("a".to_owned(), "foo/bar".to_owned())]
         );
     }
 
@@ -942,6 +1125,25 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_wildcard_seq_parse_error_in_struct() {
+        #[derive(Debug, Deserialize)]
+        struct Params {
+            #[allow(dead_code)]
+            ids: Vec<i32>,
+        }
+
+        test_parse_error!(
+            vec![("ids", "1/x/3")],
+            Params,
+            ErrorKind::ParseErrorAtKey {
+                key: "ids".to_owned(),
+                value: "x".to_owned(),
+                expected_type: "i32",
+            }
+        );
+    }
+
+    #[test]
     fn test_parse_seq_wrong_tuple_length() {
         test_parse_error!(
             vec![("a", "false")],
@@ -956,6 +1158,15 @@ mod tests {
     fn test_parse_seq_seq() {
         test_parse_error!(
             vec![("a", "false")],
+            Vec<Vec<String>>,
+            ErrorKind::UnsupportedType {
+                name: "alloc::vec::Vec<alloc::string::String>",
+            }
+        );
+
+        // nested sequences are also unsupported with multiple parameters
+        test_parse_error!(
+            vec![("a", "x/y"), ("b", "z")],
             Vec<Vec<String>>,
             ErrorKind::UnsupportedType {
                 name: "alloc::vec::Vec<alloc::string::String>",
