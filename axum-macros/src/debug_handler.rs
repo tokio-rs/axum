@@ -360,7 +360,7 @@ fn check_output_tuples(item_fn: &ItemFn) -> TokenStream {
             .enumerate()
             .map(|(idx, arg)| match arg {
                 Position::First(ty) => match extract_clean_typename(ty).as_deref() {
-                    Some("StatusCode" | "Response") => quote! {},
+                    Some("StatusCode" | "ForceStatusCode" | "Response") => quote! {},
                     Some("Parts") => check_is_response_parts(ty, handler_ident, idx),
                     Some(_) | None => {
                         if let Some(tn) = well_known_last_response_type(ty) {
