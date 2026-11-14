@@ -1,0 +1,13 @@
+error: method filter specified more than once
+ --> tests/typed_method/fail/duplicate_method.rs:6:16
+  |
+6 | #[typed_method(MethodFilter::POST)]
+  |                ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `axum::routing::MethodFilter`
+ --> tests/typed_method/fail/duplicate_method.rs:1:5
+  |
+1 | use axum::routing::MethodFilter;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
