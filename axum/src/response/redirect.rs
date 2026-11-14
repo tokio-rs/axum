@@ -96,8 +96,7 @@ impl IntoResponseParts for Redirect {
     /// Sets the redirect status code and `Location` header on the response.
     ///
     /// This allows `Redirect` to be used as part of a response tuple, for example
-    /// to include a body alongside a redirect as recommended by
-    /// [RFC 9110 §15.4.4](https://datatracker.ietf.org/doc/html/rfc9110#name-303-see-other).
+    /// to include a body alongside a redirect.
     ///
     /// # Examples
     ///
@@ -109,9 +108,7 @@ impl IntoResponseParts for Redirect {
     /// // Return a redirect with a body
     /// let response = (
     ///     Redirect::to(url),
-    ///     Html(format!(
-    ///         r#"<p>Redirecting to <a href="{url}">{url}</a></p>"#,
-    ///     )),
+    ///     Html("<p>Redirecting...</p>"),
     /// );
     /// ```
     ///
