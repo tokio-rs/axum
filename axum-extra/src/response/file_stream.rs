@@ -134,7 +134,10 @@ where
             return response_416(total_size);
         }
 
-        let mut resp = Response::builder().header(header::CONTENT_TYPE, "application/octet-stream");
+        let mut resp = with_content_disposition(
+            Response::builder().header(header::CONTENT_TYPE, "application/octet-stream"),
+            self.file_name.as_deref(),
+        );
         resp = resp.status(StatusCode::PARTIAL_CONTENT);
         resp = resp.header(header::ACCEPT_RANGES, "bytes");
         resp = resp.header(header::CONTENT_LENGTH, end - start + 1);
@@ -227,7 +230,7 @@ where
 
         if ranges.len() == 1 {
             let (start, end) = ranges[0];
-            return single_range_response(file, start, end, total_size).await;
+            return single_range_response(path, file, start, end, total_size).await;
         }
 
         Ok(multipart_range_response(path, ranges, total_size))
@@ -241,14 +244,20 @@ async fn full_file_response(path: impl AsRef<Path>) -> io::Result<Response> {
 }
 
 async fn single_range_response(
+    path: &Path,
     mut file: File,
     start: u64,
     end: u64,
     total_size: u64,
 ) -> io::Result<Response> {
     file.seek(std::io::SeekFrom::Start(start)).await?;
-    let stream = ReaderStream::new(file.take(end - start + 1));
-    Ok(FileStream::new(stream).into_range_response(start, end, total_size))
+    let stream = FileStream::new(ReaderStream::new(file.take(end - start + 1)));
+    // Same name as the full-file response from `from_path`.
+    let stream = match path.file_name().and_then(|name| name.to_str()) {
+        Some(file_name) => stream.file_name(file_name),
+        None => stream,
+    };
+    Ok(stream.into_range_response(start, end, total_size))
 }
 
 fn multipart_range_response(path: &Path, ranges: &[(u64, u64)], total_size: u64) -> Response {
@@ -361,17 +370,10 @@ where
     S::Error: Into<BoxError>,
 {
     fn into_response(self) -> Response {
-        let mut resp = Response::builder().header(header::CONTENT_TYPE, "application/octet-stream");
-
-        if let Some(file_name) = self.file_name {
-            resp = resp.header(
-                header::CONTENT_DISPOSITION,
-                format!(
-                    "attachment; filename=\"{}\"",
-                    super::content_disposition::EscapedQuotedString(&file_name)
-                ),
-            );
-        }
+        let mut resp = with_content_disposition(
+            Response::builder().header(header::CONTENT_TYPE, "application/octet-stream"),
+            self.file_name.as_deref(),
+        );
 
         if let Some(content_size) = self.content_size {
             resp = resp.header(header::CONTENT_LENGTH, content_size);
@@ -385,6 +387,23 @@ where
                 )
                     .into_response()
             })
+    }
+}
+
+/// Adds the attachment `Content-Disposition` header when a file name is set.
+fn with_content_disposition(
+    resp: http::response::Builder,
+    file_name: Option<&str>,
+) -> http::response::Builder {
+    match file_name {
+        Some(file_name) => resp.header(
+            header::CONTENT_DISPOSITION,
+            format!(
+                "attachment; filename=\"{}\"",
+                super::content_disposition::EscapedQuotedString(file_name)
+            ),
+        ),
+        None => resp,
     }
 }
 
@@ -646,6 +665,35 @@ mod tests {
             assert_eq!(body_text(response).await?, expected_body);
         }
 
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn into_range_response_keeps_file_name() -> Result<(), Box<dyn std::error::Error>> {
+        let stream = ReaderStream::new(Cursor::new(b"0123456789".to_vec()));
+        let response = FileStream::new(stream)
+            .file_name("data.bin")
+            .into_range_response(0, 4, 10);
+        assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
+        assert_eq!(
+            response.headers().get(header::CONTENT_DISPOSITION).unwrap(),
+            "attachment; filename=\"data.bin\""
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn range_response_from_path_keeps_file_name() -> Result<(), Box<dyn std::error::Error>> {
+        let file = test_file(b"0123456789")?;
+        let full = response_from_range_header(file.path(), "items=0-1").await?;
+        let range = response_from_range_header(file.path(), "bytes=0-4").await?;
+        assert_eq!(full.status(), StatusCode::OK);
+        assert_eq!(range.status(), StatusCode::PARTIAL_CONTENT);
+        assert!(full.headers().contains_key(header::CONTENT_DISPOSITION));
+        assert_eq!(
+            range.headers().get(header::CONTENT_DISPOSITION),
+            full.headers().get(header::CONTENT_DISPOSITION)
+        );
         Ok(())
     }
 
