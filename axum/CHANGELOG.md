@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **fixed:** The `WebSocketUpgrade` rejection for an unsupported `Sec-WebSocket-Version`
+  now sends `Sec-WebSocket-Version: 13`, as RFC 6455 requires ([#PR])
 - **breaking:** `tower-log` is no longer a default feature. Enable it explicitly to keep
   `tower`'s `log` feature turned on ([#3928])
 - **breaking:** Router fallbacks are now properly merged for nested routers ([#3158])

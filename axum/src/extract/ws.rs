@@ -1039,12 +1039,57 @@ pub mod rejection {
         pub struct InvalidProtocolPseudoheader;
     }
 
-    define_rejection! {
-        #[status = BAD_REQUEST]
-        #[body = "`Sec-WebSocket-Version` header did not include '13'"]
-        /// Rejection type for [`WebSocketUpgrade`](super::WebSocketUpgrade).
-        pub struct InvalidWebSocketVersionHeader;
+    /// Rejection type for [`WebSocketUpgrade`](super::WebSocketUpgrade).
+    ///
+    /// The response carries `Sec-WebSocket-Version: 13`, the only version axum
+    /// supports, as [RFC 6455 section 4.2.2] requires when the handshake is
+    /// aborted for an unsupported version.
+    ///
+    /// [RFC 6455 section 4.2.2]: https://datatracker.ietf.org/doc/html/rfc6455#section-4.2.2
+    #[derive(Debug, Default)]
+    #[non_exhaustive]
+    pub struct InvalidWebSocketVersionHeader;
+
+    impl InvalidWebSocketVersionHeader {
+        const BODY: &'static str = "`Sec-WebSocket-Version` header did not include '13'";
+
+        /// Get the response body text used for this rejection.
+        #[must_use]
+        pub fn body_text(&self) -> String {
+            self.to_string()
+        }
+
+        /// Get the status code used for this rejection.
+        #[must_use]
+        pub fn status(&self) -> http::StatusCode {
+            http::StatusCode::BAD_REQUEST
+        }
     }
+
+    impl crate::response::IntoResponse for InvalidWebSocketVersionHeader {
+        fn into_response(self) -> crate::response::Response {
+            let status = self.status();
+            axum_core::__log_rejection!(
+                rejection_type = InvalidWebSocketVersionHeader,
+                body_text = Self::BODY,
+                status = status,
+            );
+            (
+                status,
+                [(http::header::SEC_WEBSOCKET_VERSION, "13")],
+                Self::BODY,
+            )
+                .into_response()
+        }
+    }
+
+    impl std::fmt::Display for InvalidWebSocketVersionHeader {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(Self::BODY)
+        }
+    }
+
+    impl std::error::Error for InvalidWebSocketVersionHeader {}
 
     define_rejection! {
         #[status = BAD_REQUEST]
@@ -1192,6 +1237,25 @@ mod tests {
         let res = svc.oneshot(req).await.unwrap();
 
         assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
+    async fn unsupported_version_response_lists_supported_version() {
+        let svc = any(|ws: WebSocketUpgrade| async move { ws.on_upgrade(|_| async {}) });
+
+        let req = Request::builder()
+            .method(Method::GET)
+            .header("upgrade", "websocket")
+            .header("connection", "Upgrade")
+            .header("sec-websocket-key", "6D69KGBOr4Re+Nj6zx9aQA==")
+            .header("sec-websocket-version", "8")
+            .body(Body::empty())
+            .unwrap();
+
+        let res = svc.oneshot(req).await.unwrap();
+
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(res.headers()["sec-websocket-version"], "13");
     }
 
     #[allow(dead_code)]
