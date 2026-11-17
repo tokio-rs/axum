@@ -2091,13 +2091,6 @@ mod tests {
             .unwrap();
     }
 
-    // Runtime coverage of `Router::into_make_service_with_connect_info`: the
-    // compile-only checks above prove the types line up, but not that the
-    // `ConnectInfo` extension is actually populated for real connections.
-    //
-    // Unlike the other serve tests this can't use `ReadyListener` + `io::duplex`,
-    // because `ConnectInfo<SocketAddr>` is derived from the peer address of a
-    // real `TcpStream`.
     #[tokio::test]
     async fn serving_with_connect_info_over_tcp() {
         use crate::extract::ConnectInfo;
@@ -2109,14 +2102,12 @@ mod tests {
         let app = Router::new().route("/", get(handler));
 
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let server_addr = listener.local_addr().unwrap();
-        tokio::spawn(
-            serve(
-                listener,
-                app.into_make_service_with_connect_info::<SocketAddr>(),
-            )
-            .into_future(),
+        let server = serve(
+            listener,
+            app.into_make_service_with_connect_info::<SocketAddr>(),
         );
+        let server_addr = server.local_addr().unwrap();
+        tokio::spawn(server.into_future());
 
         let client = TcpStream::connect(server_addr).await.unwrap();
         let client_addr = client.local_addr().unwrap();
