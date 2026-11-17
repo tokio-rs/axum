@@ -955,7 +955,7 @@ mod private {
 mod tests {
     use std::{
         future::{pending, IntoFuture as _},
-        net::{IpAddr, Ipv4Addr},
+        net::{IpAddr, Ipv4Addr, SocketAddr},
         pin::pin,
         time::Duration,
     };
@@ -968,7 +968,7 @@ mod tests {
     use tokio::net::UnixListener;
     use tokio::{
         io::{self, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
-        net::TcpListener,
+        net::{TcpListener, TcpStream},
         task::JoinHandle,
     };
     use tower::ServiceBuilder;
@@ -2089,5 +2089,50 @@ mod tests {
             .await
             .expect("serve future did not resolve after the connection was force-closed")
             .unwrap();
+    }
+
+    // Runtime coverage of `Router::into_make_service_with_connect_info`: the
+    // compile-only checks above prove the types line up, but not that the
+    // `ConnectInfo` extension is actually populated for real connections.
+    //
+    // Unlike the other serve tests this can't use `ReadyListener` + `io::duplex`,
+    // because `ConnectInfo<SocketAddr>` is derived from the peer address of a
+    // real `TcpStream`.
+    #[tokio::test]
+    async fn serving_with_connect_info_over_tcp() {
+        use crate::extract::ConnectInfo;
+
+        async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
+            addr.to_string()
+        }
+
+        let app = Router::new().route("/", get(handler));
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let server_addr = listener.local_addr().unwrap();
+        tokio::spawn(
+            serve(
+                listener,
+                app.into_make_service_with_connect_info::<SocketAddr>(),
+            )
+            .into_future(),
+        );
+
+        let client = TcpStream::connect(server_addr).await.unwrap();
+        let client_addr = client.local_addr().unwrap();
+
+        let stream = TokioIo::new(client);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
+        tokio::spawn(conn);
+
+        let request = Request::builder().body(Body::empty()).unwrap();
+        let response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = to_bytes(Body::new(response.into_body()), usize::MAX)
+            .await
+            .unwrap();
+        let body = String::from_utf8(body.to_vec()).unwrap();
+        assert_eq!(body.parse::<SocketAddr>().unwrap(), client_addr);
     }
 }
