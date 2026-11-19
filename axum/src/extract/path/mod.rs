@@ -517,7 +517,8 @@ impl RawPathParams {
                 key: Arc::clone(key),
             }
             .into()),
-            None => Err(MissingPathParams.into()),
+            // the router doesn't insert `UrlParams` for routes without params
+            None => Ok(Self(Vec::new())),
         }
     }
 
@@ -594,10 +595,10 @@ impl IntoResponse for InvalidUtf8InPathParam {
 }
 
 fn get_params(parts: &Parts) -> Result<&[(Arc<str>, PercentDecodedStr)], PathRejection> {
-    let url_params = parts
-        .extensions
-        .get::<UrlParams>()
-        .ok_or(MissingPathParams)?;
+    // the router doesn't insert `UrlParams` for routes without params
+    let Some(url_params) = parts.extensions.get::<UrlParams>() else {
+        return Ok(&[]);
+    };
 
     match url_params {
         UrlParams::Params { params, .. } => Ok(params),
@@ -1022,6 +1023,27 @@ mod tests {
         let res = client.get("/foo/bar/baz").await;
         let body = res.text().await;
         assert_eq!(body, "a=foo b=bar c=baz");
+    }
+
+    #[crate::test]
+    async fn route_without_params() {
+        let app =
+            Router::new().route(
+                "/",
+                get(|params: RawPathParams| async move { params.iter().count().to_string() }).post(
+                    |Path(params): Path<HashMap<String, String>>| async move {
+                        params.len().to_string()
+                    },
+                ),
+            );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/").await;
+        assert_eq!(res.text().await, "0");
+
+        let res = client.post("/").await;
+        assert_eq!(res.text().await, "0");
     }
 
     #[crate::test]

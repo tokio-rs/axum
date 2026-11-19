@@ -1,7 +1,7 @@
 use crate::extract::path::{
     serialize_path_params, ErrorKind, FailedToDeserializePathParams, PathDeserializationError,
 };
-use crate::extract::rejection::{InnerPathRejection, MissingPathParams};
+use crate::extract::rejection::InnerPathRejection;
 use crate::extract::FromRequestParts;
 use crate::routing::url_params::UrlParams;
 use crate::util::PercentDecodedStr;
@@ -177,10 +177,10 @@ where
 }
 
 fn get_inner_params(parts: &Parts) -> Result<&[(Arc<str>, PercentDecodedStr)], InnerPathRejection> {
-    let url_params = parts
-        .extensions
-        .get::<UrlParams>()
-        .ok_or(MissingPathParams)?;
+    // the router doesn't insert `UrlParams` for routes without params
+    let Some(url_params) = parts.extensions.get::<UrlParams>() else {
+        return Ok(&[]);
+    };
 
     match url_params {
         UrlParams::Params {
