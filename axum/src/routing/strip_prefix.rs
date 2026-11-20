@@ -115,13 +115,24 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
     // if the prefix matches it will always do so up until a `/`, it cannot match only
     // part of a segment. Therefore this will always be at a char boundary and `split_at` won't
     // panic
-    let after_prefix = uri.path().split_at(matching_prefix_length?).1;
+    let (matched, after_prefix) = uri.path().split_at(matching_prefix_length?);
 
-    let new_path_and_query = match (after_prefix.starts_with('/'), path_and_query.query()) {
-        (true, None) => after_prefix.parse().unwrap(),
-        (true, Some(query)) => format!("{after_prefix}?{query}").parse().unwrap(),
-        (false, None) => format!("/{after_prefix}").parse().unwrap(),
-        (false, Some(query)) => format!("/{after_prefix}?{query}").parse().unwrap(),
+    let new_path_and_query = if matched.ends_with('/')
+        && !after_prefix.starts_with('/')
+        && path_and_query.as_str().starts_with('/')
+    {
+        // the prefix took the `/` in front of `after_prefix`, so the new path and the query
+        // after it are the tail of the original and we don't have to format a new string
+        path_and_query.as_str()[matched.len() - 1..]
+            .parse()
+            .unwrap()
+    } else {
+        match (after_prefix.starts_with('/'), path_and_query.query()) {
+            (true, None) => after_prefix.parse().unwrap(),
+            (true, Some(query)) => format!("{after_prefix}?{query}").parse().unwrap(),
+            (false, None) => format!("/{after_prefix}").parse().unwrap(),
+            (false, Some(query)) => format!("/{after_prefix}?{query}").parse().unwrap(),
+        }
     };
 
     let mut parts = uri.clone().into_parts();
@@ -251,6 +262,48 @@ mod tests {
     }
 
     test!(empty, uri = "/", prefix = "/", expected = Some("/"),);
+
+    test!(
+        query,
+        uri = "/a/b?x=1",
+        prefix = "/a",
+        expected = Some("/b?x=1"),
+    );
+
+    test!(
+        query_prefix_is_whole_path,
+        uri = "/a?x=1",
+        prefix = "/a",
+        expected = Some("/?x=1"),
+    );
+
+    test!(
+        query_trailing_slash,
+        uri = "/a/?x=1",
+        prefix = "/a",
+        expected = Some("/?x=1"),
+    );
+
+    test!(
+        query_multiple_segments,
+        uri = "/a/b/c?x=1&y=2",
+        prefix = "/a/b",
+        expected = Some("/c?x=1&y=2"),
+    );
+
+    test!(
+        absolute_form,
+        uri = "http://example.com/a/b?x=1",
+        prefix = "/a",
+        expected = Some("http://example.com/b?x=1"),
+    );
+
+    test!(
+        absolute_form_without_path,
+        uri = "http://example.com?x=1",
+        prefix = "/",
+        expected = Some("http://example.com/?x=1"),
+    );
 
     test!(
         single_segment,
