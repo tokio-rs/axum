@@ -82,7 +82,6 @@ pub use self::original_uri::OriginalUri;
 #[doc(inline)]
 pub use self::ws::WebSocketUpgrade;
 
-// this is duplicated in `axum-extra/src/extract/form.rs`
 pub(super) fn has_content_type(headers: &HeaderMap, expected_content_type: &mime::Mime) -> bool {
     let Some(content_type) = headers.get(header::CONTENT_TYPE) else {
         return false;
@@ -92,7 +91,11 @@ pub(super) fn has_content_type(headers: &HeaderMap, expected_content_type: &mime
         return false;
     };
 
-    content_type.starts_with(expected_content_type.as_ref())
+    let Ok(content_type) = content_type.parse::<mime::Mime>() else {
+        return false;
+    };
+
+    content_type.essence_str() == expected_content_type.essence_str()
 }
 
 #[cfg(test)]
