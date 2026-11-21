@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **fixed:** `debug_handler` and `debug_middleware` accept response tuples
+  beginning with `ForceStatusCode`.
 - **fixed:** Report invalid `TypedPath` capture names without panicking ([#3918])
 - **fixed:** `#[debug_handler]` no longer treats `http::request::Parts` as an
   extractor that consumes the request body ([#3967])
