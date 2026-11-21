@@ -25,6 +25,34 @@ pub struct Redirect {
 }
 
 impl Redirect {
+    /// Create a new [`Redirect`] that uses a [`301 Moved Permanently`][mdn-301] status code.
+    ///
+    /// This redirect may cause user agents to change the request method to GET in subsequent
+    /// requests, as permitted by the HTTP specification. If you want to preserve the request
+    /// method, [`Redirect::permanent`] ([`308 Permanent Redirect`][mdn-308] status code) should be
+    /// used instead.
+    ///
+    /// [mdn-301]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/301
+    /// [mdn-308]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/308
+    pub fn moved_permanently(uri: impl Into<String>) -> Self {
+        Self::with_status_code(StatusCode::MOVED_PERMANENTLY, uri.into())
+    }
+
+    /// Create a new [`Redirect`] that uses a [`302 Found`][mdn-302] status code.
+    ///
+    /// This redirect may cause user agents to change the request method to GET in subsequent
+    /// requests, as permitted by the HTTP specification. If you want to preserve the request
+    /// method, [`Redirect::temporary`] ([`307 Temporary Redirect`][mdn-307] status code) should be
+    /// used instead.
+    ///
+    /// In cases where you want any request method to be changed to GET, use [`Redirect::to`].
+    ///
+    /// [mdn-302]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/302
+    /// [mdn-307]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
+    pub fn found(uri: impl Into<String>) -> Self {
+        Self::with_status_code(StatusCode::FOUND, uri.into())
+    }
+
     /// Create a new [`Redirect`] that uses a [`303 See Other`][mdn] status code.
     ///
     /// This redirect instructs the client to change the method to GET for the subsequent request
@@ -156,6 +184,16 @@ mod tests {
     // based on the way it was constructed.
     #[test]
     fn correct_status() {
+        assert_eq!(
+            StatusCode::MOVED_PERMANENTLY,
+            Redirect::moved_permanently(EXAMPLE_URL).status_code()
+        );
+
+        assert_eq!(
+            StatusCode::FOUND,
+            Redirect::found(EXAMPLE_URL).status_code()
+        );
+
         assert_eq!(
             StatusCode::SEE_OTHER,
             Redirect::to(EXAMPLE_URL).status_code()
