@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **fixed:** `FileStream::into_range_response` and `FileStream::try_range_response`
+  now send the `Content-Disposition` file name, like the full-file response ([#4001])
 - **changed:** `AsyncReadBody` reads in 64 KiB chunks instead of 4 KiB ([#3991])
 - **added:** Add `AsyncReadBody::with_chunk_size` ([#3991])
 - **fixed:** `TypedPath::with_query_params` no longer leaves a trailing `?` when
@@ -44,6 +46,7 @@ and this project adheres to [Semantic Versioning].
 [#3776]: https://github.com/tokio-rs/axum/pull/3776
 [#3975]: https://github.com/tokio-rs/axum/pull/3975
 [#3978]: https://github.com/tokio-rs/axum/pull/3978
+[#4001]: https://github.com/tokio-rs/axum/pull/4001
 [#3991]: https://github.com/tokio-rs/axum/pull/3991
 
 # 0.12.6
