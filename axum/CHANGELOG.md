@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the removed `BoxBody` type ([#3890])
 - **fixed:** Successful responses to `CONNECT` no longer keep `content-length` or
   `transfer-encoding` headers after their body is removed ([#3907])
+- **fixed:** `WebSocketUpgrade`'s `405 Method Not Allowed` rejections now include the
+  RFC-required `Allow` header ([#4006])
 
 [#3984]: https://github.com/tokio-rs/axum/pull/3984
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
@@ -68,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3779]: https://github.com/tokio-rs/axum/pull/3779
 [#3928]: https://github.com/tokio-rs/axum/pull/3928
 [#3907]: https://github.com/tokio-rs/axum/pull/3907
+[#4006]: https://github.com/tokio-rs/axum/pull/4006
 
 # 0.8.9
 
