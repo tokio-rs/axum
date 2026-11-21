@@ -411,6 +411,34 @@ mod tests {
     }
 
     #[test]
+    fn named_capture_does_not_shadow_formatter() {
+        #[derive(TypedPath, Deserialize)]
+        #[typed_path("/files/{f}")]
+        struct File {
+            f: String,
+        }
+
+        let path = File {
+            f: "a file/name%".to_owned(),
+        };
+
+        assert_eq!(path.to_string(), "/files/a%20file%2Fname%25");
+        assert_eq!(path.to_uri(), "/files/a%20file%2Fname%25");
+    }
+
+    #[test]
+    fn tuple_capture_does_not_shadow_formatter() {
+        #[derive(TypedPath, Deserialize)]
+        #[typed_path("/files/{f}/{id}")]
+        struct File(String, u32);
+
+        let path = File("a file/name%".to_owned(), 42);
+
+        assert_eq!(path.to_string(), "/files/a%20file%2Fname%25/42");
+        assert_eq!(path.to_uri(), "/files/a%20file%2Fname%25/42");
+    }
+
+    #[test]
     fn with_params() {
         let path = UsersShow { id: 1 }.with_query_params(Params {
             foo: "foo",
