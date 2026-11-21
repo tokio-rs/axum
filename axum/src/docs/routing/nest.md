@@ -84,10 +84,58 @@ let app = Router::new()
 # let _: Router = app;
 ```
 
-Additionally, while the wildcard route `/foo/*rest` will not match the
-paths `/foo` or `/foo/`, a nested router at `/foo` will match the path `/foo`
-(but not `/foo/`), and a nested router at `/foo/` will match the path `/foo/`
-(but not `/foo`).
+Additionally, while the wildcard route `/foo/{*rest}` will not match the
+paths `/foo` or `/foo/`, a nested router at `/foo` will match both of them
+either with configured handlers or its fallback.
+
+# Root routes
+
+When nesting at `/foo`, there are two routes that can be considered root routes for the nested
+router: `/foo` and `/foo/`. Those two routes are not the same and may be configured to do different
+things though usually, you want only one or the other.
+
+There are several methods on the [`Router`] which turn it into a router prepared for nesting, each
+with different handling of the root routes. When a [`Router`] is nested without any configuration, the root route is registered and the slash route is handled by a fallback.
+
+```rust
+use axum::{routing::get, Router};
+
+let root_only = Router::new()
+    .route("/", get(|| async { "root" }))
+    .without_slash_route();
+
+let slash_only = Router::new()
+    .route("/", get(|| async { "slash" }))
+    .without_root_route();
+
+let both = Router::new()
+    .route("/", get(|| async { "root and slash" }))
+    .route_root_to_slash_route();
+
+let custom_routes = Router::new()
+    .route("/", get(|| async { "slash" }))
+    .route_root(get(|| async { "root" }));
+
+let default = Router::new()
+    .route("/", get(|| async { "root" }));
+
+let app = Router::new()
+    .nest("/root", root_only)
+    .nest("/slash", slash_only)
+    .nest("/both", both)
+    .nest("/custom", custom_routes)
+    .nest("/default", default);
+
+// The routes that would be matched are:
+// - /root
+// - /slash/
+// - /both
+// - /both/
+// - /custom
+// - /custom/
+// - /default
+# let _: Router = app;
+```
 
 # Fallbacks
 
@@ -190,7 +238,8 @@ router.
 - If the route overlaps with another route. See [`Router::route`]
   for more details.
 - If the route contains a wildcard (`*`).
-- If `path` is empty.
+- If `path` does not start with a `/` including an empty path.
+- If `path` ends with a `/`.
 
 [`OriginalUri`]: crate::extract::OriginalUri
 [`InnerPath`]: crate::extract::InnerPath
