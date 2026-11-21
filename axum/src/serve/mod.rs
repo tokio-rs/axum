@@ -26,6 +26,7 @@ use hyper_util::rt::TokioTimer;
 #[cfg(any(feature = "http1", feature = "http2"))]
 use hyper_util::{server::conn::auto::Builder, service::TowerToHyperService};
 use tokio::{sync::watch, task::JoinHandle};
+use tokio_util::sync::CancellationToken;
 use tower::ServiceExt as _;
 use tower_service::Service;
 
@@ -536,14 +537,13 @@ where
             _marker,
         } = self;
 
-        let (_signal_tx, signal_rx) = watch::channel(());
         let (_close_tx, close_rx) = watch::channel(());
 
         loop {
             let (io, remote_addr) = listener.accept().await;
             handle_connection(
                 &mut make_service,
-                &signal_rx,
+                std::future::pending(),
                 &close_rx,
                 io,
                 remote_addr,
@@ -678,31 +678,33 @@ where
             _marker,
         } = self;
 
-        let (signal_tx, mut signal_rx) = watch::channel(());
+        let shutdown = CancellationToken::new();
+        let mut signal_received = pin!(shutdown.cancelled());
+        let cancel_on_drop = shutdown.clone().drop_guard();
         executor.execute(async move {
             signal.await;
             trace!("received graceful shutdown signal. Telling tasks to shutdown");
-            drop(signal_tx);
+            drop(cancel_on_drop);
         });
 
         let (close_tx, close_rx) = watch::channel(());
 
         loop {
             let (io, remote_addr) =
-                match select(pin!(listener.accept()), pin!(signal_rx.changed())).await {
+                match select(pin!(listener.accept()), signal_received.as_mut()).await {
                     Either::Left((conn, _)) => conn,
-                    Either::Right((Err(_), _)) => {
+                    Either::Right(((), _)) => {
                         trace!("signal received, not accepting new connections");
                         break;
                     }
-                    Either::Right((Ok(()), _)) => {
-                        unreachable!("shutdown channel never sends values")
-                    }
                 };
 
+            // Each connection waits on its own child token. Connection tasks poll this future on
+            // every wakeup, and polling a pending `cancelled()` future locks the token's state, so
+            // connections sharing one token would contend on that lock.
             handle_connection(
                 &mut make_service,
-                &signal_rx,
+                shutdown.child_token().cancelled_owned(),
                 &close_rx,
                 io,
                 remote_addr,
@@ -790,7 +792,7 @@ where
 
 async fn handle_connection<L, M, S, B, E>(
     make_service: &mut M,
-    signal_rx: &watch::Receiver<()>,
+    shutdown: impl Future<Output = ()> + Send + 'static,
     close_rx: &watch::Receiver<()>,
     io: <L as Listener>::Io,
     remote_addr: <L as Listener>::Addr,
@@ -808,7 +810,6 @@ async fn handle_connection<L, M, S, B, E>(
     B::Error: Into<Box<dyn StdError + Send + Sync>>,
     E: Executor,
 {
-    let mut signal_rx = signal_rx.clone();
     let connection_lifetime_limits = connection_lifetime_limits.clone();
     let io = TokioIo::new(io);
 
@@ -845,7 +846,7 @@ async fn handle_connection<L, M, S, B, E>(
         builder.http2().enable_connect_protocol();
 
         let mut conn = pin!(builder.serve_connection_with_upgrades(io, hyper_service));
-        let mut signal_closed = pin!(signal_rx.changed().fuse());
+        let mut signal_closed = pin!(shutdown.fuse());
 
         // Age limit for the connection (with optional jitter). When it
         // elapses we start a graceful shutdown of this connection and re-arm the
@@ -872,12 +873,9 @@ async fn handle_connection<L, M, S, B, E>(
                     }
                     break;
                 }
-                Either::Right((Either::Left((Err(_), _)), _)) => {
+                Either::Right((Either::Left(((), _)), _)) => {
                     trace!("signal received in task, starting graceful shutdown");
                     conn.as_mut().graceful_shutdown();
-                }
-                Either::Right((Either::Left((Ok(()), _)), _)) => {
-                    unreachable!("shutdown channel never sends values")
                 }
                 Either::Right((Either::Right(_), _)) if !age_fired => {
                     age_fired = true;
