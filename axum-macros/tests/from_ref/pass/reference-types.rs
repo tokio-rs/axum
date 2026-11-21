@@ -7,4 +7,7 @@ struct State {
     inner: &'static str,
 }
 
+#[derive(FromRef)]
+struct TupleState(&'static str);
+
 fn main() {}
