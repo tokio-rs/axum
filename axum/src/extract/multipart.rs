@@ -30,6 +30,10 @@ use std::{
 ///
 /// [order-of-extractors]: crate::extract#the-order-of-extractors
 ///
+/// When used as `Option<Multipart>`, a missing `Content-Type` header or a valid content type
+/// other than `multipart/form-data` produces `None`. A malformed `Content-Type` header or
+/// a missing multipart boundary rejects the request.
+///
 /// # Example
 ///
 /// ```rust,no_run
@@ -88,9 +92,10 @@ where
     type Rejection = MultipartRejection;
 
     async fn from_request(req: Request, _state: &S) -> Result<Option<Self>, Self::Rejection> {
-        let Some(content_type) = content_type_str(req.headers()) else {
+        let Some(content_type) = req.headers().get(CONTENT_TYPE) else {
             return Ok(None);
         };
+        let content_type = content_type.to_str().map_err(|_| InvalidBoundary)?;
         match multer::parse_boundary(content_type) {
             Ok(boundary) => {
                 let stream = req.with_limited_body().into_body();
@@ -455,5 +460,44 @@ mod tests {
 
         let res = client.post("/").await;
         assert_eq!(res.status(), StatusCode::NO_CONTENT);
+
+        for content_type in ["text/plain", "application/json"] {
+            let res = client.post("/").header(CONTENT_TYPE, content_type).await;
+            assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        }
+    }
+
+    #[crate::test]
+    async fn optional_multipart_rejects_invalid_content_type() {
+        use http::HeaderValue;
+        use tower::ServiceExt;
+
+        let app = Router::new().route(
+            "/",
+            post(|_: Option<Multipart>| async { StatusCode::NO_CONTENT }),
+        );
+
+        for content_type in [
+            b"multipart/form-data; boundary=\xff".as_slice(),
+            b"\xff".as_slice(),
+            b"not a media type".as_slice(),
+            b"multipart/form-data".as_slice(),
+        ] {
+            let req = Request::builder()
+                .method("POST")
+                .uri("/")
+                .header(CONTENT_TYPE, HeaderValue::from_bytes(content_type).unwrap())
+                .body(crate::body::Body::empty())
+                .unwrap();
+            let res = app.clone().oneshot(req).await.unwrap();
+
+            assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+            assert_eq!(
+                crate::body::to_bytes(res.into_body(), usize::MAX)
+                    .await
+                    .unwrap(),
+                "Invalid `boundary` for `multipart/form-data` request",
+            );
+        }
     }
 }
