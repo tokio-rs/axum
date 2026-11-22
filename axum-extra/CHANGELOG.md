@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **changed:** `AsyncReadBody` reads in 64 KiB chunks instead of 4 KiB ([#3991])
+- **added:** Add `AsyncReadBody::with_chunk_size` ([#3991])
+- **fixed:** `TypedPath::with_query_params` no longer leaves a trailing `?` when
+  the params don't serialize to anything, for example when all fields are
+  `None` ([#3968])
 - **fixed:** `JsonDeserializer` rejects trailing non-whitespace after a JSON
   value ([#3916])
 - **breaking:** Remove the deprecated `Host`, `Scheme` and `OptionalPath`
@@ -18,6 +23,8 @@ and this project adheres to [Semantic Versioning].
   following pattern which lead to a panic before because the two
   `route_with_tsr` calls would both attempt to register a method-independent
   redirect ([#3586]):
+- **fixed:** `Attachment::filename` keeps non-ASCII UTF-8 filenames instead of
+  dropping them ([#3978])
 
   ```rust
   Router::new()
@@ -27,12 +34,17 @@ and this project adheres to [Semantic Versioning].
 - **added:** Add `RouterExt::typed_query` ([#3801])
 - **fixed:** Escape multipart `Content-Disposition` parameters and reject
   newlines in field names and filenames ([#3776])
+- **changed:** Speed up the boundary collision check in `MultipartForm` ([#3975])
 
+[#3968]: https://github.com/tokio-rs/axum/pull/3968
 [#3916]: https://github.com/tokio-rs/axum/pull/3916
 [#3599]: https://github.com/tokio-rs/axum/pull/3599
 [#3586]: https://github.com/tokio-rs/axum/pull/3586
 [#3801]: https://github.com/tokio-rs/axum/pull/3801
 [#3776]: https://github.com/tokio-rs/axum/pull/3776
+[#3975]: https://github.com/tokio-rs/axum/pull/3975
+[#3978]: https://github.com/tokio-rs/axum/pull/3978
+[#3991]: https://github.com/tokio-rs/axum/pull/3991
 
 # 0.12.6
 

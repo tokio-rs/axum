@@ -110,6 +110,11 @@ where
     /// Deserialize the request body into the target type.
     /// See [`JsonDeserializer`] for more details.
     pub fn deserialize(&'a self) -> Result<T, JsonDeserializerRejection> {
+        // tracking the path allocates for every field, so only do it to build the error
+        if let Ok(value) = serde_json::from_slice(&self.bytes) {
+            return Ok(value);
+        }
+
         let mut deserializer = serde_json::Deserializer::from_slice(&self.bytes);
 
         let value = match serde_path_to_error::deserialize(&mut deserializer) {

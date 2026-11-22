@@ -6,14 +6,14 @@ use axum_core::{
     response::{IntoResponse, Response},
     BoxError, RequestExt,
 };
-use bytes::{BufMut, BytesMut};
+use bytes::Bytes;
 use futures_core::{stream::BoxStream, Stream, TryStream};
 use futures_util::stream::TryStreamExt;
 use pin_project_lite::pin_project;
 use serde_core::{de::DeserializeOwned, Serialize};
 use std::{
     convert::Infallible,
-    io::{self, Write},
+    io,
     marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
@@ -159,10 +159,10 @@ where
         };
 
         let stream = inner.map_err(Into::into).and_then(|value| async move {
-            let mut buf = BytesMut::new().writer();
+            let mut buf = Vec::with_capacity(128);
             serde_json::to_writer(&mut buf, &value)?;
-            buf.write_all(b"\n")?;
-            Ok::<_, BoxError>(buf.into_inner().freeze())
+            buf.push(b'\n');
+            Ok::<_, BoxError>(Bytes::from(buf))
         });
         let stream = Body::from_stream(stream);
 
