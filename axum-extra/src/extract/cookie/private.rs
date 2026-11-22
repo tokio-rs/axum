@@ -156,10 +156,10 @@ impl PrivateCookieJar {
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
     pub fn from_headers(headers: &HeaderMap, key: Key) -> Self {
         let mut jar = cookie::CookieJar::new();
-        let mut private_jar = jar.private_mut(&key);
         for cookie in cookies_from_request(headers) {
-            if let Some(cookie) = private_jar.decrypt(cookie) {
-                private_jar.add_original(cookie);
+            // keep the sealed value, `PrivateJar::add_original` would encrypt it all over again
+            if jar.private(&key).decrypt(cookie.clone()).is_some() {
+                jar.add_original(cookie);
             }
         }
 
@@ -312,5 +312,28 @@ impl<K> Clone for PrivateCookieJar<K> {
             key: self.key.clone(),
             _marker: self._marker,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_headers_keeps_the_encrypted_value() {
+        let key = Key::generate();
+        let mut sealed = cookie::CookieJar::new();
+        sealed.private_mut(&key).add(Cookie::new("key", "value"));
+        let sealed = sealed.get("key").unwrap().value().to_owned();
+
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            http::header::COOKIE,
+            format!("key={sealed}").parse().unwrap(),
+        );
+        let jar = PrivateCookieJar::<Key>::from_headers(&headers, key);
+
+        assert_eq!(jar.jar.get("key").unwrap().value(), sealed);
+        assert_eq!(jar.get("key").unwrap().value(), "value");
     }
 }

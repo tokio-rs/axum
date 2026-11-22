@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning].
 - **added:** Add `RouterExt::typed_query` ([#3801])
 - **fixed:** Escape multipart `Content-Disposition` parameters and reject
   newlines in field names and filenames ([#3776])
+- **changed:** `PrivateCookieJar` and `SignedCookieJar` no longer re-seal
+  every incoming cookie in `from_headers` ([#3974])
 - **changed:** Speed up the boundary collision check in `MultipartForm` ([#3975])
 
 [#3968]: https://github.com/tokio-rs/axum/pull/3968
@@ -42,6 +44,7 @@ and this project adheres to [Semantic Versioning].
 [#3586]: https://github.com/tokio-rs/axum/pull/3586
 [#3801]: https://github.com/tokio-rs/axum/pull/3801
 [#3776]: https://github.com/tokio-rs/axum/pull/3776
+[#3974]: https://github.com/tokio-rs/axum/pull/3974
 [#3975]: https://github.com/tokio-rs/axum/pull/3975
 [#3978]: https://github.com/tokio-rs/axum/pull/3978
 [#3991]: https://github.com/tokio-rs/axum/pull/3991
