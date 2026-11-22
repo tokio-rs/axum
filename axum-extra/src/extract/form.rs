@@ -43,9 +43,11 @@ where
 
         let RawForm(bytes) = req.extract().await?;
 
-        let deserializer = serde_html_form::Deserializer::new(form_urlencoded::parse(&bytes));
+        let deserializer = || serde_html_form::Deserializer::new(form_urlencoded::parse(&bytes));
 
-        serde_path_to_error::deserialize::<_, T>(deserializer)
+        // tracking the path allocates for every field, so only do it to build the error
+        T::deserialize(deserializer())
+            .or_else(|_| serde_path_to_error::deserialize(deserializer()))
             .map(Self)
             .map_err(|err| {
                 if is_get_or_head {
