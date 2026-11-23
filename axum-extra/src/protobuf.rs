@@ -5,11 +5,9 @@ use axum_core::__define_rejection as define_rejection;
 use axum_core::{
     extract::{rejection::BytesRejection, FromRequest, Request},
     response::{IntoResponse, IntoResponseFailed, Response},
-    RequestExt,
 };
-use bytes::BytesMut;
+use bytes::{Bytes, BytesMut};
 use http::StatusCode;
-use http_body_util::BodyExt;
 use prost::Message;
 
 /// A Protocol Buffer message extractor and response.
@@ -100,15 +98,10 @@ where
 {
     type Rejection = ProtobufRejection;
 
-    async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
-        let mut buf = req
-            .into_limited_body()
-            .collect()
-            .await
-            .map_err(ProtobufDecodeError)?
-            .aggregate();
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+        let bytes = Bytes::from_request(req, state).await?;
 
-        match T::decode(&mut buf) {
+        match T::decode(bytes) {
             Ok(value) => Ok(Self(value)),
             Err(err) => Err(ProtobufDecodeError::from_err(err).into()),
         }
@@ -165,7 +158,7 @@ composite_rejection! {
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{routing::post, Router};
+    use axum::{extract::DefaultBodyLimit, routing::post, Router};
     use http::header::CONTENT_TYPE;
     use http::StatusCode;
 
@@ -221,6 +214,32 @@ mod tests {
 
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
         assert!(res.text().await.starts_with("Failed to decode the body"));
+    }
+
+    #[tokio::test]
+    async fn body_too_large_is_bytes_rejection() {
+        #[derive(prost::Message)]
+        struct Input {
+            #[prost(string, tag = "1")]
+            foo: String,
+        }
+
+        let app = Router::new()
+            .route("/", post(|_: Protobuf<Input>| async {}))
+            .layer(DefaultBodyLimit::max(1));
+
+        let input = Input {
+            foo: "bar".to_owned(),
+        };
+
+        let client = TestClient::new(app);
+        let res = client.post("/").body(input.encode_to_vec()).await;
+
+        assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+        assert!(res
+            .text()
+            .await
+            .starts_with("Failed to buffer the request body"));
     }
 
     #[tokio::test]

@@ -184,14 +184,6 @@ impl Stream for BodyDataStream {
             }
         }
     }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let size_hint = self.inner.size_hint();
-        let lower = usize::try_from(size_hint.lower()).unwrap_or_default();
-        let upper = size_hint.upper().and_then(|v| usize::try_from(v).ok());
-        (lower, upper)
-    }
 }
 
 impl http_body::Body for BodyDataStream {
@@ -246,8 +238,36 @@ where
     }
 }
 
-#[test]
-fn test_try_downcast() {
-    assert_eq!(try_downcast::<i32, _>(5_u32), Err(5_u32));
-    assert_eq!(try_downcast::<i32, _>(5_i32), Ok(5_i32));
+#[cfg(test)]
+mod tests {
+    use futures_core::Stream;
+
+    use crate::body::{try_downcast, Body};
+
+    #[test]
+    fn test_try_downcast() {
+        assert_eq!(try_downcast::<i32, _>(5_u32), Err(5_u32));
+        assert_eq!(try_downcast::<i32, _>(5_i32), Ok(5_i32));
+    }
+
+    #[test]
+    fn data_stream_size_hints() {
+        let stream = Body::empty().into_data_stream();
+        assert_eq!(Stream::size_hint(&stream), (0, None));
+        let body_hint = http_body::Body::size_hint(&stream);
+        assert_eq!(body_hint.lower(), 0);
+        assert_eq!(body_hint.upper(), Some(0));
+
+        let stream = Body::from("hello").into_data_stream();
+        assert_eq!(Stream::size_hint(&stream), (0, None));
+        let body_hint = http_body::Body::size_hint(&stream);
+        assert_eq!(body_hint.lower(), 5);
+        assert_eq!(body_hint.upper(), Some(5));
+
+        let stream = Body::from_stream(stream).into_data_stream();
+        assert_eq!(Stream::size_hint(&stream), (0, None));
+        let body_hint = http_body::Body::size_hint(&stream);
+        assert_eq!(body_hint.lower(), 0);
+        assert_eq!(body_hint.upper(), None);
+    }
 }

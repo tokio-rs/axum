@@ -596,7 +596,6 @@ fn request_consuming_type_name(ty: &Type) -> Option<&'static str> {
         "Request" => "Request<_>",
         "Bytes" => "Bytes",
         "String" => "String",
-        "Parts" => "Parts",
         _ => return None,
     };
 
@@ -871,7 +870,7 @@ fn skip_next_arg(arg: &FnArg, kind: FunctionKind) -> bool {
                         .path
                         .segments
                         .last()
-                        .map_or(true, |path_segment| path_segment.ident != "Next")
+                        .is_none_or(|path_segment| path_segment.ident != "Next")
                 } else {
                     true
                 }

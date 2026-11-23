@@ -50,6 +50,9 @@ pub use crate::Extension;
 #[doc(no_inline)]
 pub use crate::form::Form;
 
+#[doc(inline)]
+pub use self::path::inner_path::InnerPath;
+
 #[cfg(feature = "matched-path")]
 pub(crate) mod matched_path;
 

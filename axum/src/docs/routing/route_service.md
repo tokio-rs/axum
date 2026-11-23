@@ -1,45 +1,50 @@
 Add another route to the router that calls a [`Service`].
 
+Unlike [`Router::route`], this accepts a [`Service`] directly rather than a
+[`MethodRouter`]. All HTTP methods are forwarded to the service.
+
+The service receives a [`Request`] (whose body type is [`Body`]) and must
+return a response that implements [`IntoResponse`]. The error type must be
+[`Infallible`].
+
+See [`any_service`] and [`get_service`] for using services with [`Router::route`].
+
 # Example
 
-```rust,no_run
+```rust
 use axum::{
     Router,
     body::Body,
-    routing::{any_service, get_service},
+    routing::any_service,
     extract::Request,
-    http::StatusCode,
-    error_handling::HandleErrorLayer,
 };
-use tower_http::services::ServeFile;
 use http::Response;
-use std::{convert::Infallible, io};
+use std::convert::Infallible;
 use tower::service_fn;
+use tower_http::services::ServeFile;
 
 let app = Router::new()
     .route(
-        // Any request to `/` goes to a service
         "/",
-        // Services whose response body is not `axum::body::BoxBody`
-        // can be wrapped in `axum::routing::any_service` (or one of the other routing filters)
-        // to have the response body mapped
+        // `route` takes a `MethodRouter`. `any_service` matches all methods;
+        // use `get_service` / `post_service` / ... to match specific methods.
         any_service(service_fn(|_: Request| async {
-            let res = Response::new(Body::from("Hi from `GET /`"));
+            let res = Response::new(Body::from("Hi from `/`"));
             Ok::<_, Infallible>(res)
-        }))
+        })),
     )
     .route_service(
         "/foo",
-        // This service's response body is `axum::body::BoxBody` so
-        // it can be routed to directly.
+        // `route_service` takes any `Service<Request>` whose response
+        // implements `IntoResponse`.
         service_fn(|req: Request| async move {
             let body = Body::from(format!("Hi from `{} /foo`", req.method()));
             let res = Response::new(body);
             Ok::<_, Infallible>(res)
-        })
+        }),
     )
     .route_service(
-        // GET `/static/Cargo.toml` goes to a service from tower-http
+        // Services from tower-http work the same way.
         "/static/Cargo.toml",
         ServeFile::new("Cargo.toml"),
     );

@@ -159,6 +159,8 @@ impl<E> Future for RouteFuture<E> {
             {
                 error!("response to CONNECT with nonempty body");
                 res = res.map(|_| Body::empty());
+                res.headers_mut().remove(&CONTENT_LENGTH);
+                res.headers_mut().remove(&header::TRANSFER_ENCODING);
             }
         } else if *this.top_level {
             if res.status() == http::StatusCode::METHOD_NOT_ALLOWED {

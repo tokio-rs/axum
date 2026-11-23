@@ -5,8 +5,13 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub(crate) enum UrlParams {
-    Params(Vec<(Arc<str>, PercentDecodedStr)>),
-    InvalidUtf8InPathParam { key: Arc<str> },
+    Params {
+        params: Vec<(Arc<str>, PercentDecodedStr)>,
+        inner_start: usize,
+    },
+    InvalidUtf8InPathParam {
+        key: Arc<str>,
+    },
 }
 
 pub(super) fn insert_url_params(extensions: &mut Extensions, params: &Params<'_, '_>) {
@@ -37,11 +42,25 @@ pub(super) fn insert_url_params(extensions: &mut Extensions, params: &Params<'_,
         (_, Err(invalid_key)) => {
             extensions.insert(UrlParams::InvalidUtf8InPathParam { key: invalid_key });
         }
-        (Some(UrlParams::Params(current)), Ok(params)) => {
+        (
+            Some(UrlParams::Params {
+                params: current, ..
+            }),
+            Ok(params),
+        ) => {
             current.extend(params);
         }
         (None, Ok(params)) => {
-            extensions.insert(UrlParams::Params(params));
+            extensions.insert(UrlParams::Params {
+                params,
+                inner_start: 0,
+            });
         }
+    }
+}
+
+pub(super) fn advance_inner_start(extensions: &mut Extensions, count: usize) {
+    if let Some(UrlParams::Params { inner_start, .. }) = extensions.get_mut() {
+        *inner_start += count;
     }
 }
