@@ -341,10 +341,15 @@ pub struct Next {
 
 impl Next {
     /// Execute the remaining middleware stack.
-    pub async fn run(mut self, req: Request) -> Response {
-        match self.inner.call(req).await {
-            Ok(res) => res,
-            Err(err) => match err {},
+    pub fn run(mut self, req: Request) -> impl Future<Output = Response> {
+        // Construct the inner future eagerly, so we don't have to store req
+        // on our own async "stack frame".
+        let call_fut = self.inner.call(req);
+        async move {
+            match call_fut.await {
+                Ok(res) => res,
+                Err(err) => match err {},
+            }
         }
     }
 }
@@ -414,5 +419,20 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
         let body = res.collect().await.unwrap().to_bytes();
         assert_eq!(&body[..], b"ok");
+    }
+
+    #[test]
+    fn next_run_fut_size() {
+        let next = Next {
+            inner: BoxCloneSyncService::new(tower::service_fn(|_req| async {
+                Ok(().into_response())
+            })),
+        };
+
+        let future = next.run(http::Request::new(Body::empty()));
+        let size_of_future = size_of_val(&future);
+        // used to be 296 when the inner call future was constructed lazily
+        // (run was an `async fn`), at the time of writing it's 40 bytes.
+        assert!(size_of_future < 64, "{size_of_future}");
     }
 }

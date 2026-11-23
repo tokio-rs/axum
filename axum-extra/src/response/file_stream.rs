@@ -689,6 +689,8 @@ mod tests {
         for range_header in [
             "bytes=5-3",
             "bytes=abc-def",
+            "bytes=+0-+1",
+            "bytes=0 - 1",
             "bytes=18446744073709551616-",
             "bytes=-18446744073709551616",
             "bytes=0-18446744073709551616",
