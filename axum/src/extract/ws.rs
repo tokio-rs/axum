@@ -1713,6 +1713,35 @@ mod tests {
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     }
 
+    // `test-util` must be purely additive. Cargo unifies features, so a
+    // dependency can turn it on for a crate that never uses `MockUpgrade`. A
+    // valid handshake with neither hyper's `OnUpgrade` nor a `MockUpgrade` in
+    // its extensions must be rejected the same way whether the feature is on
+    // or off, so this test runs in both configurations.
+    #[crate::test]
+    async fn no_upgrade_extension_rejected_regardless_of_test_util() {
+        let svc = any(|ws: Result<WebSocketUpgrade, WebSocketUpgradeRejection>| {
+            let rejection = ws.unwrap_err();
+            assert!(matches!(
+                rejection,
+                WebSocketUpgradeRejection::ConnectionNotUpgradable(_)
+            ));
+            ready(())
+        });
+
+        let req = Request::builder()
+            .method(Method::GET)
+            .header("connection", "upgrade")
+            .header("upgrade", "websocket")
+            .header("sec-websocket-version", "13")
+            .header("sec-websocket-key", "dGhlIHNhbXBsZSBub25jZQ==")
+            .body(Body::empty())
+            .unwrap();
+
+        let res = svc.oneshot(req).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
     // Running the upgrade after the mock I/O was already consumed invokes the
     // `on_failed_upgrade` callback instead of panicking or hanging.
     #[crate::test]
