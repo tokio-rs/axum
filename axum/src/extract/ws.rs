@@ -1004,19 +1004,97 @@ pub mod rejection {
     use axum_core::__composite_rejection as composite_rejection;
     use axum_core::__define_rejection as define_rejection;
 
-    define_rejection! {
-        #[status = METHOD_NOT_ALLOWED]
-        #[body = "Request method must be `GET`"]
-        /// Rejection type for [`WebSocketUpgrade`](super::WebSocketUpgrade).
-        pub struct MethodNotGet;
+    /// Rejection type for [`WebSocketUpgrade`](super::WebSocketUpgrade).
+    ///
+    /// The response carries an `Allow` header field, as required for a
+    /// `405 Method Not Allowed` response by [RFC 9110 section 15.5.6].
+    ///
+    /// [RFC 9110 section 15.5.6]: https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.6
+    #[derive(Debug, Default)]
+    #[non_exhaustive]
+    pub struct MethodNotGet;
+
+    impl MethodNotGet {
+        const BODY: &'static str = "Request method must be `GET`";
+
+        /// Get the response body text used for this rejection.
+        #[must_use]
+        pub fn body_text(&self) -> String {
+            self.to_string()
+        }
+
+        /// Get the status code used for this rejection.
+        #[must_use]
+        pub fn status(&self) -> http::StatusCode {
+            http::StatusCode::METHOD_NOT_ALLOWED
+        }
     }
 
-    define_rejection! {
-        #[status = METHOD_NOT_ALLOWED]
-        #[body = "Request method must be `CONNECT`"]
-        /// Rejection type for [`WebSocketUpgrade`](super::WebSocketUpgrade).
-        pub struct MethodNotConnect;
+    impl crate::response::IntoResponse for MethodNotGet {
+        fn into_response(self) -> crate::response::Response {
+            let status = self.status();
+            axum_core::__log_rejection!(
+                rejection_type = MethodNotGet,
+                body_text = Self::BODY,
+                status = status,
+            );
+            (status, [(http::header::ALLOW, "GET")], Self::BODY).into_response()
+        }
     }
+
+    impl std::fmt::Display for MethodNotGet {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(Self::BODY)
+        }
+    }
+
+    impl std::error::Error for MethodNotGet {}
+
+    /// Rejection type for [`WebSocketUpgrade`](super::WebSocketUpgrade).
+    ///
+    /// The response carries an `Allow` header field, as required for a
+    /// `405 Method Not Allowed` response by [RFC 9110 section 15.5.6].
+    ///
+    /// [RFC 9110 section 15.5.6]: https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.6
+    #[derive(Debug, Default)]
+    #[non_exhaustive]
+    pub struct MethodNotConnect;
+
+    impl MethodNotConnect {
+        const BODY: &'static str = "Request method must be `CONNECT`";
+
+        /// Get the response body text used for this rejection.
+        #[must_use]
+        pub fn body_text(&self) -> String {
+            self.to_string()
+        }
+
+        /// Get the status code used for this rejection.
+        #[must_use]
+        pub fn status(&self) -> http::StatusCode {
+            http::StatusCode::METHOD_NOT_ALLOWED
+        }
+    }
+
+    impl crate::response::IntoResponse for MethodNotConnect {
+        fn into_response(self) -> crate::response::Response {
+            let status = self.status();
+            axum_core::__log_rejection!(
+                rejection_type = MethodNotConnect,
+                body_text = Self::BODY,
+                status = status,
+            );
+            (status, [(http::header::ALLOW, "CONNECT")], Self::BODY).into_response()
+        }
+    }
+
+    impl std::fmt::Display for MethodNotConnect {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(Self::BODY)
+        }
+    }
+
+    impl std::error::Error for MethodNotConnect {}
 
     define_rejection! {
         #[status = BAD_REQUEST]
@@ -1192,6 +1270,37 @@ mod tests {
         let res = svc.oneshot(req).await.unwrap();
 
         assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
+    async fn method_not_get_rejection_includes_allow_header() {
+        let svc = any(|_: WebSocketUpgrade| async {});
+
+        let req = Request::builder()
+            .method(Method::POST)
+            .body(Body::empty())
+            .unwrap();
+
+        let res = svc.oneshot(req).await.unwrap();
+
+        assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(res.headers()[http::header::ALLOW], "GET");
+    }
+
+    #[crate::test]
+    async fn method_not_connect_rejection_includes_allow_header() {
+        let svc = any(|_: WebSocketUpgrade| async {});
+
+        let req = Request::builder()
+            .version(Version::HTTP_2)
+            .method(Method::GET)
+            .body(Body::empty())
+            .unwrap();
+
+        let res = svc.oneshot(req).await.unwrap();
+
+        assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(res.headers()[http::header::ALLOW], "CONNECT");
     }
 
     #[allow(dead_code)]
