@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the removed `BoxBody` type ([#3890])
 - **fixed:** Successful responses to `CONNECT` no longer keep `content-length` or
   `transfer-encoding` headers after their body is removed ([#3907])
+- **added:** `Redirect::found` and `Redirect::moved_permanently` for HTTP 302 Found and 301 Moved Permanently,
+  respectively ([#3802])
 
 [#3984]: https://github.com/tokio-rs/axum/pull/3984
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
@@ -68,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3779]: https://github.com/tokio-rs/axum/pull/3779
 [#3928]: https://github.com/tokio-rs/axum/pull/3928
 [#3907]: https://github.com/tokio-rs/axum/pull/3907
+[#3802]: https://github.com/tokio-rs/axum/pull/3802
 
 # 0.8.9
 
