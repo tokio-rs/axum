@@ -87,9 +87,9 @@ fn leaf() -> ReadyCheck<Ok200> {
 }
 
 async fn send_twice(app: Router, uri: &str) {
-    // Same `Router` value twice, plus a fresh clone, so both the shared and the
-    // cloned paths are exercised
-    for app in [app.clone(), app.clone(), app] {
+    // Both `Router`s share their routes, so each request has to clone the shared
+    // service and poll that clone to readiness before calling it
+    for app in [app.clone(), app] {
         let res = app
             .oneshot(Request::get(uri).body(Body::empty()).unwrap())
             .await
