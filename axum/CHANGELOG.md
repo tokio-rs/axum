@@ -46,9 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Successful responses to `CONNECT` no longer keep `content-length` or
   `transfer-encoding` headers after their body is removed ([#3907])
 - **fixed:** `WebSocketUpgrade::requested_protocols` returns the subprotocols in the order
-  the client sent them again, instead of sorted
+  the client sent them again, instead of sorted ([#4009])
 
 [#3984]: https://github.com/tokio-rs/axum/pull/3984
+[#4009]: https://github.com/tokio-rs/axum/pull/4009
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
 [#3261]: https://github.com/tokio-rs/axum/pull/3261
 [#3205]: https://github.com/tokio-rs/axum/pull/3205
