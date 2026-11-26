@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the removed `BoxBody` type ([#3890])
 - **fixed:** Successful responses to `CONNECT` no longer keep `content-length` or
   `transfer-encoding` headers after their body is removed ([#3907])
+- **fixed:** `WebSocketUpgrade::requested_protocols` returns the subprotocols in the order
+  the client sent them again, instead of sorted
 
 [#3984]: https://github.com/tokio-rs/axum/pull/3984
 [#3158]: https://github.com/tokio-rs/axum/pull/3158
