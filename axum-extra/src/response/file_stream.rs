@@ -10,9 +10,13 @@ use http::{header, HeaderValue, StatusCode};
 use std::{io, path::Path};
 use tokio::{
     fs::File,
-    io::{AsyncReadExt, AsyncSeekExt},
+    io::{AsyncReadExt, AsyncSeekExt, Take},
 };
 use tokio_util::io::ReaderStream;
+
+// `tokio::fs::File` runs every read on the blocking pool, so `ReaderStream`'s 4 KiB default
+// means one blocking task per 4 KiB. tower-http's `ServeDir` uses the same 64 KiB.
+const DEFAULT_CHUNK_SIZE: usize = 64 * 1024;
 
 mod range;
 
@@ -196,24 +200,34 @@ where
         file_path: impl AsRef<Path>,
         range: &HeaderValue,
     ) -> io::Result<Response> {
+        Self::try_range_response_with_chunk_size(file_path, range, DEFAULT_CHUNK_SIZE).await
+    }
+
+    /// Like [`FileStream::try_range_response`], but reads the file in chunks of `chunk_size`
+    /// bytes instead of the default 64 KiB.
+    pub async fn try_range_response_with_chunk_size(
+        file_path: impl AsRef<Path>,
+        range: &HeaderValue,
+        chunk_size: usize,
+    ) -> io::Result<Response> {
         let path = file_path.as_ref();
         let Some((unit, range_values)) = range
             .to_str()
             .ok()
             .and_then(|range| range.trim().split_once('='))
         else {
-            return full_file_response(path).await;
+            return full_file_response(path, chunk_size).await;
         };
 
         if !unit.trim().eq_ignore_ascii_case("bytes") {
-            return full_file_response(path).await;
+            return full_file_response(path, chunk_size).await;
         }
 
         let file = File::open(path).await?;
         let metadata = file.metadata().await?;
         let total_size = metadata.len();
         if total_size == 0 {
-            return full_file_response(path).await;
+            return full_file_response(path, chunk_size).await;
         }
         let Ok(range_specs) = range_values.parse::<RangeSpecs>() else {
             return Ok(response_416(total_size));
@@ -227,31 +241,51 @@ where
 
         if ranges.len() == 1 {
             let (start, end) = ranges[0];
-            return single_range_response(file, start, end, total_size).await;
+            return single_range_response(file, start, end, total_size, chunk_size).await;
         }
 
-        Ok(multipart_range_response(path, ranges, total_size))
+        Ok(multipart_range_response(
+            path, ranges, total_size, chunk_size,
+        ))
     }
 }
 
-async fn full_file_response(path: impl AsRef<Path>) -> io::Result<Response> {
-    Ok(FileStream::<ReaderStream<File>>::from_path(path)
-        .await?
-        .into_response())
+async fn full_file_response(path: impl AsRef<Path>, chunk_size: usize) -> io::Result<Response> {
+    let file =
+        FileStream::<ReaderStream<File>>::from_path_with_chunk_size(path, chunk_size).await?;
+    Ok(file.into_response())
 }
 
 async fn single_range_response(
-    mut file: File,
+    file: File,
     start: u64,
     end: u64,
     total_size: u64,
+    chunk_size: usize,
 ) -> io::Result<Response> {
-    file.seek(std::io::SeekFrom::Start(start)).await?;
-    let stream = ReaderStream::new(file.take(end - start + 1));
+    let stream = range_reader(file, start, end, chunk_size).await?;
     Ok(FileStream::new(stream).into_range_response(start, end, total_size))
 }
 
-fn multipart_range_response(path: &Path, ranges: &[(u64, u64)], total_size: u64) -> Response {
+async fn range_reader(
+    mut file: File,
+    start: u64,
+    end: u64,
+    chunk_size: usize,
+) -> io::Result<ReaderStream<Take<File>>> {
+    file.seek(std::io::SeekFrom::Start(start)).await?;
+    Ok(ReaderStream::with_capacity(
+        file.take(end - start + 1),
+        chunk_size,
+    ))
+}
+
+fn multipart_range_response(
+    path: &Path,
+    ranges: &[(u64, u64)],
+    total_size: u64,
+    chunk_size: usize,
+) -> Response {
     let boundary = multipart_boundary(total_size, ranges.len());
     let content_type = format!("multipart/byteranges; boundary={boundary}");
     let parts: [Option<multipart::Part>; MAX_RANGES] = std::array::from_fn(|index| {
@@ -259,9 +293,7 @@ fn multipart_range_response(path: &Path, ranges: &[(u64, u64)], total_size: u64)
         let content_range = format!("bytes {start}-{end}/{total_size}");
         let path = path.to_path_buf();
         let reader = stream::once(async move {
-            let mut file = File::open(path).await?;
-            file.seek(std::io::SeekFrom::Start(start)).await?;
-            Ok::<_, io::Error>(ReaderStream::new(file.take(end - start + 1)))
+            range_reader(File::open(path).await?, start, end, chunk_size).await
         })
         .try_flatten();
 
@@ -332,6 +364,15 @@ impl FileStream<ReaderStream<File>> {
     /// # let _: Router = app;
     /// ```
     pub async fn from_path(path: impl AsRef<Path>) -> io::Result<Self> {
+        Self::from_path_with_chunk_size(path, DEFAULT_CHUNK_SIZE).await
+    }
+
+    /// Like [`FileStream::from_path`], but reads the file in chunks of `chunk_size` bytes
+    /// instead of the default 64 KiB.
+    pub async fn from_path_with_chunk_size(
+        path: impl AsRef<Path>,
+        chunk_size: usize,
+    ) -> io::Result<Self> {
         let file = File::open(&path).await?;
         let mut content_size = None;
         let mut file_name = None;
@@ -347,7 +388,7 @@ impl FileStream<ReaderStream<File>> {
         }
 
         Ok(Self {
-            stream: ReaderStream::new(file),
+            stream: ReaderStream::with_capacity(file, chunk_size),
             file_name,
             content_size,
         })
@@ -877,6 +918,72 @@ mod tests {
             assert_eq!(response.headers().get(header::CONTENT_LENGTH).unwrap(), "0");
             assert_eq!(body_text(response).await?, "");
         }
+        Ok(())
+    }
+
+    async fn frame_sizes(response: Response) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
+        let mut body = response.into_body();
+        let mut sizes = Vec::new();
+        while let Some(frame) = body.frame().await {
+            sizes.push(frame?.into_data().unwrap().len());
+        }
+        Ok(sizes)
+    }
+
+    #[tokio::test]
+    async fn file_is_read_in_large_chunks() -> Result<(), Box<dyn std::error::Error>> {
+        let file = tempfile::NamedTempFile::new()?;
+        file.as_file().set_len(3 * DEFAULT_CHUNK_SIZE as u64 + 10)?;
+
+        let response = FileStream::from_path(file.path()).await?.into_response();
+        assert_eq!(
+            frame_sizes(response).await?,
+            [
+                DEFAULT_CHUNK_SIZE,
+                DEFAULT_CHUNK_SIZE,
+                DEFAULT_CHUNK_SIZE,
+                10
+            ]
+        );
+
+        let range = HeaderValue::try_from(format!("bytes=10-{}", 2 * DEFAULT_CHUNK_SIZE + 9))?;
+        let response =
+            FileStream::<ReaderStream<File>>::try_range_response(file.path(), &range).await?;
+        assert_eq!(
+            frame_sizes(response).await?,
+            [DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE]
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn custom_chunk_size() -> Result<(), Box<dyn std::error::Error>> {
+        let file = tempfile::NamedTempFile::new()?;
+        file.as_file().set_len(2500)?;
+
+        let response = FileStream::from_path_with_chunk_size(file.path(), 1000)
+            .await?
+            .into_response();
+        assert_eq!(frame_sizes(response).await?, [1000, 1000, 500]);
+
+        let range = HeaderValue::from_static("bytes=100-2099");
+        let response = FileStream::<ReaderStream<File>>::try_range_response_with_chunk_size(
+            file.path(),
+            &range,
+            1000,
+        )
+        .await?;
+        assert_eq!(frame_sizes(response).await?, [1000, 1000]);
+
+        let range = HeaderValue::from_static("bytes=0-1499,2000-2009");
+        let response = FileStream::<ReaderStream<File>>::try_range_response_with_chunk_size(
+            file.path(),
+            &range,
+            1000,
+        )
+        .await?;
+        let body = body_text(response).await?;
+        assert_eq!(body.matches('\0').count(), 1510);
         Ok(())
     }
 
