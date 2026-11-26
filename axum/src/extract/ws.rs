@@ -155,7 +155,6 @@ use hyper_util::rt::TokioIo;
 use sha1::{Digest, Sha1};
 use std::{
     borrow::Cow,
-    collections::BTreeSet,
     future::Future,
     pin::Pin,
     str,
@@ -188,7 +187,8 @@ pub struct WebSocketUpgrade<F = DefaultOnFailedUpgrade> {
     sec_websocket_key: Option<HeaderValue>,
     on_upgrade: hyper::upgrade::OnUpgrade,
     on_failed_upgrade: F,
-    sec_websocket_protocol: BTreeSet<HeaderValue>,
+    /// The subprotocols requested by the client, in the order the client sent them.
+    sec_websocket_protocol: Vec<HeaderValue>,
 }
 
 impl<F> std::fmt::Debug for WebSocketUpgrade<F> {
@@ -314,6 +314,11 @@ impl<F> WebSocketUpgrade<F> {
     }
 
     /// Return the WebSocket subprotocols requested by the client.
+    ///
+    /// The subprotocols are returned in the order the client sent them, which
+    /// [RFC 6455] defines as the client's order of preference.
+    ///
+    /// [RFC 6455]: https://datatracker.ietf.org/doc/html/rfc6455#section-4.1
     ///
     /// # Examples
     ///
@@ -1262,6 +1267,37 @@ mod tests {
         let upgraded = TokioIo::new(upgraded);
         let socket = WebSocketStream::from_raw_socket(upgraded, protocol::Role::Client, None).await;
         test_echo_app(socket, response.headers()).await;
+    }
+
+    #[crate::test]
+    async fn requested_protocols_keep_client_order() {
+        let app = Router::new().route(
+            "/",
+            any(|ws: WebSocketUpgrade| {
+                let requested = ws
+                    .requested_protocols()
+                    .map(|p| p.to_str().unwrap())
+                    .collect::<Vec<_>>()
+                    .join(",");
+                ready((
+                    [("x-requested-protocols", requested)],
+                    ws.on_upgrade(|_| async {}),
+                ))
+            }),
+        );
+
+        let res = crate::test_helpers::TestClient::new(app)
+            .get("/")
+            .header("connection", "upgrade")
+            .header("upgrade", "websocket")
+            .header("sec-websocket-key", "dGhlIHNhbXBsZSBub25jZQ==")
+            .header("sec-websocket-version", "13")
+            .header("sec-websocket-protocol", "wamp, soap")
+            .header("sec-websocket-protocol", "chat")
+            .await;
+
+        assert_eq!(res.status(), StatusCode::SWITCHING_PROTOCOLS);
+        assert_eq!(res.headers()["x-requested-protocols"], "wamp,soap,chat");
     }
 
     fn echo_app() -> Router {
