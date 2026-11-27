@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** `serve::ConnectionLifetimeLimits` and `Serve::connection_lifetime_limits` for bounding the
   lifetime of individual connections via `serve::MaxConnectionAge` (with `jitter` and `grace`),
   forcing clients to rotate connections ([#3779])
+- **added:** `extract::ws::MockUpgrade` for testing WebSocket routes without a TCP connection, behind the new `test-util` feature ([#3830])
 - **changed:** `serve` has an additional generic argument and can now work with any response body
   type, not just `axum::body::Body` ([#3205])
 - **changed:** Reduced contention in `axum::serve` shutdown notification with many
@@ -64,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#3909]: https://github.com/tokio-rs/axum/pull/3909
 [#3757]: https://github.com/tokio-rs/axum/pull/3757
 [#3829]: https://github.com/tokio-rs/axum/pull/3829
+[#3830]: https://github.com/tokio-rs/axum/pull/3830
 [#3801]: https://github.com/tokio-rs/axum/pull/3801
 [#3867]: https://github.com/tokio-rs/axum/pull/3867
 [#3890]: https://github.com/tokio-rs/axum/pull/3890
