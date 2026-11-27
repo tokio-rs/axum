@@ -1,24 +1,4 @@
 //! Serve services.
-//!
-//! [`serve`] takes a [`Router`], a [`MethodRouter`] or a [`Handler`] turned into a service. To
-//! give handlers access to the remote address, use
-//! [`Router::into_make_service_with_connect_info`],
-//! [`MethodRouter::into_make_service_with_connect_info`] or
-//! [`HandlerWithoutStateExt::into_make_service_with_connect_info`], which build an
-//! [`IntoMakeServiceWithConnectInfo`] from each [`IncomingStream`].
-//!
-//! The implementation lives in the [`axum-serve`] crate so that libraries which only need
-//! the [`Listener`] trait (for example, to implement a custom TLS-terminating listener) can
-//! depend on it directly, without pulling in all of `axum`.
-//!
-//! [`axum-serve`]: https://docs.rs/axum-serve
-//! [`Router`]: crate::Router
-//! [`Router::into_make_service_with_connect_info`]: crate::Router::into_make_service_with_connect_info
-//! [`MethodRouter`]: crate::routing::MethodRouter
-//! [`MethodRouter::into_make_service_with_connect_info`]: crate::routing::MethodRouter::into_make_service_with_connect_info
-//! [`Handler`]: crate::handler::Handler
-//! [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: crate::handler::HandlerWithoutStateExt::into_make_service_with_connect_info
-//! [`IntoMakeServiceWithConnectInfo`]: crate::extract::connect_info::IntoMakeServiceWithConnectInfo
 
 pub use axum_serve::{
     serve, ConnLimiter, ConnLimiterIo, ConnectionLifetimeLimits, Executor, IncomingStream,

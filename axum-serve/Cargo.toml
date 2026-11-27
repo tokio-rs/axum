@@ -46,14 +46,6 @@ tokio = [
 tracing = ["dep:tracing"]
 
 [dependencies]
-# required unconditionally: `Listener`/`ListenerExt`/`ConnLimiter` need these
-# regardless of which features are enabled.
-pin-project-lite = "0.2.7"
-
-# only needed by the `serve`/`Executor`/hyper-integration machinery, which is
-# gated behind the `tokio` feature (paired with `http1`/`http2`). Kept optional
-# so that a `Listener`-only consumer (e.g. a custom TLS listener) doesn't pull
-# in axum-core/tower/http machinery just to implement the trait.
 axum-core = { path = "../axum-core", version = "0.5.6", optional = true }
 futures-core = { version = "0.3", optional = true }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"], optional = true }
@@ -61,6 +53,7 @@ http = { version = "1.0.0", optional = true }
 http-body = { version = "1.0.0", optional = true }
 hyper = { version = "1.4.0", optional = true }
 hyper-util = { version = "0.1.4", features = ["tokio", "server", "service"], optional = true }
+pin-project-lite = "0.2.7"
 tower = { version = "0.5.2", default-features = false, features = ["util"], optional = true }
 tower-service = { version = "0.3", optional = true }
 tracing = { version = "0.1", default-features = false, optional = true }

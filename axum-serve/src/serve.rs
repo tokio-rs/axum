@@ -42,7 +42,7 @@ use crate::listener::Listener;
 ///
 /// # Examples
 ///
-/// Serving a `Router`:
+/// Serving a [`Router`]:
 ///
 /// ```
 /// use axum::{Router, routing::get};
@@ -55,9 +55,9 @@ use crate::listener::Listener;
 /// # };
 /// ```
 ///
-/// See also `Router::into_make_service_with_connect_info`.
+/// See also [`Router::into_make_service_with_connect_info`].
 ///
-/// Serving a `MethodRouter`:
+/// Serving a [`MethodRouter`]:
 ///
 /// ```
 /// use axum::routing::get;
@@ -70,9 +70,9 @@ use crate::listener::Listener;
 /// # };
 /// ```
 ///
-/// See also `MethodRouter::into_make_service_with_connect_info`.
+/// See also [`MethodRouter::into_make_service_with_connect_info`].
 ///
-/// Serving a `Handler`:
+/// Serving a [`Handler`]:
 ///
 /// ```
 /// use axum::handler::HandlerWithoutStateExt;
@@ -87,8 +87,8 @@ use crate::listener::Listener;
 /// # };
 /// ```
 ///
-/// See also `HandlerWithoutStateExt::into_make_service_with_connect_info` and
-/// `HandlerService::into_make_service_with_connect_info`.
+/// See also [`HandlerWithoutStateExt::into_make_service_with_connect_info`] and
+/// [`HandlerService::into_make_service_with_connect_info`].
 ///
 /// # Return Value
 ///
@@ -97,6 +97,13 @@ use crate::listener::Listener;
 /// second).
 ///
 /// [timeouts]: hyper::server::conn::http1::Builder::header_read_timeout
+/// [`Router`]: https://docs.rs/axum/latest/axum/struct.Router.html
+/// [`Router::into_make_service_with_connect_info`]: https://docs.rs/axum/latest/axum/struct.Router.html#method.into_make_service_with_connect_info
+/// [`MethodRouter`]: https://docs.rs/axum/latest/axum/routing/method_routing/struct.MethodRouter.html
+/// [`MethodRouter::into_make_service_with_connect_info`]: https://docs.rs/axum/latest/axum/routing/method_routing/struct.MethodRouter.html#method.into_make_service_with_connect_info
+/// [`Handler`]: https://docs.rs/axum/latest/axum/handler/trait.Handler.html
+/// [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: https://docs.rs/axum/latest/axum/handler/trait.HandlerWithoutStateExt.html#tymethod.into_make_service_with_connect_info
+/// [`HandlerService::into_make_service_with_connect_info`]: https://docs.rs/axum/latest/axum/handler/struct.HandlerService.html#method.into_make_service_with_connect_info
 pub fn serve<L, M, S, B>(listener: L, make_service: M) -> Serve<L, M, S, B, TokioExecutor>
 where
     L: Listener,
@@ -871,7 +878,9 @@ async fn handle_connection<L, M, S, B, E>(
 
 /// An incoming stream.
 ///
-/// Used with [`serve`] and axum's `IntoMakeServiceWithConnectInfo`.
+/// Used with [`serve`] and [`IntoMakeServiceWithConnectInfo`].
+///
+/// [`IntoMakeServiceWithConnectInfo`]: https://docs.rs/axum/latest/axum/extract/connect_info/struct.IntoMakeServiceWithConnectInfo.html
 #[derive(Debug)]
 pub struct IncomingStream<'a, L>
 where
