@@ -300,6 +300,7 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-tungstenite 0.30.0",
+ "tokio-util",
  "tower",
  "tower-layer",
  "tower-service",
