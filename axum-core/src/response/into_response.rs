@@ -465,7 +465,7 @@ macro_rules! impl_into_response {
                 let parts = ResponseParts { res };
                 let parts = match ($($ty,)*).into_response_parts(parts) {
                     Ok(parts) => parts,
-                    Err(err) => return err.into_response(),
+                    Err(err) => return (status, err).into_response(),
                 };
 
                 (status, parts.res).into_response()
