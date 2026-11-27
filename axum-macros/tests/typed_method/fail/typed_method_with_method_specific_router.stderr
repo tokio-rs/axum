@@ -1,0 +1,125 @@
+error[E0277]: this typed path cannot be used with method-specific typed routing
+  --> tests/typed_method/fail/typed_method_with_method_specific_router.rs:23:29
+   |
+23 |     _ = Router::<()>::new().typed_get(get_user);
+   |                             ^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `axum_extra::routing::MethodlessTypedPath` is not implemented for `GetUser`
+  --> tests/typed_method/fail/typed_method_with_method_specific_router.rs:8:1
+   |
+ 8 | struct GetUser {
+   | ^^^^^^^^^^^^^^
+   = note: use `RouterExt::typed` for types that implement `TypedMethod`; manually implemented methodless paths must implement `MethodlessTypedPath`
+help: the following other types implement trait `axum_extra::routing::MethodlessTypedPath`
+  --> tests/typed_method/fail/typed_method_with_method_specific_router.rs:15:14
+   |
+15 |   #[typed_path("/shared/{id}")]
+   |                ^^^^^^^^^^^^^^ `SharedPath`
+   |
+  ::: $WORKSPACE/axum-extra/src/routing/typed.rs
+   |
+   | / impl<P, T> MethodlessTypedPath for WithQueryParams<P, T>
+   | | where
+   | |     P: MethodlessTypedPath,
+   | |     T: Serialize,
+   | |_________________^ `WithQueryParams<P, T>`
+note: required by a bound in `axum_extra::routing::RouterExt::typed_get`
+  --> $WORKSPACE/axum-extra/src/routing/mod.rs
+   |
+   |     fn typed_get<H, T, P>(self, handler: H) -> Self
+   |        --------- required by a bound in this associated function
+...
+   |         P: MethodlessTypedPath;
+   |            ^^^^^^^^^^^^^^^^^^^ required by this bound in `RouterExt::typed_get`
+
+error[E0277]: this typed path cannot be used with method-specific typed routing
+  --> tests/typed_method/fail/typed_method_with_method_specific_router.rs:24:29
+   |
+24 |     _ = Router::<()>::new().typed_put(get_user);
+   |                             ^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `axum_extra::routing::MethodlessTypedPath` is not implemented for `GetUser`
+  --> tests/typed_method/fail/typed_method_with_method_specific_router.rs:8:1
+   |
+ 8 | struct GetUser {
+   | ^^^^^^^^^^^^^^
+   = note: use `RouterExt::typed` for types that implement `TypedMethod`; manually implemented methodless paths must implement `MethodlessTypedPath`
+help: the following other types implement trait `axum_extra::routing::MethodlessTypedPath`
+  --> tests/typed_method/fail/typed_method_with_method_specific_router.rs:15:14
+   |
+15 |   #[typed_path("/shared/{id}")]
+   |                ^^^^^^^^^^^^^^ `SharedPath`
+   |
+  ::: $WORKSPACE/axum-extra/src/routing/typed.rs
+   |
+   | / impl<P, T> MethodlessTypedPath for WithQueryParams<P, T>
+   | | where
+   | |     P: MethodlessTypedPath,
+   | |     T: Serialize,
+   | |_________________^ `WithQueryParams<P, T>`
+note: required by a bound in `typed_put`
+  --> $WORKSPACE/axum-extra/src/routing/mod.rs
+   |
+   |     fn typed_put<H, T, P>(self, handler: H) -> Self
+   |        --------- required by a bound in this associated function
+...
+   |         P: MethodlessTypedPath;
+   |            ^^^^^^^^^^^^^^^^^^^ required by this bound in `RouterExt::typed_put`
+
+error[E0277]: this typed path cannot be used with method-specific typed routing
+  --> tests/typed_method/fail/typed_method_with_method_specific_router.rs:25:29
+   |
+25 |     _ = Router::<()>::new().typed_get(get_shared);
+   |                             ^^^^^^^^^ the trait `axum_extra::routing::MethodlessTypedPath` is not implemented for `Get<SharedPath>`
+   |
+   = note: use `RouterExt::typed` for types that implement `TypedMethod`; manually implemented methodless paths must implement `MethodlessTypedPath`
+help: the following other types implement trait `axum_extra::routing::MethodlessTypedPath`
+  --> tests/typed_method/fail/typed_method_with_method_specific_router.rs:15:14
+   |
+15 |   #[typed_path("/shared/{id}")]
+   |                ^^^^^^^^^^^^^^ `SharedPath`
+   |
+  ::: $WORKSPACE/axum-extra/src/routing/typed.rs
+   |
+   | / impl<P, T> MethodlessTypedPath for WithQueryParams<P, T>
+   | | where
+   | |     P: MethodlessTypedPath,
+   | |     T: Serialize,
+   | |_________________^ `WithQueryParams<P, T>`
+note: required by a bound in `axum_extra::routing::RouterExt::typed_get`
+  --> $WORKSPACE/axum-extra/src/routing/mod.rs
+   |
+   |     fn typed_get<H, T, P>(self, handler: H) -> Self
+   |        --------- required by a bound in this associated function
+...
+   |         P: MethodlessTypedPath;
+   |            ^^^^^^^^^^^^^^^^^^^ required by this bound in `RouterExt::typed_get`
+
+error[E0277]: this typed path cannot be used with method-specific typed routing
+  --> tests/typed_method/fail/typed_method_with_method_specific_router.rs:26:29
+   |
+26 |     _ = Router::<()>::new().typed_put(get_shared);
+   |                             ^^^^^^^^^ the trait `axum_extra::routing::MethodlessTypedPath` is not implemented for `Get<SharedPath>`
+   |
+   = note: use `RouterExt::typed` for types that implement `TypedMethod`; manually implemented methodless paths must implement `MethodlessTypedPath`
+help: the following other types implement trait `axum_extra::routing::MethodlessTypedPath`
+  --> tests/typed_method/fail/typed_method_with_method_specific_router.rs:15:14
+   |
+15 |   #[typed_path("/shared/{id}")]
+   |                ^^^^^^^^^^^^^^ `SharedPath`
+   |
+  ::: $WORKSPACE/axum-extra/src/routing/typed.rs
+   |
+   | / impl<P, T> MethodlessTypedPath for WithQueryParams<P, T>
+   | | where
+   | |     P: MethodlessTypedPath,
+   | |     T: Serialize,
+   | |_________________^ `WithQueryParams<P, T>`
+note: required by a bound in `typed_put`
+  --> $WORKSPACE/axum-extra/src/routing/mod.rs
+   |
+   |     fn typed_put<H, T, P>(self, handler: H) -> Self
+   |        --------- required by a bound in this associated function
+...
+   |         P: MethodlessTypedPath;
+   |            ^^^^^^^^^^^^^^^^^^^ required by this bound in `RouterExt::typed_put`
