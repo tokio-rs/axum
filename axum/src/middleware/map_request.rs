@@ -255,7 +255,7 @@ macro_rules! impl_service {
             $( $ty: FromRequestParts<S> + Send, )*
             $last: FromRequest<S> + Send,
             Fut: Future + Send + 'static,
-            Fut::Output: IntoMapRequestResult<B> + Send + 'static,
+            Fut::Output: IntoMapRequestResult<B> + 'static,
             I: Service<Request<B>, Error = Infallible>
                 + Clone
                 + Send
@@ -390,6 +390,42 @@ mod tests {
     use super::*;
     use crate::{routing::get, test_helpers::TestClient, Router};
     use http::{HeaderMap, StatusCode};
+
+    #[crate::test]
+    async fn supports_non_send_rejections() {
+        use std::rc::Rc;
+
+        struct LocalRejection(Rc<str>);
+
+        impl IntoResponse for LocalRejection {
+            fn into_response(self) -> Response {
+                (StatusCode::FORBIDDEN, self.0.to_string()).into_response()
+            }
+        }
+
+        async fn authorize(req: Request<Body>) -> Result<Request<Body>, LocalRejection> {
+            tokio::task::yield_now().await;
+
+            if req.headers().contains_key("x-reject") {
+                Err(LocalRejection(Rc::from("rejected")))
+            } else {
+                Ok(req)
+            }
+        }
+
+        let app = Router::new()
+            .route("/", get(|| async { "accepted" }))
+            .layer(map_request(authorize));
+        let client = TestClient::new(app);
+
+        let res = client.get("/").header("x-reject", "true").await;
+        assert_eq!(res.status(), StatusCode::FORBIDDEN);
+        assert_eq!(res.text().await, "rejected");
+
+        let res = client.get("/").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "accepted");
+    }
 
     #[crate::test]
     async fn works() {
