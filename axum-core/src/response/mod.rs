@@ -120,8 +120,35 @@ where
 /// An [`IntoResponse`]-based error type
 ///
 /// See [`Result`] for more details.
+///
+/// # `clippy::result_large_err`
+///
+/// `ErrorResponse` is 128 bytes, which is exactly clippy's default
+/// `result_large_err` threshold. The lint is reported on the function that
+/// returns the `Result`, not on this type, so it fires in the crate using
+/// [`Result`] rather than in `axum-core` itself.
+///
+/// To use [`Result`] without the lint, allow it on the function returning it:
+///
+/// ```
+/// # use axum::response::Result;
+/// #[allow(clippy::result_large_err)]
+/// async fn handler() -> Result<&'static str> {
+///     Ok("hello world")
+/// }
+/// ```
+///
+/// Or ignore this type entirely by adding it to `large-error-ignored` in your
+/// `clippy.toml`:
+///
+/// ```toml
+/// large-error-ignored = ["axum::response::ErrorResponse"]
+/// ```
 #[derive(Debug)]
 #[must_use]
+// `allow` rather than `expect` because this lint isn't triggered inside
+// `axum-core` itself, and `expect` would warn about being unfulfilled.
+#[allow(clippy::result_large_err)]
 pub struct ErrorResponse(Response);
 
 impl<T> From<T> for ErrorResponse
