@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   type, not just `axum::body::Body` ([#3205])
 - **changed:** Reduced contention in `axum::serve` shutdown notification with many
   active connections ([#3867])
-- **changed:** The implementation behind `axum::serve` now lives in the new `axum-serve` crate.
+- **changed:** The implementation behind `axum::serve` now lives in the new `tower-serve` crate.
   `axum::serve` and its associated types (`Serve`, `Listener`, `ListenerExt`, `IncomingStream`,
   etc.) keep their paths and signatures, so this is not a breaking change ([#3433])
 - **changed:** `Redirect` constructors now accept any `impl Into<String>` ([#3635])

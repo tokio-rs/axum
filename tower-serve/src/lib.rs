@@ -2,7 +2,7 @@
 //!
 //! This crate provides the [`serve`] function and the [`Listener`] trait that power
 //! `axum::serve`. It intentionally does not depend on the `axum` crate, so libraries that
-//! want to implement a custom [`Listener`] can depend on `axum-serve` directly instead of
+//! want to implement a custom [`Listener`] can depend on `tower-serve` directly instead of
 //! pulling in all of `axum`.
 //!
 //! Most users should not depend on this crate directly and should instead use the

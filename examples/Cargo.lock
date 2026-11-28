@@ -274,7 +274,6 @@ version = "0.8.9"
 dependencies = [
  "axum-core",
  "axum-macros",
- "axum-serve",
  "base64 0.22.1",
  "bytes",
  "form_urlencoded",
@@ -303,6 +302,7 @@ dependencies = [
  "tokio-tungstenite 0.30.0",
  "tower",
  "tower-layer",
+ "tower-serve",
  "tower-service",
  "tracing",
 ]
@@ -351,24 +351,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "axum-serve"
-version = "0.1.0"
-dependencies = [
- "axum-core",
- "futures-core",
- "futures-util",
- "http",
- "http-body",
- "hyper",
- "hyper-util",
- "pin-project-lite",
- "tokio",
- "tower",
- "tower-service",
- "tracing",
 ]
 
 [[package]]
@@ -4703,6 +4685,24 @@ name = "tower-layer"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "121c2a6cda46980bb0fcd1647ffaf6cd3fc79a013de288782836f6df9c48780e"
+
+[[package]]
+name = "tower-serve"
+version = "0.1.0"
+dependencies = [
+ "axum-core",
+ "futures-core",
+ "futures-util",
+ "http",
+ "http-body",
+ "hyper",
+ "hyper-util",
+ "pin-project-lite",
+ "tokio",
+ "tower",
+ "tower-service",
+ "tracing",
+]
 
 [[package]]
 name = "tower-service"

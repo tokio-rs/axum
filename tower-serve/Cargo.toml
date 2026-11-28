@@ -1,5 +1,5 @@
 [package]
-name = "axum-serve"
+name = "tower-serve"
 version = "0.1.0"
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "Serve axum (and other tower-based) services with hyper"

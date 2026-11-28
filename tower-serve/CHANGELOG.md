@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- Initial release. `axum-serve` provides the `serve` function and the `Listener`
+- Initial release. `tower-serve` provides the `serve` function and the `Listener`
   trait that power `axum::serve`, extracted from `axum` so that libraries can
   implement a custom `Listener` without depending on all of `axum` ([#3433]).
 

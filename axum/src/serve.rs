@@ -1,6 +1,6 @@
 //! Serve services.
 
-pub use axum_serve::{
+pub use tower_serve::{
     serve, ConnLimiter, ConnLimiterIo, ConnectionLifetimeLimits, Executor, IncomingStream,
     Listener, ListenerExt, MaxConnectionAge, Serve, TapIo, TokioExecutor, WithGracefulShutdown,
 };
@@ -34,7 +34,7 @@ mod tests {
     // Compile-only coverage of every axum make-service integration accepted by
     // `serve` (`Router`, `MethodRouter`, `Handler` and their `into_make_service*`
     // forms), plus `Connected<IncomingStream>` and `ListenerExt::tap_io`. The
-    // runtime behaviour of `serve` itself is tested in the `axum-serve` crate; this
+    // runtime behaviour of `serve` itself is tested in the `tower-serve` crate; this
     // only guards the axum-specific type plumbing.
     #[allow(dead_code, unused)]
     async fn if_it_compiles_it_works() {

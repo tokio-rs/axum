@@ -1371,7 +1371,7 @@ mod tests {
         let body = String::from_utf8(body.to_vec()).unwrap();
         assert_eq!(body, "Hello, World!");
 
-        // Two tasks: axum-serve's connection, and hyper's internal HTTP/2 task.
+        // Two tasks: tower-serve's connection, and hyper's internal HTTP/2 task.
         assert_eq!(executor.count(), 2);
     }
 
