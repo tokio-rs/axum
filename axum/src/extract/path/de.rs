@@ -469,16 +469,11 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
             }
         }
 
-        if len == 2 {
-            match self.key {
-                Some(key) => visitor.visit_seq(PairDeserializer {
-                    key: Some(key),
-                    value: Some(self.value),
-                }),
-                // `self.key` is only `None` when deserializing maps so `deserialize_seq`
-                // wouldn't be called for that
-                None => unreachable!(),
-            }
+        if let (2, Some(key)) = (len, self.key) {
+            visitor.visit_seq(PairDeserializer {
+                key: Some(key),
+                value: Some(self.value),
+            })
         } else {
             Err(PathDeserializationError::unsupported_type(type_name::<
                 V::Value,
@@ -938,6 +933,24 @@ mod tests {
             vec![("a", "false")],
             Vec<(u32, String)>,
             ErrorKind::Message("Unexpected key type".to_owned())
+        );
+    }
+
+    #[test]
+    fn test_parse_seq_tuple_with_nested_tuple_value() {
+        test_parse_error!(
+            vec![("id", "42")],
+            Vec<(String, (u32, u32))>,
+            ErrorKind::UnsupportedType { name: "(u32, u32)" }
+        );
+    }
+
+    #[test]
+    fn test_parse_seq_tuple_with_nested_array_value() {
+        test_parse_error!(
+            vec![("id", "42")],
+            Vec<(String, [u32; 2])>,
+            ErrorKind::UnsupportedType { name: "[u32; 2]" }
         );
     }
 
