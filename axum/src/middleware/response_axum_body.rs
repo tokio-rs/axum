@@ -1,11 +1,10 @@
 use std::{
-    error::Error,
     future::Future,
     pin::Pin,
     task::{ready, Context, Poll},
 };
 
-use axum_core::{body::Body, response::Response};
+use axum_core::{body::Body, response::Response, BoxError};
 use bytes::Bytes;
 use http_body::Body as HttpBody;
 use pin_project_lite::pin_project;
@@ -33,7 +32,7 @@ impl<S, Request, ResBody> Service<Request> for ResponseAxumBody<S>
 where
     S: Service<Request, Response = Response<ResBody>>,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
-    <ResBody as HttpBody>::Error: Error + Send + Sync,
+    <ResBody as HttpBody>::Error: Into<BoxError>,
 {
     type Response = Response;
 
@@ -64,7 +63,7 @@ impl<Fut, ResBody, E> Future for ResponseAxumBodyFuture<Fut>
 where
     Fut: Future<Output = Result<Response<ResBody>, E>>,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
-    <ResBody as HttpBody>::Error: Error + Send + Sync,
+    <ResBody as HttpBody>::Error: Into<BoxError>,
 {
     type Output = Result<Response<Body>, E>;
 
@@ -72,5 +71,56 @@ where
         let this = self.project();
         let res = ready!(this.inner.poll(cx)?);
         Poll::Ready(Ok(res.map(Body::new)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ResponseAxumBodyLayer;
+    use crate::{body::Body, BoxError};
+    use bytes::Bytes;
+    use http::{Request, Response, StatusCode};
+    use http_body::Frame;
+    use http_body_util::{BodyExt, Full, StreamBody};
+    use std::{convert::Infallible, io};
+    use tower::{service_fn, Layer, ServiceExt};
+
+    #[tokio::test]
+    async fn accepts_boxed_body_errors() {
+        let service = ResponseAxumBodyLayer.layer(service_fn(|_: Request<Body>| async {
+            let body = Full::new(Bytes::from_static(b"hello"))
+                .map_err(|err| -> BoxError { match err {} })
+                .boxed();
+            let mut response = Response::new(body);
+            *response.status_mut() = StatusCode::CREATED;
+            response
+                .headers_mut()
+                .insert("x-test", "value".parse().unwrap());
+            Ok::<_, Infallible>(response)
+        }));
+
+        let response = service.oneshot(Request::new(Body::empty())).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        assert_eq!(response.headers()["x-test"], "value");
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(body, "hello");
+    }
+
+    #[tokio::test]
+    async fn preserves_boxed_body_errors() {
+        let service = ResponseAxumBodyLayer.layer(service_fn(|_: Request<Body>| async {
+            let stream = futures_util::stream::once(async {
+                Err::<Frame<Bytes>, BoxError>(io::Error::other("body failed").into())
+            });
+            let body = StreamBody::new(stream).boxed_unsync();
+            Ok::<_, Infallible>(Response::new(body))
+        }));
+
+        let response = service.oneshot(Request::new(Body::empty())).await.unwrap();
+        let error = response.into_body().collect().await.unwrap_err();
+        let error = error.into_inner().downcast::<io::Error>().unwrap();
+
+        assert_eq!(error.to_string(), "body failed");
     }
 }
