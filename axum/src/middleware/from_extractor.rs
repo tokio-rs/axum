@@ -214,6 +214,8 @@ where
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
         let state = self.state.clone();
+        let not_ready_inner = self.inner.clone();
+        let ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
         let (mut parts, body) = req.into_parts();
 
         let extract_future = Box::pin(async move {
@@ -226,7 +228,7 @@ where
             state: State::Extracting {
                 future: extract_future,
             },
-            svc: Some(self.inner.clone()),
+            svc: Some(ready_inner),
         }
     }
 }
@@ -305,7 +307,62 @@ mod tests {
     use crate::{handler::Handler, routing::get, test_helpers::*, Router};
     use axum_core::extract::FromRef;
     use http::{header, request::Parts, StatusCode};
+    use std::{convert::Infallible, sync::Arc};
+    use tokio::sync::Semaphore;
+    use tower::{limit::ConcurrencyLimit, service_fn, ServiceExt};
     use tower_http::limit::RequestBodyLimitLayer;
+
+    #[tokio::test]
+    async fn calls_ready_inner_service() {
+        let inner = service_fn(|_: Request<()>| async { Ok::<_, Infallible>("ok") });
+        let mut service = from_extractor::<http::Method>().layer(ConcurrencyLimit::new(inner, 1));
+
+        for _ in 0..2 {
+            let response = service
+                .ready()
+                .await
+                .unwrap()
+                .call(Request::new(()))
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+            let body = crate::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            assert_eq!(body, "ok");
+        }
+    }
+
+    #[tokio::test]
+    async fn rejection_releases_inner_readiness_permit() {
+        struct Reject;
+
+        impl FromRequestParts<StatusCode> for Reject {
+            type Rejection = StatusCode;
+
+            async fn from_request_parts(
+                _parts: &mut Parts,
+                state: &StatusCode,
+            ) -> Result<Self, Self::Rejection> {
+                Err(*state)
+            }
+        }
+
+        let semaphore = Arc::new(Semaphore::new(1));
+        let inner = service_fn(|_: Request<()>| async { Ok::<_, Infallible>(StatusCode::OK) });
+        let inner = ConcurrencyLimit::with_semaphore(inner, Arc::clone(&semaphore));
+        let mut service =
+            from_extractor_with_state::<Reject, _>(StatusCode::UNAUTHORIZED).layer(inner);
+
+        service.ready().await.unwrap();
+        assert_eq!(semaphore.available_permits(), 0);
+
+        let response = service.call(Request::new(())).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(semaphore.available_permits(), 1);
+    }
 
     #[crate::test]
     async fn test_from_extractor() {
