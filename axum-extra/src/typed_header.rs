@@ -275,4 +275,123 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "some");
     }
+
+    #[tokio::test]
+    async fn optional_typed_header_rejects_malformed_header() {
+        async fn handle(header: Option<TypedHeader<headers::IfModifiedSince>>) -> &'static str {
+            if header.is_some() {
+                "some"
+            } else {
+                "none"
+            }
+        }
+
+        let app = Router::new().route("/", get(handle));
+        let client = TestClient::new(app);
+
+        let res = client.get("/").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "none");
+
+        let res = client
+            .get("/")
+            .header("if-modified-since", "Sat, 29 Oct 1994 19:43:31 GMT")
+            .await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "some");
+
+        let res = client
+            .get("/")
+            .header("if-modified-since", "not-a-date")
+            .await;
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            res.text().await,
+            "Failed to parse header `if-modified-since`"
+        );
+    }
+
+    #[tokio::test]
+    async fn typed_header_as_response() {
+        async fn alone() -> TypedHeader<headers::ContentType> {
+            TypedHeader(headers::ContentType::json())
+        }
+
+        async fn with_body() -> (TypedHeader<headers::CacheControl>, &'static str) {
+            (
+                TypedHeader(headers::CacheControl::new().with_no_cache()),
+                "hello",
+            )
+        }
+
+        let app = Router::new()
+            .route("/alone", get(alone))
+            .route("/with-body", get(with_body));
+        let client = TestClient::new(app);
+
+        let res = client.get("/alone").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(
+            res.headers().get(http::header::CONTENT_TYPE).unwrap(),
+            "application/json"
+        );
+        assert_eq!(res.text().await, "");
+
+        let res = client.get("/with-body").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(
+            res.headers().get(http::header::CACHE_CONTROL).unwrap(),
+            "no-cache"
+        );
+        assert_eq!(res.text().await, "hello");
+    }
+
+    #[tokio::test]
+    async fn typed_header_rejection_details() {
+        use std::error::Error as _;
+
+        let (mut missing_parts, _) = http::Request::new(()).into_parts();
+        let missing_err =
+            <TypedHeader<headers::IfModifiedSince> as FromRequestParts<()>>::from_request_parts(
+                &mut missing_parts,
+                &(),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(missing_err.name(), &http::header::IF_MODIFIED_SINCE);
+        assert!(missing_err.is_missing());
+        assert!(matches!(
+            missing_err.reason(),
+            TypedHeaderRejectionReason::Missing
+        ));
+        assert!(missing_err.source().is_none());
+        assert_eq!(
+            missing_err.to_string(),
+            "Header of type `if-modified-since` was missing"
+        );
+
+        let (mut invalid_parts, _) = http::Request::builder()
+            .header(http::header::IF_MODIFIED_SINCE, "not-a-date")
+            .body(())
+            .unwrap()
+            .into_parts();
+        let parse_err =
+            <TypedHeader<headers::IfModifiedSince> as FromRequestParts<()>>::from_request_parts(
+                &mut invalid_parts,
+                &(),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(parse_err.name(), &http::header::IF_MODIFIED_SINCE);
+        assert!(!parse_err.is_missing());
+        assert!(matches!(
+            parse_err.reason(),
+            TypedHeaderRejectionReason::Error(_)
+        ));
+        assert!(parse_err.source().is_some());
+        assert_eq!(
+            parse_err.to_string(),
+            "Failed to parse header `if-modified-since`"
+        );
+    }
 }
