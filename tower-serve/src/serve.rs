@@ -1,5 +1,3 @@
-//! Serve services.
-
 use std::{
     convert::Infallible,
     error::Error as StdError,
@@ -23,15 +21,12 @@ use hyper::body::Incoming;
 use hyper_util::rt::TokioIo;
 #[cfg(feature = "http1")]
 use hyper_util::rt::TokioTimer;
-#[cfg(any(feature = "http1", feature = "http2"))]
 use hyper_util::{server::conn::auto::Builder, service::TowerToHyperService};
 use tokio::{sync::watch, task::JoinHandle};
 use tower::ServiceExt as _;
 use tower_service::Service;
 
-mod listener;
-
-pub use self::listener::{ConnLimiter, ConnLimiterIo, Listener, ListenerExt, TapIo};
+use crate::listener::Listener;
 
 /// Serve the service with the supplied listener.
 ///
@@ -41,7 +36,7 @@ pub use self::listener::{ConnLimiter, ConnLimiterIo, Listener, ListenerExt, TapI
 /// (including [timeouts]); use hyper or hyper-util if you need more control.
 ///
 /// `TCP_NODELAY` is set on connections accepted from a [`tokio::net::TcpListener`]. Use
-/// [`ListenerExt::tap_io`] to change that.
+/// [`ListenerExt::tap_io`](crate::ListenerExt::tap_io) to change that.
 ///
 /// It supports both HTTP/1 as well as HTTP/2.
 ///
@@ -102,14 +97,13 @@ pub use self::listener::{ConnLimiter, ConnLimiterIo, Listener, ListenerExt, TapI
 /// second).
 ///
 /// [timeouts]: hyper::server::conn::http1::Builder::header_read_timeout
-/// [`Router`]: crate::Router
-/// [`Router::into_make_service_with_connect_info`]: crate::Router::into_make_service_with_connect_info
-/// [`MethodRouter`]: crate::routing::MethodRouter
-/// [`MethodRouter::into_make_service_with_connect_info`]: crate::routing::MethodRouter::into_make_service_with_connect_info
-/// [`Handler`]: crate::handler::Handler
-/// [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: crate::handler::HandlerWithoutStateExt::into_make_service_with_connect_info
-/// [`HandlerService::into_make_service_with_connect_info`]: crate::handler::HandlerService::into_make_service_with_connect_info
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+/// [`Router`]: https://docs.rs/axum/latest/axum/struct.Router.html
+/// [`Router::into_make_service_with_connect_info`]: https://docs.rs/axum/latest/axum/struct.Router.html#method.into_make_service_with_connect_info
+/// [`MethodRouter`]: https://docs.rs/axum/latest/axum/routing/method_routing/struct.MethodRouter.html
+/// [`MethodRouter::into_make_service_with_connect_info`]: https://docs.rs/axum/latest/axum/routing/method_routing/struct.MethodRouter.html#method.into_make_service_with_connect_info
+/// [`Handler`]: https://docs.rs/axum/latest/axum/handler/trait.Handler.html
+/// [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: https://docs.rs/axum/latest/axum/handler/trait.HandlerWithoutStateExt.html#tymethod.into_make_service_with_connect_info
+/// [`HandlerService::into_make_service_with_connect_info`]: https://docs.rs/axum/latest/axum/handler/struct.HandlerService.html#method.into_make_service_with_connect_info
 pub fn serve<L, M, S, B>(listener: L, make_service: M) -> Serve<L, M, S, B, TokioExecutor>
 where
     L: Listener,
@@ -345,7 +339,6 @@ fn sleep_or_pending(duration: Option<Duration>) -> Either<tokio::time::Sleep, Pe
 ///
 /// If your executor is expensive to clone, wrap it in an `Arc`.
 /// A blanket implementation is provided for `Arc<T>` where `T: Executor`.
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 pub trait Executor: Clone + Send + Sync + 'static {
     /// Execute a task.
     fn execute<Fut>(&self, fut: Fut) -> JoinHandle<Fut::Output>
@@ -355,11 +348,9 @@ pub trait Executor: Clone + Send + Sync + 'static {
 }
 
 /// The default executor, which uses [`tokio::spawn`].
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[derive(Clone, Debug)]
 pub struct TokioExecutor;
 
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 impl Executor for TokioExecutor {
     fn execute<Fut>(&self, fut: Fut) -> JoinHandle<Fut::Output>
     where
@@ -370,7 +361,6 @@ impl Executor for TokioExecutor {
     }
 }
 
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 impl<T> Executor for Arc<T>
 where
     T: Executor,
@@ -385,7 +375,6 @@ where
 }
 
 /// Future returned by [`serve`].
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[must_use = "futures must be awaited or polled"]
 pub struct Serve<L, M, S, B, E = TokioExecutor> {
     listener: L,
@@ -395,7 +384,6 @@ pub struct Serve<L, M, S, B, E = TokioExecutor> {
     _marker: PhantomData<fn(B) -> S>,
 }
 
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 impl<L, M, S, B, E> Serve<L, M, S, B, E>
 where
     L: Listener,
@@ -513,7 +501,6 @@ where
     }
 }
 
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 impl<L, M, S, B, E> Serve<L, M, S, B, E>
 where
     L: Listener,
@@ -555,7 +542,6 @@ where
     }
 }
 
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 impl<L, M, S, B, E> Debug for Serve<L, M, S, B, E>
 where
     L: Debug + 'static,
@@ -581,7 +567,6 @@ where
     }
 }
 
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 impl<L, M, S, B, E> IntoFuture for Serve<L, M, S, B, E>
 where
     L: Listener,
@@ -604,7 +589,6 @@ where
 }
 
 /// Serve future with graceful shutdown enabled.
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[must_use = "futures must be awaited or polled"]
 pub struct WithGracefulShutdown<L, M, S, F, B, E = TokioExecutor> {
     listener: L,
@@ -615,7 +599,6 @@ pub struct WithGracefulShutdown<L, M, S, F, B, E = TokioExecutor> {
     _marker: PhantomData<fn(B) -> S>,
 }
 
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 impl<L, M, S, F, B, E> WithGracefulShutdown<L, M, S, F, B, E>
 where
     L: Listener,
@@ -653,7 +636,6 @@ where
     }
 }
 
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 impl<L, M, S, F, B, E> WithGracefulShutdown<L, M, S, F, B, E>
 where
     L: Listener,
@@ -723,7 +705,6 @@ where
     }
 }
 
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 impl<L, M, S, F, B, E> Debug for WithGracefulShutdown<L, M, S, F, B, E>
 where
     L: Debug + 'static,
@@ -751,7 +732,6 @@ where
     }
 }
 
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 impl<L, M, S, F, B, E> IntoFuture for WithGracefulShutdown<L, M, S, F, B, E>
 where
     L: Listener,
@@ -900,7 +880,7 @@ async fn handle_connection<L, M, S, B, E>(
 ///
 /// Used with [`serve`] and [`IntoMakeServiceWithConnectInfo`].
 ///
-/// [`IntoMakeServiceWithConnectInfo`]: crate::extract::connect_info::IntoMakeServiceWithConnectInfo
+/// [`IntoMakeServiceWithConnectInfo`]: https://docs.rs/axum/latest/axum/extract/connect_info/struct.IntoMakeServiceWithConnectInfo.html
 #[derive(Debug)]
 pub struct IncomingStream<'a, L>
 where
@@ -954,8 +934,9 @@ mod private {
 #[cfg(test)]
 mod tests {
     use std::{
+        convert::Infallible,
         future::{pending, IntoFuture as _},
-        net::{IpAddr, Ipv4Addr, SocketAddr},
+        net::{IpAddr, Ipv4Addr},
         pin::pin,
         time::Duration,
     };
@@ -968,23 +949,14 @@ mod tests {
     use tokio::net::UnixListener;
     use tokio::{
         io::{self, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
-        net::{TcpListener, TcpStream},
+        net::TcpListener,
         task::JoinHandle,
     };
-    use tower::ServiceBuilder;
+    use tower::{make::Shared, service_fn};
+    use tower_service::Service;
 
-    #[cfg(unix)]
-    use super::IncomingStream;
-    use super::{serve, ConnectionLifetimeLimits, Listener, MaxConnectionAge};
-    #[cfg(unix)]
-    use crate::extract::connect_info::Connected;
-    use crate::{
-        body::to_bytes,
-        handler::{Handler, HandlerWithoutStateExt},
-        routing::get,
-        serve::ListenerExt,
-        Router, ServiceExt,
-    };
+    use super::{serve, ConnectionLifetimeLimits, MaxConnectionAge};
+    use crate::{Listener, ListenerExt};
 
     struct ReadyListener<T>(Option<T>);
 
@@ -1007,20 +979,34 @@ mod tests {
         }
     }
 
+    /// A make-service which always responds with a fixed body.
+    fn body_service(
+        body: &'static str,
+    ) -> Shared<
+        impl Service<Request, Response = Response<Body>, Error = Infallible, Future = impl Send> + Clone,
+    > {
+        Shared::new(service_fn(move |_req: Request| async move {
+            Ok::<_, Infallible>(Response::new(Body::from(body)))
+        }))
+    }
+
+    /// A make-service which always responds with an empty (404-like) body, mirroring an
+    /// empty `Router`.
+    fn empty_service() -> Shared<
+        impl Service<Request, Response = Response<Body>, Error = Infallible, Future = impl Send> + Clone,
+    > {
+        Shared::new(service_fn(|_req: Request| async {
+            Ok::<_, Infallible>(
+                Response::builder()
+                    .status(StatusCode::NOT_FOUND)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+        }))
+    }
+
     #[allow(dead_code, unused)]
     async fn if_it_compiles_it_works() {
-        #[derive(Clone, Debug)]
-        struct UdsConnectInfo;
-
-        #[cfg(unix)]
-        impl Connected<IncomingStream<'_, UnixListener>> for UdsConnectInfo {
-            fn connect_info(_stream: IncomingStream<'_, UnixListener>) -> Self {
-                Self
-            }
-        }
-
-        let router: Router = Router::new();
-
         let addr = "0.0.0.0:0";
 
         let tcp_nodelay_listener = || async {
@@ -1031,133 +1017,21 @@ mod tests {
             })
         };
 
-        // router
-        serve(TcpListener::bind(addr).await.unwrap(), router.clone());
-        serve(tcp_nodelay_listener().await, router.clone()).await;
+        serve(TcpListener::bind(addr).await.unwrap(), body_service("hi"));
+        serve(tcp_nodelay_listener().await, body_service("hi")).await;
         #[cfg(unix)]
-        serve(UnixListener::bind("").unwrap(), router.clone());
-
-        serve(
-            TcpListener::bind(addr).await.unwrap(),
-            router.clone().into_make_service(),
-        );
-        serve(
-            tcp_nodelay_listener().await,
-            router.clone().into_make_service(),
-        );
-        #[cfg(unix)]
-        serve(
-            UnixListener::bind("").unwrap(),
-            router.clone().into_make_service(),
-        );
-
-        serve(
-            TcpListener::bind(addr).await.unwrap(),
-            router
-                .clone()
-                .into_make_service_with_connect_info::<std::net::SocketAddr>(),
-        );
-        serve(
-            tcp_nodelay_listener().await,
-            router
-                .clone()
-                .into_make_service_with_connect_info::<std::net::SocketAddr>(),
-        );
-        #[cfg(unix)]
-        serve(
-            UnixListener::bind("").unwrap(),
-            router.into_make_service_with_connect_info::<UdsConnectInfo>(),
-        );
-
-        // method router
-        serve(TcpListener::bind(addr).await.unwrap(), get(handler));
-        serve(tcp_nodelay_listener().await, get(handler));
-        #[cfg(unix)]
-        serve(UnixListener::bind("").unwrap(), get(handler));
-
-        serve(
-            TcpListener::bind(addr).await.unwrap(),
-            get(handler).into_make_service(),
-        );
-        serve(
-            tcp_nodelay_listener().await,
-            get(handler).into_make_service(),
-        );
-        #[cfg(unix)]
-        serve(
-            UnixListener::bind("").unwrap(),
-            get(handler).into_make_service(),
-        );
-
-        serve(
-            TcpListener::bind(addr).await.unwrap(),
-            get(handler).into_make_service_with_connect_info::<std::net::SocketAddr>(),
-        );
-        serve(
-            tcp_nodelay_listener().await,
-            get(handler).into_make_service_with_connect_info::<std::net::SocketAddr>(),
-        );
-        #[cfg(unix)]
-        serve(
-            UnixListener::bind("").unwrap(),
-            get(handler).into_make_service_with_connect_info::<UdsConnectInfo>(),
-        );
-
-        // handler
-        serve(
-            TcpListener::bind(addr).await.unwrap(),
-            handler.into_service(),
-        );
-        serve(tcp_nodelay_listener().await, handler.into_service());
-        #[cfg(unix)]
-        serve(UnixListener::bind("").unwrap(), handler.into_service());
-
-        serve(
-            TcpListener::bind(addr).await.unwrap(),
-            handler.with_state(()),
-        );
-        serve(tcp_nodelay_listener().await, handler.with_state(()));
-        #[cfg(unix)]
-        serve(UnixListener::bind("").unwrap(), handler.with_state(()));
-
-        serve(
-            TcpListener::bind(addr).await.unwrap(),
-            handler.into_make_service(),
-        );
-        serve(tcp_nodelay_listener().await, handler.into_make_service());
-        #[cfg(unix)]
-        serve(UnixListener::bind("").unwrap(), handler.into_make_service());
-
-        serve(
-            TcpListener::bind(addr).await.unwrap(),
-            handler.into_make_service_with_connect_info::<std::net::SocketAddr>(),
-        );
-        serve(
-            tcp_nodelay_listener().await,
-            handler.into_make_service_with_connect_info::<std::net::SocketAddr>(),
-        );
-        #[cfg(unix)]
-        serve(
-            UnixListener::bind("").unwrap(),
-            handler.into_make_service_with_connect_info::<UdsConnectInfo>(),
-        );
+        serve(UnixListener::bind("").unwrap(), body_service("hi"));
 
         // with_executor
-        let router: Router = Router::new();
         let exec = TestExecutor::new();
-        serve(TcpListener::bind(addr).await.unwrap(), router.clone()).with_executor(exec.clone());
-        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+        serve(TcpListener::bind(addr).await.unwrap(), body_service("hi"))
+            .with_executor(exec.clone());
+        serve(TcpListener::bind(addr).await.unwrap(), body_service("hi"))
             .with_executor(exec.clone())
             .with_graceful_shutdown(std::future::pending());
-        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+        serve(TcpListener::bind(addr).await.unwrap(), body_service("hi"))
             .with_graceful_shutdown(std::future::pending())
-            .with_executor(exec.clone());
-        serve(TcpListener::bind(addr).await.unwrap(), get(handler)).with_executor(exec.clone());
-        serve(
-            TcpListener::bind(addr).await.unwrap(),
-            handler.into_make_service(),
-        )
-        .with_executor(exec);
+            .with_executor(exec);
 
         // connection_lifetime_limits, composable with the other builder methods in any order
         let limits = ConnectionLifetimeLimits::new().max_connection_age(
@@ -1165,20 +1039,18 @@ mod tests {
                 .jitter(Duration::from_secs(10))
                 .grace(Duration::from_secs(5)),
         );
-        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+        serve(TcpListener::bind(addr).await.unwrap(), body_service("hi"))
             .connection_lifetime_limits(limits.clone());
-        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+        serve(TcpListener::bind(addr).await.unwrap(), body_service("hi"))
             .connection_lifetime_limits(limits.clone())
             .with_graceful_shutdown(std::future::pending());
-        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+        serve(TcpListener::bind(addr).await.unwrap(), body_service("hi"))
             .with_graceful_shutdown(std::future::pending())
             .connection_lifetime_limits(limits.clone());
-        serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+        serve(TcpListener::bind(addr).await.unwrap(), body_service("hi"))
             .connection_lifetime_limits(limits.clone())
             .with_executor(TestExecutor::new());
     }
-
-    async fn handler() {}
 
     #[derive(Clone)]
     struct TestExecutor(std::sync::Arc<std::sync::atomic::AtomicUsize>);
@@ -1204,24 +1076,22 @@ mod tests {
         }
     }
 
-    #[crate::test]
+    #[tokio::test]
     async fn test_serve_local_addr() {
-        let router: Router = Router::new();
         let addr = "0.0.0.0:0";
 
-        let server = serve(TcpListener::bind(addr).await.unwrap(), router.clone());
+        let server = serve(TcpListener::bind(addr).await.unwrap(), body_service("hi"));
         let address = server.local_addr().unwrap();
 
         assert_eq!(address.ip(), IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)));
         assert_ne!(address.port(), 0);
     }
 
-    #[crate::test]
+    #[tokio::test]
     async fn test_with_graceful_shutdown_local_addr() {
-        let router: Router = Router::new();
         let addr = "0.0.0.0:0";
 
-        let server = serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+        let server = serve(TcpListener::bind(addr).await.unwrap(), body_service("hi"))
             .with_graceful_shutdown(pending());
         let address = server.local_addr().unwrap();
 
@@ -1245,7 +1115,7 @@ mod tests {
             client.write_all(req.as_bytes()).await.unwrap();
 
             let server_task = async {
-                serve(ReadyListener(Some(server)), Router::new())
+                serve(ReadyListener(Some(server)), empty_service())
                     .with_graceful_shutdown(tokio::time::sleep(Duration::from_secs(1)))
                     .await;
             };
@@ -1267,7 +1137,7 @@ mod tests {
             client.write_all(req.as_bytes()).await.unwrap();
 
             let server_task = async {
-                serve(ReadyListener(Some(server)), Router::new()).await;
+                serve(ReadyListener(Some(server)), empty_service()).await;
             };
 
             let wait_for_server_to_close_conn = async {
@@ -1289,7 +1159,6 @@ mod tests {
 
     #[test]
     fn into_future_outside_tokio() {
-        let router: Router = Router::new();
         let addr = "0.0.0.0:0";
 
         let rt = tokio::runtime::Builder::new_multi_thread()
@@ -1300,17 +1169,15 @@ mod tests {
         let listener = rt.block_on(tokio::net::TcpListener::bind(addr)).unwrap();
 
         // Call Serve::into_future outside of a tokio context. This used to panic.
-        _ = serve(listener, router).into_future();
+        _ = serve(listener, body_service("hi")).into_future();
     }
 
-    #[crate::test]
+    #[tokio::test]
     async fn serving_on_custom_io_type() {
         let (client, server) = io::duplex(1024);
         let listener = ReadyListener(Some(server));
 
-        let app = Router::new().route("/", get(|| async { "Hello, World!" }));
-
-        tokio::spawn(serve(listener, app).into_future());
+        tokio::spawn(serve(listener, body_service("Hello, World!")).into_future());
 
         let stream = TokioIo::new(client);
         let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
@@ -1322,7 +1189,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         let body = Body::new(response.into_body());
-        let body = to_bytes(body, usize::MAX).await.unwrap();
+        let body = crate_test_helpers::to_bytes(body).await;
         let body = String::from_utf8(body.to_vec()).unwrap();
         assert_eq!(body, "Hello, World!");
     }
@@ -1332,7 +1199,7 @@ mod tests {
     // and only then does the `serve` future resolve. The existing
     // `test_with_graceful_shutdown_request_header_timeout` only covers stalled
     // requests being killed by hyper's header read timeout.
-    #[crate::test]
+    #[tokio::test]
     async fn graceful_shutdown_completes_inflight_request() {
         use std::sync::Arc;
 
@@ -1340,19 +1207,17 @@ mod tests {
         let release = Arc::new(tokio::sync::Notify::new());
         let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
 
-        let app = Router::new().route("/", {
-            let started = started.clone();
-            let release = release.clone();
-            get(move || {
-                let started = started.clone();
-                let release = release.clone();
-                async move {
-                    started.notify_one();
-                    release.notified().await;
-                    "done"
-                }
-            })
-        });
+        let started2 = started.clone();
+        let release2 = release.clone();
+        let app = Shared::new(service_fn(move |_req: Request| {
+            let started = started2.clone();
+            let release = release2.clone();
+            async move {
+                started.notify_one();
+                release.notified().await;
+                Ok::<_, Infallible>(Response::new(Body::from("done")))
+            }
+        }));
 
         let (client, server) = io::duplex(1024);
         let listener = ReadyListener(Some(server));
@@ -1391,9 +1256,7 @@ mod tests {
 
         let response = request_fut.await.unwrap().unwrap();
         assert_eq!(response.status(), StatusCode::OK);
-        let body = to_bytes(Body::new(response.into_body()), usize::MAX)
-            .await
-            .unwrap();
+        let body = crate_test_helpers::to_bytes(Body::new(response.into_body())).await;
         assert_eq!(&body[..], b"done");
 
         // And only after the in-flight request finished does serve resolve.
@@ -1403,93 +1266,12 @@ mod tests {
             .unwrap();
     }
 
-    // `serve(listener, router)` used to run `self.clone().with_state(())` on
-    // every accepted connection. The `Arc` behind `Router` is shared with
-    // `serve`, so that fell back to deep-cloning every route's service for each
-    // connection and kept the copy alive for as long as the connection was open.
-    #[crate::test]
-    async fn new_connection_does_not_clone_route_services() {
-        use std::{
-            convert::Infallible,
-            future::{ready, Ready},
-            sync::{
-                atomic::{AtomicUsize, Ordering},
-                Arc,
-            },
-            task::{Context, Poll},
-        };
-
-        use axum_core::response::IntoResponse;
-        use tower_service::Service;
-
-        struct Svc(Arc<AtomicUsize>);
-
-        impl Clone for Svc {
-            fn clone(&self) -> Self {
-                self.0.fetch_add(1, Ordering::SeqCst);
-                Self(self.0.clone())
-            }
-        }
-
-        impl Service<Request> for Svc {
-            type Response = crate::response::Response;
-            type Error = Infallible;
-            type Future = Ready<Result<Self::Response, Infallible>>;
-
-            fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-                Poll::Ready(Ok(()))
-            }
-
-            fn call(&mut self, _req: Request) -> Self::Future {
-                ready(Ok("ok".into_response()))
-            }
-        }
-
-        async fn connect(
-            addr: std::net::SocketAddr,
-        ) -> hyper::client::conn::http1::SendRequest<Body> {
-            let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
-            let (sender, conn) = hyper::client::conn::http1::handshake(TokioIo::new(stream))
-                .await
-                .unwrap();
-            tokio::spawn(conn);
-            sender
-        }
-
-        async fn clones_during(
-            sender: &mut hyper::client::conn::http1::SendRequest<Body>,
-            clones: &AtomicUsize,
-        ) -> usize {
-            let before = clones.load(Ordering::SeqCst);
-            let request = Request::builder().uri("/").body(Body::empty()).unwrap();
-            let response = sender.send_request(request).await.unwrap();
-            assert_eq!(response.status(), StatusCode::OK);
-            clones.load(Ordering::SeqCst) - before
-        }
-
-        let clones = Arc::new(AtomicUsize::new(0));
-        let app = Router::new().route_service("/", Svc(clones.clone()));
-
-        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let addr = listener.local_addr().unwrap();
-        tokio::spawn(serve(listener, app).into_future());
-
-        let mut first = connect(addr).await;
-        clones_during(&mut first, &clones).await;
-        let per_request = clones_during(&mut first, &clones).await;
-
-        let mut second = connect(addr).await;
-        let first_request_on_new_connection = clones_during(&mut second, &clones).await;
-
-        assert_eq!(first_request_on_new_connection, per_request);
-    }
-
     // Asserts that `ListenerExt::tap_io` invokes its closure on every accepted
     // connection when used with `serve`. The sibling `ListenerExt::limit_connections`
-    // has a direct unit test (in `serve::listener::tests`); `tap_io` did not have
+    // has a direct unit test (in `listener::tests`); `tap_io` did not have
     // a runtime test, so its documented contract was only covered at the type level
     // by `if_it_compiles_it_works`.
-    #[crate::test]
+    #[tokio::test]
     async fn tap_io_runs_on_each_accepted_connection() {
         use std::sync::{
             atomic::{AtomicUsize, Ordering},
@@ -1507,8 +1289,7 @@ mod tests {
             })
         };
 
-        let app = Router::new().route("/", get(|| async { "ok" }));
-        tokio::spawn(serve(counted, app).into_future());
+        tokio::spawn(serve(counted, body_service("ok")).into_future());
 
         // Open two distinct TCP connections to force two accepts.
         for _ in 0..2 {
@@ -1528,16 +1309,14 @@ mod tests {
         assert_eq!(count.load(Ordering::SeqCst), 2);
     }
 
-    #[crate::test]
+    #[tokio::test]
     async fn serving_with_custom_executor() {
         let (client, server) = io::duplex(1024);
         let listener = ReadyListener(Some(server));
 
-        let app = Router::new().route("/", get(|| async { "Hello, World!" }));
-
         let executor = TestExecutor::new();
         tokio::spawn(
-            serve(listener, app)
+            serve(listener, body_service("Hello, World!"))
                 .with_executor(executor.clone())
                 .into_future(),
         );
@@ -1552,7 +1331,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         let body = Body::new(response.into_body());
-        let body = to_bytes(body, usize::MAX).await.unwrap();
+        let body = crate_test_helpers::to_bytes(body).await;
         let body = String::from_utf8(body.to_vec()).unwrap();
         assert_eq!(body, "Hello, World!");
 
@@ -1560,7 +1339,7 @@ mod tests {
         assert_eq!(executor.count(), 1);
     }
 
-    #[crate::test]
+    #[tokio::test]
     #[cfg(feature = "http2")]
     async fn serving_with_custom_executor_http2() {
         use hyper_util::rt::TokioExecutor;
@@ -1568,11 +1347,9 @@ mod tests {
         let (client, server) = io::duplex(1024);
         let listener = ReadyListener(Some(server));
 
-        let app = Router::new().route("/", get(|| async { "Hello, World!" }));
-
         let executor = TestExecutor::new();
         tokio::spawn(
-            serve(listener, app)
+            serve(listener, body_service("Hello, World!"))
                 .with_executor(executor.clone())
                 .into_future(),
         );
@@ -1590,15 +1367,15 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         let body = Body::new(response.into_body());
-        let body = to_bytes(body, usize::MAX).await.unwrap();
+        let body = crate_test_helpers::to_bytes(body).await;
         let body = String::from_utf8(body.to_vec()).unwrap();
         assert_eq!(body, "Hello, World!");
 
-        // Two tasks: axum's connection, and hyper's internal HTTP/2 task.
+        // Two tasks: tower-serve's connection, and hyper's internal HTTP/2 task.
         assert_eq!(executor.count(), 2);
     }
 
-    #[crate::test]
+    #[tokio::test]
     async fn serving_with_custom_body_type() {
         struct CustomBody;
         impl http_body::Body for CustomBody {
@@ -1614,15 +1391,24 @@ mod tests {
             }
         }
 
-        let app = ServiceBuilder::new()
-            .layer_fn(|_| tower::service_fn(|_| std::future::ready(Ok(Response::new(CustomBody)))))
-            .service(Router::<()>::new().route("/hello", get(|| async {})));
+        let app = Shared::new(service_fn(|_req: Request| {
+            std::future::ready(Ok::<_, Infallible>(Response::new(CustomBody)))
+        }));
         let addr = "0.0.0.0:0";
 
-        _ = serve(
-            TcpListener::bind(addr).await.unwrap(),
-            app.into_make_service(),
-        );
+        _ = serve(TcpListener::bind(addr).await.unwrap(), app);
+    }
+
+    /// Minimal replacement for `axum::body::to_bytes` so these tests don't need to
+    /// depend on `axum` itself.
+    mod crate_test_helpers {
+        use axum_core::body::Body;
+        use bytes::Bytes;
+        use http_body_util::BodyExt;
+
+        pub(super) async fn to_bytes(body: Body) -> Bytes {
+            body.collect().await.unwrap().to_bytes()
+        }
     }
 
     #[test]
@@ -1649,7 +1435,7 @@ mod tests {
     // connection task completing.
     #[tokio::test(start_paused = true)]
     async fn max_connection_age_closes_idle_connection() {
-        let app = Router::new().route("/", get(|| async { "ok" }));
+        let app = body_service("ok");
         let (client, server) = io::duplex(1024);
         let listener = ReadyListener(Some(server));
 
@@ -1670,9 +1456,7 @@ mod tests {
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
         let response = sender.send_request(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
-        let _ = to_bytes(Body::new(response.into_body()), usize::MAX)
-            .await
-            .unwrap();
+        let _ = crate_test_helpers::to_bytes(Body::new(response.into_body())).await;
 
         // With (paused) time auto-advancing, the age timer fires and the server
         // closes the now-idle connection, completing the client's conn task.
@@ -1693,17 +1477,17 @@ mod tests {
         use tokio::sync::Notify;
 
         let started = Arc::new(Notify::new());
-        let app = Router::new().route("/", {
+        let app = Shared::new(service_fn({
             let started = started.clone();
-            get(move || {
+            move |_req: Request| {
                 let started = started.clone();
                 async move {
                     started.notify_one();
                     pending::<()>().await;
-                    "unreachable"
+                    Ok::<_, Infallible>(Response::new(Body::empty()))
                 }
-            })
-        });
+            }
+        }));
 
         let (client, server) = io::duplex(1024);
         let listener = ReadyListener(Some(server));
@@ -1751,19 +1535,19 @@ mod tests {
         let started = Arc::new(Notify::new());
         let released = Arc::new(Notify::new());
 
-        let app = Router::new().route("/", {
+        let app = Shared::new(service_fn({
             let started = started.clone();
             let released = released.clone();
-            get(move || {
+            move |_req: Request| {
                 let started = started.clone();
                 let released = released.clone();
                 async move {
                     started.notify_one();
                     released.notified().await;
-                    "done"
+                    Ok::<_, Infallible>(Response::new(Body::from("done")))
                 }
-            })
-        });
+            }
+        }));
 
         let (client, server) = io::duplex(1024);
         let listener = ReadyListener(Some(server));
@@ -1808,7 +1592,7 @@ mod tests {
     async fn max_connection_age_closes_idle_connection_http2() {
         use hyper_util::rt::TokioExecutor;
 
-        let app = Router::new().route("/", get(|| async { "ok" }));
+        let app = body_service("ok");
         let (client, server) = io::duplex(1024);
         let listener = ReadyListener(Some(server));
 
@@ -1831,9 +1615,7 @@ mod tests {
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
         let response = sender.send_request(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
-        let _ = to_bytes(Body::new(response.into_body()), usize::MAX)
-            .await
-            .unwrap();
+        let _ = crate_test_helpers::to_bytes(Body::new(response.into_body())).await;
 
         // GOAWAY after the age limit closes the connection from the server side.
         tokio::time::timeout(Duration::from_secs(30), conn_handle)
@@ -1856,17 +1638,17 @@ mod tests {
         use tokio::sync::Notify;
 
         let started = Arc::new(Notify::new());
-        let app = Router::new().route("/", {
+        let app = Shared::new(service_fn({
             let started = started.clone();
-            get(move || {
+            move |_req: Request| {
                 let started = started.clone();
                 async move {
                     started.notify_one();
                     pending::<()>().await;
-                    "unreachable"
+                    Ok::<_, Infallible>(Response::new(Body::empty()))
                 }
-            })
-        });
+            }
+        }));
 
         let (client, server) = io::duplex(1024);
         let listener = ReadyListener(Some(server));
@@ -1911,13 +1693,10 @@ mod tests {
     async fn max_connection_age_grace_lets_request_finish_in_time() {
         // The age limit fires at 10s and the grace period force-closes at 15s,
         // so a handler that takes 12s completes in between the two.
-        let app = Router::new().route(
-            "/",
-            get(|| async {
-                tokio::time::sleep(Duration::from_secs(12)).await;
-                "done"
-            }),
-        );
+        let app = Shared::new(service_fn(|_req: Request| async {
+            tokio::time::sleep(Duration::from_secs(12)).await;
+            Ok::<_, Infallible>(Response::new(Body::from("done")))
+        }));
 
         let (client, server) = io::duplex(1024);
         let listener = ReadyListener(Some(server));
@@ -1941,9 +1720,7 @@ mod tests {
             .expect("in-flight request failed even though it finished within the grace period");
         assert_eq!(response.status(), StatusCode::OK);
 
-        let body = to_bytes(Body::new(response.into_body()), usize::MAX)
-            .await
-            .unwrap();
+        let body = crate_test_helpers::to_bytes(Body::new(response.into_body())).await;
         assert_eq!(&body[..], b"done");
     }
 
@@ -1968,7 +1745,7 @@ mod tests {
         let mut closed_at = Vec::with_capacity(CONNECTIONS);
 
         for _ in 0..CONNECTIONS {
-            let app = Router::new().route("/", get(|| async { "ok" }));
+            let app = body_service("ok");
             let (client, server) = io::duplex(1024);
 
             tokio::spawn(
@@ -2034,17 +1811,17 @@ mod tests {
         use tokio::sync::{oneshot, Notify};
 
         let started = Arc::new(Notify::new());
-        let app = Router::new().route("/", {
+        let app = Shared::new(service_fn({
             let started = started.clone();
-            get(move || {
+            move |_req: Request| {
                 let started = started.clone();
                 async move {
                     started.notify_one();
                     pending::<()>().await;
-                    "unreachable"
+                    Ok::<_, Infallible>(Response::new(Body::empty()))
                 }
-            })
-        });
+            }
+        }));
 
         let (client, server) = io::duplex(1024);
         let listener = ReadyListener(Some(server));
@@ -2089,41 +1866,5 @@ mod tests {
             .await
             .expect("serve future did not resolve after the connection was force-closed")
             .unwrap();
-    }
-
-    #[tokio::test]
-    async fn serving_with_connect_info_over_tcp() {
-        use crate::extract::ConnectInfo;
-
-        async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
-            addr.to_string()
-        }
-
-        let app = Router::new().route("/", get(handler));
-
-        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let server = serve(
-            listener,
-            app.into_make_service_with_connect_info::<SocketAddr>(),
-        );
-        let server_addr = server.local_addr().unwrap();
-        tokio::spawn(server.into_future());
-
-        let client = TcpStream::connect(server_addr).await.unwrap();
-        let client_addr = client.local_addr().unwrap();
-
-        let stream = TokioIo::new(client);
-        let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
-        tokio::spawn(conn);
-
-        let request = Request::builder().body(Body::empty()).unwrap();
-        let response = sender.send_request(request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let body = to_bytes(Body::new(response.into_body()), usize::MAX)
-            .await
-            .unwrap();
-        let body = String::from_utf8(body.to_vec()).unwrap();
-        assert_eq!(body.parse::<SocketAddr>().unwrap(), client_addr);
     }
 }
