@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum_core::response::{IntoResponse, IntoResponseFailed, Response};
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::Bytes;
 use http::{header, HeaderValue, StatusCode};
 use serde_core::Serialize;
 
@@ -45,9 +45,11 @@ pub struct ErasedJson(Result<Bytes, Arc<serde_json::Error>>);
 impl ErasedJson {
     /// Create an `ErasedJson` by serializing a value with the compact formatter.
     pub fn new<T: Serialize>(val: T) -> Self {
-        let mut bytes = BytesMut::with_capacity(128);
-        let result = match serde_json::to_writer((&mut bytes).writer(), &val) {
-            Ok(()) => Ok(bytes.freeze()),
+        // Use a small initial capacity of 128 bytes like serde_json::to_vec
+        // https://docs.rs/serde_json/1.0.82/src/serde_json/ser.rs.html#2189
+        let mut buf = Vec::with_capacity(128);
+        let result = match serde_json::to_writer(&mut buf, &val) {
+            Ok(()) => Ok(Bytes::from(buf)),
             Err(e) => Err(Arc::new(e)),
         };
         Self(result)
@@ -55,11 +57,11 @@ impl ErasedJson {
 
     /// Create an `ErasedJson` by serializing a value with the pretty formatter.
     pub fn pretty<T: Serialize>(val: T) -> Self {
-        let mut bytes = BytesMut::with_capacity(128);
-        let result = match serde_json::to_writer_pretty((&mut bytes).writer(), &val) {
+        let mut buf = Vec::with_capacity(128);
+        let result = match serde_json::to_writer_pretty(&mut buf, &val) {
             Ok(()) => {
-                bytes.put_u8(b'\n');
-                Ok(bytes.freeze())
+                buf.push(b'\n');
+                Ok(Bytes::from(buf))
             }
             Err(e) => Err(Arc::new(e)),
         };

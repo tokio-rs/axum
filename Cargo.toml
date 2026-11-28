@@ -1,5 +1,5 @@
 [workspace]
-members = ["axum", "axum-*"]
+members = ["axum", "axum-*", "tower-serve"]
 resolver = "2"
 
 [workspace.package]
