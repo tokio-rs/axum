@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **fixed:** Match form content types case-insensitively and reject malformed
+  media types or unrelated types sharing the same prefix.
 - **breaking:** `tower-log` is no longer a default feature. Enable it explicitly to keep
   `tower`'s `log` feature turned on ([#3928])
 - **breaking:** Router fallbacks are now properly merged for nested routers ([#3158])
